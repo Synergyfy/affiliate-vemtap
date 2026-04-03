@@ -248,7 +248,7 @@ export default function CommissionsManagement() {
                         </span>
                       </td>
                       <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-end gap-2 transition-opacity">
                           {comm.status === 'Pending' && (
                             <button 
                               onClick={() => handleApprove(comm.id)}
@@ -263,7 +263,10 @@ export default function CommissionsManagement() {
                           >
                             <Edit3 className="w-4 h-4" />
                           </button>
-                          <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-900 transition-all">
+                          <button 
+                            onClick={() => showToast("More options", "info")}
+                            className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-900 transition-all"
+                          >
                             <MoreHorizontal className="w-4 h-4" />
                           </button>
                         </div>

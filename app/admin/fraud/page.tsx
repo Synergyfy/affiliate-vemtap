@@ -143,7 +143,7 @@ export default function FraudMonitor() {
                       </td>
                       <td className="p-4 text-sm text-slate-500">{alert.date}</td>
                       <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-end gap-2 transition-opacity">
                           <button 
                             onClick={() => showToast(`Viewing detailed logs for ${alert.affiliate}`, 'info')}
                             className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-900 transition-all title='View Details'"
@@ -161,6 +161,12 @@ export default function FraudMonitor() {
                             className="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-all title='Suspend Account'"
                           >
                             <UserX className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => showToast("More options", "info")}
+                            className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-900 transition-all"
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
                           </button>
                         </div>
                       </td>
