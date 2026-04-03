@@ -1,0 +1,21 @@
+## Error Type
+Runtime ReferenceError
+
+## Error Message
+Clock is not defined
+
+
+    at eval (app\admin\notifications\page.tsx:134:105)
+    at Array.map (<anonymous>:null:null)
+    at NotificationsManagement (app\admin\notifications\page.tsx:127:34)
+
+## Code Frame
+  132 |                       notif.status === 'Sent' ? "bg-green-50" : "bg-blue-50"
+  133 |                     )}>
+> 134 |                       {notif.status === 'Sent' ? <CheckCircle2 className="w-5 h-5 text-green-600" /> : <Clock className="w-5 h-5 text-blue-600" />}
+      |                                                                                                         ^
+  135 |                     </div>
+  136 |                     <div>
+  137 |                       <p className="font-bold text-slate-900">{notif.title}</p>
+
+Next.js version: 15.5.14 (Webpack)
