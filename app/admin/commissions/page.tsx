@@ -10,7 +10,9 @@ import {
   Filter,
   MoreHorizontal,
   Edit3,
-  Check
+  Check,
+  Save,
+  RotateCcw
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { cn } from '@/lib/utils';
@@ -66,6 +68,11 @@ export default function CommissionsManagement() {
     showToast(`Opening adjustment tool for ${id}`, 'info');
   };
 
+  const handleUpdateRules = (e: React.FormEvent) => {
+    e.preventDefault();
+    showToast("Global commission rules updated successfully.", "success");
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-8">
@@ -100,6 +107,81 @@ export default function CommissionsManagement() {
             </motion.div>
           ))}
         </div>
+
+        {/* Global Configuration Card */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white p-6 rounded-3xl border border-blue-100 shadow-sm shadow-blue-600/5 relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 rounded-full -translate-y-16 translate-x-16"></div>
+          
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <Percent className="w-5 h-5 text-blue-600" />
+                Commission Rules
+              </h3>
+              <p className="text-sm text-slate-500 font-medium">Configure how much affiliates earn from business subscriptions</p>
+            </div>
+
+            <form onSubmit={handleUpdateRules} className="flex flex-wrap items-end gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Direct (%)</label>
+                <div className="relative w-24">
+                  <input 
+                    type="number" 
+                    defaultValue={20}
+                    className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">%</span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Indirect (%)</label>
+                <div className="relative w-24">
+                  <input 
+                    type="number" 
+                    defaultValue={5}
+                    className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">%</span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Duration (Times)</label>
+                <div className="relative w-32">
+                  <input 
+                    type="number" 
+                    defaultValue={3}
+                    className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button 
+                  type="button"
+                  onClick={() => showToast("Settings reset to defaults", "info")}
+                  className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-100 hover:text-slate-600 transition-all"
+                  title="Reset to defaults"
+                >
+                  <RotateCcw className="w-5 h-5" />
+                </button>
+                <button 
+                  type="submit"
+                  className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20"
+                >
+                  <Save className="w-4 h-4" />
+                  Update
+                </button>
+              </div>
+            </form>
+          </div>
+        </motion.div>
 
         {/* Table Section */}
         <div className="space-y-4">
