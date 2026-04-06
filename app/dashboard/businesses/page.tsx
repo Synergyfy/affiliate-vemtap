@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 
 const businesses = [
   { id: 1, name: 'Tech Solutions Ltd', plan: 'Premium', status: 'Active', payment: 'Paid', commission: '₦15,000', date: '2024-03-15' },
-  { id: 2, name: 'Global Corp', plan: 'Enterprise', status: 'Active', payment: 'Paid', commission: '₦25,000', date: '2024-03-10' },
+  { id: 2, name: 'Global Corp', plan: 'Enterprise', status: 'Active', payment: 'Paid', commission: '₦250,000', date: '2024-03-10' },
   { id: 3, name: 'Small Biz Inc', plan: 'Basic', status: 'Trial', payment: 'Pending', commission: '₦0', date: '2024-03-20' },
   { id: 4, name: 'Creative Agency', plan: 'Premium', status: 'Expired', payment: 'Unpaid', commission: '₦0', date: '2024-02-28' },
   { id: 5, name: 'Future Tech', plan: 'Enterprise', status: 'Active', payment: 'Paid', commission: '₦25,000', date: '2024-03-05' },
