@@ -144,7 +144,7 @@ export default function WalletPage() {
                   <XCircle className="w-6 h-6" />
                 </button>
               </div>
-              <div className="space-y-6">
+              <form onSubmit={handleWithdraw} className="space-y-6">
                 <div className="relative">
                   <span className="absolute left-4 top-[38px] font-bold text-slate-400 z-10">₦</span>
                   <Input 

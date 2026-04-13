@@ -42,6 +42,9 @@ export default function AcademyPage() {
   const [completedModules, setCompletedModules] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   
+  const practiceScenarios = courses[0]?.scenarios || [];
+  const quizQuestions = courses[0]?.quiz || [];
+  
   // Practice State
   const [practiceIndex, setPracticeIndex] = useState(0);
   const [practiceFeedback, setPracticeFeedback] = useState<{ text: string, correct: boolean } | null>(null);
@@ -125,7 +128,6 @@ export default function AcademyPage() {
   };
 
   const nextPractice = () => {
-    const practiceScenarios = courses[0]?.scenarios || [];
     setPracticeFeedback(null);
     if (practiceIndex < practiceScenarios.length - 1) {
       setPracticeIndex(practiceIndex + 1);
@@ -444,14 +446,10 @@ export default function AcademyPage() {
                     <div className="w-16 h-16 bg-amber-50 rounded-3xl flex items-center justify-center text-amber-600 mx-auto mb-8">
                       <MessageSquare className="w-8 h-8" />
                     </div>
-                    {(() => {
-                      const practiceScenarios = courses[0].scenarios;
-                      return (
-                        <>
-                          <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-2">Scenario {practiceIndex + 1} of {practiceScenarios.length}</p>
-                          <h3 className="text-2xl font-bold text-slate-900 mb-10 leading-tight italic">
-                            &quot;{practiceScenarios[practiceIndex].scenario}&quot;
-                          </h3>
+                    <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-2">Scenario {practiceIndex + 1} of {practiceScenarios.length}</p>
+                    <h3 className="text-2xl font-bold text-slate-900 mb-10 leading-tight italic">
+                      &quot;{practiceScenarios[practiceIndex].scenario}&quot;
+                    </h3>
 
                           <div className="space-y-4">
                             {practiceScenarios[practiceIndex].options.map((option: any, i: number) => (
@@ -475,9 +473,6 @@ export default function AcademyPage() {
                               </button>
                             ))}
                           </div>
-                        </>
-                      );
-                    })()}
 
                   <AnimatePresence>
                     {practiceFeedback && (
@@ -539,7 +534,7 @@ export default function AcademyPage() {
                     </Button>
                   </div>
                 </div>
-              )}
+              )) : null}
             </motion.div>
           )}
 
@@ -559,21 +554,21 @@ export default function AcademyPage() {
                         <Trophy className="w-5 h-5 text-blue-600" />
                         <span className="text-sm font-bold text-slate-900">Final Assessment</span>
                       </div>
-                      <span className="text-xs font-bold text-slate-400">Question {quizStep + 1}/{courses[0].quiz.length}</span>
+                      <span className="text-xs font-bold text-slate-400">Question {quizStep + 1}/{quizQuestions.length}</span>
                     </div>
 
                     <div className="h-2 bg-slate-100 rounded-full mb-10 overflow-hidden">
                       <motion.div 
                         initial={{ width: 0 }}
-                        animate={{ width: `${((quizStep + 1) / courses[0].quiz.length) * 100}%` }}
+                        animate={{ width: `${((quizStep + 1) / quizQuestions.length) * 100}%` }}
                         className="h-full bg-blue-600"
                       />
                     </div>
 
-                    <h3 className="text-2xl font-bold text-slate-900 mb-8">{courses[0].quiz[quizStep].question}</h3>
+                    <h3 className="text-2xl font-bold text-slate-900 mb-8">{quizQuestions[quizStep].question}</h3>
 
                     <div className="space-y-4">
-                      {courses[0].quiz[quizStep].options.map((option: any, i: number) => (
+                      {quizQuestions[quizStep].options.map((option: any, i: number) => (
                         <button
                           key={i}
                           onClick={() => handleQuizAnswer(i)}
@@ -633,7 +628,7 @@ export default function AcademyPage() {
                     </Button>
                   </div>
                 </div>
-              )}
+              )) : null}
             </motion.div>
           )}
         </AnimatePresence>

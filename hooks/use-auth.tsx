@@ -34,6 +34,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    // Register global unauthorized handler
+    api.setUnauthorizedCallback(() => {
+      logout();
+    });
+
     const initAuth = async () => {
       const savedUser = localStorage.getItem('vemtap_user');
       if (savedUser) {
@@ -46,13 +51,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsAuthenticated(true);
         } catch (error) {
           console.error('Auth initialization failed:', error);
-          localStorage.removeItem('vemtap_user');
+          logout(); // Use centralized logout instead of just removing item
         }
+      } else {
+        setIsAuthenticated(false);
       }
       setIsLoading(false);
     };
     initAuth();
   }, []);
+
 
   const login = async (email: string, password?: string) => {
     try {
