@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '@/lib/api-client';
 import { motion } from 'motion/react';
 import { 
   Lock, 
@@ -19,15 +20,40 @@ import { useRouter } from 'next/navigation';
 export default function NetworkPage() {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const router = useRouter();
-  const payingBusinessesCount = 3; // Mock data
-  const requiredCount = 5;
-  const progress = (payingBusinessesCount / requiredCount) * 100;
+  
+  const [stats, setStats] = useState<any>(null);
+  const [subAffiliates, setSubAffiliates] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const subAffiliates = [
-    { id: 1, name: 'Sarah Johnson', referrals: 12, earnings: '₦45,000', status: 'Active' },
-    { id: 2, name: 'Michael Chen', referrals: 8, earnings: '₦28,500', status: 'Active' },
-    { id: 3, name: 'David Smith', referrals: 3, earnings: '₦12,000', status: 'Active' },
-  ];
+  // Dynamic counting
+  const requiredCount = 5;
+  const payingBusinessesCount = stats?.activeReferrals || 0;
+  const progress = Math.min((payingBusinessesCount / requiredCount) * 100, 100);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [referralsData, statsData] = await Promise.all([
+          api.get('/affiliates/referrals'),
+          api.get('/affiliates/stats')
+        ]);
+        
+        setStats(statsData);
+        // Determine unlock status dynamically:
+        if (statsData?.activeReferrals >= requiredCount) {
+          setIsUnlocked(true);
+        }
+        
+        // Network items if supported 
+        setSubAffiliates(Array.isArray(referralsData) ? referralsData.filter(r => r.referredUser) : []);
+      } catch (error) {
+        console.error('Failed to fetch network data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [requiredCount]);
 
   return (
     <DashboardLayout>
@@ -102,15 +128,15 @@ export default function NetworkPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
               <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm">
                 <p className="text-xs sm:text-sm font-medium text-slate-500 mb-1">Network Size</p>
-                <h3 className="text-xl sm:text-2xl font-bold text-slate-900">12 Affiliates</h3>
+                <h3 className="text-xl sm:text-2xl font-bold text-slate-900">{subAffiliates.length} Affiliates</h3>
               </div>
               <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <p className="text-xs sm:text-sm font-medium text-slate-500 mb-1">Indirect Earnings</p>
-                <h3 className="text-xl sm:text-2xl font-bold text-emerald-600">₦85,500</h3>
+                <p className="text-xs sm:text-sm font-medium text-slate-500 mb-1">Total Earnings</p>
+                <h3 className="text-xl sm:text-2xl font-bold text-emerald-600">₦{Number(stats?.totalEarnings || 0).toLocaleString()}</h3>
               </div>
               <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <p className="text-xs sm:text-sm font-medium text-slate-500 mb-1">Active Referrals</p>
-                <h3 className="text-xl sm:text-2xl font-bold text-blue-600">48 Businesses</h3>
+                <p className="text-xs sm:text-sm font-medium text-slate-500 mb-1">Total Referrals</p>
+                <h3 className="text-xl sm:text-2xl font-bold text-blue-600">{stats?.totalReferrals || 0} Businesses</h3>
               </div>
             </div>
 
@@ -123,16 +149,18 @@ export default function NetworkPage() {
                 {subAffiliates.map((affiliate) => (
                   <div key={affiliate.id} className="p-4 sm:p-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
                     <div className="flex items-center gap-3 sm:gap-4">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm sm:text-base">
-                        {affiliate.name.charAt(0)}
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm sm:text-base uppercase">
+                        {(affiliate.referredUser?.firstName || 'A').charAt(0)}
                       </div>
                       <div>
-                        <h4 className="text-sm sm:text-base font-bold text-slate-900">{affiliate.name}</h4>
-                        <p className="text-xs sm:text-sm text-slate-500">{affiliate.referrals} businesses referred</p>
+                        <h4 className="text-sm sm:text-base font-bold text-slate-900">
+                          {affiliate.referredUser?.firstName} {affiliate.referredUser?.lastName}
+                        </h4>
+                        <p className="text-xs sm:text-sm text-slate-500">Sub-affiliate</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm sm:text-base font-bold text-emerald-600">{affiliate.earnings}</p>
+                      <p className="text-sm sm:text-base font-bold text-emerald-600">Active</p>
                       <p className="text-[10px] sm:text-xs text-slate-400">Your 5% share</p>
                     </div>
                   </div>
@@ -150,16 +178,6 @@ export default function NetworkPage() {
           </div>
         </div>
 
-        {/* Mock Toggle Button for Testing */}
-        <div className="fixed bottom-8 right-8 z-50">
-          <Button 
-            variant="outline" 
-            className="bg-white/80 backdrop-blur-sm border-2 border-blue-600 text-blue-600 font-bold shadow-2xl hover:bg-blue-600 hover:text-white transition-all scale-90 sm:scale-100"
-            onClick={() => setIsUnlocked(!isUnlocked)}
-          >
-            {isUnlocked ? 'Mock: Lock Network' : 'Mock: Unlock Network'}
-          </Button>
-        </div>
       </div>
     </DashboardLayout>
   );

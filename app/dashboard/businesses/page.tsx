@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { 
   Search, 
@@ -15,17 +15,12 @@ import {
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
-
-const businesses = [
-  { id: 1, name: 'Tech Solutions Ltd', plan: 'Premium', status: 'Active', payment: 'Paid', commission: '₦15,000', date: '2024-03-15' },
-  { id: 2, name: 'Global Corp', plan: 'Enterprise', status: 'Active', payment: 'Paid', commission: '₦250,000', date: '2024-03-10' },
-  { id: 3, name: 'Small Biz Inc', plan: 'Basic', status: 'Trial', payment: 'Pending', commission: '₦0', date: '2024-03-20' },
-  { id: 4, name: 'Creative Agency', plan: 'Premium', status: 'Expired', payment: 'Unpaid', commission: '₦0', date: '2024-02-28' },
-  { id: 5, name: 'Future Tech', plan: 'Enterprise', status: 'Active', payment: 'Paid', commission: '₦25,000', date: '2024-03-05' },
-];
+import { api } from '@/lib/api-client';
 
 const statusColors = {
   Active: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+  Converted: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+  Pending: 'bg-blue-50 text-blue-600 border-blue-100',
   Trial: 'bg-blue-50 text-blue-600 border-blue-100',
   Expired: 'bg-red-50 text-red-600 border-red-100',
 };
@@ -38,6 +33,32 @@ const paymentColors = {
 
 export default function BusinessesPage() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [businesses, setBusinesses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchReferrals = async () => {
+      try {
+        const data = await api.get('/affiliates/referrals');
+        // Map backend AffiliateReferral to frontend format
+        const mapped = data.map((ref: any) => ({
+          id: ref.id,
+          name: ref.referredBusiness?.name || ref.referredUserId || 'Pending Business',
+          plan: ref.referredBusiness?.plan || 'Standard',
+          status: ref.status === 'CONVERTED' ? 'Active' : (ref.status === 'PENDING' ? 'Trial' : (ref.status || 'Active')),
+          payment: ref.status === 'CONVERTED' ? 'Paid' : 'Unpaid',
+          commission: ref.status === 'CONVERTED' ? 'View in Wallet' : '--',
+          date: new Date(ref.createdAt).toLocaleDateString()
+        }));
+        setBusinesses(mapped);
+      } catch (error) {
+        console.error('Failed to fetch referrals:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchReferrals();
+  }, []);
 
   const filteredBusinesses = businesses.filter(b => 
     b.name.toLowerCase().includes(searchTerm.toLowerCase())
