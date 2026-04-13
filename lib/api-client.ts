@@ -5,6 +5,8 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
+let onUnauthorized: (() => void) | null = null;
+
 async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   const user = localStorage.getItem('vemtap_user');
   const token = user ? JSON.parse(user).token : null;
@@ -20,6 +22,14 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
     headers,
   });
 
+  if (response.status === 401) {
+    if (onUnauthorized) {
+      onUnauthorized();
+    }
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || 'Unauthorized');
+  }
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.message || 'API request failed');
@@ -33,4 +43,8 @@ export const api = {
   post: (endpoint: string, body: any) => fetchWithAuth(endpoint, { method: 'POST', body: JSON.stringify(body) }),
   patch: (endpoint: string, body: any) => fetchWithAuth(endpoint, { method: 'PATCH', body: JSON.stringify(body) }),
   delete: (endpoint: string) => fetchWithAuth(endpoint, { method: 'DELETE' }),
+  setUnauthorizedCallback: (callback: () => void) => {
+    onUnauthorized = callback;
+  },
 };
+

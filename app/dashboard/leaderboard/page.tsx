@@ -90,7 +90,7 @@ export default function LeaderboardPage() {
             <div className="absolute -top-10 left-1/2 -translate-x-1/2">
               <div className="relative">
                 <Image 
-                  src={podium[1].avatar} 
+                  src={podium[1]?.avatar || ""} 
                   width={80} 
                   height={80} 
                   className="w-20 h-20 rounded-full border-4 border-slate-100 object-cover" 
@@ -103,11 +103,11 @@ export default function LeaderboardPage() {
               </div>
             </div>
             <div className="mt-10">
-              <h3 className="text-lg font-bold text-slate-900">{podium[1].name}</h3>
-              <p className="text-2xl font-black text-blue-600 mt-2">{podium[1].earnings}</p>
+              <h3 className="text-lg font-bold text-slate-900">{podium[1]?.name || '---'}</h3>
+              <p className="text-2xl font-black text-blue-600 mt-2">{podium[1]?.earnings || '₦0'}</p>
               <div className="flex items-center justify-center gap-2 mt-4 text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full w-fit mx-auto">
                 <TrendingUp className="w-3 h-3" />
-                {podium[1].trend}
+                {podium[1]?.trend || '0%'}
               </div>
             </div>
           </motion.div>
@@ -121,7 +121,7 @@ export default function LeaderboardPage() {
             <div className="absolute -top-12 left-1/2 -translate-x-1/2">
               <div className="relative">
                 <Image 
-                  src={podium[0].avatar} 
+                  src={podium[0]?.avatar || ""} 
                   width={100} 
                   height={100} 
                   className="w-24 h-24 rounded-full border-4 border-blue-400 object-cover" 
@@ -134,8 +134,8 @@ export default function LeaderboardPage() {
               </div>
             </div>
             <div className="mt-12 text-white">
-              <h3 className="text-xl font-bold">{podium[0].name}</h3>
-              <p className="text-3xl font-black mt-2">{podium[0].earnings}</p>
+              <h3 className="text-xl font-bold">{podium[0]?.name || '---'}</h3>
+              <p className="text-3xl font-black mt-2">{podium[0]?.earnings || '₦0'}</p>
               <div className="flex items-center justify-center gap-2 mt-4 text-xs font-bold text-blue-100 bg-white/10 px-3 py-1 rounded-full w-fit mx-auto">
                 <Star className="w-3 h-3 fill-current" />
                 Top Performer
@@ -153,7 +153,7 @@ export default function LeaderboardPage() {
             <div className="absolute -top-10 left-1/2 -translate-x-1/2">
               <div className="relative">
                 <Image 
-                  src={podium[2].avatar} 
+                  src={podium[2]?.avatar || ""} 
                   width={80} 
                   height={80} 
                   className="w-20 h-20 rounded-full border-4 border-orange-100 object-cover" 
@@ -166,11 +166,11 @@ export default function LeaderboardPage() {
               </div>
             </div>
             <div className="mt-10">
-              <h3 className="text-lg font-bold text-slate-900">{podium[2].name}</h3>
-              <p className="text-2xl font-black text-blue-600 mt-2">{podium[2].earnings}</p>
+              <h3 className="text-lg font-bold text-slate-900">{podium[2]?.name || '---'}</h3>
+              <p className="text-2xl font-black text-blue-600 mt-2">{podium[2]?.earnings || '₦0'}</p>
               <div className="flex items-center justify-center gap-2 mt-4 text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full w-fit mx-auto">
                 <TrendingUp className="w-3 h-3" />
-                {podium[2].trend}
+                {podium[2]?.trend || '0%'}
               </div>
             </div>
           </motion.div>
