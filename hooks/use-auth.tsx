@@ -17,7 +17,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password?: string) => Promise<void>;
+  login: (identifier: string, password?: string) => Promise<void>;
   signup: (userData: any) => Promise<void>;
   sendOtp: (email: string) => Promise<void>;
   verifyOtp: (email: string, code: string) => Promise<void>;
@@ -62,12 +62,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
 
-  const login = async (email: string, password?: string) => {
+  const login = async (identifier: string, password?: string) => {
     try {
       if (!password) {
         throw new Error('Password is required for login');
       }
-      const response = await api.post('/auth/login', { email, password });
+      const response = await api.post('/auth/login', { identifier, password });
       const userData = { ...response.user, token: response.accessToken };
       setUser(userData);
       setIsAuthenticated(true);
