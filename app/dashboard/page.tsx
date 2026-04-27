@@ -27,7 +27,7 @@ import {
   ShieldCheck,
   LayoutDashboard
 } from 'lucide-react';
-import DashboardLayout from '@/components/dashboard/DashboardLayout';
+import DashboardLayout, { useDashboard } from '@/components/dashboard/DashboardLayout';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -83,9 +83,10 @@ const topAffiliates = [
   { name: 'David Lee', earnings: 32000, rank: 3, avatar: '' },
 ];
 
-export default function DashboardOverview() {
+function DashboardOverviewContent() {
   const { user, updateUser } = useAuth();
   const { showToast } = useToast();
+  const { setIsNotificationsOpen } = useDashboard();
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
 
   // Milestone logic
@@ -113,7 +114,7 @@ export default function DashboardOverview() {
   };
 
   return (
-    <DashboardLayout>
+    <>
       <div className="space-y-8">
         {/* Welcome & Milestone Section */}
         <div className="grid lg:grid-cols-3 gap-8">
@@ -381,7 +382,13 @@ export default function DashboardOverview() {
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-slate-900">System Alerts</h3>
-                <Bell className="w-5 h-5 text-slate-400" />
+                <button 
+                  onClick={() => setIsNotificationsOpen(true)}
+                  className="p-2 rounded-full hover:bg-slate-50 text-slate-400 hover:text-blue-600 transition-all group relative"
+                >
+                  <Bell className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white animate-pulse" />
+                </button>
               </div>
               <div className="space-y-4">
                 {[
@@ -481,6 +488,14 @@ export default function DashboardOverview() {
         onJoin={handleJoinWhatsApp} 
       />
       {user?.hasSignedAgreement && !showWhatsAppModal && <OnboardingModal />}
+    </>
+  );
+}
+
+export default function DashboardOverview() {
+  return (
+    <DashboardLayout>
+      <DashboardOverviewContent />
     </DashboardLayout>
   );
 }

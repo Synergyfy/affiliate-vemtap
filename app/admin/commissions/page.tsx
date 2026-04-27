@@ -26,7 +26,7 @@ export default function CommissionsManagement() {
   const [loading, setLoading] = useState(true);
   const [directRate, setDirectRate] = useState(20);
   const [indirectRate, setIndirectRate] = useState(5);
-  const [duration, setDuration] = useState(3);
+  const [earningDuration, setEarningDuration] = useState('3months');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -51,7 +51,8 @@ export default function CommissionsManagement() {
     try {
       await api.patch('/affiliates/admin/settings', { 
         directRate: Number(directRate), 
-        indirectRate: Number(indirectRate) 
+        indirectRate: Number(indirectRate),
+        earningDuration
       });
       showToast("Global commission rules updated successfully.", "success");
     } catch (error) {
@@ -141,15 +142,19 @@ export default function CommissionsManagement() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Duration (Times)</label>
-                <div className="relative w-32">
-                  <input 
-                    type="number" 
-                    value={duration}
-                    onChange={(e) => setDuration(Number(e.target.value))}
-                    className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
-                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Earning Duration</label>
+                <div className="relative w-40">
+                  <select 
+                    value={earningDuration}
+                    onChange={(e) => setEarningDuration(e.target.value)}
+                    className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none cursor-pointer"
+                  >
+                    <option value="3months">3 Months</option>
+                    <option value="6months">6 Months</option>
+                    <option value="1year">1 Year</option>
+                    <option value="forever">Forever</option>
+                  </select>
+                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
                 </div>
               </div>
 

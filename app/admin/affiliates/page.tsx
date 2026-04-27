@@ -86,7 +86,11 @@ export default function AffiliatesManagement() {
   const [selectedAffiliate, setSelectedAffiliate] = useState<typeof initialAffiliates[0] | null>(null);
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Suspended'>('All');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const filterRef = useRef<HTMLDivElement>(null);
   
   // Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState<{
@@ -105,9 +109,16 @@ export default function AffiliatesManagement() {
     type: 'upgrade'
   });
 
-  const filteredAffiliates = activeTab === 'All' 
-    ? affiliates 
-    : affiliates.filter(a => a.role === 'Manager');
+  const filteredAffiliates = affiliates.filter(affiliate => {
+    const matchesTab = activeTab === 'All' || affiliate.role === 'Manager';
+    const matchesStatus = statusFilter === 'All' || affiliate.status === statusFilter;
+    const matchesSearch = 
+      affiliate.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      affiliate.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      affiliate.id.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    return matchesTab && matchesStatus && matchesSearch;
+  });
 
   const handleStatusChange = (id: string, name: string, currentStatus: string) => {
     const type = currentStatus === 'Active' ? 'suspend' : 'reactivate';
@@ -160,6 +171,9 @@ export default function AffiliatesManagement() {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setActiveDropdown(null);
       }
+      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+        setIsFilterOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -189,14 +203,56 @@ export default function AffiliatesManagement() {
             <input 
               type="text" 
               placeholder="Search by name, email or code..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
             />
           </div>
           <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-600 font-medium hover:bg-slate-50 transition-all">
-              <Filter className="w-4 h-4" />
-              Filter
-            </button>
+            <div className="relative" ref={filterRef}>
+              <button 
+                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 bg-white border rounded-xl text-slate-600 font-medium transition-all hover:bg-slate-50",
+                  statusFilter !== 'All' ? "border-blue-600 text-blue-600 bg-blue-50/50" : "border-slate-200"
+                )}
+              >
+                <Filter className="w-4 h-4" />
+                {statusFilter === 'All' ? 'Filter' : statusFilter}
+              </button>
+
+              <AnimatePresence>
+                {isFilterOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 mt-2 w-48 bg-white rounded-2xl border border-slate-200 shadow-xl z-50 p-2 overflow-hidden"
+                  >
+                    <div className="p-2 border-b border-slate-100 mb-1">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status Filter</p>
+                    </div>
+                    {['All', 'Active', 'Suspended'].map((status) => (
+                      <button
+                        key={status}
+                        onClick={() => {
+                          setStatusFilter(status as any);
+                          setIsFilterOpen(false);
+                        }}
+                        className={cn(
+                          "w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all",
+                          statusFilter === status 
+                            ? "bg-blue-600 text-white" 
+                            : "text-slate-600 hover:bg-slate-50"
+                        )}
+                      >
+                        {status}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
             <button className="px-4 py-2 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all">
               Export CSV
             </button>

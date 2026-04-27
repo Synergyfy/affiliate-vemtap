@@ -35,7 +35,7 @@ export default function NetworkPage() {
   useEffect(() => {
     if (!user?.createdAt) return;
     
-    const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
+    const NINETY_DAYS_MS = timeLimitDays * 24 * 60 * 60 * 1000;
     const signupDate = new Date(user.createdAt);
     const targetDate = new Date(signupDate.getTime() + NINETY_DAYS_MS);
 
@@ -66,9 +66,18 @@ export default function NetworkPage() {
   
   // Mock data for milestones
   const affiliateCount = 18;
-  const targetAffiliates = 30;
   const businessesCount = 72;
+  // Mock targets (to be replaced by API settings later)
+  const timeLimitDays = 90;
+  const targetAffiliates = 30;
   const targetBusinesses = 100;
+  const rewardDuration: string = '1year';
+
+  const rewardDurationLabel = 
+    rewardDuration === '3months' ? '3-Month' :
+    rewardDuration === '6months' ? '6-Month' :
+    rewardDuration === '1year' ? '12-Month' :
+    rewardDuration === '2years' ? '24-Month' : 'Lifetime';
   
   const affiliateProgress = (affiliateCount / targetAffiliates) * 100;
   const businessProgress = (businessesCount / targetBusinesses) * 100;
@@ -127,7 +136,7 @@ export default function NetworkPage() {
             
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-4">Unlock Manager Status</h2>
             <p className="text-sm sm:text-base text-slate-500 max-w-lg mx-auto mb-8 sm:mb-12">
-              Build your team and hit the targets <span className="text-orange-600 font-bold">within 90 days</span> to unlock your <span className="font-bold text-blue-600">Manager Network</span> and earn <span className="font-bold text-blue-600">10% of affiliate earnings</span>.
+              Build your team and hit the targets <span className="text-orange-600 font-bold">within {timeLimitDays} days</span> to unlock your <span className="font-bold text-blue-600">Manager Network</span> and earn <span className="font-bold text-blue-600">10% of affiliate earnings</span>.
             </p>
 
             <div className="max-w-2xl mx-auto space-y-8">
@@ -179,7 +188,7 @@ export default function NetworkPage() {
                     <ShieldCheck className="w-6 h-6 text-emerald-600" />
                   </div>
                   <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-2">Verified Rewards</h4>
-                  <p className="text-xs text-emerald-800 font-bold leading-relaxed">Unlock <span className="text-emerald-600">Extended 12-Month</span> earnings mode on all referrals.</p>
+                  <p className="text-xs text-emerald-800 font-bold leading-relaxed">Unlock <span className="text-emerald-600">Extended {rewardDurationLabel}</span> earnings mode on all referrals.</p>
                 </div>
                 <div className="bg-blue-50/50 p-6 rounded-[24px] border-2 border-blue-100 text-center group hover:bg-blue-50 transition-colors">
                   <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm group-hover:scale-110 transition-transform">
@@ -204,7 +213,7 @@ export default function NetworkPage() {
                     isFullMilestoneReached ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-blue-50 text-blue-600 border border-blue-100"
                   )}>
                     <Clock className="w-4 h-4" />
-                    {isFullMilestoneReached ? "12-Month Mode Unlocked" : "3-Month Mode Active"}
+                    {isFullMilestoneReached ? `${rewardDurationLabel} Mode Unlocked` : "3-Month Mode Active"}
                   </div>
                 </div>
               </div>
