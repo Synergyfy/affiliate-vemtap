@@ -22,6 +22,22 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { createContext, useContext } from 'react';
+
+interface DashboardContextType {
+  isNotificationsOpen: boolean;
+  setIsNotificationsOpen: (open: boolean) => void;
+  isProfileOpen: boolean;
+  setIsProfileOpen: (open: boolean) => void;
+}
+
+const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
+
+export const useDashboard = () => {
+  const context = useContext(DashboardContext);
+  if (!context) throw new Error('useDashboard must be used within DashboardLayout');
+  return context;
+};
 
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -55,6 +71,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Calculate real-time countdown for 90-day window
   const [timeLeft, setTimeLeft] = useState<{days: number, hours: number, minutes: number, seconds: number}>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  const notifications = [
+    { id: 1, title: 'New Referral', message: 'Tech Solutions signed up!', time: '2 mins ago', unread: true },
+    { id: 2, title: 'Commission Paid', message: '₦5,000 added to wallet', time: '1 hour ago', unread: true },
+    { id: 3, title: 'Milestone Alert', message: '10 days left to Manager status', time: '3 hours ago', unread: false },
+  ];
 
   useEffect(() => {
     if (!user?.createdAt) return;
@@ -109,8 +134,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setIsTourOpen(false);
   };
 
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setIsNotificationsOpen(false);
+      setIsProfileOpen(false);
+    };
+    if (isNotificationsOpen || isProfileOpen) {
+      document.addEventListener('click', handleClickOutside);
+    }
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [isNotificationsOpen, isProfileOpen]);
+
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <DashboardContext.Provider value={{ isNotificationsOpen, setIsNotificationsOpen, isProfileOpen, setIsProfileOpen }}>
+      <div className="min-h-screen bg-slate-50 flex">
       {/* ... sidebars ... */}
       <DashboardTour isOpen={isTourOpen} onClose={() => {
         setIsTourOpen(false);
@@ -314,19 +352,111 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
           
           <div className="flex items-center gap-4">
-            <button className="p-2 rounded-full hover:bg-slate-100 relative text-slate-600">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
-            </button>
+            <div className="relative">
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsNotificationsOpen(!isNotificationsOpen);
+                  setIsProfileOpen(false);
+                }}
+                className="p-2 rounded-full hover:bg-slate-100 relative text-slate-600 transition-colors"
+              >
+                <Bell className="w-5 h-5" />
+                {notifications.some(n => n.unread) && (
+                  <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />
+                )}
+              </button>
+
+              <AnimatePresence>
+                {isNotificationsOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 mt-3 w-80 bg-white rounded-3xl shadow-2xl border border-slate-100 py-4 z-50 overflow-hidden"
+                  >
+                    <div className="px-6 pb-4 border-b border-slate-50 flex justify-between items-center">
+                      <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">Notifications</h4>
+                      <span className="bg-blue-50 text-blue-600 text-[10px] font-black px-2 py-0.5 rounded-full">3 NEW</span>
+                    </div>
+                    <div className="max-h-[350px] overflow-y-auto">
+                      {notifications.map((n) => (
+                        <div key={n.id} className="px-6 py-4 hover:bg-slate-50 transition-colors cursor-pointer group border-b border-slate-50 last:border-0">
+                          <div className="flex justify-between items-start mb-1">
+                            <p className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{n.title}</p>
+                            <span className="text-[10px] text-slate-400">{n.time}</span>
+                          </div>
+                          <p className="text-xs text-slate-500 leading-relaxed">{n.message}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="px-6 pt-4 border-t border-slate-50 text-center">
+                      <button className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline">Mark all as read</button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
             <div className="h-8 w-px bg-slate-200 mx-2" />
-            <div className="flex items-center gap-3 pl-2">
-              <div className="text-right">
-                <p className="text-sm font-bold text-slate-900">{user?.fullName || 'John Doe'}</p>
-                <p className="text-xs text-slate-500">Affiliate Partner</p>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 border border-blue-200">
-                <User className="w-6 h-6" />
-              </div>
+            
+            <div className="relative">
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsProfileOpen(!isProfileOpen);
+                  setIsNotificationsOpen(false);
+                }}
+                className="flex items-center gap-3 pl-2 group transition-all"
+              >
+                <div className="text-right hidden sm:block">
+                  <p className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{user?.fullName || 'John Doe'}</p>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Partner</p>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 border border-blue-200 group-hover:border-blue-400 group-hover:shadow-lg transition-all overflow-hidden">
+                  <User className="w-6 h-6" />
+                </div>
+              </button>
+
+              <AnimatePresence>
+                {isProfileOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 mt-3 w-56 bg-white rounded-3xl shadow-2xl border border-slate-100 py-3 z-50 overflow-hidden"
+                  >
+                    <div className="px-6 py-4 bg-slate-50/50 mb-2">
+                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Signed in as</p>
+                      <p className="text-sm font-bold text-slate-900 truncate">{user?.email}</p>
+                    </div>
+                    <div className="px-2 space-y-1">
+                      {[
+                        { name: 'My Profile', icon: User, href: '/dashboard/profile' },
+                        { name: 'Wallet', icon: Wallet, href: '/dashboard/wallet' },
+                        { name: 'Businesses', icon: Briefcase, href: '/dashboard/businesses' },
+                      ].map((link) => (
+                        <Link
+                          key={link.name}
+                          href={link.href}
+                          className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition-all group"
+                        >
+                          <link.icon className="w-4 h-4 text-slate-400 group-hover:text-blue-600" />
+                          {link.name}
+                        </Link>
+                      ))}
+                      <div className="h-[1px] bg-slate-100 my-2 mx-4" />
+                      <button 
+                        onClick={handleLogout}
+                        className="flex items-center gap-3 px-4 py-2.5 rounded-xl w-full text-sm font-bold text-red-500 hover:bg-red-50 transition-all group"
+                      >
+                        <LogOut className="w-4 h-4 text-red-400 group-hover:text-red-500" />
+                        Logout
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </header>
@@ -338,5 +468,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </main>
     </div>
+    </DashboardContext.Provider>
   );
 }
