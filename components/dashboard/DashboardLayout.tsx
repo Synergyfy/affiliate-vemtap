@@ -96,6 +96,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => clearTimeout(timer);
   }, [pathname]);
 
+
   const handleLogout = () => {
     logout();
     showToast('Logged out successfully', 'info');

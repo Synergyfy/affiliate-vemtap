@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { 
   Search, 
@@ -31,6 +31,8 @@ const initialBusinesses = [
 
 const statusColors = {
   Active: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+  Converted: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+  Pending: 'bg-blue-50 text-blue-600 border-blue-100',
   Trial: 'bg-blue-50 text-blue-600 border-blue-100',
   Expired: 'bg-red-50 text-red-600 border-red-100',
 };

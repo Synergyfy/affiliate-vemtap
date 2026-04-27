@@ -15,7 +15,12 @@ const signupSchema = z.object({
   fullName: z.string().min(2, 'Full name is required'),
   email: z.string().email('Invalid email address'),
   phone: z.string().min(10, 'Invalid phone number'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number')
+    .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
   confirmPassword: z.string(),
   referralCode: z.string().optional(),
   location: z.string().min(2, 'Location is required'),
@@ -69,10 +74,20 @@ function SignupForm() {
   const onSubmit = async (data: SignupFormValues) => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      signup({
-        fullName: data.fullName,
+      // 1. Verify OTP
+      if (!data.otpCode) {
+        throw new Error('Verification code is required');
+      }
+      await verifyOtp(data.email, data.otpCode);
+
+      // 2. Complete Signup
+      const nameParts = data.fullName.trim().split(/\s+/);
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || 'User';
+
+      await signup({
+        firstName,
+        lastName,
         email: data.email,
         phone: data.phone,
         referralCode: data.referralCode || 'REF12345',

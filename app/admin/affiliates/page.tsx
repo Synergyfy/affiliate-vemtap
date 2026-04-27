@@ -164,37 +164,35 @@ export default function AffiliatesManagement() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleAddAffiliate = () => {
-    showToast("Add Affiliate modal would open here in a real app.", "info");
+  const handleApprove = async (id: string, name: string) => {
+    try {
+      await api.post(`/affiliates/admin/profiles/${id}/verify-kyc`, { status: 'verified' });
+      showToast(`${name}'s KYC has been verified.`, 'success');
+      fetchAffiliates();
+    } catch (error) {
+      showToast('Failed to verify KYC.', 'error');
+    }
   };
 
   return (
     <AdminLayout>
       <div className="space-y-6">
-        {/* Header Actions */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-3xl border border-slate-200 shadow-sm">
           <div className="relative flex-grow max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input 
               type="text" 
-              placeholder="Search affiliates by name, ID or email..." 
-              className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+              placeholder="Search by name, email or code..." 
+              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
             />
           </div>
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => showToast("Filters updated", "info")}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-600 font-medium hover:bg-slate-50 transition-all"
-            >
+            <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-600 font-medium hover:bg-slate-50 transition-all">
               <Filter className="w-4 h-4" />
               Filter
             </button>
-            <button 
-              onClick={handleAddAffiliate}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20"
-            >
-              <UserPlus className="w-4 h-4" />
-              Add Affiliate
+            <button className="px-4 py-2 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all">
+              Export CSV
             </button>
           </div>
         </div>
@@ -239,20 +237,23 @@ export default function AffiliatesManagement() {
               <tbody className="divide-y divide-slate-100">
                 {filteredAffiliates.map((affiliate, idx) => (
                   <motion.tr 
-                    key={affiliate.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    key={aff.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.05 }}
-                    className="hover:bg-slate-50/50 transition-all group"
+                    className={cn(
+                      "hover:bg-slate-50/50 transition-all group",
+                      aff.isFlagged && "bg-red-50/30"
+                    )}
                   >
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 font-bold">
-                          {affiliate.name.charAt(0)}
+                        <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-700">
+                          {aff.user?.firstName?.charAt(0) || 'A'}
                         </div>
                         <div>
-                          <p className="font-bold text-slate-900">{affiliate.name}</p>
-                          <p className="text-xs text-slate-400 font-mono">{affiliate.id}</p>
+                          <p className="font-bold text-slate-900">{aff.user?.firstName} {aff.user?.lastName}</p>
+                          <p className="text-xs text-slate-400 font-medium">{aff.user?.email}</p>
                         </div>
                       </div>
                     </td>
@@ -280,9 +281,10 @@ export default function AffiliatesManagement() {
                     <td className="p-4">
                       <span className={cn(
                         "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
-                        affiliate.status === 'Active' ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
+                        aff.kycStatus === 'verified' ? "bg-green-100 text-green-600" : 
+                        aff.kycStatus === 'pending' ? "bg-orange-100 text-orange-600" : "bg-slate-100 text-slate-400"
                       )}>
-                        {affiliate.status}
+                        {aff.kycStatus}
                       </span>
                     </td>
                     <td className="p-4 text-right">

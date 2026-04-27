@@ -1,9 +1,13 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { api } from '@/lib/api-client';
 
 interface User {
+  id: string;
   fullName: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
   phone: string;
   referralCode: string;
@@ -22,6 +26,7 @@ interface AuthContextType {
   updateUser: (data: Partial<User>) => void;
   logout: () => void;
   isAuthenticated: boolean;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);

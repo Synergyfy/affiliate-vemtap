@@ -90,7 +90,7 @@ export default function DashboardOverview() {
         {/* Welcome & Milestone Section */}
         <div className="grid lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
-            <h2 className="text-3xl font-bold text-slate-900">Welcome back, {user?.fullName?.split(' ')[0] || 'John'}!</h2>
+            <h2 className="text-3xl font-bold text-slate-900">Welcome back, {user?.firstName || 'Affiliate'}!</h2>
             <p className="text-slate-500">Here&apos;s what&apos;s happening with your affiliate account today.</p>
           </div>
           
@@ -105,17 +105,21 @@ export default function DashboardOverview() {
                 <span className="bg-white/20 px-2 py-1 rounded-lg text-[10px] font-bold">₦2,000 BONUS</span>
               </div>
               <h4 className="text-lg font-bold mb-1">Unlock &quot;Active Earner&quot;</h4>
-              <p className="text-blue-100 text-xs mb-4">Refer 3 more businesses to reach this level.</p>
+              <p className="text-blue-100 text-xs mb-4">
+                {currentProgress >= milestoneGoal 
+                  ? "Milestone reached! Bonus applied." 
+                  : `Refer ${milestoneGoal - currentProgress} more businesses to reach this level.`}
+              </p>
               <div className="h-2 w-full bg-blue-700 rounded-full overflow-hidden mb-2">
                 <motion.div 
                   initial={{ width: 0 }}
-                  animate={{ width: '40%' }}
+                  animate={{ width: `${progressPercent}%` }}
                   className="h-full bg-white"
                 />
               </div>
               <div className="flex justify-between text-[10px] font-bold text-blue-100">
-                <span>2/5 Completed</span>
-                <span>40%</span>
+                <span>{currentProgress}/{milestoneGoal} Completed</span>
+                <span>{Math.round(progressPercent)}%</span>
               </div>
             </div>
           </div>
@@ -123,7 +127,7 @@ export default function DashboardOverview() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-          {stats.map((stat, idx) => (
+          {displayStats.map((stat, idx) => (
             <motion.div
               key={stat.name}
               initial={{ opacity: 0, y: 20 }}
@@ -167,7 +171,7 @@ export default function DashboardOverview() {
               </div>
               <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={data}>
+                  <AreaChart data={chartData}>
                     <defs>
                       <linearGradient id="colorEarnings" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1}/>
@@ -373,22 +377,26 @@ export default function DashboardOverview() {
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
               <h3 className="text-lg font-bold text-slate-900 mb-6">Recent Activity</h3>
               <div className="space-y-6">
-                {[
-                  { title: 'New Referral', desc: 'Tech Solutions Ltd signed up', time: '2 hours ago', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-                  { title: 'Commission Earned', desc: '₦10,000 from Global Corp', time: '5 hours ago', icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                  { title: 'Withdrawal Paid', desc: '₦25,000 to your bank', time: 'Yesterday', icon: Wallet, color: 'text-purple-600', bg: 'bg-purple-50' },
-                ].map((item, idx) => (
+                {recentActivity && recentActivity.length > 0 ? recentActivity.map((item: any, idx: number) => (
                   <div key={idx} className="flex gap-4">
-                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", item.bg)}>
-                      <item.icon className={cn("w-5 h-5", item.color)} />
+                    <div className={cn(
+                      "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                      item.type === 'referral' ? "bg-blue-50" : 
+                      item.type === 'commission' ? "bg-emerald-50" : "bg-purple-50"
+                    )}>
+                      {item.type === 'referral' ? <Users className="w-5 h-5 text-blue-600" /> : 
+                       item.type === 'commission' ? <TrendingUp className="w-5 h-5 text-emerald-600" /> : 
+                       <Wallet className="w-5 h-5 text-purple-600" />}
                     </div>
                     <div>
                       <p className="text-sm font-bold text-slate-900">{item.title}</p>
                       <p className="text-xs text-slate-500 mb-1">{item.desc}</p>
-                      <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{item.time}</p>
+                      <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{new Date(item.time).toLocaleDateString()}</p>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <p className="text-sm text-slate-400">No recent activity found.</p>
+                )}
               </div>
             </div>
 
@@ -399,15 +407,11 @@ export default function DashboardOverview() {
                 <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">This Week</span>
               </div>
               <div className="space-y-4">
-                {[
-                  { name: 'Adekunle C.', earnings: '₦450,000', rank: 1, avatar: 'https://picsum.photos/seed/user1/100/100' },
-                  { name: 'Blessing O.', earnings: '₦380,000', rank: 2, avatar: 'https://picsum.photos/seed/user2/100/100' },
-                  { name: 'Chidi K.', earnings: '₦320,000', rank: 3, avatar: 'https://picsum.photos/seed/user3/100/100' },
-                ].map((item, idx) => (
+                {topAffiliates.length > 0 ? topAffiliates.map((item, idx) => (
                   <div key={idx} className="flex items-center gap-3">
                     <div className="relative">
                       <Image 
-                        src={item.avatar} 
+                        src={item.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${item.name}`} 
                         width={40}
                         height={40}
                         className="w-10 h-10 rounded-full object-cover" 
@@ -423,10 +427,12 @@ export default function DashboardOverview() {
                     </div>
                     <div className="flex-grow">
                       <p className="text-sm font-bold text-slate-900">{item.name}</p>
-                      <p className="text-xs text-slate-500">{item.earnings} earned</p>
+                      <p className="text-xs text-slate-500">₦{item.earnings?.toLocaleString()} earned</p>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <p className="text-sm text-slate-400">No leaders yet.</p>
+                )}
               </div>
               <Link href="/dashboard/leaderboard" className="block w-full">
                 <Button variant="outline" className="w-full mt-6 border-slate-100 text-slate-600 text-xs font-bold">

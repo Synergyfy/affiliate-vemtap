@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { 
   Copy, 
@@ -15,12 +15,30 @@ import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { QRCodeSVG } from 'qrcode.react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/hooks/use-auth';
+import { api } from '@/lib/api-client';
 
 export default function ReferralTools() {
   const [copied, setCopied] = useState(false);
-  const { user } = useAuth();
-  const referralLink = `https://affiliates.vemtap.com/?ref=${user?.referralCode || 'REF12345'}`;
+  const [referralCode, setReferralCode] = useState('REF12345');
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCode = async () => {
+      try {
+        const stats = await api.get('/affiliates/stats');
+        if (stats?.referralCode) {
+          setReferralCode(stats.referralCode);
+        }
+      } catch (error) {
+        console.error('Failed to fetch referral code', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchCode();
+  }, []);
+
+  const referralLink = `https://affiliates.vemtap.com/?ref=${referralCode}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(referralLink);

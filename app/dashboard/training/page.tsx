@@ -29,296 +29,21 @@ import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-
-// --- Data Definitions ---
-
-const modules = [
-  { 
-    id: 1,
-    title: 'What is Vemtap?', 
-    desc: 'Simple explanation of the product and who needs it.',
-    videoUrl: 'https://picsum.photos/seed/mod1/800/450',
-    pdfUrl: '#',
-    articleContent: `
-### The Future of Customer Retention in Nigeria
-
-Vemtap is a revolutionary customer retention tool designed specifically for **offline businesses** in Nigeria. In a world where digital tracking is easy for websites but hard for physical shops, Vemtap bridges the gap.
-
----
-
-## 🚀 How it Works
-
-1. **QR Code Placement**
-   The business places a unique Vemtap QR code at their checkout, on tables, or at the entrance.
-
-2. **Customer Scan**
-   Customers scan the code using their phone camera. **No app download is required**, making it fast and frictionless.
-
-3. **Data Capture**
-   The business automatically captures the customer's contact details (Name, Phone Number, Email) as they join the loyalty program or view the digital menu.
-
-4. **Retention & Growth**
-   The business can now see who their most loyal customers are and send them targeted offers via WhatsApp or SMS to bring them back.
-
----
-
-## 🎯 Who Needs It?
-Any business that has physical foot traffic and wants to grow by keeping their existing customers coming back.
-
-*   **Restaurants & Bars**
-*   **Salons & Spas**
-*   **Supermarkets**
-*   **Fashion Boutiques**
-*   **Pharmacies**
-
-> **Pro Tip:** Focus on businesses that have a steady flow of customers but don't know their names or phone numbers!
-    `,
-    summary: [
-      'Vemtap is a customer retention tool for offline businesses.',
-      'Businesses use QR codes to capture customer contacts.',
-      'It helps them see who is coming back and reach out to them.'
-    ]
-  },
-  { 
-    id: 2,
-    title: 'Who to Talk To', 
-    desc: 'Identifying the best businesses for Vemtap.',
-    videoUrl: 'https://picsum.photos/seed/mod2/800/450',
-    pdfUrl: '#',
-    articleContent: `
-### Identifying High-Potential Targets
-
-Not every business is a perfect fit for Vemtap right away. To maximize your earnings, you need to target **"High-Frequency"** businesses where customers return often.
-
----
-
-## 🏆 Top 3 Targets
-
-### 1. Restaurants & Cafes
-People eat every day. If a customer loves a meal, the restaurant wants them back tomorrow. Vemtap makes this happen by allowing the owner to send "Special Lunch" alerts.
-
-### 2. Salons & Spas
-These are relationship-based businesses. Tracking when a customer is due for their next haircut or treatment is gold. Owners can send "We miss you" discounts.
-
-### 3. Fashion Stores
-Great for seasonal promotions. When new stock arrives, the owner can instantly alert all previous customers instead of waiting for them to walk past the shop.
-
----
-
-## 🔍 What to Look For
-When walking down the street, ask yourself these questions:
-*   **Does the business have a physical location?**
-*   **Do they have repeat customers?**
-*   **Does the owner seem interested in growing their sales?**
-
-**Avoid:** Government offices or businesses with one-time customers (like a passport office).
-    `,
-    summary: [
-      'Restaurants & Cafes: High repeat customer potential.',
-      'Salons & Spas: Need to manage appointments and loyalty.',
-      'Fashion Stores: Great for seasonal promotions.'
-    ]
-  },
-  { 
-    id: 3,
-    title: 'How to Approach', 
-    desc: 'Starting conversations with confidence.',
-    videoUrl: 'https://picsum.photos/seed/mod3/800/450',
-    pdfUrl: '#',
-    articleContent: `
-### Mastering the First Impression
-
-In the Nigerian market, **"Respect"** and **"Confidence"** are your two most important tools. You aren't just selling software; you are selling a solution for growth.
-
----
-
-## 👔 The Approach Strategy
-
-### 1. Appearance Matters
-You don't need a suit, but you must look clean and professional. A Vemtap branded shirt or a neat button-down shows you respect the business owner's time.
-
-### 2. The Opening (The Observation)
-Never start by selling. Start by observing. 
-*   *"I noticed you have a lot of customers today, that's great! How do you keep track of them so they come back?"*
-
-### 3. The Hook
-Once they admit they don't have a system, you introduce Vemtap as the solution to their **"leaking bucket"** (lost customers).
-
----
-
-## 💡 Pro Tips for Success
-*   **Smile, but don't rush.** A calm salesperson is a confident salesperson.
-*   **Use local context.** Mention other successful businesses in the area.
-*   **Always ask for the Decision Maker.** Don't waste your best pitch on someone who can't say "Yes."
-    `,
-    summary: [
-      'Dress clean and professional.',
-      'Smile and don\'t rush the conversation.',
-      'Start with a question about their customers.'
-    ]
-  },
-  { 
-    id: 4,
-    title: 'The Perfect Pitch', 
-    desc: 'A simple, effective script for closing deals.',
-    videoUrl: 'https://picsum.photos/seed/mod4/800/450',
-    pdfUrl: '#',
-    articleContent: `
-### Closing Deals in Under 60 Seconds
-
-Your pitch should be fast, clear, and focused on **Money**. If you can't explain it quickly, you'll lose their attention.
-
----
-
-## 🎙️ The 3-Step Script
-
-### Step 1: The Problem
-*"Most businesses lose 70% of their customers because they have no way to contact them after they leave. You're basically letting money walk out the door."*
-
-### Step 2: The Solution
-*"Vemtap lets your customers scan a QR code in 2 seconds. You get their contact details automatically, and they get a reason to come back."*
-
-### Step 3: The Close
-*"It takes 2 minutes to set up. Can I show you a quick demo on your phone right now? It's free to see how it works."*
-
----
-
-## ✅ Why it Works
-*   **Low Friction**: No app to download.
-*   **Fast**: Just a scan and a result.
-*   **Visible Value**: They see the data capture immediately.
-    `,
-    summary: [
-      'Script: "We help you track customers and get their contact using QR code."',
-      'Focus on the benefit: Customer Retention.',
-      'Offer a 1-minute demo.'
-    ]
-  },
-  { 
-    id: 5,
-    title: 'Handling Rejection', 
-    desc: 'Turning "No" into "Maybe" or "Yes".',
-    videoUrl: 'https://picsum.photos/seed/mod5/800/450',
-    pdfUrl: '#',
-    articleContent: `
-### Turning "No" into "Not Yet"
-
-Rejection is just a request for more information. Top closers know that the sale often starts after the first "No."
-
----
-
-## 🛡️ Common Objections & Responses
-
-### "I'm not interested"
-**Response:** *"I understand. Many owners felt the same until they realized they were losing thousands in repeat sales every week. Can I show you how simple it is to stop that?"*
-
-### "I don't have time"
-**Response:** *"That's exactly why I'm here. Vemtap automates your customer tracking so you can focus on your business. The setup takes less time than making a cup of coffee."*
-
-### "It sounds expensive"
-**Response:** *"Actually, losing a customer is expensive. Vemtap is designed to be affordable for every growing business. It pays for itself with just one or two returning customers."*
-
----
-
-## 🌟 The Golden Rule
-Always leave on a good note. A "No" today might be a "Yes" next month when they see their competitor using it. Give them your card or referral link and move to the next shop!
-    `,
-    summary: [
-      'If they say "Not interested": Ask if they know how many customers they lose daily.',
-      'If they say "No time": Explain that setup takes only 2 minutes.',
-      'Always remain polite and professional.'
-    ]
-  },
-  { 
-    id: 6,
-    title: 'Appearance & Confidence', 
-    desc: 'The Nigerian context of sales success.',
-    videoUrl: 'https://picsum.photos/seed/mod6/800/450',
-    pdfUrl: '#',
-    articleContent: `
-### The "Closer" Mindset
-
-In Nigeria, people buy **YOU** before they buy your product. Your energy determines the outcome of the meeting.
-
----
-
-## ⚡ Confidence Building
-
-*   **Know your product**: If you know Vemtap inside out, you won't be nervous. Practice the demo 10 times at home.
-*   **Body Language**: Stand tall, make eye contact, and use open gestures. Don't cross your arms.
-*   **The Voice**: Speak clearly and at a moderate pace. Rushing makes you look desperate or like a "scammer."
-
----
-
-## 🧠 The "Vemtap Closer" Mindset
-You aren't "begging" for a sale. You are offering a solution that will make the business owner more money. You are a **Partner in their Growth**.
-
-> **Remember:** Every "No" brings you closer to a "Yes." Stay positive, stay sharp, and keep closing!
-    `,
-    summary: [
-      'First impressions matter deeply in Nigeria.',
-      'Confidence is contagious; if you believe, they will too.',
-      'Be respectful but firm in your value proposition.'
-    ]
-  },
-];
-
-const practiceScenarios = [
-  {
-    id: 1,
-    scenario: 'A business owner says: "I\'m not interested"',
-    options: [
-      { text: 'Okay, no problem. Have a nice day.', correct: false, feedback: 'Too passive! You missed a chance to show value.' },
-      { text: 'Can I quickly show you how it helps you get customers?', correct: true, feedback: 'Great response! This pivots to a benefit they care about.' }
-    ]
-  },
-  {
-    id: 2,
-    scenario: 'The owner says: "I don\'t have time right now"',
-    options: [
-      { text: 'I understand. That\'s why Vemtap is great—it takes 2 minutes to set up.', correct: true, feedback: 'Perfect! You addressed the time concern immediately.' },
-      { text: 'When should I come back?', correct: false, feedback: 'Better to try and grab 2 minutes now if possible, or be more specific.' }
-    ]
-  },
-  {
-    id: 3,
-    scenario: 'You walk into a busy salon. What\'s your first move?',
-    options: [
-      { text: 'Wait for a quiet moment and approach the manager with a smile.', correct: true, feedback: 'Correct. Timing and approach are key.' },
-      { text: 'Start talking to the customers about the QR code.', correct: false, feedback: 'No! Always talk to the business owner or manager first.' }
-    ]
-  }
-];
-
-const quizQuestions = [
-  {
-    question: 'What is the core benefit of Vemtap for a business?',
-    options: ['Free WiFi', 'Customer Retention', 'Inventory Management', 'Social Media Likes'],
-    correct: 1
-  },
-  {
-    question: 'Which of these is a primary target for Vemtap?',
-    options: ['Construction Sites', 'Local Salons', 'Government Offices', 'Farms'],
-    correct: 1
-  },
-  {
-    question: 'How much commission do you earn on direct referrals?',
-    options: ['5%', '10%', '20%', '50%'],
-    correct: 2
-  },
-  {
-    question: 'What should you do if an owner says they are too busy?',
-    options: ['Leave immediately', 'Explain it takes only 2 minutes', 'Start a long presentation', 'Ask for money'],
-    correct: 1
-  }
-];
+import { api } from '@/lib/api-client';
+import { useAuth } from '@/hooks/use-auth';
 
 // --- Components ---
 
 export default function AcademyPage() {
   const { showToast } = useToast();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'learn' | 'practice' | 'test'>('learn');
-  const [completedModules, setCompletedModules] = useState<number[]>([]);
+  const [courses, setCourses] = useState<any[]>([]);
+  const [completedModules, setCompletedModules] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  const practiceScenarios = courses[0]?.scenarios || [];
+  const quizQuestions = courses[0]?.quiz || [];
   
   // Practice State
   const [practiceIndex, setPracticeIndex] = useState(0);
@@ -333,15 +58,38 @@ export default function AcademyPage() {
   const [isQuizFinished, setIsQuizFinished] = useState(false);
   
   // Modal State
-  const [selectedModule, setSelectedModule] = useState<typeof modules[0] | null>(null);
+  const [selectedModule, setSelectedModule] = useState<any | null>(null);
   const [moduleView, setModuleView] = useState<'article' | 'video'>('article');
 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [trainingData, profileData] = await Promise.all([
+          api.get('/training'),
+          api.get('/affiliates/profile')
+        ]);
+        setCourses(trainingData);
+        if (profileData?.completedModules) {
+          setCompletedModules(profileData.completedModules);
+        }
+      } catch (error) {
+        console.error('Failed to fetch training data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
   // Progress calculation
-  const moduleProgress = Math.round((completedModules.length / modules.length) * 100);
+  const totalLessons = courses.reduce((acc, c) => acc + (c.lessons?.length || 0), 0);
+  const moduleProgress = totalLessons > 0 ? Math.round((completedModules.length / totalLessons) * 100) : 0;
   
   const getBadge = () => {
+    const activeCourse = courses[0]; // Assuming first course for badge logic if needed
+    const practiceScenarios = activeCourse?.scenarios || [];
     const totalPractice = practiceStats.correct + practiceStats.failed;
-    const practiceDone = totalPractice >= practiceScenarios.length;
+    const practiceDone = totalPractice > 0 && totalPractice >= practiceScenarios.length;
     
     if (moduleProgress === 100 && quizScore >= 90 && practiceDone && practiceStats.correct === practiceScenarios.length) return 'Closer';
     if (moduleProgress >= 70 && quizScore >= 70) return 'Sales Ready';
@@ -350,15 +98,22 @@ export default function AcademyPage() {
   };
 
   const getStatusText = () => {
-    if (quizScore >= 71) return 'Ready to Earn';
-    if (quizScore >= 41) return 'Getting Better';
-    return 'Needs Improvement';
+    if (quizScore >= 90) return 'Certified Closer';
+    if (quizScore >= 70) return 'Sales Ready';
+    if (quizScore >= 40) return 'Learning';
+    return 'Needs Review';
   };
 
-  const handleModuleComplete = (id: number) => {
-    if (!completedModules.includes(id)) {
-      setCompletedModules([...completedModules, id]);
-      showToast(`Module ${id} completed!`, 'success');
+  const handleModuleComplete = async (lessonId: string) => {
+    try {
+      await api.post(`/training/lessons/${lessonId}/complete`, {});
+      if (!completedModules.includes(lessonId)) {
+        setCompletedModules([...completedModules, lessonId]);
+        showToast(`Lesson completed!`, 'success');
+      }
+    } catch (error) {
+      console.error('Failed to mark lesson as complete:', error);
+      showToast('Failed to save progress', 'error');
     }
     setSelectedModule(null);
   };
@@ -390,6 +145,7 @@ export default function AcademyPage() {
   };
 
   const handleQuizAnswer = (index: number) => {
+    const quizQuestions = courses[0]?.quiz || [];
     const isCorrect = index === quizQuestions[quizStep].correct;
     if (isCorrect) {
       setQuizScore(prev => prev + (100 / quizQuestions.length));
@@ -508,7 +264,7 @@ export default function AcademyPage() {
               className="space-y-8"
             >
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {modules.map((module) => (
+                {courses.length > 0 ? courses.map((module) => (
                   <div 
                     key={module.id}
                     onClick={() => {
@@ -516,7 +272,7 @@ export default function AcademyPage() {
                     }}
                     className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group cursor-pointer relative overflow-hidden"
                   >
-                    {completedModules.includes(module.id) && (
+                    {module.lessons?.[0] && completedModules.includes(module.lessons[0].id) && (
                       <div className="absolute top-4 right-4 bg-emerald-500 text-white p-1 rounded-full">
                         <CheckCircle2 className="w-4 h-4" />
                       </div>
@@ -527,8 +283,8 @@ export default function AcademyPage() {
                     )}>
                       {moduleView === 'article' ? <BookOpen className="w-5 h-5" /> : <Play className="w-5 h-5 fill-current" />}
                     </div>
-                    <h3 className="text-lg font-bold text-slate-900 mb-2">Module {module.id}: {module.title}</h3>
-                    <p className="text-sm text-slate-500 line-clamp-2">{module.desc}</p>
+                    <h3 className="text-lg font-bold text-slate-900 mb-2">{module.title}</h3>
+                    <p className="text-sm text-slate-500 line-clamp-2">{module.description}</p>
                     <div className={cn(
                       "mt-6 flex items-center text-xs font-bold transition-colors",
                       moduleView === 'article' ? "text-emerald-600" : "text-blue-600"
@@ -536,7 +292,13 @@ export default function AcademyPage() {
                       {moduleView === 'article' ? 'Read Article' : 'Watch Video'} <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="col-span-full py-20 text-center bg-white rounded-[40px] border border-dashed border-slate-200">
+                    <BookOpen className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                    <h3 className="text-lg font-bold text-slate-900">No Academy Content Yet</h3>
+                    <p className="text-slate-500 text-sm">Check back later for sales training and resources.</p>
+                  </div>
+                )}
               </div>
 
               {/* Module Modal Overlay */}
@@ -593,18 +355,26 @@ export default function AcademyPage() {
                       <div className="overflow-y-auto flex-grow">
                         {moduleView === 'video' ? (
                           <div className="aspect-video bg-slate-900 relative">
-                            <Image 
-                              src={selectedModule.videoUrl} 
-                              alt={selectedModule.title}
-                              fill
-                              className="object-cover opacity-60"
-                              referrerPolicy="no-referrer"
-                            />
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-2xl animate-pulse">
-                                <Play className="w-8 h-8 fill-current ml-1" />
+                            {selectedModule.lessons?.[0]?.videoUrl ? (
+                              <>
+                                <Image 
+                                  src={selectedModule.lessons[0].videoUrl} 
+                                  alt={selectedModule.title}
+                                  fill
+                                  className="object-cover opacity-60"
+                                  referrerPolicy="no-referrer"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-2xl animate-pulse">
+                                    <Play className="w-8 h-8 fill-current ml-1" />
+                                  </div>
+                                </div>
+                              </>
+                            ) : (
+                              <div className="absolute inset-0 flex items-center justify-center text-white font-medium">
+                                No video available for this module.
                               </div>
-                            </div>
+                            )}
                           </div>
                         ) : (
                           <div className="p-8 sm:p-12 bg-white">
@@ -618,7 +388,7 @@ export default function AcademyPage() {
                               prose-blockquote:border-l-4 prose-blockquote:border-blue-600 prose-blockquote:bg-blue-50 prose-blockquote:p-6 prose-blockquote:rounded-r-2xl prose-blockquote:not-italic prose-blockquote:font-medium
                               prose-strong:text-slate-900 prose-strong:font-bold
                             ">
-                              <ReactMarkdown>{selectedModule.articleContent}</ReactMarkdown>
+                              <ReactMarkdown>{selectedModule.lessons?.[0]?.content || 'Content coming soon...'}</ReactMarkdown>
                             </div>
                           </div>
                         )}
@@ -629,7 +399,7 @@ export default function AcademyPage() {
                               <Zap className="w-4 h-4 text-blue-600" /> Key Takeaways
                             </h4>
                             <ul className="space-y-4">
-                              {selectedModule.summary.map((item, i) => (
+                              {(selectedModule.lessons?.[0]?.summary || ['Complete the lesson to see takeaways.']).map((item: string, i: number) => (
                                 <li key={i} className="flex items-start gap-4 text-slate-600">
                                   <div className="mt-1.5 w-2 h-2 bg-blue-600 rounded-full shrink-0" />
                                   <span className="text-base font-medium leading-relaxed">{item}</span>
@@ -642,7 +412,7 @@ export default function AcademyPage() {
 
                       <div className="p-8 border-t border-slate-100 bg-white flex gap-4">
                         <Button 
-                          onClick={() => handleModuleComplete(selectedModule.id)}
+                          onClick={() => handleModuleComplete(selectedModule.lessons?.[0]?.id)}
                           className="flex-grow h-16 rounded-2xl bg-blue-600 hover:bg-blue-700 font-bold text-lg shadow-xl shadow-blue-100"
                         >
                           Complete Module
@@ -670,38 +440,39 @@ export default function AcademyPage() {
               exit={{ opacity: 0, y: -20 }}
               className="max-w-2xl mx-auto"
             >
-              {!isPracticeFinished ? (
-                <div className="bg-white p-8 sm:p-12 rounded-[40px] border border-slate-200 shadow-xl text-center">
-                  <div className="w-16 h-16 bg-amber-50 rounded-3xl flex items-center justify-center text-amber-600 mx-auto mb-8">
-                    <MessageSquare className="w-8 h-8" />
-                  </div>
-                  <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-2">Scenario {practiceIndex + 1} of {practiceScenarios.length}</p>
-                  <h3 className="text-2xl font-bold text-slate-900 mb-10 leading-tight italic">
-                    &quot;{practiceScenarios[practiceIndex].scenario}&quot;
-                  </h3>
+              {courses.length > 0 && courses[0]?.scenarios?.length > 0 ? (
+                !isPracticeFinished ? (
+                  <div className="bg-white p-8 sm:p-12 rounded-[40px] border border-slate-200 shadow-xl text-center">
+                    <div className="w-16 h-16 bg-amber-50 rounded-3xl flex items-center justify-center text-amber-600 mx-auto mb-8">
+                      <MessageSquare className="w-8 h-8" />
+                    </div>
+                    <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-2">Scenario {practiceIndex + 1} of {practiceScenarios.length}</p>
+                    <h3 className="text-2xl font-bold text-slate-900 mb-10 leading-tight italic">
+                      &quot;{practiceScenarios[practiceIndex].scenario}&quot;
+                    </h3>
 
-                  <div className="space-y-4">
-                    {practiceScenarios[practiceIndex].options.map((option, i) => (
-                      <button
-                        key={i}
-                        disabled={!!practiceFeedback}
-                        onClick={() => handlePracticeOption(option.correct, option.feedback)}
-                        className={cn(
-                          "w-full p-6 rounded-2xl border-2 text-left transition-all font-bold",
-                          practiceFeedback 
-                            ? option.correct 
-                              ? "border-emerald-500 bg-emerald-50 text-emerald-700" 
-                              : "border-slate-100 bg-slate-50 text-slate-400"
-                            : "border-slate-100 hover:border-blue-600 hover:bg-blue-50 text-slate-700"
-                        )}
-                      >
-                        <div className="flex justify-between items-center">
-                          <span>{option.text}</span>
-                          {practiceFeedback && option.correct && <ThumbsUp className="w-5 h-5" />}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+                          <div className="space-y-4">
+                            {practiceScenarios[practiceIndex].options.map((option: any, i: number) => (
+                              <button
+                                key={i}
+                                disabled={!!practiceFeedback}
+                                onClick={() => handlePracticeOption(option.correct, option.feedback)}
+                                className={cn(
+                                  "w-full p-6 rounded-2xl border-2 text-left transition-all font-bold",
+                                  practiceFeedback 
+                                    ? option.correct 
+                                      ? "border-emerald-500 bg-emerald-50 text-emerald-700" 
+                                      : "border-slate-100 bg-slate-50 text-slate-400"
+                                    : "border-slate-100 hover:border-blue-600 hover:bg-blue-50 text-slate-700"
+                                )}
+                              >
+                                <div className="flex justify-between items-center">
+                                  <span>{option.text}</span>
+                                  {practiceFeedback && option.correct && <ThumbsUp className="w-5 h-5" />}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
 
                   <AnimatePresence>
                     {practiceFeedback && (
@@ -763,7 +534,7 @@ export default function AcademyPage() {
                     </Button>
                   </div>
                 </div>
-              )}
+              )) : null}
             </motion.div>
           )}
 
@@ -775,39 +546,40 @@ export default function AcademyPage() {
               exit={{ opacity: 0, y: -20 }}
               className="max-w-2xl mx-auto"
             >
-              {!isQuizFinished ? (
-                <div className="bg-white p-8 sm:p-12 rounded-[40px] border border-slate-200 shadow-xl">
-                  <div className="flex justify-between items-center mb-10">
-                    <div className="flex items-center gap-2">
-                      <Trophy className="w-5 h-5 text-blue-600" />
-                      <span className="text-sm font-bold text-slate-900">Final Assessment</span>
+              {courses.length > 0 && courses[0]?.quiz?.length > 0 ? (
+                !isQuizFinished ? (
+                  <div className="bg-white p-8 sm:p-12 rounded-[40px] border border-slate-200 shadow-xl">
+                    <div className="flex justify-between items-center mb-10">
+                      <div className="flex items-center gap-2">
+                        <Trophy className="w-5 h-5 text-blue-600" />
+                        <span className="text-sm font-bold text-slate-900">Final Assessment</span>
+                      </div>
+                      <span className="text-xs font-bold text-slate-400">Question {quizStep + 1}/{quizQuestions.length}</span>
                     </div>
-                    <span className="text-xs font-bold text-slate-400">Question {quizStep + 1}/{quizQuestions.length}</span>
-                  </div>
 
-                  <div className="h-2 bg-slate-100 rounded-full mb-10 overflow-hidden">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${((quizStep + 1) / quizQuestions.length) * 100}%` }}
-                      className="h-full bg-blue-600"
-                    />
-                  </div>
+                    <div className="h-2 bg-slate-100 rounded-full mb-10 overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${((quizStep + 1) / quizQuestions.length) * 100}%` }}
+                        className="h-full bg-blue-600"
+                      />
+                    </div>
 
-                  <h3 className="text-2xl font-bold text-slate-900 mb-8">{quizQuestions[quizStep].question}</h3>
+                    <h3 className="text-2xl font-bold text-slate-900 mb-8">{quizQuestions[quizStep].question}</h3>
 
-                  <div className="space-y-4">
-                    {quizQuestions[quizStep].options.map((option, i) => (
-                      <button
-                        key={i}
-                        onClick={() => handleQuizAnswer(i)}
-                        className="w-full p-5 rounded-2xl border-2 border-slate-100 hover:border-blue-600 hover:bg-blue-50 text-left font-bold text-slate-700 transition-all"
-                      >
-                        {option}
-                      </button>
-                    ))}
+                    <div className="space-y-4">
+                      {quizQuestions[quizStep].options.map((option: any, i: number) => (
+                        <button
+                          key={i}
+                          onClick={() => handleQuizAnswer(i)}
+                          className="w-full p-5 rounded-2xl border-2 border-slate-100 hover:border-blue-600 hover:bg-blue-50 text-left font-bold text-slate-700 transition-all"
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ) : (
+                ) : (
                 <div className="bg-white p-8 sm:p-12 rounded-[40px] border border-slate-200 shadow-xl text-center">
                   <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center text-white mx-auto mb-8 shadow-2xl shadow-blue-200">
                     <Award className="w-10 h-10" />
@@ -856,7 +628,7 @@ export default function AcademyPage() {
                     </Button>
                   </div>
                 </div>
-              )}
+              )) : null}
             </motion.div>
           )}
         </AnimatePresence>

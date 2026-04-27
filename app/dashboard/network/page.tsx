@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '@/lib/api-client';
 import { motion } from 'motion/react';
 import { 
   ShieldCheck,
@@ -308,12 +309,14 @@ export default function NetworkPage() {
                 {managers.map((affiliate) => (
                   <div key={affiliate.id} className="p-4 sm:p-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
                     <div className="flex items-center gap-3 sm:gap-4">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm sm:text-base">
-                        {affiliate.name.charAt(0)}
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm sm:text-base uppercase">
+                        {(affiliate.referredUser?.firstName || 'A').charAt(0)}
                       </div>
                       <div>
-                        <h4 className="text-sm sm:text-base font-bold text-slate-900">{affiliate.name}</h4>
-                        <p className="text-xs sm:text-sm text-slate-500">{affiliate.referrals} businesses referred</p>
+                        <h4 className="text-sm sm:text-base font-bold text-slate-900">
+                          {affiliate.referredUser?.firstName} {affiliate.referredUser?.lastName}
+                        </h4>
+                        <p className="text-xs sm:text-sm text-slate-500">Sub-affiliate</p>
                       </div>
                     </div>
                     <div className="text-right">

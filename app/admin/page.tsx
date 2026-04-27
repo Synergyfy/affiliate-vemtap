@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { 
   Users, 
@@ -12,26 +13,57 @@ import {
   ShieldCheck,
   Clock
 } from 'lucide-react';
+import { api } from '@/lib/api-client';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
-const adminStats = [
-  { name: 'Total Affiliates', value: '1,245', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-  { name: 'Active Affiliates', value: '892', icon: ShieldCheck, color: 'text-green-600', bg: 'bg-green-50' },
-  { name: 'Total Revenue', value: '₦45.2M', icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' },
-  { name: 'Commissions Paid', value: '₦3.5M', icon: Wallet, color: 'text-blue-600', bg: 'bg-blue-50' },
-  { name: 'Pending Payouts', value: '₦1.2M', icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
-  { name: 'Fraud Alerts', value: '14', icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50' },
-];
-
 export default function AdminOverview() {
   const { showToast } = useToast();
   const router = useRouter();
+  const [stats, setStats] = useState<any>(null);
+  const [pendingWithdrawals, setPendingWithdrawals] = useState<any[]>([]);
+  const [fraudAlerts, setFraudAlerts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleApprove = (name: string) => {
-    showToast(`Withdrawal for ${name} has been approved successfully.`, 'success');
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [statsData, withdrawalsData, fraudData] = await Promise.all([
+          api.get('/affiliates/admin/stats'),
+          api.get('/affiliates/admin/withdrawals?status=PENDING'),
+          api.get('/affiliates/admin/fraud')
+        ]);
+        setStats(statsData);
+        setPendingWithdrawals((withdrawalsData || []).slice(0, 5));
+        setFraudAlerts((fraudData || []).slice(0, 5));
+      } catch (error) {
+        console.error('Failed to fetch admin data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const adminStats = [
+    { name: 'Total Affiliates', value: stats?.activeAffiliates?.toString() || '0', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { name: 'Active Subscriptions', value: stats?.totalReferrals?.toString() || '0', icon: ShieldCheck, color: 'text-green-600', bg: 'bg-green-50' },
+    { name: 'Total Revenue', value: `₦${stats?.totalRevenue?.toLocaleString() || '0'}`, icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' },
+    { name: 'Commissions Paid', value: `₦${stats?.totalCommissionsPaid?.toLocaleString() || '0'}`, icon: Wallet, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { name: 'Pending Payouts', value: `₦${stats?.pendingPayouts?.toLocaleString() || '0'}`, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { name: 'Fraud Alerts', value: stats?.fraudAlerts?.toString() || '0', icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50' },
+  ];
+
+  const handleApprove = async (id: string, name: string) => {
+    try {
+      await api.post(`/affiliates/admin/withdrawals/${id}/process`, { status: 'APPROVED' });
+      showToast(`Withdrawal for ${name} has been approved.`, 'success');
+      setPendingWithdrawals(prev => prev.filter(w => w.id !== id));
+    } catch (error) {
+      showToast('Failed to approve withdrawal.', 'error');
+    }
   };
 
   return (
@@ -75,32 +107,30 @@ export default function AdminOverview() {
               </button>
             </div>
             <div className="space-y-4">
-              {[
-                { name: 'John Doe', amount: '₦25,000', bank: 'GTBank', date: '2 hours ago' },
-                { name: 'Sarah Smith', amount: '₦15,000', bank: 'Zenith', date: '5 hours ago' },
-                { name: 'Michael Chen', amount: '₦45,000', bank: 'Access', date: 'Yesterday' },
-              ].map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-slate-200 transition-all">
+              {pendingWithdrawals.length > 0 ? pendingWithdrawals.map((item, idx) => (
+                <div key={item.id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-slate-200 transition-all">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 font-bold">
-                      {item.name.charAt(0)}
+                      {item.affiliate?.user?.firstName?.charAt(0) || 'A'}
                     </div>
                     <div>
-                      <p className="font-bold text-slate-900">{item.name}</p>
-                      <p className="text-xs text-slate-500">{item.bank} • {item.date}</p>
+                      <p className="font-bold text-slate-900">{item.affiliate?.user?.firstName} {item.affiliate?.user?.lastName}</p>
+                      <p className="text-xs text-slate-500">{item.affiliate?.bankAccountDetails?.bank || 'Bank'} • {new Date(item.createdAt).toLocaleDateString()}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-slate-900">{item.amount}</p>
+                    <p className="font-bold text-slate-900">₦{item.amount?.toLocaleString()}</p>
                     <button 
-                      onClick={() => handleApprove(item.name)}
+                      onClick={() => handleApprove(item.id, item.affiliate?.user?.firstName)}
                       className="text-[10px] font-bold text-blue-600 uppercase tracking-wider hover:underline"
                     >
                       Approve
                     </button>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <p className="text-sm text-slate-400 text-center py-8">No pending withdrawals.</p>
+              )}
             </div>
           </div>
 
@@ -117,33 +147,29 @@ export default function AdminOverview() {
               </button>
             </div>
             <div className="space-y-4">
-              {[
-                { name: 'David Smith', reason: 'Self-referral detected', risk: 'High', date: '1 hour ago' },
-                { name: 'Alice Brown', reason: 'Multiple accounts from same IP', risk: 'Medium', date: '3 hours ago' },
-                { name: 'Bob Wilson', reason: 'Suspicious referral pattern', risk: 'Low', date: 'Yesterday' },
-              ].map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-slate-200 transition-all">
+              {fraudAlerts.length > 0 ? fraudAlerts.map((item, idx) => (
+                <div key={item.id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-slate-200 transition-all">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-600">
                       <AlertTriangle className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="font-bold text-slate-900">{item.name}</p>
-                      <p className="text-xs text-slate-500">{item.reason}</p>
+                      <p className="font-bold text-slate-900">{item.user?.firstName} {item.user?.lastName}</p>
+                      <p className="text-xs text-slate-500">{item.fraudReason || 'Suspicious activity'}</p>
                     </div>
                   </div>
                   <div className="text-right">
                     <span className={cn(
-                      "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
-                      item.risk === 'High' ? "bg-red-100 text-red-600" : 
-                      item.risk === 'Medium' ? "bg-orange-100 text-orange-600" : "bg-blue-100 text-blue-600"
+                      "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider bg-red-100 text-red-600"
                     )}>
-                      {item.risk}
+                      High
                     </span>
-                    <p className="text-[10px] text-slate-500 mt-1">{item.date}</p>
+                    <p className="text-[10px] text-slate-500 mt-1">{new Date(item.updatedAt).toLocaleDateString()}</p>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <p className="text-sm text-slate-400 text-center py-8">No fraud alerts detected.</p>
+              )}
             </div>
           </div>
         </div>

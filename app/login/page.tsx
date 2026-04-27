@@ -35,9 +35,7 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      login(data.email);
+      await login(data.email, data.password);
       showToast('Logged in successfully!', 'success');
       router.push('/dashboard');
     } catch (error) {
