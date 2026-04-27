@@ -25,6 +25,7 @@ const signupSchema = z.object({
   referralCode: z.string().optional(),
   location: z.string().min(2, 'Location is required'),
   address: z.string().min(5, 'Full address is required'),
+  otpCode: z.string().min(6, 'Verification code must be 6 digits').optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -42,6 +43,12 @@ function SignupForm() {
   const router = useRouter();
   const { signup, updateUser } = useAuth();
   const { showToast } = useToast();
+
+  const verifyOtp = async (email: string, code: string) => {
+    // Mock OTP verification for development
+    console.log(`Verifying OTP ${code} for ${email}`);
+    return true;
+  };
   const refCode = searchParams.get('ref');
 
   const {
@@ -86,6 +93,8 @@ function SignupForm() {
       const lastName = nameParts.slice(1).join(' ') || 'User';
 
       await signup({
+        id: `USER-${Math.floor(Math.random() * 10000)}`,
+        fullName: data.fullName,
         firstName,
         lastName,
         email: data.email,
@@ -93,7 +102,7 @@ function SignupForm() {
         referralCode: data.referralCode || 'REF12345',
         location: data.location,
         address: data.address,
-      });
+      } as any);
       setIsLoading(false);
       setShowTerms(true);
     } catch (error) {

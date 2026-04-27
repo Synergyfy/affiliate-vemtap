@@ -35,7 +35,7 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
     try {
-      await login(data.email, data.password);
+      await login(data.email);
       showToast('Logged in successfully!', 'success');
       router.push('/dashboard');
     } catch (error) {

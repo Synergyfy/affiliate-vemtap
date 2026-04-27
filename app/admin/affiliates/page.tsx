@@ -30,6 +30,7 @@ import ConfirmationModal from '@/components/admin/ConfirmationModal';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/Button';
+import { api } from '@/lib/api-client';
 
 const initialAffiliates = [
   { 
@@ -164,6 +165,11 @@ export default function AffiliatesManagement() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const fetchAffiliates = async () => {
+    // Mock fetching for now to resolve reference error
+    console.log('Fetching affiliates...');
+  };
+
   const handleApprove = async (id: string, name: string) => {
     try {
       await api.post(`/affiliates/admin/profiles/${id}/verify-kyc`, { status: 'verified' });
@@ -235,25 +241,25 @@ export default function AffiliatesManagement() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredAffiliates.map((affiliate, idx) => (
+                {filteredAffiliates.map((affiliate: any, idx: number) => (
                   <motion.tr 
-                    key={aff.id}
+                    key={affiliate.id}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.05 }}
                     className={cn(
                       "hover:bg-slate-50/50 transition-all group",
-                      aff.isFlagged && "bg-red-50/30"
+                      affiliate.isFlagged && "bg-red-50/30"
                     )}
                   >
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-700">
-                          {aff.user?.firstName?.charAt(0) || 'A'}
+                          {affiliate.name?.charAt(0) || 'A'}
                         </div>
                         <div>
-                          <p className="font-bold text-slate-900">{aff.user?.firstName} {aff.user?.lastName}</p>
-                          <p className="text-xs text-slate-400 font-medium">{aff.user?.email}</p>
+                          <p className="font-bold text-slate-900">{affiliate.name}</p>
+                          <p className="text-xs text-slate-400 font-medium">{affiliate.email}</p>
                         </div>
                       </div>
                     </td>
@@ -281,10 +287,10 @@ export default function AffiliatesManagement() {
                     <td className="p-4">
                       <span className={cn(
                         "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
-                        aff.kycStatus === 'verified' ? "bg-green-100 text-green-600" : 
-                        aff.kycStatus === 'pending' ? "bg-orange-100 text-orange-600" : "bg-slate-100 text-slate-400"
+                        affiliate.status === 'Active' ? "bg-green-100 text-green-600" : 
+                        affiliate.status === 'Suspended' ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-400"
                       )}>
-                        {aff.kycStatus}
+                        {affiliate.status}
                       </span>
                     </td>
                     <td className="p-4 text-right">

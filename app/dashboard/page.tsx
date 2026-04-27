@@ -62,10 +62,38 @@ const stats = [
   { name: 'Active Affiliates', value: '8', icon: Users, color: 'text-purple-600', bg: 'bg-purple-50', trend: 'Manager Only', trendUp: true, isManagerOnly: true },
 ];
 
+const chartData = [
+  { name: 'Jan', earnings: 4000 },
+  { name: 'Feb', earnings: 3000 },
+  { name: 'Mar', earnings: 2000 },
+  { name: 'Apr', earnings: 2780 },
+  { name: 'May', earnings: 1890 },
+  { name: 'Jun', earnings: 2390 },
+  { name: 'Jul', earnings: 3490 },
+];
+
+const recentActivity = [
+  { title: 'New Business', desc: 'Tech Solutions signed up', type: 'referral', time: new Date().toISOString() },
+  { title: 'Commission Paid', desc: '₦5,000 for April referrals', type: 'commission', time: new Date().toISOString() },
+];
+
+const topAffiliates = [
+  { name: 'Alex Johnson', earnings: 45000, rank: 1, avatar: '' },
+  { name: 'Sarah Smith', earnings: 38000, rank: 2, avatar: '' },
+  { name: 'David Lee', earnings: 32000, rank: 3, avatar: '' },
+];
+
 export default function DashboardOverview() {
   const { user, updateUser } = useAuth();
   const { showToast } = useToast();
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+
+  // Milestone logic
+  const currentProgress = 12;
+  const milestoneGoal = 20;
+  const progressPercent = (currentProgress / milestoneGoal) * 100;
+
+  const displayStats = stats;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -127,7 +155,7 @@ export default function DashboardOverview() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-          {displayStats.map((stat, idx) => (
+          {displayStats.map((stat: any, idx: number) => (
             <motion.div
               key={stat.name}
               initial={{ opacity: 0, y: 20 }}
@@ -407,7 +435,7 @@ export default function DashboardOverview() {
                 <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">This Week</span>
               </div>
               <div className="space-y-4">
-                {topAffiliates.length > 0 ? topAffiliates.map((item, idx) => (
+                {topAffiliates.length > 0 ? topAffiliates.map((item: any, idx: number) => (
                   <div key={idx} className="flex items-center gap-3">
                     <div className="relative">
                       <Image 

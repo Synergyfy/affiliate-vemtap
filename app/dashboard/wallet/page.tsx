@@ -22,6 +22,9 @@ import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
+import { api } from '@/lib/api-client';
 
 const earningsData = [
   { id: 1, name: 'Tech Solutions Ltd', plan: 'Silver', status: 'Active', month: '2/3', affiliateEarning: '₦1,000', managerEarning: '₦100', date: '2024-03-20' },

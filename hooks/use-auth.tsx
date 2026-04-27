@@ -17,6 +17,7 @@ interface User {
   role?: 'affiliate' | 'manager';
   location?: string;
   address?: string;
+  isKycVerified?: boolean;
 }
 
 interface AuthContextType {
@@ -55,7 +56,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
     }
-    const mockUser = { 
+    const mockUser: User = { 
+      id: 'USER-123',
       fullName: 'John Doe', 
       email, 
       phone: '+234 800 000 0000', 
@@ -63,7 +65,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       hasAcceptedTerms: true,
       hasSignedAgreement: true,
       createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      role: 'affiliate'
+      role: 'affiliate',
+      isKycVerified: true
     };
     setUser(mockUser);
     setIsAuthenticated(true);
@@ -71,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signup = (userData: User) => {
-    const newUser = { 
+    const newUser: User = { 
       ...userData, 
       hasAcceptedTerms: false, 
       hasSignedAgreement: false,
@@ -96,8 +99,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('vemtap_user');
   };
 
+  const isLoading = false;
+
   return (
-    <AuthContext.Provider value={{ user, login, signup, updateUser, logout, isAuthenticated }}>
+    <AuthContext.Provider value={{ user, login, signup, updateUser, logout, isAuthenticated, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

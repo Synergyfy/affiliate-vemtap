@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { 
   Search, 
@@ -18,7 +18,6 @@ import { cn } from '@/lib/utils';
 import BusinessModal from '@/components/dashboard/BusinessModal';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Eye, Bell, Edit2, X, Building2, MapPin, Phone, Mail, Calendar, TrendingUp as TrendingUpIcon, Activity } from 'lucide-react';
-import { useRef, useEffect } from 'react';
 import { AnimatePresence } from 'motion/react';
 
 const initialBusinesses = [
