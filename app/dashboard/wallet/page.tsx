@@ -23,11 +23,17 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/utils';
 
+const earningsData = [
+  { id: 1, name: 'Tech Solutions Ltd', plan: 'Silver', status: 'Active', month: '2/3', affiliateEarning: '₦1,000', managerEarning: '₦100', date: '2024-03-20' },
+  { id: 2, name: 'Global Corp', plan: 'Platinum', status: 'Active', month: '5/12', affiliateEarning: '₦3,600', managerEarning: '₦360', date: '2024-03-18' },
+  { id: 3, name: 'Small Biz Inc', plan: 'Gold', status: 'Inactive', month: '1/3', affiliateEarning: '₦0', managerEarning: '₦0', date: '2024-03-15' },
+  { id: 4, name: 'Future Tech', plan: 'Gold', status: 'Active', month: '3/3', affiliateEarning: '₦1,900', managerEarning: '₦190', date: '2024-03-10' },
+];
+
 const transactions = [
   { id: 1, type: 'Commission', amount: '₦10,000', status: 'Completed', date: '2024-03-20', desc: 'Direct referral - Global Corp' },
   { id: 2, type: 'Withdrawal', amount: '-₦25,000', status: 'Pending', date: '2024-03-18', desc: 'Transfer to GTBank' },
   { id: 3, type: 'Commission', amount: '₦5,000', status: 'Completed', date: '2024-03-15', desc: 'Direct referral - Tech Solutions' },
-  { id: 4, type: 'Withdrawal', amount: '-₦15,000', status: 'Completed', date: '2024-03-10', desc: 'Transfer to Zenith Bank' },
 ];
 
 export default function WalletPage() {
@@ -178,6 +184,76 @@ export default function WalletPage() {
               )}
             </div>
           )}
+        </div>
+
+        {/* Section B: Earnings Breakdown Table */}
+        <div className="bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">Earnings Breakdown</h3>
+              <p className="text-xs text-slate-500 mt-1">Detailed monthly share from your referrals</p>
+            </div>
+            <div className="flex gap-2">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg border border-slate-100 text-[10px] font-bold text-slate-600">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" /> Affiliate (20%)
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg border border-slate-100 text-[10px] font-bold text-slate-600">
+                <span className="w-2 h-2 rounded-full bg-blue-500" /> Manager (10%)
+              </div>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/50">
+                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Business</th>
+                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Plan</th>
+                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
+                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Month</th>
+                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Affiliate (20%)</th>
+                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Manager (10%)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {earningsData.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <p className="text-sm font-bold text-slate-900">{item.name}</p>
+                      <p className="text-[10px] text-slate-400 font-medium uppercase tracking-tighter">{item.date}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-xs font-bold text-slate-600 px-2 py-1 bg-slate-100 rounded-md">{item.plan}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={cn(
+                        "text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full border",
+                        item.status === 'Active' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-red-50 text-red-600 border-red-100"
+                      )}>
+                        {item.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs font-bold text-slate-900">{item.month}</span>
+                        <div className="w-12 h-1 bg-slate-100 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-blue-600" 
+                            style={{ width: `${(parseInt(item.month.split('/')[0]) / parseInt(item.month.split('/')[1])) * 100}%` }} 
+                          />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm font-black text-emerald-600">{item.affiliateEarning}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm font-black text-blue-600">{item.managerEarning}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Transaction History */}

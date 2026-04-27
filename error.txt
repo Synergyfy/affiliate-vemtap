@@ -1,21 +1,11 @@
-## Error Type
-Runtime ReferenceError
-
-## Error Message
-Clock is not defined
-
-
-    at eval (app\admin\notifications\page.tsx:134:105)
-    at Array.map (<anonymous>:null:null)
-    at NotificationsManagement (app\admin\notifications\page.tsx:127:34)
-
-## Code Frame
-  132 |                       notif.status === 'Sent' ? "bg-green-50" : "bg-blue-50"
-  133 |                     )}>
-> 134 |                       {notif.status === 'Sent' ? <CheckCircle2 className="w-5 h-5 text-green-600" /> : <Clock className="w-5 h-5 text-blue-600" />}
-      |                                                                                                         ^
-  135 |                     </div>
-  136 |                     <div>
-  137 |                       <p className="font-bold text-slate-900">{notif.title}</p>
-
-Next.js version: 15.5.14 (Webpack)
+Uncaught Error: Rendered fewer hooks than expected. This may be caused by an accidental early return statement.
+    at finishRenderingHooks (react-dom_client.js?v=c65ab2a5:4243:36)
+    at renderWithHooks (react-dom_client.js?v=c65ab2a5:4224:4)
+    at updateFunctionComponent (react-dom_client.js?v=c65ab2a5:5569:16)
+    at beginWork (react-dom_client.js?v=c65ab2a5:6140:20)
+    at runWithFiberInDEV (react-dom_client.js?v=c65ab2a5:851:66)
+    at performUnitOfWork (react-dom_client.js?v=c65ab2a5:8429:92)
+    at workLoopSync (react-dom_client.js?v=c65ab2a5:8325:37)
+    at renderRootSync (react-dom_client.js?v=c65ab2a5:8309:6)
+    at performWorkOnRoot (react-dom_client.js?v=c65ab2a5:7994:27)
+    at performSyncWorkOnRoot (react-dom_client.js?v=c65ab2a5:9067:4)

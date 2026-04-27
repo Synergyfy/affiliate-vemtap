@@ -8,7 +8,9 @@ import {
   Shield, 
   Save,
   Clock,
-  Coins
+  Coins,
+  Users,
+  Briefcase
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { cn } from '@/lib/utils';
@@ -170,6 +172,47 @@ export default function SettingsManagement() {
                   <p className="text-xs text-slate-500">Enable AI-based detection</p>
                 </div>
                 <div className="w-12 h-6 bg-blue-600 rounded-full relative cursor-pointer" onClick={() => showToast("Automatic flagging toggled", "info")}>
+                  <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Manager Feature Settings */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm"
+          >
+            <div className="flex items-center gap-3 mb-8">
+              <Users className="w-5 h-5 text-purple-600" />
+              <h3 className="text-lg font-bold text-slate-900">Manager Feature Configuration</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                  Referral Threshold for &quot;Manager&quot; Status
+                  <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-500">Default 5</span>
+                </label>
+                <div className="relative">
+                  <input 
+                    type="number" 
+                    defaultValue={5}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
+                  />
+                  <Briefcase className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                </div>
+                <p className="text-xs text-slate-400">Number of paying businesses an affiliate must refer to unlock Manager tools.</p>
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                <div>
+                  <p className="text-sm font-bold text-slate-900">Enable Manager Network</p>
+                  <p className="text-xs text-slate-500">Allow sub-affiliate recruiting</p>
+                </div>
+                <div className="w-12 h-6 bg-blue-600 rounded-full relative cursor-pointer" onClick={() => showToast("Manager network toggled", "info")}>
                   <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
                 </div>
               </div>

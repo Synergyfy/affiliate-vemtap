@@ -16,7 +16,10 @@ import {
   X,
   Bell,
   User,
-  Trophy
+  Trophy,
+  Clock,
+  Lock,
+  ArrowRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -28,20 +31,64 @@ const sidebarItems = [
   { name: 'Overview', icon: LayoutDashboard, href: '/dashboard' },
   { name: 'Referral Tools', icon: LinkIcon, href: '/dashboard/tools' },
   { name: 'Businesses', icon: Briefcase, href: '/dashboard/businesses' },
-  { name: 'Affiliate Network', icon: Users, href: '/dashboard/network' },
+  { name: 'Manager Network', icon: Users, href: '/dashboard/network' },
   { name: 'Leaderboard', icon: Trophy, href: '/dashboard/leaderboard' },
   { name: 'Wallet', icon: Wallet, href: '/dashboard/wallet' },
   { name: 'Sales Academy', icon: BookOpen, href: '/dashboard/training' },
   { name: 'Profile', icon: User, href: '/dashboard/profile' },
 ];
 
+import DashboardTour from './DashboardTour';
+
+const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const pathname = usePathname();
-  const router = useRouter();
   const { user, logout } = useAuth();
   const { showToast } = useToast();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const [isTourOpen, setIsTourOpen] = useState(false);
+  const [hasCompletedTour, setHasCompletedTour] = useState(false);
+
+  // Calculate real-time countdown for 90-day window
+  const [timeLeft, setTimeLeft] = useState<{days: number, hours: number, minutes: number, seconds: number}>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+
+  useEffect(() => {
+    if (!user?.createdAt) return;
+    
+    const signupDate = new Date(user.createdAt);
+    const targetDate = new Date(signupDate.getTime() + NINETY_DAYS_MS);
+
+    const timer = setInterval(() => {
+      const now = new Date();
+      const difference = targetDate.getTime() - now.getTime();
+
+      if (difference <= 0) {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        clearInterval(timer);
+      } else {
+        setTimeLeft({
+          days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+          hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+          minutes: Math.floor((difference / 1000 / 60) % 60),
+          seconds: Math.floor((difference / 1000) % 60)
+        });
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [user?.createdAt]);
+
+  const isManager = user?.role === 'manager';
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setHasCompletedTour(localStorage.getItem('hasCompletedTour') === 'true');
+    }
+  }, []);
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -55,9 +102,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.push('/login');
   };
 
+  const handleCompleteTour = () => {
+    setHasCompletedTour(true);
+    localStorage.setItem('hasCompletedTour', 'true');
+    setIsTourOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex">
-      {/* ... (sidebar code) */}
+      {/* ... sidebars ... */}
+      <DashboardTour isOpen={isTourOpen} onClose={() => {
+        setIsTourOpen(false);
+        setHasCompletedTour(true);
+      }} />
+      
+      {/* Admin Sidebar */}
       <aside 
         className={cn(
           "hidden lg:flex flex-col bg-white border-r border-slate-200 transition-all duration-300 sticky top-0 h-screen",
@@ -127,10 +186,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </Link>
         </div>
         
-        <div className="flex items-center gap-2">
-          <button className="p-2 rounded-full hover:bg-slate-100 relative text-slate-600">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setIsTourOpen(true)}
+            className="p-2 bg-blue-50 text-blue-600 rounded-lg relative"
+          >
+            <Trophy className="w-5 h-5" />
+            {!hasCompletedTour && (
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-600 rounded-full border-2 border-white animate-pulse" />
+            )}
           </button>
           <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 border border-blue-200">
             <User className="w-5 h-5" />
@@ -221,9 +285,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <main className="flex-grow flex flex-col min-w-0">
         {/* Top Header */}
         <header className="hidden lg:flex h-20 bg-white border-b border-slate-200 items-center justify-between px-8 sticky top-0 z-30">
-          <h1 className="text-xl font-bold text-slate-900">
-            {sidebarItems.find(item => item.href === pathname)?.name || 'Dashboard'}
-          </h1>
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-bold text-slate-900">
+              {sidebarItems.find(item => item.href === pathname)?.name || 'Dashboard'}
+            </h1>
+            <button 
+              onClick={() => setIsTourOpen(true)}
+              className="ml-4 flex items-center gap-2 px-4 py-1.5 bg-blue-50 text-blue-600 rounded-full text-xs font-bold border border-blue-100 hover:bg-blue-100 transition-all group relative"
+            >
+              <Trophy className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+              Platform Tour
+              {!hasCompletedTour && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-600 rounded-full border-2 border-white animate-pulse" />
+              )}
+            </button>
+
+            {!isManager && (
+              <button 
+                onClick={() => router.push('/dashboard/network')}
+                className="ml-4 flex items-center gap-2 px-4 py-1.5 bg-orange-50 text-orange-700 rounded-full text-[10px] font-black uppercase tracking-widest border border-orange-100 hover:bg-orange-100 transition-all group shadow-sm shadow-orange-100"
+              >
+                <Clock className="w-3.5 h-3.5" />
+                {timeLeft.days} Days Left
+                <ArrowRight className="w-3.5 h-3.5 ml-1 group-hover:translate-x-1 transition-transform" />
+              </button>
+            )}
+          </div>
+          
           <div className="flex items-center gap-4">
             <button className="p-2 rounded-full hover:bg-slate-100 relative text-slate-600">
               <Bell className="w-5 h-5" />
@@ -233,9 +321,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="flex items-center gap-3 pl-2">
               <div className="text-right">
                 <p className="text-sm font-bold text-slate-900">{user?.fullName || 'John Doe'}</p>
-                <p className="text-xs text-slate-500">Affiliate</p>
+                <p className="text-xs text-slate-500">Affiliate Partner</p>
               </div>
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 border border-blue-200">
                 <User className="w-6 h-6" />
               </div>
             </div>
