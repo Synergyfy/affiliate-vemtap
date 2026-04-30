@@ -1,0 +1,416 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  phone           String    @unique
+  password        String
+  fullName        String
+  
+  referralCode    String    @unique
+  referredBy      String?
+  referrerId      String?
+  referrer        User?     @relation("Referrals", fields: [referrerId], references: [id])
+  referrals       User[]    @relation("Referrals")
+  
+  nin             String?
+  bvn             String?
+  bankName        String?
+  accountNumber   String?
+  accountName     String?
+  kycStatus       KycStatus @default(PENDING)
+  kycDocuments    Json?
+  
+  totalEarnings   Decimal   @default(0)
+  pendingEarnings Decimal   @default(0)
+  referralCount   Int       @default(0)
+  
+  role            Role      @default(AFFILIATE)
+  status          UserStatus @default(ACTIVE)
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  lastLoginAt     DateTime?
+  
+  businesses      Business[]
+  commissions     Commission[]
+  withdrawals     Withdrawal[]
+  transactions    Transaction[]
+  notifications   Notification[]
+  trainingProgress TrainingProgress[]
+  
+  tokenVersion    Int       @default(0)
+  
+  @@index([referralCode])
+  @@index([referredBy])
+  @@index([referrerId])
+}
+
+enum Role {
+  AFFILIATE
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum KycStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+model Business {
+  id              String    @id @default(uuid())
+  
+  businessName    String
+  ownerName       String
+  email           String
+  phone           String
+  address         String?
+  businessType    String?
+  planType        PlanType @default(BASIC)
+  
+  referralCode    String
+  affiliateId     String
+  affiliate       User       @relation(fields: [affiliateId], references: [id])
+  
+  subscriptionAmount Decimal
+  commissionRate     Decimal  @default(0.20)
+  commissionAmount   Decimal  @default(0)
+  
+  status          BusinessStatus @default(TRIAL)
+  trialEndsAt     DateTime?
+  paidAt          DateTime?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  commissions     Commission[]
+  
+  @@index([affiliateId])
+  @@index([referralCode])
+  @@index([status])
+}
+
+enum PlanType {
+  BASIC
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum BusinessStatus {
+  TRIAL
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+model Commission {
+  id              String    @id @default(uuid())
+  
+  userId          String
+  user            User       @relation(fields: [userId], references: [id])
+  
+  businessId      String?
+  business        Business?  @relation(fields: [businessId], references: [id])
+  
+  subAffiliateId  String?
+  
+  type            CommissionType
+  amount          Decimal
+  
+  status          CommissionStatus @default(PENDING)
+  paidAt          DateTime?
+  
+  description     String?
+  
+  createdAt       DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([businessId])
+  @@index([status])
+  @@index([type])
+}
+
+enum CommissionType {
+  DIRECT
+  INDIRECT
+  BONUS
+}
+
+enum CommissionStatus {
+  PENDING
+  APPROVED
+  PAID
+  REJECTED
+}
+
+model Withdrawal {
+  id              String    @id @default(uuid())
+  
+  userId          String
+  user            User       @relation(fields: [userId], references: [id])
+  
+  amount          Decimal
+  fee             Decimal    @default(0)
+  netAmount       Decimal
+  
+  bankName        String
+  accountNumber   String
+  accountName     String
+  
+  status          WithdrawalStatus @default(PENDING)
+  adminNotes      String?
+  processedAt     DateTime?
+  processedBy     String?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([userId])
+  @@index([status])
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  PROCESSING
+  PAID
+  REJECTED
+}
+
+model Transaction {
+  id              String    @id @default(uuid())
+  
+  userId          String
+  user            User       @relation(fields: [userId], references: [id])
+  
+  type            TransactionType
+  amount          Decimal
+  balanceAfter    Decimal
+  description     String?
+  
+  reference       String    @unique
+  
+  createdAt       DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([type])
+}
+
+enum TransactionType {
+  COMMISSION
+  WITHDRAWAL
+  REFERRAL_BONUS
+  ADJUSTMENT
+}
+
+model Notification {
+  id              String    @id @default(uuid())
+  
+  userId          String?
+  user            User?      @relation(fields: [userId], references: [id])
+  
+  type            NotificationType
+  title           String
+  message         String
+  
+  isRead          Boolean   @default(false)
+  readAt          DateTime?
+  
+  data            Json?
+  
+  createdAt       DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([isRead])
+}
+
+enum NotificationType {
+  SYSTEM
+  COMMISSION
+  WITHDRAWAL
+  KYC
+  TRAINING
+  PROMOTIONAL
+}
+
+model TrainingModule {
+  id              String    @id @default(uuid())
+  
+  title           String
+  description     String
+  content         String
+  videoUrl        String?
+  
+  order           Int
+  category        String
+  
+  isPublished     Boolean   @default(false)
+  
+  quizzes         Quiz[]
+  scenarios       Scenario[]
+  progress        TrainingProgress[]
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Quiz {
+  id              String    @id @default(uuid())
+  
+  moduleId        String
+  module          TrainingModule @relation(fields: [moduleId], references: [id])
+  
+  question        String
+  options         Json
+  correctAnswer   Int
+  explanation     String?
+  
+  order           Int
+  
+  @@index([moduleId])
+}
+
+model Scenario {
+  id              String    @id @default(uuid())
+  
+  moduleId        String
+  module          TrainingModule @relation(fields: [moduleId], references: [id])
+  
+  title           String
+  situation       String
+  objection       String
+  idealResponse   String
+  
+  order           Int
+  
+  @@index([moduleId])
+}
+
+model TrainingProgress {
+  id              String    @id @default(uuid())
+  
+  userId          String
+  user            User       @relation(fields: [userId], references: [id])
+  
+  moduleId        String
+  module          TrainingModule @relation(fields: [moduleId], references: [id])
+  
+  status          ProgressStatus @default(NOT_STARTED)
+  quizScore       Int?
+  completedAt     DateTime?
+  
+  startedAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@unique([userId, moduleId])
+  @@index([userId])
+  @@index([moduleId])
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model PlatformSettings {
+  id              String    @id @default(uuid())
+  
+  directCommissionRate   Decimal @default(0.20)
+  indirectCommissionRate Decimal @default(0.05)
+  
+  minWithdrawal           Decimal @default(5000)
+  withdrawalFee           Decimal @default(100)
+  
+  subAffiliateUnlockCount Int    @default(5)
+  
+  fraudThresholdScore     Int    @default(80)
+  
+  referralUnlockCount     Int    @default(0)
+  
+  updatedAt               DateTime @updatedAt
+}
+
+model FraudAlert {
+  id              String    @id @default(uuid())
+  
+  userId          String
+  
+  type            FraudType
+  severity        Severity
+  
+  description     String
+  evidence        Json?
+  
+  status          FraudStatus @default(OPEN)
+  resolvedAt      DateTime?
+  resolvedBy      String?
+  resolution      String?
+  
+  createdAt       DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([status])
+  @@index([severity])
+}
+
+enum FraudType {
+  MULTIPLE_ACCOUNTS
+  FAKE_REFERRALS
+  SELF_REFERRAL
+  SUSPICIOUS_ACTIVITY
+  KYC_MISMATCH
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum FraudStatus {
+  OPEN
+  UNDER_REVIEW
+  CONFIRMED
+  FALSE_POSITIVE
+  RESOLVED
+}
+
+model AuditLog {
+  id              String    @id @default(uuid())
+  
+  userId          String?
+  adminId         String?
+  
+  action          String
+  entity          String
+  entityId        String?
+  
+  oldValue        Json?
+  newValue        Json?
+  
+  ipAddress       String?
+  userAgent       String?
+  
+  createdAt       DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([adminId])
+  @@index([entity])
+}
