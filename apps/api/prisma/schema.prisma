@@ -48,10 +48,12 @@ model User {
   
   tokenVersion    Int       @default(0)
   paystackSubaccountId String?
+  paystackRecipientCode String?
   
   @@index([referralCode])
   @@index([referredBy])
   @@index([referrerId])
+  @@index([paystackRecipientCode])
 }
 
 enum Role {

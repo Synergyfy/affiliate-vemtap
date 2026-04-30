@@ -1,13 +1,13 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
-import { AppModule } from '../src/app.module';
-import * as cookieParser from 'cookie-parser';
-import { PrismaService } from '../src/prisma/prisma.service';
-import { Role, PlanType, BusinessStatus } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
+import { Test, TestingModule } from "@nestjs/testing";
+import { INestApplication, ValidationPipe } from "@nestjs/common";
+import * as request from "supertest";
+import { AppModule } from "../src/app.module";
+import * as cookieParser from "cookie-parser";
+import { PrismaService } from "../src/prisma/prisma.service";
+import { Role, PlanType, BusinessStatus } from "@prisma/client";
+import * as bcrypt from "bcryptjs";
 
-describe('Admin Businesses & Commissions (e2e)', () => {
+describe("Admin Businesses & Commissions (e2e)", () => {
   let app: INestApplication;
   let prismaService: PrismaService;
   let adminCookies: string[] = [];
@@ -22,7 +22,9 @@ describe('Admin Businesses & Commissions (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.use(cookieParser());
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.init();
 
     prismaService = app.get<PrismaService>(PrismaService);
@@ -30,17 +32,17 @@ describe('Admin Businesses & Commissions (e2e)', () => {
     await prismaService.business.deleteMany({});
     await prismaService.user.deleteMany({});
 
-    const password = await bcrypt.hash('password123', 10);
+    const password = await bcrypt.hash("password123", 10);
 
     // 1. Create Manager
     const manager = await prismaService.user.create({
       data: {
-        email: 'manager@test.com',
-        fullName: 'Manager',
-        phone: '111',
+        email: "manager@test.com",
+        fullName: "Manager",
+        phone: "111",
         password,
         role: Role.AFFILIATE,
-        referralCode: 'MGR01',
+        referralCode: "MGR01",
       },
     });
     managerId = manager.id;
@@ -48,12 +50,12 @@ describe('Admin Businesses & Commissions (e2e)', () => {
     // 2. Create Affiliate (referred by manager)
     const affiliate = await prismaService.user.create({
       data: {
-        email: 'aff@test.com',
-        fullName: 'Affiliate',
-        phone: '222',
+        email: "aff@test.com",
+        fullName: "Affiliate",
+        phone: "222",
         password,
         role: Role.AFFILIATE,
-        referralCode: 'AFF01',
+        referralCode: "AFF01",
         referrerId: managerId,
       },
     });
@@ -62,24 +64,24 @@ describe('Admin Businesses & Commissions (e2e)', () => {
     // 3. Create Admin
     await prismaService.user.create({
       data: {
-        email: 'admin@test.com',
-        fullName: 'Admin',
-        phone: '333',
+        email: "admin@test.com",
+        fullName: "Admin",
+        phone: "333",
         password,
         role: Role.ADMIN,
-        referralCode: 'ADM01',
+        referralCode: "ADM01",
       },
     });
 
     // 4. Create Business for Affiliate
     const business = await prismaService.business.create({
       data: {
-        businessName: 'Biz 1',
-        ownerName: 'Owner',
-        email: 'biz@test.com',
-        phone: '000',
+        businessName: "Biz 1",
+        ownerName: "Owner",
+        email: "biz@test.com",
+        phone: "000",
         planType: PlanType.BASIC,
-        referralCode: 'AFF01',
+        referralCode: "AFF01",
         affiliateId: affiliateId,
         subscriptionAmount: 10000,
         status: BusinessStatus.TRIAL,
@@ -89,9 +91,11 @@ describe('Admin Businesses & Commissions (e2e)', () => {
 
     // Login Admin
     const loginRes = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ email: 'admin@test.com', password: 'password123' });
-    adminCookies = (loginRes.headers['set-cookie'] as any).map((c: string) => c.split(';')[0]);
+      .post("/auth/login")
+      .send({ email: "admin@test.com", password: "password123" });
+    adminCookies = (loginRes.headers["set-cookie"] as any).map(
+      (c: string) => c.split(";")[0],
+    );
   });
 
   afterAll(async () => {
@@ -101,11 +105,11 @@ describe('Admin Businesses & Commissions (e2e)', () => {
     await app.close();
   });
 
-  it('should allow admin to activate business and trigger commissions', async () => {
+  it("should allow admin to activate business and trigger commissions", async () => {
     // 1. Activate Business
     await request(app.getHttpServer())
       .patch(`/businesses/${businessId}/status`)
-      .set('Cookie', adminCookies)
+      .set("Cookie", adminCookies)
       .send({ status: BusinessStatus.ACTIVE })
       .expect(200);
 
@@ -115,9 +119,9 @@ describe('Admin Businesses & Commissions (e2e)', () => {
     });
 
     expect(commissions.length).toBe(2);
-    
-    const direct = commissions.find(c => c.type === 'DIRECT');
-    const indirect = commissions.find(c => c.type === 'INDIRECT');
+
+    const direct = commissions.find((c) => c.type === "DIRECT");
+    const indirect = commissions.find((c) => c.type === "INDIRECT");
 
     expect(Number(direct?.amount)).toBe(1500); // 15% of 10000
     expect(direct?.userId).toBe(affiliateId);
@@ -126,8 +130,12 @@ describe('Admin Businesses & Commissions (e2e)', () => {
     expect(indirect?.userId).toBe(managerId);
 
     // 3. Check User Balances
-    const affUser = await prismaService.user.findUnique({ where: { id: affiliateId } });
-    const mgrUser = await prismaService.user.findUnique({ where: { id: managerId } });
+    const affUser = await prismaService.user.findUnique({
+      where: { id: affiliateId },
+    });
+    const mgrUser = await prismaService.user.findUnique({
+      where: { id: managerId },
+    });
 
     expect(Number(affUser?.totalEarnings)).toBe(1500);
     expect(Number(mgrUser?.totalEarnings)).toBe(500);

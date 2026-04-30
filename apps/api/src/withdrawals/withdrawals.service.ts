@@ -6,7 +6,7 @@ import { AuditService } from '../prisma/audit.service';
 import { PaystackService } from '../payments/paystack.service';
 import { SettingsService } from '../settings/settings.service';
 
-type UserWithPaystack = User & { paystackSubaccountId?: string | null };
+type UserWithPaystack = User & { paystackRecipientCode?: string | null };
 
 @Injectable()
 export class WithdrawalsService {
@@ -214,12 +214,12 @@ export class WithdrawalsService {
             `Bulk withdrawal processed: ${withdrawal.id}`
           );
 
-          // 4. Initiate Paystack transfer if subaccount exists
-          if (user.paystackSubaccountId) {
+          // 4. Initiate Paystack transfer if recipient exists
+          if (user.paystackRecipientCode) {
             try {
               await this.paystackService.initiateTransfer(
                 amount,
-                user.paystackSubaccountId,
+                user.paystackRecipientCode,
                 `WD-BULK-${withdrawal.id}`
               );
             } catch (err) {
@@ -265,11 +265,11 @@ export class WithdrawalsService {
   }
 
   private async processApproval(withdrawal: any, adminId?: string) {
-    // 1. Initiate Paystack transfer if subaccount exists
-    if ((withdrawal.user as UserWithPaystack).paystackSubaccountId) {
+    // 1. Initiate Paystack transfer if recipient exists
+    if ((withdrawal.user as UserWithPaystack).paystackRecipientCode) {
       await this.paystackService.initiateTransfer(
         Number(withdrawal.amount),
-        (withdrawal.user as UserWithPaystack).paystackSubaccountId!,
+        (withdrawal.user as UserWithPaystack).paystackRecipientCode!,
         `WD-${withdrawal.id}`
       );
     }

@@ -26,11 +26,41 @@ export class PaystackService {
     }
   }
 
+  async listBanks() {
+    try {
+      const response = await this.paystack.misc.listBanks({ country: 'nigeria' });
+      return response.data;
+    } catch (error) {
+      this.logger.error('Failed to list banks', error);
+      throw error;
+    }
+  }
+
+  async createTransferRecipient(data: {
+    name: string;
+    account_number: string;
+    bank_code: string;
+  }) {
+    try {
+      const response = await this.paystack.recipient.create({
+        type: 'nuban',
+        name: data.name,
+        account_number: data.account_number,
+        bank_code: data.bank_code,
+        currency: 'NGN',
+      });
+      return response.data;
+    } catch (error) {
+      this.logger.error('Failed to create transfer recipient', error);
+      throw error;
+    }
+  }
+
   async initiateTransfer(amount: number, recipient: string, reference: string) {
     try {
       const response = await this.paystack.transfer.initiate({
         source: 'balance',
-        amount: amount * 100, // Paystack uses kobo
+        amount: Math.round(amount * 100), // Ensure it's an integer
         recipient,
         reference,
       });

@@ -92,7 +92,7 @@ describe('WithdrawalsService Bulk', () => {
           accountNumber: '123',
           pendingEarnings: new Prisma.Decimal(10000),
           kycStatus: KycStatus.VERIFIED,
-          paystackSubaccountId: 'sub1',
+          paystackRecipientCode: 'sub1',
           status: 'ACTIVE',
         },
         {
@@ -102,7 +102,7 @@ describe('WithdrawalsService Bulk', () => {
           accountNumber: '456',
           pendingEarnings: new Prisma.Decimal(6000),
           kycStatus: KycStatus.VERIFIED,
-          paystackSubaccountId: null,
+          paystackRecipientCode: null,
           status: 'ACTIVE',
         },
       ];

@@ -1,10 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ApiKeysService } from './api-keys.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { UnauthorizedException, NotFoundException } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import { Test, TestingModule } from "@nestjs/testing";
+import { ApiKeysService } from "./api-keys.service";
+import { PrismaService } from "../prisma/prisma.service";
+import { UnauthorizedException, NotFoundException } from "@nestjs/common";
+import * as bcrypt from "bcryptjs";
 
-describe('ApiKeysService', () => {
+describe("ApiKeysService", () => {
   let service: ApiKeysService;
   let prisma: PrismaService;
 
@@ -33,17 +33,19 @@ describe('ApiKeysService', () => {
     jest.clearAllMocks();
   });
 
-  describe('generate', () => {
-    it('should generate a new API key and return raw key', async () => {
-      const dto = { name: 'Test Key' };
-      const adminId = 'admin-123';
-      
-      (mockPrisma.apiKey.create as jest.Mock).mockImplementation(({ data }) => ({
-        id: 'key-id',
-        name: data.name,
-        prefix: data.prefix,
-        createdAt: new Date(),
-      }));
+  describe("generate", () => {
+    it("should generate a new API key and return raw key", async () => {
+      const dto = { name: "Test Key" };
+      const adminId = "admin-123";
+
+      (mockPrisma.apiKey.create as jest.Mock).mockImplementation(
+        ({ data }) => ({
+          id: "key-id",
+          name: data.name,
+          prefix: data.prefix,
+          createdAt: new Date(),
+        }),
+      );
 
       const result = await service.generate(adminId, dto);
 
@@ -60,11 +62,11 @@ describe('ApiKeysService', () => {
     });
   });
 
-  describe('validateKey', () => {
-    it('should pass for a valid key', async () => {
-      const rawKey = 'vem_12345678abcdef1234567890abcdef1234567890abcdef';
+  describe("validateKey", () => {
+    it("should pass for a valid key", async () => {
+      const rawKey = "vem_12345678abcdef1234567890abcdef1234567890abcdef";
       const keyHash = await bcrypt.hash(rawKey, 10);
-      const mockKey = { id: 'key-id', keyHash };
+      const mockKey = { id: "key-id", keyHash };
 
       (mockPrisma.apiKey.findMany as jest.Mock).mockResolvedValue([mockKey]);
       (mockPrisma.apiKey.update as jest.Mock).mockResolvedValue({});
@@ -73,32 +75,38 @@ describe('ApiKeysService', () => {
       expect(mockPrisma.apiKey.findMany).toHaveBeenCalled();
     });
 
-    it('should throw UnauthorizedException for invalid format', async () => {
-      await expect(service.validateKey('invalid-key')).rejects.toThrow(UnauthorizedException);
+    it("should throw UnauthorizedException for invalid format", async () => {
+      await expect(service.validateKey("invalid-key")).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
-    it('should throw UnauthorizedException if no key matches prefix', async () => {
-      const rawKey = 'vem_12345678abcdef';
+    it("should throw UnauthorizedException if no key matches prefix", async () => {
+      const rawKey = "vem_12345678abcdef";
       (mockPrisma.apiKey.findMany as jest.Mock).mockResolvedValue([]);
 
-      await expect(service.validateKey(rawKey)).rejects.toThrow(UnauthorizedException);
+      await expect(service.validateKey(rawKey)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
-    it('should throw UnauthorizedException if hash does not match', async () => {
-      const rawKey = 'vem_12345678abcdef';
-      const mockKey = { id: 'key-id', keyHash: 'wrong-hash' };
+    it("should throw UnauthorizedException if hash does not match", async () => {
+      const rawKey = "vem_12345678abcdef";
+      const mockKey = { id: "key-id", keyHash: "wrong-hash" };
 
       (mockPrisma.apiKey.findMany as jest.Mock).mockResolvedValue([mockKey]);
 
-      await expect(service.validateKey(rawKey)).rejects.toThrow(UnauthorizedException);
+      await expect(service.validateKey(rawKey)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 
-  describe('revoke', () => {
-    it('should mark key as inactive', async () => {
-      const keyId = 'key-id';
-      const adminId = 'admin-123';
-      const mockKey = { id: keyId, name: 'Test', isActive: true };
+  describe("revoke", () => {
+    it("should mark key as inactive", async () => {
+      const keyId = "key-id";
+      const adminId = "admin-123";
+      const mockKey = { id: keyId, name: "Test", isActive: true };
 
       (mockPrisma.apiKey.findUnique as jest.Mock).mockResolvedValue(mockKey);
       (mockPrisma.apiKey.update as jest.Mock).mockResolvedValue({});
@@ -111,9 +119,11 @@ describe('ApiKeysService', () => {
       });
     });
 
-    it('should throw NotFoundException if key does not exist', async () => {
+    it("should throw NotFoundException if key does not exist", async () => {
       (mockPrisma.apiKey.findUnique as jest.Mock).mockResolvedValue(null);
-      await expect(service.revoke('non-existent', 'admin')).rejects.toThrow(NotFoundException);
+      await expect(service.revoke("non-existent", "admin")).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });
