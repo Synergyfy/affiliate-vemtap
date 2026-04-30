@@ -181,8 +181,23 @@ model Withdrawal {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   
+  bulkRunId       String?
+  bulkRun         BulkWithdrawalRun? @relation(fields: [bulkRunId], references: [id])
+  
   @@index([userId])
   @@index([status])
+  @@index([bulkRunId])
+}
+
+model BulkWithdrawalRun {
+  id            String       @id @default(uuid())
+  adminId       String
+  totalAmount   Decimal
+  userCount     Int
+  status        String       @default("COMPLETED")
+  
+  createdAt     DateTime     @default(now())
+  withdrawals   Withdrawal[]
 }
 
 enum WithdrawalStatus {

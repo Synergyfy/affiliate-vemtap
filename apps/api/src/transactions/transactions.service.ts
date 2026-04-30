@@ -22,4 +22,21 @@ export class TransactionsService {
       },
     });
   }
+
+  async createWithTx(tx: any, userId: string, type: TransactionType, amount: number, description: string) {
+    const user = await tx.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+    const balanceAfter = Number(user.pendingEarnings);
+
+    return tx.transaction.create({
+      data: {
+        userId,
+        type,
+        amount,
+        balanceAfter,
+        description,
+        reference: `TXN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      },
+    });
+  }
 }

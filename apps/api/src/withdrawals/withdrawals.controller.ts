@@ -78,4 +78,11 @@ export class WithdrawalsController {
   ) {
     return this.withdrawalsService.updateStatus(id, data.status, admin.id);
   }
+
+  @Post('bulk-trigger')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Trigger bulk end-of-month withdrawals (Admin only)' })
+  triggerBulkWithdrawals(@CurrentUser() admin: { id: string }) {
+    return this.withdrawalsService.triggerBulkWithdrawals(admin.id);
+  }
 }
