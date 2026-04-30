@@ -52,11 +52,31 @@ This file tracks what is built, what is in progress, and what is planned. Update
 
 | Feature | Status | Notes |
 |---|---|---|
-| Register a new business referral | 📋 | `POST /api/businesses` |
-| View own referred businesses | 📋 | `GET /api/businesses/me` |
+| Register a new business referral | ✅ | `POST /api/businesses` |
+| View own referred businesses | ✅ | `GET /api/businesses/me` |
 | Admin: view all businesses | 📋 | `GET /api/businesses` |
 | Admin: update business status | 📋 | `PATCH /api/businesses/:id/status` |
 | Auto-trigger commission on business payment | 📋 | Webhook or admin action |
+
+---
+
+## Network & Recruitment
+
+| Feature | Status | Notes |
+|---|---|---|
+| List direct recruits | ✅ | `GET /api/network/recruits` |
+| Network performance stats | ✅ | `GET /api/network/stats` |
+| Milestone progress tracking | ✅ | 30 agents / 100 businesses |
+
+---
+
+## Marketing Tools
+
+| Feature | Status | Notes |
+|---|---|---|
+| List tools | ✅ | `GET /api/tools` |
+| Admin: manage tools | ✅ | CRUD on `/api/tools` |
+| RolesGuard implementation | ✅ | Enforces Admin/SuperAdmin |
 
 ---
 

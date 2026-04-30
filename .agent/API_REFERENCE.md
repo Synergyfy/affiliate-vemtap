@@ -77,13 +77,33 @@ Both cookies are cleared on `logout` and `invalidate-all`.
 
 ---
 
-## Training (`/api/training`) — Planned
+## Businesses (`/api/businesses`)
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/training/modules` | ✅ JWT | List training modules |
-| POST | `/training/modules/:id/complete` | ✅ JWT (AFFILIATE) | Mark module complete |
-| GET | `/training/progress` | ✅ JWT (AFFILIATE) | Own training progress |
+| GET | `/businesses/me` | ✅ JWT | List user's referred businesses |
+| POST | `/businesses` | ✅ JWT | Register a new business referral |
+
+---
+
+## Network (`/api/network`)
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/network/recruits` | ✅ JWT | List direct recruits and their stats |
+| GET | `/network/stats` | ✅ JWT | Get milestone progress and network stats |
+
+---
+
+## Marketing Tools (`/api/tools`)
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/tools` | ✅ JWT | List all published tools |
+| GET | `/tools/:id` | ✅ JWT | Get a single tool |
+| POST | `/tools` | ✅ ADMIN+ | Create a new tool |
+| PATCH | `/tools/:id` | ✅ ADMIN+ | Update a tool |
+| DELETE | `/tools/:id` | ✅ ADMIN+ | Delete a tool |
 
 ---
 
