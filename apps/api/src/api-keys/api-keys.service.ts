@@ -20,8 +20,10 @@ export class ApiKeysService {
    * The raw key is bcrypt-hashed before storage.
    */
   async generate(adminId: string, dto: CreateApiKeyDto): Promise<{ id: string; name: string; prefix: string; rawKey: string; createdAt: Date }> {
-    const rawKey = `vem_${crypto.randomBytes(24).toString('hex')}`;
-    const prefix = rawKey.substring(0, 8);
+    const prefixId = crypto.randomBytes(4).toString('hex'); // 8 chars
+    const secret = crypto.randomBytes(24).toString('hex'); // 48 chars
+    const rawKey = `vem_${prefixId}${secret}`;
+    const prefix = `vem_${prefixId}`;
     const keyHash = await bcrypt.hash(rawKey, 10);
 
     const apiKey = await this.prisma.apiKey.create({
@@ -50,19 +52,22 @@ export class ApiKeysService {
    * Throws UnauthorizedException on failure — never leaks reason.
    */
   async validateKey(rawKey: string): Promise<void> {
-    if (!rawKey) {
-      throw new UnauthorizedException('API key required');
+    if (!rawKey || !rawKey.startsWith('vem_') || rawKey.length < 12) {
+      throw new UnauthorizedException('Invalid API key format');
     }
 
-    // Fetch all active keys and compare — bcrypt compare is the source of truth
-    const activeKeys = await this.prisma.apiKey.findMany({
-      where: { isActive: true },
+    // Extract prefix (vem_ + 8 hex chars)
+    const prefix = rawKey.substring(0, 12);
+
+    // Fetch keys with this prefix
+    const keys = await this.prisma.apiKey.findMany({
+      where: { prefix, isActive: true },
       select: { id: true, keyHash: true },
     });
 
     let matchedId: string | null = null;
 
-    for (const key of activeKeys) {
+    for (const key of keys) {
       const isMatch = await bcrypt.compare(rawKey, key.keyHash);
       if (isMatch) {
         matchedId = key.id;

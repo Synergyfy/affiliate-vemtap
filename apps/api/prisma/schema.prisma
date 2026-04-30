@@ -461,5 +461,6 @@ model ApiKey {
   revokedAt   DateTime?
 
   @@index([keyHash])
+  @@index([prefix])
   @@index([isActive])
 }

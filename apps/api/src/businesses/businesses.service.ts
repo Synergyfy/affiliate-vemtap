@@ -96,9 +96,13 @@ export class BusinessesService {
   public async generateCommissions(business: any) {
     const amount = Number(business.subscriptionAmount);
     
+    // Fetch current rates from settings
+    const settings = await this.prisma.platformSettings.findFirst();
+    const directRate = settings?.directCommissionRate ? Number(settings.directCommissionRate) : 0.15;
+    const indirectRate = settings?.indirectCommissionRate ? Number(settings.indirectCommissionRate) : 0.05;
+
     return this.prisma.$transaction(async (tx) => {
-      // 1. Direct Commission (15%)
-      const directRate = 0.15;
+      // 1. Direct Commission
       const directAmount = amount * directRate;
       
       await tx.commission.create({
@@ -108,7 +112,7 @@ export class BusinessesService {
           status: 'PENDING',
           userId: business.affiliateId,
           businessId: business.id,
-          description: `Direct commission (15%) from ${business.businessName}`,
+          description: `Direct commission (${directRate * 100}%) from ${business.businessName}`,
         },
       });
 
@@ -121,9 +125,8 @@ export class BusinessesService {
         },
       });
 
-      // 2. Manager Override (5%)
+      // 2. Manager Override (Indirect)
       if (business.affiliate.referrerId) {
-        const indirectRate = 0.05;
         const indirectAmount = amount * indirectRate;
 
         await tx.commission.create({
@@ -134,7 +137,7 @@ export class BusinessesService {
             userId: business.affiliate.referrerId,
             businessId: business.id,
             subAffiliateId: business.affiliateId,
-            description: `Indirect commission (5%) from ${business.businessName} (via ${business.affiliate.fullName})`,
+            description: `Indirect commission (${indirectRate * 100}%) from ${business.businessName} (via ${business.affiliate.fullName})`,
           },
         });
 
