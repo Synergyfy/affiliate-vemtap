@@ -5,30 +5,40 @@ import { PrismaService } from '../prisma/prisma.service';
 export class NetworkService {
   constructor(private prisma: PrismaService) {}
 
-  async getRecruits(userId: string) {
-    const recruits = await this.prisma.user.findMany({
-      where: { referrerId: userId },
-      select: {
-        id: true,
-        fullName: true,
-        email: true,
-        role: true,
-        createdAt: true,
-        _count: {
-          select: { businesses: true },
+  async getRecruits(userId: string, pagination: { skip?: number; take?: number }) {
+    const [data, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where: { referrerId: userId },
+        skip: pagination.skip,
+        take: pagination.take,
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          status: true,
+          createdAt: true,
+          totalEarnings: true,
+          _count: {
+            select: { referrals: true, businesses: true },
+          },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.user.count({ where: { referrerId: userId } }),
+    ]);
 
-    return recruits.map(r => ({
+    const recruits = data.map(r => ({
       id: r.id,
       fullName: r.fullName,
       email: r.email,
-      role: r.role,
-      dateJoined: r.createdAt,
-      businessesCount: r._count.businesses,
+      status: r.status,
+      createdAt: r.createdAt,
+      totalEarnings: Number(r.totalEarnings),
+      referralCount: r._count.referrals,
+      businessCount: r._count.businesses,
     }));
+
+    return { data: recruits, total };
   }
 
   async getStats(userId: string) {

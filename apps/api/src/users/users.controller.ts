@@ -1,0 +1,88 @@
+import { 
+  Controller, 
+  Get, 
+  Patch, 
+  Body, 
+  Param,
+  Query,
+  UseGuards 
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiOkResponse, ApiQuery } from '@nestjs/swagger';
+import { UsersService } from './users.service';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UpdateUserStatusDto, UpdateKycDto } from './dto/admin-user.dto';
+import { UserResponseDto, PaginatedUserResponseDto } from './dto/user-response.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '@prisma/client';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+
+@ApiTags('users')
+@ApiBearerAuth()
+@Controller('users')
+@UseGuards(JwtAuthGuard, RolesGuard)
+export class UsersController {
+  constructor(private readonly usersService: UsersService) {}
+
+  @Get('profile')
+  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get current user profile' })
+  @ApiOkResponse({ type: UserResponseDto })
+  getProfile(@CurrentUser() user: { id: string }) {
+    return this.usersService.findById(user.id);
+  }
+
+  @Patch('profile')
+  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Update current user profile' })
+  @ApiOkResponse({ type: UserResponseDto })
+  updateProfile(@CurrentUser() user: { id: string }, @Body() dto: UpdateProfileDto) {
+    return this.usersService.update(user.id, dto);
+  }
+
+  // --- ADMIN ENDPOINTS ---
+
+  @Get()
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'List all users (Admin only)' })
+  @ApiOkResponse({ type: PaginatedUserResponseDto })
+  async findAllAdmin(@Query() paginationDto: PaginationDto) {
+    const { data, total } = await this.usersService.findAllAdmin({
+      skip: paginationDto.skip,
+      take: paginationDto.take,
+    });
+
+    return {
+      data,
+      meta: {
+        total,
+        page: paginationDto.page,
+        limit: paginationDto.limit,
+        totalPages: Math.ceil(total / (paginationDto.limit || 10)),
+      },
+    };
+  }
+
+  @Get(':id')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get user details by ID (Admin only)' })
+  findOneAdmin(@Param('id') id: string) {
+    return this.usersService.findOneAdmin(id);
+  }
+
+  @Patch(':id/status')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Update user status (Admin only)' })
+  updateStatus(@Param('id') id: string, @Body() dto: UpdateUserStatusDto) {
+    return this.usersService.updateStatus(id, dto);
+  }
+
+  @Patch(':id/kyc')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Approve/Reject KYC (Admin only)' })
+  updateKyc(@Param('id') id: string, @Body() dto: UpdateKycDto) {
+    return this.usersService.updateKyc(id, dto);
+  }
+}

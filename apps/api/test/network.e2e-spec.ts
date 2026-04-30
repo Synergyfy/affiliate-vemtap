@@ -87,10 +87,10 @@ describe('NetworkController (e2e)', () => {
       .set('Cookie', cookies)
       .expect(200);
 
-    expect(Array.isArray(res.body)).toBeTruthy();
-    expect(res.body.length).toBe(1);
-    expect(res.body[0].fullName).toBe('Recruit User');
-    expect(res.body[0].businessesCount).toBe(1);
+    expect(Array.isArray(res.body.data)).toBeTruthy();
+    expect(res.body.data.length).toBe(1);
+    expect(res.body.data[0].fullName).toBe('Recruit User');
+    expect(res.body.data[0].businessCount).toBe(1);
   });
 
   it('/network/stats (GET) - should return milestone stats', async () => {

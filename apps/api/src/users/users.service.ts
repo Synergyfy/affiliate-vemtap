@@ -70,10 +70,100 @@ export class UsersService {
     return result;
   }
 
+  async update(userId: string, dto: any): Promise<Omit<User, 'password'>> {
+    const data = { ...dto };
+
+    // Check if phone or email is being updated and if it conflicts
+    if (data.phone || data.email) {
+      const existing = await this.prisma.user.findFirst({
+        where: {
+          AND: [
+            { id: { not: userId } },
+            { OR: [
+              data.email ? { email: data.email } : {},
+              data.phone ? { phone: data.phone } : {},
+            ].filter(q => Object.keys(q).length > 0) }
+          ]
+        },
+      });
+
+      if (existing) {
+        throw new ConflictException('Email or phone already in use');
+      }
+    }
+
+    if (data.password) {
+      data.password = await bcrypt.hash(data.password, 10);
+    }
+
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data,
+    });
+
+    const { password: _, ...result } = user;
+    return result;
+  }
+
   async incrementTokenVersion(userId: string): Promise<void> {
     await this.prisma.user.update({
       where: { id: userId },
       data: { tokenVersion: { increment: 1 } },
+    });
+  }
+
+  async findAllAdmin(pagination: { skip?: number; take?: number }) {
+    const [data, total] = await Promise.all([
+      this.prisma.user.findMany({
+        skip: pagination.skip,
+        take: pagination.take,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          email: true,
+          phone: true,
+          fullName: true,
+          role: true,
+          status: true,
+          kycStatus: true,
+          referralCode: true,
+          createdAt: true,
+          totalEarnings: true,
+        },
+      }),
+      this.prisma.user.count(),
+    ]);
+    return { data, total };
+  }
+
+  async findOneAdmin(id: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      include: {
+        referrer: {
+          select: { id: true, fullName: true, referralCode: true },
+        },
+        _count: {
+          select: { referrals: true, businesses: true },
+        },
+      },
+    });
+    if (!user) return null;
+    const { password: _, ...result } = user;
+    return result;
+  }
+
+  async updateStatus(id: string, data: any) {
+    return this.prisma.user.update({
+      where: { id },
+      data: { status: data.status },
+    });
+  }
+
+  async updateKyc(id: string, data: any) {
+    return this.prisma.user.update({
+      where: { id },
+      data: { kycStatus: data.status },
     });
   }
 

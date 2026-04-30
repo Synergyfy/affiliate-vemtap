@@ -116,8 +116,8 @@ describe('ToolsController (e2e)', () => {
         .set('Cookie', affiliateCookies)
         .expect(200);
 
-      expect(Array.isArray(res.body)).toBeTruthy();
-      expect(res.body.length).toBeGreaterThan(0);
+      expect(Array.isArray(res.body.data)).toBeTruthy();
+      expect(res.body.data.length).toBeGreaterThan(0);
     });
 
     it('should block unauthenticated access', async () => {

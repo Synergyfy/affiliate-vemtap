@@ -6,11 +6,18 @@ import { CreateToolDto, UpdateToolDto } from './dto/tool.dto';
 export class ToolsService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(onlyPublished = true) {
-    return this.prisma.marketingTool.findMany({
-      where: onlyPublished ? { isPublished: true } : {},
-      orderBy: { createdAt: 'desc' },
-    });
+  async findAll(onlyPublished = true, pagination: { skip?: number; take?: number } = {}) {
+    const where = onlyPublished ? { isPublished: true } : {};
+    const [data, total] = await Promise.all([
+      this.prisma.marketingTool.findMany({
+        where,
+        skip: pagination.skip,
+        take: pagination.take,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.marketingTool.count({ where }),
+    ]);
+    return { data, total };
   }
 
   async findOne(id: string) {

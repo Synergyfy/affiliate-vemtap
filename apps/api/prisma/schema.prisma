@@ -47,6 +47,7 @@ model User {
   trainingProgress TrainingProgress[]
   
   tokenVersion    Int       @default(0)
+  paystackSubaccountId String?
   
   @@index([referralCode])
   @@index([referredBy])
@@ -442,4 +443,23 @@ enum ToolType {
   VIDEO
   PDF_GUIDE
   LOGO
+}
+
+model ApiKey {
+  id          String    @id @default(uuid())
+
+  name        String                        // Human-readable label e.g. "Vemtap Production"
+  keyHash     String    @unique             // Bcrypt hash of the raw key
+  prefix      String                        // First 8 chars of key for display e.g. "vem_k1a2"
+
+  createdById String                        // Admin user who generated the key
+
+  isActive    Boolean   @default(true)
+  lastUsedAt  DateTime?
+
+  createdAt   DateTime  @default(now())
+  revokedAt   DateTime?
+
+  @@index([keyHash])
+  @@index([isActive])
 }

@@ -38,13 +38,14 @@ This file tracks what is built, what is in progress, and what is planned. Update
 |---|---|---|
 | User creation with referral code gen | ✅ | Format: VEM-XXXXXX |
 | Referral chain linking (referrerId) | ✅ | Set on signup if sponsor code provided |
-| View own profile | 📋 | `GET /api/users/me` |
-| Update profile / bank details | 📋 | `PATCH /api/users/me` |
-| KYC document submission | 📋 | `POST /api/users/me/kyc` |
-| Admin: list all affiliates | 📋 | `GET /api/users` |
-| Admin: get affiliate by ID | 📋 | `GET /api/users/:id` |
-| Admin: approve/reject KYC | 📋 | `PATCH /api/users/:id/kyc` |
-| Admin: suspend/deactivate user | 📋 | `PATCH /api/users/:id/status` |
+| View user profile info | ✅ | `GET /api/users/profile` |
+| Update personal info | ✅ | `PATCH /api/users/profile` |
+| Update bank details | ✅ | `PATCH /api/users/profile` |
+| Update password | ✅ | `PATCH /api/users/profile` |
+| Admin: list all affiliates | ✅ | `GET /api/users` |
+| Admin: get affiliate by ID | ✅ | `GET /api/users/:id` |
+| Admin: approve/reject KYC | ✅ | `PATCH /api/users/:id/kyc` |
+| Admin: suspend/deactivate user | ✅ | `PATCH /api/users/:id/status` |
 
 ---
 
@@ -54,9 +55,9 @@ This file tracks what is built, what is in progress, and what is planned. Update
 |---|---|---|
 | Register a new business referral | ✅ | `POST /api/businesses` |
 | View own referred businesses | ✅ | `GET /api/businesses/me` |
-| Admin: view all businesses | 📋 | `GET /api/businesses` |
-| Admin: update business status | 📋 | `PATCH /api/businesses/:id/status` |
-| Auto-trigger commission on business payment | 📋 | Webhook or admin action |
+| Admin: view all businesses | ✅ | `GET /api/businesses` |
+| Admin: update business status | ✅ | `PATCH /api/businesses/:id/status` |
+| Auto-trigger commission on business payment | ✅ | 15% Direct / 5% Manager Override |
 
 ---
 
@@ -84,12 +85,12 @@ This file tracks what is built, what is in progress, and what is planned. Update
 
 | Feature | Status | Notes |
 |---|---|---|
-| View own commissions | 📋 | `GET /api/commissions/me` |
-| Admin: list all commissions | 📋 | `GET /api/commissions` |
-| Admin: approve commission | 📋 | `PATCH /api/commissions/:id/approve` |
-| Admin: reject commission | 📋 | `PATCH /api/commissions/:id/reject` |
+| View own commissions | ✅ | `GET /api/commissions/me` |
+| Admin: list all commissions | ✅ | `GET /api/commissions` |
+| Admin: approve commission | ✅ | `PATCH /api/commissions/:id/status` |
+| Admin: reject commission | ✅ | `PATCH /api/commissions/:id/status` |
 | Super admin: issue manual bonus | 📋 | `POST /api/commissions/manual` |
-| Commission calculation (direct + indirect) | 📋 | Service logic |
+| Commission calculation (direct + indirect) | ✅ | Service logic |
 
 ---
 
@@ -97,11 +98,11 @@ This file tracks what is built, what is in progress, and what is planned. Update
 
 | Feature | Status | Notes |
 |---|---|---|
-| Create withdrawal request | 📋 | KYC-verified users only |
-| View own withdrawals | 📋 | `GET /api/withdrawals/me` |
-| Admin: list all withdrawals | 📋 | `GET /api/withdrawals` |
-| Admin: approve/reject withdrawal | 📋 | `PATCH /api/withdrawals/:id/approve` |
-| Minimum withdrawal amount enforcement | 📋 | Business rule in service |
+| Create withdrawal request | ✅ | KYC-verified users only |
+| View own withdrawals | ✅ | `GET /api/withdrawals/me` |
+| Admin: list all withdrawals | ✅ | `GET /api/withdrawals` |
+| Admin: approve/reject withdrawal | ✅ | `PATCH /api/withdrawals/:id/status` |
+| Minimum withdrawal amount enforcement | ✅ | Business rule in service |
 | Withdrawal fee calculation | 📋 | `netAmount = amount - fee` |
 
 ---

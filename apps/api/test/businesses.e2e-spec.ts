@@ -77,7 +77,7 @@ describe('BusinessesController (e2e)', () => {
       .set('Cookie', cookies)
       .expect(200);
 
-    expect(Array.isArray(res.body)).toBeTruthy();
-    expect(res.body.length).toBe(1);
+    expect(Array.isArray(res.body.data)).toBeTruthy();
+    expect(res.body.data.length).toBe(1);
   });
 });
