@@ -17,13 +17,21 @@ import {
   Star,
   MapPin,
   ChevronRight,
-  Zap
+  Zap,
+  UserPlus,
+  Bell,
+  AlertTriangle,
+  LineChart as LineChartIcon,
+  BarChart3,
+  TrendingDown,
+  ShieldCheck,
+  LayoutDashboard
 } from 'lucide-react';
-import DashboardLayout from '@/components/dashboard/DashboardLayout';
+import DashboardLayout, { useDashboard } from '@/components/dashboard/DashboardLayout';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   AreaChart, 
   Area, 
@@ -33,6 +41,9 @@ import {
   Tooltip, 
   ResponsiveContainer 
 } from 'recharts';
+import AffiliateAgreementModal from '@/components/dashboard/AffiliateAgreementModal';
+import OnboardingModal from '@/components/dashboard/OnboardingModal';
+import WhatsAppGroupModal from '@/components/dashboard/WhatsAppGroupModal';
 
 const data = [
   { name: 'Jan', earnings: 4000 },
@@ -45,15 +56,45 @@ const data = [
 ];
 
 const stats = [
-  { name: 'Total Earnings', value: '₦124,500', icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+12.5%', trendUp: true },
-  { name: 'Available Balance', value: '₦45,200', icon: Wallet, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: 'Ready', trendUp: true },
-  { name: 'Businesses Referred', value: '12', icon: Briefcase, color: 'text-orange-600', bg: 'bg-orange-50', trend: '+2 this month', trendUp: true },
-  { name: 'Active Subscriptions', value: '8', icon: Users, color: 'text-purple-600', bg: 'bg-purple-50', trend: '75% retention', trendUp: true },
+  { name: 'Monthly Earnings', value: '₦12,500', icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+12.5%', trendUp: true },
+  { name: 'Total Earnings', value: '₦124,500', icon: Wallet, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: '₦45,200 Bal', trendUp: true },
+  { name: 'Active Businesses', value: '12', icon: Briefcase, color: 'text-orange-600', bg: 'bg-orange-50', trend: '+2 this week', trendUp: true },
+  { name: 'Active Affiliates', value: '8', icon: Users, color: 'text-purple-600', bg: 'bg-purple-50', trend: 'Manager Only', trendUp: true, isManagerOnly: true },
 ];
 
-export default function DashboardOverview() {
-  const { user } = useAuth();
+const chartData = [
+  { name: 'Jan', earnings: 4000 },
+  { name: 'Feb', earnings: 3000 },
+  { name: 'Mar', earnings: 2000 },
+  { name: 'Apr', earnings: 2780 },
+  { name: 'May', earnings: 1890 },
+  { name: 'Jun', earnings: 2390 },
+  { name: 'Jul', earnings: 3490 },
+];
+
+const recentActivity = [
+  { title: 'New Business', desc: 'Tech Solutions signed up', type: 'referral', time: new Date().toISOString() },
+  { title: 'Commission Paid', desc: '₦5,000 for April referrals', type: 'commission', time: new Date().toISOString() },
+];
+
+const topAffiliates = [
+  { name: 'Alex Johnson', earnings: 45000, rank: 1, avatar: '' },
+  { name: 'Sarah Smith', earnings: 38000, rank: 2, avatar: '' },
+  { name: 'David Lee', earnings: 32000, rank: 3, avatar: '' },
+];
+
+function DashboardOverviewContent() {
+  const { user, updateUser } = useAuth();
   const { showToast } = useToast();
+  const { setIsNotificationsOpen } = useDashboard();
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+
+  // Milestone logic
+  const currentProgress = 12;
+  const milestoneGoal = 20;
+  const progressPercent = (currentProgress / milestoneGoal) * 100;
+
+  const displayStats = stats;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -62,13 +103,23 @@ export default function DashboardOverview() {
     return () => clearTimeout(timer);
   }, [showToast]);
 
+  const handleSignAgreement = (name: string, date: string) => {
+    updateUser({ hasSignedAgreement: true });
+    showToast('Agreement signed successfully!', 'success');
+    setShowWhatsAppModal(true);
+  };
+
+  const handleJoinWhatsApp = () => {
+    setShowWhatsAppModal(false);
+  };
+
   return (
-    <DashboardLayout>
+    <>
       <div className="space-y-8">
         {/* Welcome & Milestone Section */}
         <div className="grid lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
-            <h2 className="text-3xl font-bold text-slate-900">Welcome back, {user?.fullName?.split(' ')[0] || 'John'}!</h2>
+            <h2 className="text-3xl font-bold text-slate-900">Welcome back, {user?.firstName || 'Affiliate'}!</h2>
             <p className="text-slate-500">Here&apos;s what&apos;s happening with your affiliate account today.</p>
           </div>
           
@@ -83,17 +134,21 @@ export default function DashboardOverview() {
                 <span className="bg-white/20 px-2 py-1 rounded-lg text-[10px] font-bold">₦2,000 BONUS</span>
               </div>
               <h4 className="text-lg font-bold mb-1">Unlock &quot;Active Earner&quot;</h4>
-              <p className="text-blue-100 text-xs mb-4">Refer 3 more businesses to reach this level.</p>
+              <p className="text-blue-100 text-xs mb-4">
+                {currentProgress >= milestoneGoal 
+                  ? "Milestone reached! Bonus applied." 
+                  : `Refer ${milestoneGoal - currentProgress} more businesses to reach this level.`}
+              </p>
               <div className="h-2 w-full bg-blue-700 rounded-full overflow-hidden mb-2">
                 <motion.div 
                   initial={{ width: 0 }}
-                  animate={{ width: '40%' }}
+                  animate={{ width: `${progressPercent}%` }}
                   className="h-full bg-white"
                 />
               </div>
               <div className="flex justify-between text-[10px] font-bold text-blue-100">
-                <span>2/5 Completed</span>
-                <span>40%</span>
+                <span>{currentProgress}/{milestoneGoal} Completed</span>
+                <span>{Math.round(progressPercent)}%</span>
               </div>
             </div>
           </div>
@@ -101,13 +156,16 @@ export default function DashboardOverview() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-          {stats.map((stat, idx) => (
+          {displayStats.map((stat: any, idx: number) => (
             <motion.div
               key={stat.name}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.1 }}
-              className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow"
+              className={cn(
+                "bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow",
+                stat.isManagerOnly && "opacity-60 grayscale-[0.5] cursor-not-allowed"
+              )}
             >
               <div className="flex flex-col sm:flex-row justify-between items-start gap-2 sm:gap-0 mb-3 sm:mb-4">
                 <div className={cn("p-2 sm:p-3 rounded-lg sm:rounded-xl", stat.bg)}>
@@ -123,6 +181,7 @@ export default function DashboardOverview() {
               </div>
               <p className="text-[10px] sm:text-sm font-medium text-slate-500 mb-0.5 sm:mb-1">{stat.name}</p>
               <h3 className="text-lg sm:text-2xl font-black text-slate-900">{stat.value}</h3>
+              {stat.isManagerOnly && <p className="text-[10px] font-bold text-blue-600 mt-2">Unlock Manager Status</p>}
             </motion.div>
           ))}
         </div>
@@ -141,7 +200,7 @@ export default function DashboardOverview() {
               </div>
               <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={data}>
+                  <AreaChart data={chartData}>
                     <defs>
                       <linearGradient id="colorEarnings" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1}/>
@@ -183,19 +242,86 @@ export default function DashboardOverview() {
               </div>
             </div>
 
-            {/* Smart Targeting Suggestions */}
+            {/* Section F: Earnings Forecast */}
+            <div className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-8 opacity-5 -rotate-12 transition-transform group-hover:scale-110">
+                <LineChartIcon className="w-32 h-32 text-slate-900" />
+              </div>
+              <div className="flex items-center justify-between mb-8 relative z-10">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">Earnings Forecast</h3>
+                  <p className="text-xs text-slate-500 mt-1">Projected income based on 12 active businesses</p>
+                </div>
+                <div className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border border-blue-100">
+                  Estimated
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-8 relative z-10">
+                <div className="space-y-6">
+                  <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-blue-600 shadow-sm">
+                      <BarChart3 className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Expected Next Month</p>
+                      <h4 className="text-2xl font-black text-slate-900">₦28,400</h4>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-blue-600 rounded-2xl shadow-xl shadow-blue-100 text-white">
+                    <p className="text-[10px] font-black opacity-80 uppercase tracking-widest mb-1">Potential Total (12 Months)</p>
+                    <h4 className="text-2xl font-black">₦340,800</h4>
+                    <p className="text-[10px] opacity-70 mt-2 font-medium italic">*Projected earnings if you reach Manager status</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 mb-2">
+                    <h5 className="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-2 flex items-center gap-2">
+                      <Trophy className="w-3 h-3 text-blue-600" />
+                      Manager Potential
+                    </h5>
+                    <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
+                      Reach targets <span className="text-blue-600 font-bold underline">within 90 days</span> to unlock these indirect earnings from your team.
+                    </p>
+                  </div>
+                  <div className="space-y-3 px-1">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-500 font-medium">Network Size</span>
+                      <span className="text-slate-900 font-bold">12 Affiliates</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-500 font-medium">Avg. Manager Share</span>
+                      <span className="text-slate-900 font-bold">₦2,366</span>
+                    </div>
+                    <div className="h-[1px] bg-slate-200 my-1" />
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-slate-900 font-black uppercase tracking-widest">Monthly Projection</span>
+                      <span className="text-sm text-blue-600 font-black">₦28,400</span>
+                    </div>
+                  </div>
+                  <Link href="/dashboard/network">
+                    <Button className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest h-10 shadow-lg shadow-blue-100">
+                      Become a Manager
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            {/* Section G: Daily Action Panel */}
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
               <div className="flex items-center gap-2 mb-6">
-                <div className="p-2 bg-orange-50 rounded-lg">
-                  <Target className="w-5 h-5 text-orange-600" />
+                <div className="p-2 bg-blue-50 rounded-lg">
+                  <Target className="w-5 h-5 text-blue-600" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900">Nearby Business Ideas</h3>
+                <h3 className="text-lg font-bold text-slate-900">Daily Action Panel</h3>
               </div>
               <div className="grid sm:grid-cols-3 gap-4">
                 {[
-                  { title: 'Local Shops', desc: 'Walk into 5 nearby shops today', icon: MapPin, color: 'text-blue-600', bg: 'bg-blue-50' },
-                  { title: 'Salons', desc: 'Visit 3 salons or barbershops', icon: Scissors, color: 'text-purple-600', bg: 'bg-purple-50' },
-                  { title: 'POS Centers', desc: 'Talk to 2 POS operators', icon: Zap, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                  { title: 'Recruit Affiliates', desc: 'Find 5 new potential affiliates', icon: UserPlus, color: 'text-blue-600', bg: 'bg-blue-50' },
+                  { title: 'Follow up Businesses', desc: 'Check in on 3 pending deals', icon: Briefcase, color: 'text-orange-600', bg: 'bg-orange-50' },
+                  { title: 'Activate Affiliates', desc: 'Nudge 2 inactive team members', icon: Zap, color: 'text-emerald-600', bg: 'bg-emerald-50' },
                 ].map((item, idx) => (
                   <div key={idx} className="p-4 rounded-xl border border-slate-100 hover:border-blue-200 transition-colors group cursor-pointer">
                     <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center mb-3", item.bg)}>
@@ -211,26 +337,101 @@ export default function DashboardOverview() {
 
           {/* Sidebar Sections */}
           <div className="space-y-8">
+            {/* Section C: Active Business Tracker */}
+            <div className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm overflow-hidden relative">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-bold text-slate-900">Business Tracker</h3>
+                <div className="p-2 bg-emerald-50 rounded-lg">
+                  <Briefcase className="w-4 h-4 text-emerald-600" />
+                </div>
+              </div>
+              
+              <div className="space-y-5">
+                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-blue-600 shadow-sm">
+                      <ShieldCheck className="w-4 h-4" />
+                    </div>
+                    <span className="text-xs font-bold text-slate-600">Total Active</span>
+                  </div>
+                  <span className="text-lg font-black text-slate-900">42</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50">
+                    <div className="flex items-center gap-2 mb-1">
+                      <TrendingUp className="w-3 h-3 text-emerald-600" />
+                      <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">New</span>
+                    </div>
+                    <p className="text-xl font-black text-emerald-600">+8</p>
+                    <p className="text-[10px] text-emerald-600/70 font-bold">This Week</p>
+                  </div>
+                  <div className="p-4 bg-red-50/50 rounded-2xl border border-red-100/50">
+                    <div className="flex items-center gap-2 mb-1">
+                      <TrendingDown className="w-3 h-3 text-red-600" />
+                      <span className="text-[10px] font-black text-red-700 uppercase tracking-widest">Lost</span>
+                    </div>
+                    <p className="text-xl font-black text-red-600">3</p>
+                    <p className="text-[10px] text-red-600/70 font-bold">Inactive</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Section H: Alert System */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-bold text-slate-900">System Alerts</h3>
+                <button 
+                  onClick={() => setIsNotificationsOpen(true)}
+                  className="p-2 rounded-full hover:bg-slate-50 text-slate-400 hover:text-blue-600 transition-all group relative"
+                >
+                  <Bell className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white animate-pulse" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                {[
+                  { title: 'Milestone Alert', desc: 'You are 10 businesses away (90-day limit)', type: 'info', icon: Target, color: 'text-blue-600', bg: 'bg-blue-50' },
+                  { title: 'Inactivity Alert', desc: '15 businesses inactive this week', type: 'warning', icon: AlertTriangle, color: 'text-orange-600', bg: 'bg-orange-50' },
+                ].map((item, idx) => (
+                  <div key={idx} className={cn("p-4 rounded-xl border flex gap-4 items-start", item.bg, item.type === 'info' ? 'border-blue-100' : 'border-orange-100')}>
+                    <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5", item.bg)}>
+                      <item.icon className={cn("w-4 h-4", item.color)} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">{item.title}</p>
+                      <p className="text-xs text-slate-600">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Recent Activity */}
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
               <h3 className="text-lg font-bold text-slate-900 mb-6">Recent Activity</h3>
               <div className="space-y-6">
-                {[
-                  { title: 'New Referral', desc: 'Tech Solutions Ltd signed up', time: '2 hours ago', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-                  { title: 'Commission Earned', desc: '₦10,000 from Global Corp', time: '5 hours ago', icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                  { title: 'Withdrawal Paid', desc: '₦25,000 to your bank', time: 'Yesterday', icon: Wallet, color: 'text-purple-600', bg: 'bg-purple-50' },
-                ].map((item, idx) => (
+                {recentActivity && recentActivity.length > 0 ? recentActivity.map((item: any, idx: number) => (
                   <div key={idx} className="flex gap-4">
-                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", item.bg)}>
-                      <item.icon className={cn("w-5 h-5", item.color)} />
+                    <div className={cn(
+                      "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                      item.type === 'referral' ? "bg-blue-50" : 
+                      item.type === 'commission' ? "bg-emerald-50" : "bg-purple-50"
+                    )}>
+                      {item.type === 'referral' ? <Users className="w-5 h-5 text-blue-600" /> : 
+                       item.type === 'commission' ? <TrendingUp className="w-5 h-5 text-emerald-600" /> : 
+                       <Wallet className="w-5 h-5 text-purple-600" />}
                     </div>
                     <div>
                       <p className="text-sm font-bold text-slate-900">{item.title}</p>
                       <p className="text-xs text-slate-500 mb-1">{item.desc}</p>
-                      <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{item.time}</p>
+                      <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{new Date(item.time).toLocaleDateString()}</p>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <p className="text-sm text-slate-400">No recent activity found.</p>
+                )}
               </div>
             </div>
 
@@ -241,15 +442,11 @@ export default function DashboardOverview() {
                 <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">This Week</span>
               </div>
               <div className="space-y-4">
-                {[
-                  { name: 'Adekunle C.', earnings: '₦450,000', rank: 1, avatar: 'https://picsum.photos/seed/user1/100/100' },
-                  { name: 'Blessing O.', earnings: '₦380,000', rank: 2, avatar: 'https://picsum.photos/seed/user2/100/100' },
-                  { name: 'Chidi K.', earnings: '₦320,000', rank: 3, avatar: 'https://picsum.photos/seed/user3/100/100' },
-                ].map((item, idx) => (
+                {topAffiliates.length > 0 ? topAffiliates.map((item: any, idx: number) => (
                   <div key={idx} className="flex items-center gap-3">
                     <div className="relative">
                       <Image 
-                        src={item.avatar} 
+                        src={item.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${item.name}`} 
                         width={40}
                         height={40}
                         className="w-10 h-10 rounded-full object-cover" 
@@ -265,10 +462,12 @@ export default function DashboardOverview() {
                     </div>
                     <div className="flex-grow">
                       <p className="text-sm font-bold text-slate-900">{item.name}</p>
-                      <p className="text-xs text-slate-500">{item.earnings} earned</p>
+                      <p className="text-xs text-slate-500">₦{item.earnings?.toLocaleString()} earned</p>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <p className="text-sm text-slate-400">No leaders yet.</p>
+                )}
               </div>
               <Link href="/dashboard/leaderboard" className="block w-full">
                 <Button variant="outline" className="w-full mt-6 border-slate-100 text-slate-600 text-xs font-bold">
@@ -279,6 +478,24 @@ export default function DashboardOverview() {
           </div>
         </div>
       </div>
+
+      <AffiliateAgreementModal 
+        isOpen={user !== null && !user.hasSignedAgreement} 
+        onSign={handleSignAgreement} 
+      />
+      <WhatsAppGroupModal 
+        isOpen={showWhatsAppModal} 
+        onJoin={handleJoinWhatsApp} 
+      />
+      {user?.hasSignedAgreement && !showWhatsAppModal && <OnboardingModal />}
+    </>
+  );
+}
+
+export default function DashboardOverview() {
+  return (
+    <DashboardLayout>
+      <DashboardOverviewContent />
     </DashboardLayout>
   );
 }

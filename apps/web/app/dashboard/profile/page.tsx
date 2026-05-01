@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { 
   User, 
@@ -20,16 +20,18 @@ import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { api } from '@/lib/api-client';
 
 export default function ProfilePage() {
   const { showToast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [kycStatus, setKycStatus] = useState<'unverified' | 'pending' | 'verified'>('unverified');
 
   const [profileData, setProfileData] = useState({
-    fullName: 'John Doe',
-    email: 'john.doe@example.com',
-    phone: '+234 801 234 5678',
+    fullName: '',
+    email: '',
+    phone: '',
     nin: '',
     bvn: '',
     idType: 'NIN',
@@ -37,19 +39,80 @@ export default function ProfilePage() {
     accountNumber: '',
     accountName: '',
   });
+  
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
-  const handleSave = (e: React.FormEvent) => {
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const data = await api.get('/affiliates/profile');
+        setProfileData({
+          fullName: `${data.user?.firstName || ''} ${data.user?.lastName || ''}`.trim() || 'New Affiliate',
+          email: data.user?.email || '',
+          phone: data.user?.phone || '',
+          nin: data.idType === 'NIN' ? (data.idNumber || '') : '',
+          bvn: data.idType === 'BVN' ? (data.idNumber || '') : '',
+          idType: data.idType || 'NIN',
+          bankName: data.bankAccountDetails?.bank || '',
+          accountNumber: data.bankAccountDetails?.account || '',
+          accountName: data.bankAccountDetails?.name || '',
+        });
+        setKycStatus(data.kycStatus || 'unverified');
+      } catch (error) {
+        console.error('Failed to fetch profile', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsSaving(false);
+    try {
+      let finalImageUrl = profileData.idType === 'NIN' ? '' : ''; 
+      
+      if (selectedFile) {
+        setUploadProgress(100);
+        // Note: In production, upload to S3/Cloudinary and get URL first
+        finalImageUrl = URL.createObjectURL(selectedFile);
+      }
+
+      await api.post('/affiliates/profile/update', {
+        idType: profileData.idType,
+        idNumber: profileData.idType === 'NIN' ? profileData.nin : profileData.bvn,
+        idImageUrl: finalImageUrl || 'https://placeholder.com/id.png',
+        bankAccountDetails: {
+          bank: profileData.bankName,
+          account: profileData.accountNumber,
+          name: profileData.accountName
+        }
+      });
       showToast('Profile updated successfully', 'success');
-      if (profileData.nin && profileData.bvn && profileData.accountNumber) {
+      
+      // Assume it goes to pending if all info is provided
+      if (profileData.nin || profileData.bvn) {
         setKycStatus('pending');
       }
-    }, 1500);
+    } catch (error) {
+      showToast('Error updating profile', 'error');
+    } finally {
+      setIsSaving(false);
+      setTimeout(() => setUploadProgress(0), 1000);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (file.size > 5 * 1024 * 1024) {
+        showToast('File size must be under 5MB', 'error');
+        return;
+      }
+      setSelectedFile(file);
+    }
   };
 
   return (
@@ -185,11 +248,45 @@ export default function ProfilePage() {
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <label className="text-sm font-bold text-slate-700">Upload ID Document</label>
-                  <div className="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer group">
-                    <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2 group-hover:text-blue-600 transition-colors" />
-                    <p className="text-sm font-bold text-slate-600">Click to upload or drag and drop</p>
-                    <p className="text-xs text-slate-400 mt-1">PNG, JPG or PDF (max. 5MB)</p>
-                  </div>
+                  <label className={cn(
+                    "relative border-2 border-dashed rounded-2xl p-8 text-center transition-all cursor-pointer group block",
+                    selectedFile ? "border-blue-500 bg-blue-50/50" : "border-slate-200 hover:border-blue-400 hover:bg-blue-50"
+                  )}>
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      onChange={handleFileChange}
+                    />
+                    {selectedFile ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <CheckCircle2 className="w-8 h-8 text-blue-600" />
+                        <p className="text-sm font-bold text-blue-900">{selectedFile.name}</p>
+                        <p className="text-xs text-blue-600">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                        
+                        {uploadProgress > 0 && (
+                          <div className="w-full max-w-xs mt-4">
+                            <div className="flex justify-between text-xs mb-1 font-bold text-blue-900">
+                              <span>Uploading...</span>
+                              <span>{uploadProgress}%</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-blue-200 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-blue-600 rounded-full transition-all duration-300"
+                                style={{ width: `${uploadProgress}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2 group-hover:text-blue-600 transition-colors" />
+                        <p className="text-sm font-bold text-slate-600">Click to upload or drag and drop</p>
+                        <p className="text-xs text-slate-400 mt-1">PNG, JPG or PDF (max. 5MB)</p>
+                      </>
+                    )}
+                  </label>
                 </div>
               </div>
             </section>

@@ -16,7 +16,8 @@ import {
   Percent,
   Bell,
   Settings,
-  BookOpen
+  BookOpen,
+  FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -27,6 +28,7 @@ const adminSidebarItems = [
   { name: 'Commissions', icon: Percent, href: '/admin/commissions' },
   { name: 'Withdrawals', icon: Wallet, href: '/admin/withdrawals' },
   { name: 'Fraud Monitor', icon: AlertTriangle, href: '/admin/fraud' },
+  { name: 'Affiliate Agreement', icon: FileText, href: '/admin/settings/agreement' },
   { name: 'Training Academy', icon: BookOpen, href: '/admin/training' },
   { name: 'Notifications', icon: Bell, href: '/admin/notifications' },
   { name: 'Settings', icon: Settings, href: '/admin/settings' },

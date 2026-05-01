@@ -1,6 +1,8 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { api } from '@/lib/api-client';
 import { 
   Percent, 
   ArrowUpRight, 
@@ -18,71 +20,58 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-const commissions = [
-  { 
-    id: 'COM-001', 
-    affiliate: 'John Doe', 
-    business: 'TechStart Solutions', 
-    amount: '₦50,000', 
-    type: 'Direct (20%)', 
-    status: 'Paid', 
-    date: 'Oct 28, 2025' 
-  },
-  { 
-    id: 'COM-002', 
-    affiliate: 'Sarah Smith', 
-    business: 'Green Valley Groceries', 
-    amount: '₦3,000', 
-    type: 'Direct (20%)', 
-    status: 'Pending', 
-    date: 'Nov 15, 2025' 
-  },
-  { 
-    id: 'COM-003', 
-    affiliate: 'John Doe', 
-    business: 'Apex Logistics', 
-    amount: '₦24,000', 
-    type: 'Direct (20%)', 
-    status: 'Approved', 
-    date: 'Nov 20, 2025' 
-  },
-  { 
-    id: 'COM-004', 
-    affiliate: 'Sarah Smith', 
-    business: 'TechStart Solutions', 
-    amount: '₦12,500', 
-    type: 'Indirect (5%)', 
-    status: 'Paid', 
-    date: 'Oct 28, 2025' 
-  },
-];
-
 export default function CommissionsManagement() {
   const { showToast } = useToast();
+  const [commissionsList, setCommissionsList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [directRate, setDirectRate] = useState(20);
+  const [indirectRate, setIndirectRate] = useState(5);
+  const [earningDuration, setEarningDuration] = useState('3months');
 
-  const handleApprove = (id: string) => {
-    showToast(`Commission ${id} has been approved successfully.`, 'success');
-  };
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [commData, statsData] = await Promise.all([
+          api.get('/affiliates/admin/commissions'),
+          api.get('/affiliates/admin/stats')
+        ]);
+        setCommissionsList(commData || []);
+        // stats might contain settings or I can fetch settings specifically
+      } catch (error) {
+        console.error('Failed to fetch commissions:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
-  const handleAdjust = (id: string) => {
-    showToast(`Opening adjustment tool for ${id}`, 'info');
-  };
-
-  const handleUpdateRules = (e: React.FormEvent) => {
+  const handleUpdateRules = async (e: React.FormEvent) => {
     e.preventDefault();
-    showToast("Global commission rules updated successfully.", "success");
+    try {
+      await api.patch('/affiliates/admin/settings', { 
+        directRate: Number(directRate), 
+        indirectRate: Number(indirectRate),
+        earningDuration
+      });
+      showToast("Global commission rules updated successfully.", "success");
+    } catch (error) {
+      showToast("Failed to update commission rules.", "error");
+    }
   };
+
+  const commissionsStats = [
+    { label: 'Total Commissions', value: `₦${commissionsList.reduce((acc, curr) => acc + Number(curr.amount), 0).toLocaleString()}`, icon: Percent, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+12%', trendUp: true },
+    { label: 'Paid Commissions', value: `₦${commissionsList.filter(c => c.status === 'PAID').reduce((acc, curr) => acc + Number(curr.amount), 0).toLocaleString()}`, icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50', trend: '+8%', trendUp: true },
+    { label: 'Pending Approval', value: `₦${commissionsList.filter(c => c.status === 'PENDING').reduce((acc, curr) => acc + Number(curr.amount), 0).toLocaleString()}`, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50', trend: '-2%', trendUp: false },
+  ];
 
   return (
     <AdminLayout>
       <div className="space-y-8">
         {/* Commission Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[
-            { label: 'Total Commissions', value: '₦4.2M', icon: Percent, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+12%', trendUp: true },
-            { label: 'Paid Commissions', value: '₦3.5M', icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50', trend: '+8%', trendUp: true },
-            { label: 'Pending Approval', value: '₦700k', icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50', trend: '-2%', trendUp: false },
-          ].map((stat, idx) => (
+          {commissionsStats.map((stat, idx) => (
             <motion.div
               key={stat.label}
               initial={{ opacity: 0, y: 20 }}
@@ -131,7 +120,8 @@ export default function CommissionsManagement() {
                 <div className="relative w-24">
                   <input 
                     type="number" 
-                    defaultValue={20}
+                    value={directRate}
+                    onChange={(e) => setDirectRate(Number(e.target.value))}
                     className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">%</span>
@@ -143,7 +133,8 @@ export default function CommissionsManagement() {
                 <div className="relative w-24">
                   <input 
                     type="number" 
-                    defaultValue={5}
+                    value={indirectRate}
+                    onChange={(e) => setIndirectRate(Number(e.target.value))}
                     className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">%</span>
@@ -151,21 +142,26 @@ export default function CommissionsManagement() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Duration (Times)</label>
-                <div className="relative w-32">
-                  <input 
-                    type="number" 
-                    defaultValue={3}
-                    className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
-                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Earning Duration</label>
+                <div className="relative w-40">
+                  <select 
+                    value={earningDuration}
+                    onChange={(e) => setEarningDuration(e.target.value)}
+                    className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none cursor-pointer"
+                  >
+                    <option value="3months">3 Months</option>
+                    <option value="6months">6 Months</option>
+                    <option value="1year">1 Year</option>
+                    <option value="forever">Forever</option>
+                  </select>
+                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
                 </div>
               </div>
 
               <div className="flex gap-2">
                 <button 
                   type="button"
-                  onClick={() => showToast("Settings reset to defaults", "info")}
+                  onClick={() => { setDirectRate(20); setIndirectRate(5); }}
                   className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-100 hover:text-slate-600 transition-all"
                   title="Reset to defaults"
                 >
@@ -218,7 +214,7 @@ export default function CommissionsManagement() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {commissions.map((comm, idx) => (
+                  {commissionsList.map((comm, idx) => (
                     <motion.tr 
                       key={comm.id}
                       initial={{ opacity: 0, x: -10 }}
@@ -227,44 +223,30 @@ export default function CommissionsManagement() {
                       className="hover:bg-slate-50/50 transition-all group"
                     >
                       <td className="p-4">
-                        <span className="font-bold text-slate-900">{comm.affiliate}</span>
+                        <span className="font-bold text-slate-900">{comm.affiliate?.user?.firstName} {comm.affiliate?.user?.lastName}</span>
                       </td>
                       <td className="p-4">
-                        <span className="text-sm text-slate-600">{comm.business}</span>
+                        <span className="text-sm text-slate-600">{comm.referredBusiness?.name || 'Vemtap Subscription'}</span>
                       </td>
-                      <td className="p-4 text-sm text-slate-900 font-bold">{comm.amount}</td>
+                      <td className="p-4 text-sm text-slate-900 font-bold">₦{Number(comm.amount).toLocaleString()}</td>
                       <td className="p-4">
                         <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-lg">
-                          {comm.type}
+                          {comm.description || 'Commission'}
                         </span>
                       </td>
                       <td className="p-4">
                         <span className={cn(
                           "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
-                          comm.status === 'Paid' ? "bg-green-100 text-green-600" : 
-                          comm.status === 'Approved' ? "bg-blue-100 text-blue-600" : "bg-orange-100 text-orange-600"
+                          comm.status === 'PAID' ? "bg-green-100 text-green-600" : 
+                          comm.status === 'APPROVED' ? "bg-blue-100 text-blue-600" : "bg-orange-100 text-orange-600"
                         )}>
                           {comm.status}
                         </span>
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-2 transition-opacity">
-                          {comm.status === 'Pending' && (
-                            <button 
-                              onClick={() => handleApprove(comm.id)}
-                              className="p-2 hover:bg-green-50 rounded-lg text-slate-400 hover:text-green-600 transition-all title='Approve'"
-                            >
-                              <Check className="w-4 h-4" />
-                            </button>
-                          )}
                           <button 
-                            onClick={() => handleAdjust(comm.id)}
-                            className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-900 transition-all title='Adjust'"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={() => showToast("More options", "info")}
+                            onClick={() => showToast("Adjusting...", "info")}
                             className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-900 transition-all"
                           >
                             <MoreHorizontal className="w-4 h-4" />
