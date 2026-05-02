@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { motion } from 'motion/react';
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { 
   Trophy, 
   Medal, 
@@ -16,22 +16,40 @@ import {
 import Image from 'next/image';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { cn } from '@/lib/utils';
-
-const leaderboardData = [
-  { id: 1, name: 'Adekunle Chinedu', earnings: '₦450,000', referrals: 42, rank: 1, avatar: 'https://picsum.photos/seed/user1/100/100', trend: '+12%' },
-  { id: 2, name: 'Blessing Okoro', earnings: '₦380,000', referrals: 35, rank: 2, avatar: 'https://picsum.photos/seed/user2/100/100', trend: '+8%' },
-  { id: 3, name: 'Chidi Kalu', earnings: '₦320,000', rank: 3, referrals: 28, avatar: 'https://picsum.photos/seed/user3/100/100', trend: '+15%' },
-  { id: 4, name: 'Sarah Williams', earnings: '₦280,000', rank: 4, referrals: 25, avatar: 'https://picsum.photos/seed/user4/100/100', trend: '+5%' },
-  { id: 5, name: 'Emeka Obi', earnings: '₦250,000', rank: 5, referrals: 22, avatar: 'https://picsum.photos/seed/user5/100/100', trend: '+10%' },
-  { id: 6, name: 'Fatima Yusuf', earnings: '₦210,000', rank: 6, referrals: 18, avatar: 'https://picsum.photos/seed/user6/100/100', trend: '+3%' },
-  { id: 7, name: 'John Doe', earnings: '₦195,000', rank: 7, referrals: 15, avatar: 'https://picsum.photos/seed/user7/100/100', trend: '+7%' },
-  { id: 8, name: 'Grace Amen', earnings: '₦180,000', rank: 8, referrals: 12, avatar: 'https://picsum.photos/seed/user8/100/100', trend: '+2%' },
-];
+import { api } from '@/lib/api-client';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function LeaderboardPage() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('This Week');
+  const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        const data = await api.get('/affiliates/leaderboard');
+        setLeaderboardData(data);
+      } catch (error) {
+        console.error('Failed to fetch leaderboard:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLeaderboard();
+  }, [activeTab]);
 
   const tabs = ['This Week', 'This Month', 'All Time'];
+
+  const displayData = leaderboardData.length > 0 ? leaderboardData : [];
+  const topThree = displayData.slice(0, 3);
+  
+  // Create safe fallbacks for podium to prevent crashes and keep UI pretty
+  const podium = [
+    topThree[0] ? { ...topThree[0], earnings: `₦${Number(topThree[0].earnings).toLocaleString()}` } : null,
+    topThree[1] ? { ...topThree[1], earnings: `₦${Number(topThree[1].earnings).toLocaleString()}` } : null,
+    topThree[2] ? { ...topThree[2], earnings: `₦${Number(topThree[2].earnings).toLocaleString()}` } : null,
+  ];
 
   return (
     <DashboardLayout>
@@ -72,7 +90,7 @@ export default function LeaderboardPage() {
             <div className="absolute -top-10 left-1/2 -translate-x-1/2">
               <div className="relative">
                 <Image 
-                  src={leaderboardData[1].avatar} 
+                  src={podium[1]?.avatar || ""} 
                   width={80} 
                   height={80} 
                   className="w-20 h-20 rounded-full border-4 border-slate-100 object-cover" 
@@ -85,11 +103,11 @@ export default function LeaderboardPage() {
               </div>
             </div>
             <div className="mt-10">
-              <h3 className="text-lg font-bold text-slate-900">{leaderboardData[1].name}</h3>
-              <p className="text-2xl font-black text-blue-600 mt-2">{leaderboardData[1].earnings}</p>
+              <h3 className="text-lg font-bold text-slate-900">{podium[1]?.name || '---'}</h3>
+              <p className="text-2xl font-black text-blue-600 mt-2">{podium[1]?.earnings || '₦0'}</p>
               <div className="flex items-center justify-center gap-2 mt-4 text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full w-fit mx-auto">
                 <TrendingUp className="w-3 h-3" />
-                {leaderboardData[1].trend}
+                {podium[1]?.trend || '0%'}
               </div>
             </div>
           </motion.div>
@@ -103,7 +121,7 @@ export default function LeaderboardPage() {
             <div className="absolute -top-12 left-1/2 -translate-x-1/2">
               <div className="relative">
                 <Image 
-                  src={leaderboardData[0].avatar} 
+                  src={podium[0]?.avatar || ""} 
                   width={100} 
                   height={100} 
                   className="w-24 h-24 rounded-full border-4 border-blue-400 object-cover" 
@@ -116,8 +134,8 @@ export default function LeaderboardPage() {
               </div>
             </div>
             <div className="mt-12 text-white">
-              <h3 className="text-xl font-bold">{leaderboardData[0].name}</h3>
-              <p className="text-3xl font-black mt-2">{leaderboardData[0].earnings}</p>
+              <h3 className="text-xl font-bold">{podium[0]?.name || '---'}</h3>
+              <p className="text-3xl font-black mt-2">{podium[0]?.earnings || '₦0'}</p>
               <div className="flex items-center justify-center gap-2 mt-4 text-xs font-bold text-blue-100 bg-white/10 px-3 py-1 rounded-full w-fit mx-auto">
                 <Star className="w-3 h-3 fill-current" />
                 Top Performer
@@ -135,7 +153,7 @@ export default function LeaderboardPage() {
             <div className="absolute -top-10 left-1/2 -translate-x-1/2">
               <div className="relative">
                 <Image 
-                  src={leaderboardData[2].avatar} 
+                  src={podium[2]?.avatar || ""} 
                   width={80} 
                   height={80} 
                   className="w-20 h-20 rounded-full border-4 border-orange-100 object-cover" 
@@ -148,11 +166,11 @@ export default function LeaderboardPage() {
               </div>
             </div>
             <div className="mt-10">
-              <h3 className="text-lg font-bold text-slate-900">{leaderboardData[2].name}</h3>
-              <p className="text-2xl font-black text-blue-600 mt-2">{leaderboardData[2].earnings}</p>
+              <h3 className="text-lg font-bold text-slate-900">{podium[2]?.name || '---'}</h3>
+              <p className="text-2xl font-black text-blue-600 mt-2">{podium[2]?.earnings || '₦0'}</p>
               <div className="flex items-center justify-center gap-2 mt-4 text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full w-fit mx-auto">
                 <TrendingUp className="w-3 h-3" />
-                {leaderboardData[2].trend}
+                {podium[2]?.trend || '0%'}
               </div>
             </div>
           </motion.div>
@@ -184,7 +202,7 @@ export default function LeaderboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {leaderboardData.map((item) => (
+                {displayData.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
                     <td className="px-6 py-6">
                       <span className={cn(
@@ -216,16 +234,15 @@ export default function LeaderboardPage() {
                     <td className="px-6 py-6">
                       <div className="flex items-center gap-2">
                         <Users className="w-4 h-4 text-slate-400" />
-                        <span className="text-sm font-bold text-slate-700">{item.referrals}</span>
+                        <span className="text-sm font-bold text-slate-700">{item.referrals || 0}</span>
                       </div>
                     </td>
                     <td className="px-6 py-6">
-                      <span className="text-sm font-black text-slate-900">{item.earnings}</span>
+                      <span className="text-sm font-black text-slate-900">₦{Number(item.earnings || 0).toLocaleString()}</span>
                     </td>
                     <td className="px-6 py-6">
-                      <div className="flex items-center gap-1 text-xs font-bold text-emerald-600">
-                        <ArrowUpRight className="w-3 h-3" />
-                        {item.trend}
+                      <div className="flex items-center gap-1 text-xs font-bold text-slate-400">
+                        N/A
                       </div>
                     </td>
                     <td className="px-6 py-6 text-right">
@@ -243,23 +260,23 @@ export default function LeaderboardPage() {
         {/* Your Rank Card */}
         <div className="bg-slate-900 rounded-[32px] p-8 text-white flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600 rounded-full blur-[100px] opacity-20 -mr-32 -mt-32" />
-          <div className="flex items-center gap-6 relative z-10">
+          <div className="flex items-center gap-6 relative z-10 text-center md:text-left flex-col md:flex-row">
             <div className="w-20 h-20 rounded-full border-4 border-white/10 flex items-center justify-center text-3xl font-black bg-white/5">
-              12
+              {displayData.findIndex(item => item.name.includes(user?.lastName || '')) + 1 || '--'}
             </div>
             <div>
               <h3 className="text-xl font-bold">Your Current Rank</h3>
-              <p className="text-slate-400">You are in the top 15% of affiliates this week!</p>
+              <p className="text-slate-400">
+                {displayData.findIndex(item => item.name.includes(user?.lastName || '')) !== -1 
+                  ? "You are doing great! Keep it up." 
+                  : "Start referring more businesses to climb the board!"}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-4 relative z-10 w-full md:w-auto">
             <div className="flex-grow md:flex-none bg-white/10 px-6 py-4 rounded-2xl text-center">
-              <p className="text-[10px] font-bold text-blue-300 uppercase tracking-widest mb-1">Earnings</p>
-              <p className="text-xl font-black">₦124,500</p>
-            </div>
-            <div className="flex-grow md:flex-none bg-blue-600 px-6 py-4 rounded-2xl text-center shadow-xl shadow-blue-500/20">
-              <p className="text-[10px] font-bold text-blue-100 uppercase tracking-widest mb-1">Next Rank</p>
-              <p className="text-xl font-black">₦150,000</p>
+              <p className="text-[10px] font-bold text-blue-300 uppercase tracking-widest mb-1">Total Earnings</p>
+              <p className="text-xl font-black">₦{Number(displayData.find(item => item.name.includes(user?.lastName || ''))?.earnings || 0).toLocaleString()}</p>
             </div>
           </div>
         </div>

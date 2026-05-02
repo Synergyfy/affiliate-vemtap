@@ -1,6 +1,8 @@
 'use client';
 
-import { motion } from 'motion/react';
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { api } from '@/lib/api-client';
 import { 
   Wallet, 
   CheckCircle2, 
@@ -16,71 +18,53 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-const withdrawals = [
-  { 
-    id: 'WTH-001', 
-    affiliate: 'John Doe', 
-    amount: '₦25,000', 
-    bank: 'GTBank', 
-    account: '0123456789', 
-    status: 'Pending', 
-    date: '2 hours ago' 
-  },
-  { 
-    id: 'WTH-002', 
-    affiliate: 'Sarah Smith', 
-    amount: '₦15,000', 
-    bank: 'Zenith Bank', 
-    account: '9876543210', 
-    status: 'Approved', 
-    date: '5 hours ago' 
-  },
-  { 
-    id: 'WTH-003', 
-    affiliate: 'Michael Chen', 
-    amount: '₦45,000', 
-    bank: 'Access Bank', 
-    account: '5566778899', 
-    status: 'Paid', 
-    date: 'Yesterday' 
-  },
-  { 
-    id: 'WTH-004', 
-    affiliate: 'Alice Brown', 
-    amount: '₦10,000', 
-    bank: 'Kuda Bank', 
-    account: '1122334455', 
-    status: 'Rejected', 
-    date: '2 days ago' 
-  },
-];
-
 export default function WithdrawalsManagement() {
   const { showToast } = useToast();
+  const [withdrawalsList, setWithdrawalsList] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleApprove = (name: string) => {
-    showToast(`Withdrawal for ${name} has been approved.`, 'success');
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [wthData, statsData] = await Promise.all([
+          api.get('/affiliates/admin/withdrawals'),
+          api.get('/affiliates/admin/stats')
+        ]);
+        setWithdrawalsList(wthData || []);
+        setStats(statsData);
+      } catch (error) {
+        console.error('Failed to fetch withdrawals data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const handleProcess = async (id: string, name: string, status: string, note?: string) => {
+    try {
+      await api.post(`/affiliates/admin/withdrawals/${id}/process`, { status, note });
+      showToast(`Withdrawal for ${name} has been ${status.toLowerCase()}.`, 'success');
+      setWithdrawalsList(prev => prev.map(w => w.id === id ? { ...w, status } : w));
+    } catch (error) {
+      showToast(`Failed to ${status.toLowerCase()} withdrawal.`, 'error');
+    }
   };
 
-  const handleReject = (name: string) => {
-    showToast(`Withdrawal for ${name} has been rejected.`, 'error');
-  };
-
-  const handleMarkAsPaid = (name: string) => {
-    showToast(`Withdrawal for ${name} marked as paid successfully.`, 'success');
-  };
+  const withdrawalStats = [
+    { label: 'Total Payouts', value: `₦${stats?.completedPayouts?.toLocaleString() || '0'}`, icon: Banknote, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Pending Request', value: `₦${stats?.pendingPayouts?.toLocaleString() || '0'}`, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { label: 'Approved', value: `₦${stats?.approvedPayouts?.toLocaleString() || '0'}`, icon: CheckCircle2, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Completed', value: `₦${stats?.completedPayouts?.toLocaleString() || '0'}`, icon: CreditCard, color: 'text-green-600', bg: 'bg-green-50' },
+  ];
 
   return (
     <AdminLayout>
       <div className="space-y-8">
         {/* Withdrawal Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {[
-            { label: 'Total Payouts', value: '₦12.5M', icon: Banknote, color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: 'Pending Request', value: '₦125k', icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
-            { label: 'Approved', value: '₦85k', icon: CheckCircle2, color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: 'Completed', value: '₦12.3M', icon: CreditCard, color: 'text-green-600', bg: 'bg-green-50' },
-          ].map((stat, idx) => (
+          {withdrawalStats.map((stat, idx) => (
             <motion.div
               key={stat.label}
               initial={{ opacity: 0, scale: 0.95 }}
@@ -129,7 +113,7 @@ export default function WithdrawalsManagement() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {withdrawals.map((wth, idx) => (
+                {withdrawalsList.map((wth, idx) => (
                   <motion.tr 
                     key={wth.id}
                     initial={{ opacity: 0, y: 10 }}
@@ -138,46 +122,46 @@ export default function WithdrawalsManagement() {
                     className="hover:bg-slate-50/50 transition-all group"
                   >
                     <td className="p-4">
-                      <p className="font-bold text-slate-900">{wth.affiliate}</p>
-                      <p className="text-xs text-slate-400 font-mono">{wth.id}</p>
+                      <p className="font-bold text-slate-900">{wth.affiliate?.user?.firstName} {wth.affiliate?.user?.lastName}</p>
+                      <p className="text-xs text-slate-400 font-mono text-xs">{wth.id}</p>
                     </td>
-                    <td className="p-4 text-sm text-slate-900 font-bold">{wth.amount}</td>
+                    <td className="p-4 text-sm text-slate-900 font-bold">₦{Number(wth.amount).toLocaleString()}</td>
                     <td className="p-4">
-                      <p className="text-sm font-medium text-slate-700">{wth.bank}</p>
-                      <p className="text-xs text-slate-500">{wth.account}</p>
+                      <p className="text-sm font-medium text-slate-700">{wth.affiliate?.bankAccountDetails?.bank || 'Bank'}</p>
+                      <p className="text-xs text-slate-500">{wth.affiliate?.bankAccountDetails?.accountNumber || 'Acc Number'}</p>
                     </td>
                     <td className="p-4">
                       <span className={cn(
                         "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
-                        wth.status === 'Paid' ? "bg-green-100 text-green-600" : 
-                        wth.status === 'Approved' ? "bg-blue-100 text-blue-600" : 
-                        wth.status === 'Pending' ? "bg-orange-100 text-orange-600" : "bg-red-100 text-red-600"
+                        wth.status === 'PAID' ? "bg-green-100 text-green-600" : 
+                        wth.status === 'APPROVED' ? "bg-blue-100 text-blue-600" : 
+                        wth.status === 'REJECTED' ? "bg-red-100 text-red-600" : "bg-orange-100 text-orange-600"
                       )}>
                         {wth.status}
                       </span>
                     </td>
-                    <td className="p-4 text-sm text-slate-600">{wth.date}</td>
+                    <td className="p-4 text-sm text-slate-600">{new Date(wth.createdAt).toLocaleDateString()}</td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2 transition-opacity">
-                        {wth.status === 'Pending' && (
+                        {wth.status === 'PENDING' && (
                           <>
                             <button 
-                              onClick={() => handleApprove(wth.affiliate)}
+                              onClick={() => handleProcess(wth.id, wth.affiliate?.user?.firstName, 'APPROVED')}
                               className="p-2 hover:bg-green-50 rounded-lg text-slate-400 hover:text-green-600 transition-all title='Approve'"
                             >
                               <Check className="w-4 h-4" />
                             </button>
                             <button 
-                              onClick={() => handleReject(wth.affiliate)}
+                              onClick={() => handleProcess(wth.id, wth.affiliate?.user?.firstName, 'REJECTED')}
                               className="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-all title='Reject'"
                             >
                               <X className="w-4 h-4" />
                             </button>
                           </>
                         )}
-                        {wth.status === 'Approved' && (
+                        {wth.status === 'APPROVED' && (
                           <button 
-                            onClick={() => handleMarkAsPaid(wth.affiliate)}
+                            onClick={() => handleProcess(wth.id, wth.affiliate?.user?.firstName, 'PAID')}
                             className="flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700 transition-all"
                           >
                             Mark as Paid

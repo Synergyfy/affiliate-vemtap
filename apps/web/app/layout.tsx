@@ -1,28 +1,25 @@
-import type {Metadata} from 'next';
-import { Poppins } from 'next/font/google';
-import './globals.css';
-import { AuthProvider } from '@/hooks/use-auth';
-import { ToastProvider } from '@/hooks/use-toast';
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { AuthProvider } from "@/hooks/use-auth";
 
-const poppins = Poppins({
-  subsets: ['latin'],
-  weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
-  variable: '--font-poppins',
-});
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Vemtap Affiliate Platform | Earn by Referring',
-  description: 'Join the Vemtap network and earn up to 20% commission when businesses subscribe to our NFC and QR technology.',
+  title: "Vemtap Affiliate Platform",
+  description: "Multi-level affiliate marketing platform",
 };
 
-export default function RootLayout({children}: {children: React.ReactNode}) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="en" className={`${poppins.variable}`}>
-      <body suppressHydrationWarning className="font-poppins antialiased bg-white text-slate-900">
+    <html lang="en">
+      <body className={inter.className}>
         <AuthProvider>
-          <ToastProvider>
-            {children}
-          </ToastProvider>
+          {children}
         </AuthProvider>
       </body>
     </html>

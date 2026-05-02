@@ -1,6 +1,8 @@
 'use client';
 
-import { motion } from 'motion/react';
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { api } from '@/lib/api-client';
 import { 
   ShieldAlert, 
   AlertTriangle, 
@@ -16,54 +18,57 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-const fraudAlerts = [
-  { 
-    id: 'FRD-001', 
-    affiliate: 'David Smith', 
-    reason: 'Self-referral detected', 
-    risk: 'High', 
-    details: 'Referred business with same IP and credit card info.',
-    date: '1 hour ago' 
-  },
-  { 
-    id: 'FRD-002', 
-    affiliate: 'Alice Brown', 
-    reason: 'Multiple accounts', 
-    risk: 'Medium', 
-    details: '3 accounts created from the same device ID.',
-    date: '3 hours ago' 
-  },
-  { 
-    id: 'FRD-003', 
-    affiliate: 'Bob Wilson', 
-    reason: 'Suspicious pattern', 
-    risk: 'Low', 
-    details: 'Unusually high conversion rate (95%) on new referrals.',
-    date: 'Yesterday' 
-  },
-];
-
 export default function FraudMonitor() {
   const { showToast } = useToast();
+  const [fraudAlertsList, setFraudAlertsList] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleSuspend = (name: string) => {
-    showToast(`${name} has been suspended for fraud investigation.`, 'error');
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [fraudData, statsData] = await Promise.all([
+          api.get('/affiliates/admin/fraud'),
+          api.get('/affiliates/admin/stats')
+        ]);
+        setFraudAlertsList(fraudData || []);
+        setStats(statsData);
+      } catch (error) {
+        console.error('Failed to fetch fraud data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const handleStatusChange = async (id: string, name: string, isFlagged: boolean) => {
+    try {
+      await api.post(`/affiliates/admin/profiles/${id}/flag`, { 
+        isFlagged,
+        reason: isFlagged ? 'Fraud investigation' : 'Resolved'
+      });
+      showToast(`${name} has been ${isFlagged ? 'suspended' : 'whitelisted'}.`, isFlagged ? 'error' : 'success');
+      if (!isFlagged) {
+        setFraudAlertsList(prev => prev.filter(f => f.id !== id));
+      }
+    } catch (error) {
+      showToast('Failed to update status.', 'error');
+    }
   };
 
-  const handleWhitelist = (name: string) => {
-    showToast(`${name} has been whitelisted.`, 'success');
-  };
+  const fraudStats = [
+    { label: 'High Risk Alerts', value: fraudAlertsList.length.toString(), icon: ShieldAlert, color: 'text-red-600', bg: 'bg-red-50' },
+    { label: 'Pending Review', value: stats?.fraudAlerts?.toString() || '0', icon: Activity, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { label: 'Global Guard', value: 'Active', icon: ShieldCheck, color: 'text-slate-600', bg: 'bg-slate-50' },
+  ];
 
   return (
     <AdminLayout>
       <div className="space-y-8">
         {/* Fraud Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[
-            { label: 'High Risk Alerts', value: '14', icon: ShieldAlert, color: 'text-red-600', bg: 'bg-red-50' },
-            { label: 'Pending Review', value: '28', icon: Activity, color: 'text-orange-600', bg: 'bg-orange-50' },
-            { label: 'Accounts Suspended', value: '156', icon: UserX, color: 'text-slate-600', bg: 'bg-slate-50' },
-          ].map((stat, idx) => (
+          {fraudStats.map((stat, idx) => (
             <motion.div
               key={stat.label}
               initial={{ opacity: 0, y: 20 }}
@@ -107,7 +112,7 @@ export default function FraudMonitor() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {fraudAlerts.map((alert, idx) => (
+                  {fraudAlertsList.length > 0 ? fraudAlertsList.map((alert, idx) => (
                     <motion.tr 
                       key={alert.id}
                       initial={{ opacity: 0 }}
@@ -116,62 +121,52 @@ export default function FraudMonitor() {
                       className="hover:bg-slate-50/50 group transition-all"
                     >
                       <td className="p-4">
-                        <p className="font-bold text-slate-900">{alert.affiliate}</p>
+                        <p className="font-bold text-slate-900">{alert.user?.firstName} {alert.user?.lastName}</p>
                         <p className="text-xs text-slate-400 font-mono">{alert.id}</p>
                       </td>
                       <td className="p-4">
                         <div className="flex items-center gap-2">
-                          <AlertTriangle className={cn(
-                            "w-4 h-4",
-                            alert.risk === 'High' ? "text-red-500" : 
-                            alert.risk === 'Medium' ? "text-orange-500" : "text-blue-500"
-                          )} />
+                          <AlertTriangle className="w-4 h-4 text-red-500" />
                           <div>
-                            <p className="text-sm font-bold text-slate-700">{alert.reason}</p>
-                            <p className="text-xs text-slate-500 max-w-xs truncate">{alert.details}</p>
+                            <p className="text-sm font-bold text-slate-700">{alert.fraudReason || 'Suspicious activity'}</p>
+                            <p className="text-xs text-slate-500 max-w-xs truncate">Multiple flagged actions detected.</p>
                           </div>
                         </div>
                       </td>
                       <td className="p-4">
-                        <span className={cn(
-                          "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
-                          alert.risk === 'High' ? "bg-red-100 text-red-600" : 
-                          alert.risk === 'Medium' ? "bg-orange-100 text-orange-600" : "bg-blue-100 text-blue-600"
-                        )}>
-                          {alert.risk}
+                        <span className="text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider bg-red-100 text-red-600">
+                          High
                         </span>
                       </td>
-                      <td className="p-4 text-sm text-slate-500">{alert.date}</td>
+                      <td className="p-4 text-sm text-slate-500">{new Date(alert.updatedAt).toLocaleDateString()}</td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-2 transition-opacity">
                           <button 
-                            onClick={() => showToast(`Viewing detailed logs for ${alert.affiliate}`, 'info')}
+                            onClick={() => showToast(`Viewing logs...`, 'info')}
                             className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-900 transition-all title='View Details'"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
                           <button 
-                            onClick={() => handleWhitelist(alert.affiliate)}
+                            onClick={() => handleStatusChange(alert.id, alert.user?.firstName, false)}
                             className="p-2 hover:bg-blue-50 rounded-lg text-slate-400 hover:text-blue-600 transition-all title='Whiteslist'"
                           >
                             <ShieldCheck className="w-4 h-4" />
                           </button>
                           <button 
-                            onClick={() => handleSuspend(alert.affiliate)}
-                            className="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-all title='Suspend Account'"
+                            onClick={() => handleStatusChange(alert.id, alert.user?.firstName, true)}
+                            className="p-2 hover:bg-red-50 rounded-lg text-red-600 transition-all title='Suspend Account'"
                           >
                             <UserX className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={() => showToast("More options", "info")}
-                            className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-900 transition-all"
-                          >
-                            <MoreHorizontal className="w-4 h-4" />
                           </button>
                         </div>
                       </td>
                     </motion.tr>
-                  ))}
+                  )) : (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-slate-400">No active fraud alerts.</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

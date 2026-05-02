@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { 
   Bell, 
   Send, 
@@ -9,46 +9,54 @@ import {
   History,
   CheckCircle2,
   Trash2,
+  Clock,
   MoreHorizontal,
-  Clock
+  RefreshCcw
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-const sentNotifications = [
-  { 
-    id: 'NOT-001', 
-    title: 'New Commission Structure', 
-    recipients: 'All Affiliates', 
-    type: 'Announcement', 
-    status: 'Sent', 
-    date: 'Oct 28, 2025' 
-  },
-  { 
-    id: 'NOT-002', 
-    title: 'Payment Threshold Update', 
-    recipients: 'Top 100 Affiliates', 
-    type: 'Targeted', 
-    status: 'Scheduled', 
-    date: 'Dec 12, 2025' 
-  },
-  { 
-    id: 'NOT-003', 
-    title: 'Profile Verification Required', 
-    recipients: 'Pending Affiliates', 
-    type: 'Targeted', 
-    status: 'Sent', 
-    date: 'Dec 10, 2025' 
-  },
-];
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api-client';
 
 export default function NotificationsManagement() {
   const { showToast } = useToast();
+  const [title, setTitle] = useState('');
+  const [message, setMessage] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [history, setHistory] = useState<any[]>([]);
 
-  const handleSend = (e: React.FormEvent) => {
+  const fetchHistory = async () => {
+    try {
+      const data = await api.get('/notifications/admin/history/broadcasts');
+      setHistory(data || []);
+    } catch (error) {
+      console.error('Failed to fetch broadcast history:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    showToast("Notification has been broadcasted successfully.", "success");
+    if (isSending) return;
+
+    setIsSending(true);
+    try {
+      await api.post('/notifications/broadcast', { title, message });
+      showToast("Notification has been broadcasted successfully.", "success");
+      setTitle('');
+      setMessage('');
+      fetchHistory();
+    } catch (error) {
+      console.error('Broadcast failed:', error);
+      showToast("Failed to broadcast notification.", "error");
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleDelete = (title: string) => {
@@ -102,35 +110,48 @@ export default function NotificationsManagement() {
               <label className="text-sm font-bold text-slate-700">Subject / Title</label>
               <input 
                 type="text" 
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. New Year Commission Bonus 🚀"
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
                 required
               />
             </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Message Content</label>
-              <textarea 
-                rows={5}
-                placeholder="Write your message here..."
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
-                required
-              ></textarea>
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <button 
-                type="button" 
-                onClick={() => showToast("Draft saved successfully.", "success")}
-                className="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-all"
-              >
-                Save Draft
-              </button>
-              <button type="submit" className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20">
-                <Send className="w-4 h-4" />
-                Send Now
-              </button>
-            </div>
+ 
+             <div className="space-y-2">
+               <label className="text-sm font-bold text-slate-700">Message Content</label>
+               <textarea 
+                 rows={5}
+                 value={message}
+                 onChange={(e) => setMessage(e.target.value)}
+                 placeholder="Write your message here..."
+                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
+                 required
+               ></textarea>
+             </div>
+ 
+             <div className="flex justify-end gap-3">
+               <button 
+                 type="button" 
+                 disabled={isSending}
+                 onClick={() => showToast("Draft saved successfully.", "success")}
+                 className="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-all disabled:opacity-50"
+               >
+                 Save Draft
+               </button>
+               <button 
+                 type="submit" 
+                 disabled={isSending || !title || !message}
+                 className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50"
+               >
+                 {isSending ? (
+                   <RefreshCcw className="w-4 h-4 animate-spin" />
+                 ) : (
+                   <Send className="w-4 h-4" />
+                 )}
+                 {isSending ? 'Sending...' : 'Send Now'}
+               </button>
+             </div>
           </form>
         </motion.div>
 
@@ -143,7 +164,7 @@ export default function NotificationsManagement() {
 
           <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="divide-y divide-slate-100">
-              {sentNotifications.map((notif, idx) => (
+              {history.map((notif, idx) => (
                 <div key={notif.id} className="p-6 flex items-center justify-between hover:bg-slate-50/50 transition-all group">
                   <div className="flex items-center gap-4">
                     <div className={cn(

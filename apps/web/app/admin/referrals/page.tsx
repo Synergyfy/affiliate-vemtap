@@ -1,6 +1,8 @@
 'use client';
 
-import { motion } from 'motion/react';
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { api } from '@/lib/api-client';
 import { 
   Search, 
   Filter, 
@@ -15,56 +17,24 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-const referrals = [
-  { 
-    id: 'REF-001', 
-    business: 'TechStart Solutions', 
-    affiliate: 'John Doe', 
-    plan: 'Premium Annual', 
-    amount: '₦250,000',
-    status: 'Paid', 
-    date: 'Oct 28, 2025' 
-  },
-  { 
-    id: 'REF-002', 
-    business: 'Green Valley Groceries', 
-    affiliate: 'Sarah Smith', 
-    plan: 'Basic Monthly', 
-    amount: '₦15,000',
-    status: 'Pending', 
-    date: 'Nov 15, 2025' 
-  },
-  { 
-    id: 'REF-003', 
-    business: 'Apex Logistics', 
-    affiliate: 'John Doe', 
-    plan: 'Standard Annual', 
-    amount: '₦120,000',
-    status: 'Paid', 
-    date: 'Nov 20, 2025' 
-  },
-  { 
-    id: 'REF-004', 
-    business: 'Skyline Architecture', 
-    affiliate: 'Alice Brown', 
-    plan: 'Premium Monthly', 
-    amount: '₦25,000',
-    status: 'Failed', 
-    date: 'Dec 02, 2025' 
-  },
-  { 
-    id: 'REF-005', 
-    business: 'Blue Horizon Tech', 
-    affiliate: 'Michael Chen', 
-    plan: 'Standard Monthly', 
-    amount: '₦12,000',
-    status: 'Paid', 
-    date: 'Dec 10, 2025' 
-  },
-];
-
 export default function ReferralsManagement() {
   const { showToast } = useToast();
+  const [referralsList, setReferralsList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchReferrals = async () => {
+      try {
+        const data = await api.get('/affiliates/admin/referrals');
+        setReferralsList(data || []);
+      } catch (error) {
+        console.error('Failed to fetch referrals:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchReferrals();
+  }, []);
 
   return (
     <AdminLayout>
@@ -120,7 +90,7 @@ export default function ReferralsManagement() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {referrals.map((ref, idx) => (
+                {referralsList.map((ref, idx) => (
                   <motion.tr 
                     key={ref.id}
                     initial={{ opacity: 0, y: 10 }}
@@ -130,37 +100,37 @@ export default function ReferralsManagement() {
                   >
                     <td className="p-4">
                       <div>
-                        <p className="font-bold text-slate-900">{ref.business}</p>
-                        <p className="text-xs text-slate-400 font-mono">{ref.id}</p>
+                        <p className="font-bold text-slate-900">{ref.referredBusiness?.name || ref.referredUserId || 'User Account'}</p>
+                        <p className="text-xs text-slate-400 font-mono text-xs">{ref.id}</p>
                       </div>
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center text-[10px] text-blue-600 font-bold">
-                          {ref.affiliate.charAt(0)}
+                          {ref.affiliate?.user?.firstName?.charAt(0) || 'A'}
                         </div>
-                        <span className="text-sm font-medium text-slate-700">{ref.affiliate}</span>
+                        <span className="text-sm font-medium text-slate-700">{ref.affiliate?.user?.firstName} {ref.affiliate?.user?.lastName}</span>
                       </div>
                     </td>
-                    <td className="p-4 text-sm text-slate-600">{ref.plan}</td>
-                    <td className="p-4 text-sm text-slate-900 font-bold">{ref.amount}</td>
-                    <td className="p-4 text-sm text-slate-600">{ref.date}</td>
+                    <td className="p-4 text-sm text-slate-600">{ref.referredBusiness?.plan || 'N/A'}</td>
+                    <td className="p-4 text-sm text-slate-900 font-bold">₦{Number(ref.referredBusiness?.subscriptionAmount || 0).toLocaleString()}</td>
+                    <td className="p-4 text-sm text-slate-600">{new Date(ref.createdAt).toLocaleDateString()}</td>
                     <td className="p-4">
                       <div className={cn(
                         "flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider w-fit",
-                        ref.status === 'Paid' ? "bg-green-100 text-green-600" : 
-                        ref.status === 'Pending' ? "bg-orange-100 text-orange-600" : "bg-red-100 text-red-600"
+                        ref.status === 'CONVERTED' ? "bg-green-100 text-green-600" : 
+                        ref.status === 'PENDING' ? "bg-orange-100 text-orange-600" : "bg-red-100 text-red-600"
                       )}>
-                        {ref.status === 'Paid' && <CheckCircle2 className="w-3 h-3" />}
-                        {ref.status === 'Pending' && <Clock className="w-3 h-3" />}
-                        {ref.status === 'Failed' && <XCircle className="w-3 h-3" />}
+                        {ref.status === 'CONVERTED' && <CheckCircle2 className="w-3 h-3" />}
+                        {ref.status === 'PENDING' && <Clock className="w-3 h-3" />}
+                        {ref.status === 'FAILED' && <XCircle className="w-3 h-3" />}
                         {ref.status}
                       </div>
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2 transition-opacity">
                         <button 
-                          onClick={() => showToast(`Redirecting to ${ref.business} details`, "info")}
+                          onClick={() => showToast(`Redirecting to details`, "info")}
                           className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-blue-600 transition-all"
                         >
                           <ArrowUpRight className="w-4 h-4" />

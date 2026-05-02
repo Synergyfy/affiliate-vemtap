@@ -1,16 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { 
-  ArrowRight, 
-  CheckCircle2, 
-  DollarSign, 
-  Users, 
-  HelpCircle, 
-  ChevronRight, 
-  TrendingUp, 
-  ShieldCheck, 
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  ArrowRight,
+  CheckCircle2,
+  DollarSign,
+  Users,
+  HelpCircle,
+  ChevronRight,
+  TrendingUp,
+  ShieldCheck,
   Zap,
   Globe,
   BarChart3,
@@ -22,17 +22,17 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
-const BentoCard = ({ 
-  title, 
-  description, 
-  icon: Icon, 
-  className, 
+const BentoCard = ({
+  title,
+  description,
+  icon: Icon,
+  className,
   delay = 0,
   image
-}: { 
-  title: string; 
-  description: string; 
-  icon: any; 
+}: {
+  title: string;
+  description: string;
+  icon: any;
   className?: string;
   delay?: number;
   image?: string;
@@ -49,11 +49,11 @@ const BentoCard = ({
   >
     {image && (
       <div className="absolute inset-0 -z-10 opacity-10 transition-opacity group-hover:opacity-20">
-        <Image 
-          src={image} 
-          alt={title} 
-          fill 
-          className="object-cover" 
+        <Image
+          src={image}
+          alt={title}
+          fill
+          className="object-cover"
           referrerPolicy="no-referrer"
         />
       </div>
@@ -84,7 +84,7 @@ export default function LandingPage() {
                 <span className="text-[10px] uppercase tracking-widest font-bold text-blue-600">Affiliates</span>
               </div>
             </Link>
-            
+
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-10">
               <a href="#how-it-works" className="text-sm font-bold text-slate-600 hover:text-blue-600 transition-colors uppercase tracking-wider">Process</a>
@@ -99,7 +99,7 @@ export default function LandingPage() {
 
             {/* Mobile Menu Button */}
             <div className="md:hidden">
-              <button 
+              <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className="p-2 text-slate-600 hover:text-blue-600 transition-colors"
               >
@@ -119,37 +119,37 @@ export default function LandingPage() {
               className="md:hidden bg-white border-b border-slate-100 overflow-hidden"
             >
               <div className="px-4 py-6 space-y-4">
-                <a 
-                  href="#how-it-works" 
+                <a
+                  href="#how-it-works"
                   onClick={() => setIsMenuOpen(false)}
                   className="block text-lg font-bold text-slate-900 hover:text-blue-600 transition-colors"
                 >
                   Process
                 </a>
-                <a 
-                  href="#earnings" 
+                <a
+                  href="#earnings"
                   onClick={() => setIsMenuOpen(false)}
                   className="block text-lg font-bold text-slate-900 hover:text-blue-600 transition-colors"
                 >
                   Earnings
                 </a>
-                <a 
-                  href="#faqs" 
+                <a
+                  href="#faqs"
                   onClick={() => setIsMenuOpen(false)}
                   className="block text-lg font-bold text-slate-900 hover:text-blue-600 transition-colors"
                 >
                   FAQs
                 </a>
                 <div className="h-px bg-slate-100 w-full" />
-                <Link 
-                  href="/login" 
+                <Link
+                  href="/login"
                   onClick={() => setIsMenuOpen(false)}
                   className="block text-lg font-bold text-slate-900 hover:text-blue-600 transition-colors"
                 >
                   Login
                 </Link>
-                <Link 
-                  href="/signup" 
+                <Link
+                  href="/signup"
                   onClick={() => setIsMenuOpen(false)}
                   className="block w-full bg-blue-600 text-white px-6 py-4 rounded-2xl font-bold text-center shadow-xl shadow-blue-200"
                 >
@@ -202,15 +202,15 @@ export default function LandingPage() {
                     See the Process
                   </a>
                 </div>
-                
+
                 <div className="mt-10 sm:mt-12 flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 text-center sm:text-left">
                   <div className="flex -space-x-3 sm:-space-x-4">
                     {[1, 2, 3, 4].map((i) => (
                       <div key={i} className="h-10 w-10 sm:h-12 sm:w-12 rounded-full border-2 sm:border-4 border-white bg-slate-200 overflow-hidden relative">
-                        <Image 
-                          src={`https://picsum.photos/seed/user${i}/100/100`} 
-                          alt="User" 
-                          fill 
+                        <Image
+                          src={`https://picsum.photos/seed/user${i}/100/100`}
+                          alt="User"
+                          fill
                           className="object-cover"
                           referrerPolicy="no-referrer"
                         />
@@ -231,18 +231,18 @@ export default function LandingPage() {
                 className="relative mt-12 lg:mt-0"
               >
                 <div className="relative aspect-[4/5] rounded-[30px] sm:rounded-[40px] overflow-hidden shadow-2xl border-4 sm:border-8 border-white">
-                  <Image 
-                    src="https://images.unsplash.com/photo-1556761175-b413da4baf72?q=80&w=1974&auto=format&fit=crop" 
-                    alt="Business Meeting" 
-                    fill 
+                  <Image
+                    src="https://images.unsplash.com/photo-1556761175-b413da4baf72?q=80&w=1974&auto=format&fit=crop"
+                    alt="Business Meeting"
+                    fill
                     className="object-cover"
                     priority
                     referrerPolicy="no-referrer"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-blue-900/40 to-transparent" />
-                  
+
                   {/* Floating Stats Card */}
-                  <motion.div 
+                  <motion.div
                     animate={{ y: [0, -10, 0] }}
                     transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                     className="absolute bottom-4 sm:bottom-8 left-4 sm:left-8 right-4 sm:right-8 bg-white/90 backdrop-blur-md p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-white/20 shadow-2xl"
@@ -260,16 +260,16 @@ export default function LandingPage() {
                       <div className="text-emerald-600 font-bold text-[10px] sm:text-sm">+15% this week</div>
                     </div>
                     <div className="h-1.5 sm:h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                      <motion.div 
+                      <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: "75%" }}
                         transition={{ duration: 2, delay: 1 }}
-                        className="h-full bg-emerald-500" 
+                        className="h-full bg-emerald-500"
                       />
                     </div>
                   </motion.div>
                 </div>
-                
+
                 {/* Decorative Elements */}
                 <div className="absolute -top-6 -right-6 sm:-top-12 sm:-right-12 h-32 w-32 sm:h-48 sm:w-48 bg-blue-600 rounded-full -z-10 blur-[60px] sm:blur-[80px] opacity-20" />
                 <div className="absolute -bottom-6 -left-6 sm:-bottom-12 sm:-left-12 h-32 w-32 sm:h-48 sm:w-48 bg-emerald-600 rounded-full -z-10 blur-[60px] sm:blur-[80px] opacity-20" />
@@ -285,44 +285,44 @@ export default function LandingPage() {
               <h2 className="text-xs font-black text-blue-600 uppercase tracking-[0.3em] mb-3 sm:mb-4">The Ecosystem</h2>
               <h3 className="text-3xl sm:text-4xl md:text-6xl font-black text-slate-900 tracking-tight">Built for Performance</h3>
             </div>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-4 sm:gap-6">
-              <BentoCard 
+              <BentoCard
                 className="sm:col-span-2 md:col-span-3 md:row-span-2"
                 title="20% Direct Commission"
                 description="Earn a massive 20% cut from every business you refer. No caps, no limits, just pure earnings for every successful subscription."
                 icon={DollarSign}
                 image="https://images.unsplash.com/photo-1553729459-efe14ef6055d?q=80&w=2070&auto=format&fit=crop"
               />
-              <BentoCard 
+              <BentoCard
                 className="sm:col-span-2 md:col-span-3"
                 title="Real-time Tracking"
                 description="Monitor your referrals, clicks, and earnings in real-time with our advanced analytics dashboard."
                 icon={BarChart3}
                 delay={0.1}
               />
-              <BentoCard 
+              <BentoCard
                 className="sm:col-span-2 md:col-span-3"
                 title="Instant Withdrawals"
                 description="Request your earnings anytime. We process payments swiftly to ensure you get your rewards when you need them."
                 icon={Zap}
                 delay={0.2}
               />
-              <BentoCard 
+              <BentoCard
                 className="sm:col-span-1 md:col-span-2"
                 title="Global Reach"
                 description="Refer businesses from anywhere in the world to Vemtap's digital solutions."
                 icon={Globe}
                 delay={0.3}
               />
-              <BentoCard 
+              <BentoCard
                 className="sm:col-span-1 md:col-span-2"
                 title="Mobile First"
                 description="Manage your affiliate business on the go with our fully responsive platform."
                 icon={Smartphone}
                 delay={0.4}
               />
-              <BentoCard 
+              <BentoCard
                 className="sm:col-span-2 md:col-span-2"
                 title="Secure & Trusted"
                 description="Your data and earnings are protected by industry-leading security protocols."
@@ -351,7 +351,7 @@ export default function LandingPage() {
                   <p className="text-base sm:text-lg md:text-xl text-slate-400 leading-relaxed mb-8 sm:mb-12">
                     Our commission structure is designed to reward both your direct efforts and your leadership as you grow your network.
                   </p>
-                  
+
                   <div className="space-y-6 sm:space-y-8">
                     <div className="flex items-start gap-4 sm:gap-6 group">
                       <div className="h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 rounded-xl sm:rounded-2xl bg-blue-500/20 flex items-center justify-center text-blue-400 border border-blue-500/30 group-hover:bg-blue-500 group-hover:text-white transition-all shrink-0">
@@ -412,7 +412,7 @@ export default function LandingPage() {
               <h2 className="text-3xl sm:text-4xl md:text-6xl font-black text-slate-900 tracking-tight mb-4 sm:mb-6">Common Questions</h2>
               <p className="text-lg sm:text-xl text-slate-600">Everything you need to know about the Vemtap Affiliate Program.</p>
             </div>
-            
+
             <div className="grid gap-4">
               {[
                 { q: 'Is there a signup fee?', a: 'Absolutely not. Joining the Vemtap Affiliate Platform is 100% free. We only make money when you make money.' },
@@ -420,7 +420,7 @@ export default function LandingPage() {
                 { q: 'Do I get marketing materials?', a: 'Yes! Your dashboard includes personalized referral links, QR codes, and professionally designed banners to help you pitch Vemtap effectively.' },
                 { q: 'Can I refer other affiliates?', a: 'Yes, and you should! Once you have referred 5 paying businesses, you unlock Tier 2 commissions (5%) from everyone you refer to the affiliate program.' },
               ].map((item, idx) => (
-                <motion.div 
+                <motion.div
                   key={idx}
                   initial={{ opacity: 0, y: 10 }}
                   whileInView={{ opacity: 1, y: 0 }}
@@ -448,7 +448,7 @@ export default function LandingPage() {
           <div className="absolute top-0 left-0 w-full h-full opacity-30 pointer-events-none">
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] sm:w-[1000px] h-[600px] sm:h-[1000px] bg-white rounded-full blur-[120px] sm:blur-[180px]" />
           </div>
-          
+
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
