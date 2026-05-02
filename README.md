@@ -1,20 +1,133 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Vemtap Affiliate System
 
-# Run and deploy your AI Studio app
+A monorepo containing the Vemtap Affiliate Management System with:
 
-This contains everything you need to run your app locally.
+- **apps/web** - Next.js 15 frontend (admin dashboard + affiliate portal)
+- **apps/api** - NestJS backend API (to be implemented)
 
-View your app in AI Studio: https://ai.studio/apps/a1a8aeed-d1ac-420d-8eee-38f7004c1962
+## Tech Stack
 
-## Run Locally
+| App | Framework | Purpose |
+|-----|-----------|---------|
+| web | Next.js 15 | User-facing dashboard, admin panel |
+| api | NestJS 10 | REST API, business logic |
 
-**Prerequisites:**  Node.js
+**Monorepo Tools:** pnpm workspaces + Turbo
 
+## Project Structure
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+```
+.
+├── apps/
+│   ├── api/               # NestJS backend
+│   │   ├── prisma/        # Database schema & client
+│   │   ├── src/           # Source code
+│   │   └── ...
+│   └── web/               # Next.js frontend
+│       ├── app/           # App Router pages
+│       ├── components/    # React components
+│       ├── hooks/         # Custom hooks
+│       └── ...
+├── package.json           # Root workspace config
+├── pnpm-workspace.yaml   # pnpm workspaces
+├── turbo.json            # Turbo pipeline config
+└── tsconfig.json         # Root TypeScript config
+```
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 20+
+- pnpm 9+
+- PostgreSQL 15+
+- Docker (optional for PostgreSQL)
+
+### Installation
+
+```bash
+# Install dependencies
+pnpm install
+
+# Generate Prisma client
+cd apps/api && pnpm prisma:generate
+```
+
+### Database Setup
+
+1. Create a PostgreSQL database:
+```bash
+docker run -d --name vemtap-db \
+  -e POSTGRES_DB=vemtap \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=password \
+  -p 5432:5432 postgres:15
+```
+
+2. Copy environment file and update:
+```bash
+cd apps/api
+cp .env.example .env
+# Edit .env with your DATABASE_URL
+```
+
+3. Run migrations:
+```bash
+cd apps/api
+pnpm prisma:migrate
+```
+
+### Development
+
+```bash
+# Run all apps in development mode
+pnpm dev
+
+# Run specific app
+pnpm --filter @vemtap/web dev
+pnpm --filter @vemtap/api dev
+```
+
+### Build
+
+```bash
+# Build all apps
+pnpm build
+
+# Build specific app
+pnpm --filter @vemtap/web build
+pnpm --filter @vemtap/api build
+```
+
+## API Documentation
+
+Once running, access Swagger docs at: http://localhost:3001/docs
+
+## Environment Variables
+
+### apps/api/.env
+
+```env
+DATABASE_URL="postgresql://..."
+JWT_SECRET="your-secret"
+JWT_REFRESH_SECRET="your-refresh-secret"
+PORT=3001
+FRONTEND_URL="http://localhost:3000"
+```
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Start all apps in dev mode |
+| `pnpm build` | Build all apps |
+| `pnpm lint` | Lint all apps |
+| `pnpm clean` | Clean build artifacts |
+
+## Backend Architecture
+
+See [backend-architecture.md](./apps/web/backend-architecture.md) for the full backend specification.
+
+## License
+
+Private
