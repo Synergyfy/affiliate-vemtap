@@ -30,14 +30,14 @@ export default function AdminOverview() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsData, withdrawalsData, fraudData] = await Promise.all([
-          api.get('/affiliates/admin/stats'),
-          api.get('/affiliates/admin/withdrawals?status=PENDING'),
-          api.get('/affiliates/admin/fraud')
+        const [statsData, withdrawalsResponse, fraudResponse] = await Promise.all([
+          api.get('/admin/dashboard/stats'),
+          api.get('/withdrawals?status=PENDING&limit=5'),
+          api.get('/fraud?limit=5')
         ]);
         setStats(statsData);
-        setPendingWithdrawals((withdrawalsData || []).slice(0, 5));
-        setFraudAlerts((fraudData || []).slice(0, 5));
+        setPendingWithdrawals(withdrawalsResponse?.data || []);
+        setFraudAlerts(fraudResponse?.data || []);
       } catch (error) {
         console.error('Failed to fetch admin data:', error);
       } finally {
@@ -58,9 +58,13 @@ export default function AdminOverview() {
 
   const handleApprove = async (id: string, name: string) => {
     try {
-      await api.post(`/affiliates/admin/withdrawals/${id}/process`, { status: 'APPROVED' });
-      showToast(`Withdrawal for ${name} has been approved.`, 'success');
+      await api.patch(`/withdrawals/${id}/status`, { status: 'PAID' });
+      showToast(`Withdrawal for ${name} has been processed.`, 'success');
       setPendingWithdrawals(prev => prev.filter(w => w.id !== id));
+      
+      // Refresh stats after payout
+      const updatedStats = await api.get('/admin/dashboard/stats');
+      setStats(updatedStats);
     } catch (error) {
       showToast('Failed to approve withdrawal.', 'error');
     }
@@ -111,17 +115,17 @@ export default function AdminOverview() {
                 <div key={item.id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-slate-200 transition-all">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 font-bold">
-                      {item.affiliate?.user?.firstName?.charAt(0) || 'A'}
+                      {item.user?.fullName?.charAt(0) || 'A'}
                     </div>
                     <div>
-                      <p className="font-bold text-slate-900">{item.affiliate?.user?.firstName} {item.affiliate?.user?.lastName}</p>
-                      <p className="text-xs text-slate-500">{item.affiliate?.bankAccountDetails?.bank || 'Bank'} • {new Date(item.createdAt).toLocaleDateString()}</p>
+                      <p className="font-bold text-slate-900">{item.user?.fullName}</p>
+                      <p className="text-xs text-slate-500">{item.bankName || 'Bank'} • {new Date(item.createdAt).toLocaleDateString()}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-slate-900">₦{item.amount?.toLocaleString()}</p>
+                    <p className="font-bold text-slate-900">₦{Number(item.amount || 0).toLocaleString()}</p>
                     <button 
-                      onClick={() => handleApprove(item.id, item.affiliate?.user?.firstName)}
+                      onClick={() => handleApprove(item.id, item.user?.fullName || 'User')}
                       className="text-[10px] font-bold text-blue-600 uppercase tracking-wider hover:underline"
                     >
                       Approve
@@ -154,17 +158,18 @@ export default function AdminOverview() {
                       <AlertTriangle className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="font-bold text-slate-900">{item.user?.firstName} {item.user?.lastName}</p>
-                      <p className="text-xs text-slate-500">{item.fraudReason || 'Suspicious activity'}</p>
+                      <p className="font-bold text-slate-900">{item.user?.fullName || 'Unknown'}</p>
+                      <p className="text-xs text-slate-500">{item.reason || 'Suspicious activity'}</p>
                     </div>
                   </div>
                   <div className="text-right">
                     <span className={cn(
-                      "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider bg-red-100 text-red-600"
+                      "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
+                      item.riskScore >= 70 ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-600"
                     )}>
-                      High
+                      {item.riskScore >= 70 ? 'High' : 'Medium'}
                     </span>
-                    <p className="text-[10px] text-slate-500 mt-1">{new Date(item.updatedAt).toLocaleDateString()}</p>
+                    <p className="text-[10px] text-slate-500 mt-1">{new Date(item.createdAt).toLocaleDateString()}</p>
                   </div>
                 </div>
               )) : (

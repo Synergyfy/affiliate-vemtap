@@ -16,6 +16,7 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { api } from '@/lib/api-client';
 
 const DEFAULT_AGREEMENT = `<h4>1. Independent Contractor Status</h4>
 <p>
@@ -50,13 +51,26 @@ export default function AgreementEditor() {
   const { showToast } = useToast();
 
   useEffect(() => {
-    const saved = localStorage.getItem('vemtap_agreement_template');
-    if (saved) setAgreementText(saved);
+    const fetchAgreement = async () => {
+      try {
+        const data = await api.get('/settings');
+        if (data?.affiliateAgreement) {
+          setAgreementText(data.affiliateAgreement);
+        }
+      } catch (error) {
+        console.error('Failed to fetch agreement:', error);
+      }
+    };
+    fetchAgreement();
   }, []);
 
-  const handleSave = () => {
-    localStorage.setItem('vemtap_agreement_template', agreementText);
-    showToast("Affiliate agreement updated successfully.", "success");
+  const handleSave = async () => {
+    try {
+      await api.patch('/settings', { affiliateAgreement: agreementText });
+      showToast("Affiliate agreement updated successfully.", "success");
+    } catch (error) {
+      showToast("Failed to update agreement.", "error");
+    }
   };
 
   const handleReset = () => {

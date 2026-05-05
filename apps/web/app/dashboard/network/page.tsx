@@ -22,16 +22,49 @@ import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import ManagerGuideModal from '@/components/dashboard/ManagerGuideModal';
 import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 export default function NetworkPage() {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [networkStats, setNetworkStats] = useState<any>(null);
+  const [recruits, setRecruits] = useState<any[]>([]);
   const router = useRouter();
   const { user } = useAuth();
+  const { showToast } = useToast();
+
+  const fetchNetworkData = async () => {
+    setIsLoading(true);
+    try {
+      const [stats, recruitsData] = await Promise.all([
+        api.get('/network/stats'),
+        api.get('/network/recruits?limit=5')
+      ]);
+      setNetworkStats(stats);
+      setRecruits(recruitsData.data || []);
+      
+      // Auto-unlock logic based on backend qualification
+      if (stats.milestones?.agents?.isReached && stats.milestones?.businesses?.isReached) {
+        setIsUnlocked(true);
+      }
+    } catch (error) {
+      console.error('Failed to fetch network data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNetworkData();
+  }, []);
 
   // Calculate real-time countdown for 90-day window
   const [timeLeft, setTimeLeft] = useState<{days: number, hours: number, minutes: number, seconds: number}>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
+  const timeLimitDays = 90;
+  
   useEffect(() => {
     if (!user?.createdAt) return;
     
@@ -60,17 +93,20 @@ export default function NetworkPage() {
   }, [user?.createdAt]);
 
   useEffect(() => {
-    // Auto-show guide on first visit
-    setShowGuide(true);
+    // Auto-show guide on first visit if they haven't seen it
+    const hasSeenGuide = localStorage.getItem('vemtap_network_guide');
+    if (!hasSeenGuide) {
+      setShowGuide(true);
+      localStorage.setItem('vemtap_network_guide', 'true');
+    }
   }, []);
   
-  // Mock data for milestones
-  const affiliateCount = 18;
-  const businessesCount = 72;
-  // Mock targets (to be replaced by API settings later)
-  const timeLimitDays = 90;
-  const targetAffiliates = 30;
-  const targetBusinesses = 100;
+  // Real targets from networkStats or defaults
+  const affiliateCount = networkStats?.activeAgentsCount || 0;
+  const businessesCount = networkStats?.totalNetworkBusinesses || 0;
+  
+  const targetAffiliates = networkStats?.milestones?.agents?.target || 30;
+  const targetBusinesses = networkStats?.milestones?.businesses?.target || 100;
   const rewardDuration: string = '1year';
 
   const rewardDurationLabel = 
@@ -79,18 +115,20 @@ export default function NetworkPage() {
     rewardDuration === '1year' ? '12-Month' :
     rewardDuration === '2years' ? '24-Month' : 'Lifetime';
   
-  const affiliateProgress = (affiliateCount / targetAffiliates) * 100;
-  const businessProgress = (businessesCount / targetBusinesses) * 100;
+  const affiliateProgress = Math.min((affiliateCount / targetAffiliates) * 100, 100);
+  const businessProgress = Math.min((businessesCount / targetBusinesses) * 100, 100);
 
-  const isAffiliateMilestoneReached = affiliateCount >= targetAffiliates;
-  const isBusinessMilestoneReached = businessesCount >= targetBusinesses;
+  const isAffiliateMilestoneReached = networkStats?.milestones?.agents?.isReached || false;
+  const isBusinessMilestoneReached = networkStats?.milestones?.businesses?.isReached || false;
   const isFullMilestoneReached = isAffiliateMilestoneReached && isBusinessMilestoneReached;
 
-  const managers = [
-    { id: 1, name: 'Sarah Johnson', referrals: 12, earnings: '₦45,000', status: 'Active' },
-    { id: 2, name: 'Michael Chen', referrals: 8, earnings: '₦28,500', status: 'Active' },
-    { id: 3, name: 'David Smith', referrals: 3, earnings: '₦12,000', status: 'Active' },
-  ];
+  const managers = recruits.map(r => ({
+    id: r.id,
+    name: r.fullName,
+    referrals: r.businessCount,
+    earnings: `₦${Number(r.totalEarnings * 0.1).toLocaleString()}`, // Showing 10% share
+    status: r.status === 'ACTIVE' ? 'Active' : 'Inactive'
+  }));
 
   return (
     <DashboardLayout>
@@ -135,9 +173,16 @@ export default function NetworkPage() {
             </div>
             
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-4">Unlock Manager Status</h2>
-            <p className="text-sm sm:text-base text-slate-500 max-w-lg mx-auto mb-8 sm:mb-12">
-              Build your team and hit the targets <span className="text-orange-600 font-bold">within {timeLimitDays} days</span> to unlock your <span className="font-bold text-blue-600">Manager Network</span> and earn <span className="font-bold text-blue-600">10% of affiliate earnings</span>.
-            </p>
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
+                <p className="text-slate-500 font-bold">Synchronizing network data...</p>
+              </div>
+            ) : (
+              <p className="text-sm sm:text-base text-slate-500 max-w-lg mx-auto mb-8 sm:mb-12">
+                Build your team and hit the targets <span className="text-orange-600 font-bold">within {timeLimitDays} days</span> to unlock your <span className="font-bold text-blue-600">Manager Network</span> and earn <span className="font-bold text-blue-600">10% of affiliate earnings</span>.
+              </p>
+            )}
 
             <div className="max-w-2xl mx-auto space-y-8">
               {/* Progress 1: Affiliates */}
@@ -333,6 +378,12 @@ export default function NetworkPage() {
                     </div>
                   </div>
                 ))}
+                {managers.length === 0 && !isLoading && (
+                  <div className="p-12 text-center text-slate-400">
+                    <Users className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                    <p className="text-sm font-bold">No affiliates in your network yet.</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -344,17 +395,6 @@ export default function NetworkPage() {
             <p className="font-bold mb-1">How Milestone System Works:</p>
             <p>To unlock the 12-Month Extended Earnings mode, you must recruit 30 active affiliates and close 100 businesses within your network <span className="font-black underline">within 90 days</span>. You also earn a ₦5,000 bonus for the affiliate target and ₦10,000 for the business target.</p>
           </div>
-        </div>
-
-        {/* Mock Toggle Button for Testing */}
-        <div className="fixed bottom-8 right-8 z-50">
-            <Button 
-              variant="outline" 
-              className="bg-white/80 backdrop-blur-sm border-2 border-blue-600 text-blue-600 font-bold shadow-2xl hover:bg-blue-600 hover:text-white transition-all scale-90 sm:scale-100"
-              onClick={() => setIsUnlocked(!isUnlocked)}
-            >
-              {isUnlocked ? 'Mock: Lock Manager Status' : 'Mock: Unlock Manager Status'}
-            </Button>
         </div>
 
         <ManagerGuideModal 

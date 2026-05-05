@@ -56,12 +56,22 @@ export default function TrainingManagement() {
   const fetchModules = async () => {
     setLoading(true);
     try {
-      const data = await api.get('/training');
-      setModulesList(data || []);
+      const response = await api.get('/training/admin/modules');
+      setModulesList(response?.data || []);
     } catch (error) {
       console.error('Failed to fetch training modules:', error);
+      showToast('Failed to load modules.', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchModuleDetails = async (id: string) => {
+    try {
+      const data = await api.get(`/training/admin/modules/${id}`);
+      setSelectedCourse(data);
+    } catch (error) {
+      showToast('Failed to load lessons.', 'error');
     }
   };
 
@@ -81,10 +91,10 @@ export default function TrainingManagement() {
       };
 
       if (isEditing && selectedCourse) {
-        await api.patch(`/training/${selectedCourse.id}`, payload);
+        await api.patch(`/training/admin/modules/${selectedCourse.id}`, payload);
         showToast('Course updated successfully!', 'success');
       } else {
-        await api.post('/training', payload);
+        await api.post('/training/admin/modules', payload);
         showToast('Training course published successfully!', 'success');
       }
       
@@ -100,8 +110,9 @@ export default function TrainingManagement() {
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this module?')) return;
     try {
-      await api.delete(`/training/${id}`);
+      await api.delete(`/training/admin/modules/${id}`);
       showToast('Module deleted successfully.', 'info');
+      if (selectedCourse?.id === id) setSelectedCourse(null);
       fetchModules();
     } catch (error) {
       showToast('Failed to delete module.', 'error');
@@ -384,9 +395,9 @@ export default function TrainingManagement() {
                         >
                           <Edit3 className="w-4 h-4" />
                         </button>
-                        <button 
+                         <button 
                           onClick={() => {
-                            setSelectedCourse(module);
+                            fetchModuleDetails(module.id);
                             showToast("Now managing lessons", "info");
                           }}
                           className={cn(
