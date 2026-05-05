@@ -23,9 +23,6 @@ const signupSchema = z.object({
     .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
   confirmPassword: z.string(),
   referralCode: z.string().optional(),
-  location: z.string().min(2, 'Location is required'),
-  address: z.string().min(5, 'Full address is required'),
-  otpCode: z.string().min(6, 'Verification code must be 6 digits').optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -43,19 +40,12 @@ function SignupForm() {
   const router = useRouter();
   const { signup, updateUser } = useAuth();
   const { showToast } = useToast();
-
-  const verifyOtp = async (email: string, code: string) => {
-    // Mock OTP verification for development
-    console.log(`Verifying OTP ${code} for ${email}`);
-    return true;
-  };
   const refCode = searchParams.get('ref');
 
   const {
     register,
     handleSubmit,
     setValue,
-    trigger,
     formState: { errors },
   } = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -70,44 +60,22 @@ function SignupForm() {
     }
   }, [refCode, setValue]);
 
-  const handleNext = async () => {
-    const fieldsToValidate = ['fullName', 'email', 'phone', 'password', 'confirmPassword', 'referralCode'] as const;
-    const isValid = await trigger(fieldsToValidate);
-    if (isValid) {
-      setStep(2);
-    }
-  };
-
   const onSubmit = async (data: SignupFormValues) => {
     setIsLoading(true);
     try {
-      // 1. Verify OTP
-      if (!data.otpCode) {
-        throw new Error('Verification code is required');
-      }
-      await verifyOtp(data.email, data.otpCode);
-
-      // 2. Complete Signup
-      const nameParts = data.fullName.trim().split(/\s+/);
-      const firstName = nameParts[0] || '';
-      const lastName = nameParts.slice(1).join(' ') || 'User';
-
       await signup({
-        id: `USER-${Math.floor(Math.random() * 10000)}`,
         fullName: data.fullName,
-        firstName,
-        lastName,
         email: data.email,
         phone: data.phone,
-        referralCode: data.referralCode || 'REF12345',
-        location: data.location,
-        address: data.address,
-      } as any);
-      setIsLoading(false);
+        password: data.password,
+        referralCode: data.referralCode,
+      });
+      
       setShowTerms(true);
-    } catch (error) {
-      showToast('Failed to create account.', 'error');
+    } catch (error: any) {
+      showToast(error.message || 'Failed to create account.', 'error');
       console.error('Signup error:', error);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -121,22 +89,11 @@ function SignupForm() {
 
   return (
     <>
-      <div className="mb-8">
-        <div className="flex items-center justify-between relative">
-          <div className="flex flex-col items-center z-10">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${step >= 1 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500'}`}>1</div>
-            <span className="text-xs font-semibold mt-2 text-slate-600">Basics</span>
-          </div>
-          <div className={`flex-1 h-0.5 mx-4 transition-all ${step >= 2 ? 'bg-blue-600' : 'bg-slate-200'}`}></div>
-          <div className="flex flex-col items-center z-10">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${step >= 2 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500'}`}>2</div>
-            <span className="text-xs font-semibold mt-2 text-slate-600">Location</span>
-          </div>
-        </div>
+      <div className="mb-8 text-center">
+        <h2 className="text-xl font-bold">Sign up</h2>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        {step === 1 && (
           <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
             <Input
               label="Full Name"
@@ -186,38 +143,10 @@ function SignupForm() {
               {...register('referralCode')}
               error={errors.referralCode?.message}
             />
-            <Button type="button" onClick={handleNext} className="w-full mt-6">
-              Next Step
+            <Button type="submit" className="w-full mt-6" isLoading={isLoading}>
+              Complete Signup
             </Button>
           </div>
-        )}
-
-        {step === 2 && (
-          <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-            <Input
-              label="City / Location"
-              description="The primary city where you operate"
-              placeholder="Lagos, Nigeria"
-              {...register('location')}
-              error={errors.location?.message}
-            />
-            <Input
-              label="Full Address"
-              description="Your complete residential or office address"
-              placeholder="123 Business Street, Victoria Island"
-              {...register('address')}
-              error={errors.address?.message}
-            />
-            <div className="flex gap-4 mt-6">
-              <Button type="button" variant="outline" onClick={() => setStep(1)} className="w-1/3">
-                Back
-              </Button>
-              <Button type="submit" className="w-2/3" isLoading={isLoading}>
-                Complete Signup
-              </Button>
-            </div>
-          </div>
-        )}
       </form>
 
       <TermsAndConditionsModal
