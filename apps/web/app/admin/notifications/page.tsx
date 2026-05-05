@@ -29,10 +29,21 @@ export default function NotificationsManagement() {
 
   const fetchHistory = async () => {
     try {
-      const data = await api.get('/notifications/admin/history/broadcasts');
-      setHistory(data || []);
+      const response = await api.get('/notifications?limit=20');
+      // Format backend data to frontend expectations
+      const formattedData = (response?.data || []).map((notif: any) => ({
+        id: notif.id,
+        title: notif.title,
+        message: notif.message,
+        type: notif.type,
+        date: new Date(notif.createdAt).toLocaleString(),
+        status: 'Sent', // Standard status for history
+        recipients: notif.user?.fullName || 'Broadcast'
+      }));
+      setHistory(formattedData);
     } catch (error) {
-      console.error('Failed to fetch broadcast history:', error);
+      console.error('Failed to fetch notification history:', error);
+      showToast('Failed to load history', 'error');
     }
   };
 
@@ -46,7 +57,11 @@ export default function NotificationsManagement() {
 
     setIsSending(true);
     try {
-      await api.post('/notifications/broadcast', { title, message });
+      await api.post('/notifications/broadcast', { 
+        type: 'SYSTEM', // Default to SYSTEM for admin broadcasts
+        title, 
+        message 
+      });
       showToast("Notification has been broadcasted successfully.", "success");
       setTitle('');
       setMessage('');

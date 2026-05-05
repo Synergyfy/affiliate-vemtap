@@ -43,7 +43,7 @@ export default function AcademyPage() {
   const [loading, setLoading] = useState(true);
   
   const practiceScenarios = courses[0]?.scenarios || [];
-  const quizQuestions = courses[0]?.quiz || [];
+  const quizQuestions = courses[0]?.quizzes || [];
   
   // Practice State
   const [practiceIndex, setPracticeIndex] = useState(0);
@@ -64,14 +64,15 @@ export default function AcademyPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [trainingData, profileData] = await Promise.all([
-          api.get('/training'),
-          api.get('/affiliates/profile')
-        ]);
-        setCourses(trainingData);
-        if (profileData?.completedModules) {
-          setCompletedModules(profileData.completedModules);
-        }
+        const response = await api.get('/training/modules');
+        const modules = response.data || [];
+        setCourses(modules);
+        
+        // Extract completed modules from progress records
+        const completed = modules
+          .filter((m: any) => m.progress?.[0]?.status === 'COMPLETED')
+          .map((m: any) => m.id);
+        setCompletedModules(completed);
       } catch (error) {
         console.error('Failed to fetch training data:', error);
       } finally {
@@ -82,7 +83,7 @@ export default function AcademyPage() {
   }, []);
 
   // Progress calculation
-  const totalLessons = courses.reduce((acc, c) => acc + (c.lessons?.length || 0), 0);
+  const totalLessons = courses.length;
   const moduleProgress = totalLessons > 0 ? Math.round((completedModules.length / totalLessons) * 100) : 0;
   
   const getBadge = () => {
@@ -104,15 +105,19 @@ export default function AcademyPage() {
     return 'Needs Review';
   };
 
-  const handleModuleComplete = async (lessonId: string) => {
+  const handleModuleComplete = async (moduleId: string) => {
     try {
-      await api.post(`/training/lessons/${lessonId}/complete`, {});
-      if (!completedModules.includes(lessonId)) {
-        setCompletedModules([...completedModules, lessonId]);
-        showToast(`Lesson completed!`, 'success');
+      await api.patch(`/training/modules/${moduleId}/progress`, {
+        status: 'COMPLETED',
+        completedAt: new Date().toISOString()
+      });
+      
+      if (!completedModules.includes(moduleId)) {
+        setCompletedModules([...completedModules, moduleId]);
+        showToast(`Module completed!`, 'success');
       }
     } catch (error) {
-      console.error('Failed to mark lesson as complete:', error);
+      console.error('Failed to mark module as complete:', error);
       showToast('Failed to save progress', 'error');
     }
     setSelectedModule(null);
@@ -145,10 +150,10 @@ export default function AcademyPage() {
   };
 
   const handleQuizAnswer = (index: number) => {
-    const quizQuestions = courses[0]?.quiz || [];
-    const isCorrect = index === quizQuestions[quizStep].correct;
+    const quizQuestions = courses[0]?.quizzes || [];
+    const isCorrect = index === quizQuestions[quizStep].correctAnswer;
+    
     if (isCorrect) {
-      setQuizScore(prev => prev + (100 / quizQuestions.length));
       setQuizStats(prev => ({ ...prev, correct: prev.correct + 1 }));
     } else {
       setQuizStats(prev => ({ ...prev, failed: prev.failed + 1 }));
@@ -157,7 +162,17 @@ export default function AcademyPage() {
     if (quizStep < quizQuestions.length - 1) {
       setQuizStep(quizStep + 1);
     } else {
+      const finalCorrect = isCorrect ? quizStats.correct + 1 : quizStats.correct;
+      const score = Math.round((finalCorrect / quizQuestions.length) * 100);
+      setQuizScore(score);
       setIsQuizFinished(true);
+      
+      // Save score to backend
+      if (courses[0]?.id) {
+        api.patch(`/training/modules/${courses[0].id}/progress`, {
+          quizScore: score
+        }).catch(console.error);
+      }
     }
   };
 
@@ -264,7 +279,11 @@ export default function AcademyPage() {
               className="space-y-8"
             >
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {courses.length > 0 ? courses.map((module) => (
+                {loading ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="h-48 bg-slate-100 rounded-[32px] animate-pulse" />
+                  ))
+                ) : courses.length > 0 ? courses.map((module) => (
                   <div 
                     key={module.id}
                     onClick={() => {
@@ -272,7 +291,7 @@ export default function AcademyPage() {
                     }}
                     className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group cursor-pointer relative overflow-hidden"
                   >
-                    {module.lessons?.[0] && completedModules.includes(module.lessons[0].id) && (
+                    {completedModules.includes(module.id) && (
                       <div className="absolute top-4 right-4 bg-emerald-500 text-white p-1 rounded-full">
                         <CheckCircle2 className="w-4 h-4" />
                       </div>
@@ -355,21 +374,14 @@ export default function AcademyPage() {
                       <div className="overflow-y-auto flex-grow">
                         {moduleView === 'video' ? (
                           <div className="aspect-video bg-slate-900 relative">
-                            {selectedModule.lessons?.[0]?.videoUrl ? (
-                              <>
-                                <Image 
-                                  src={selectedModule.lessons[0].videoUrl} 
-                                  alt={selectedModule.title}
-                                  fill
-                                  className="object-cover opacity-60"
-                                  referrerPolicy="no-referrer"
-                                />
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-2xl animate-pulse">
-                                    <Play className="w-8 h-8 fill-current ml-1" />
-                                  </div>
-                                </div>
-                              </>
+                            {selectedModule.videoUrl ? (
+                              <iframe 
+                                src={selectedModule.videoUrl.replace('watch?v=', 'embed/')} 
+                                title={selectedModule.title}
+                                className="absolute inset-0 w-full h-full border-0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                allowFullScreen
+                              />
                             ) : (
                               <div className="absolute inset-0 flex items-center justify-center text-white font-medium">
                                 No video available for this module.
@@ -388,7 +400,7 @@ export default function AcademyPage() {
                               prose-blockquote:border-l-4 prose-blockquote:border-blue-600 prose-blockquote:bg-blue-50 prose-blockquote:p-6 prose-blockquote:rounded-r-2xl prose-blockquote:not-italic prose-blockquote:font-medium
                               prose-strong:text-slate-900 prose-strong:font-bold
                             ">
-                              <ReactMarkdown>{selectedModule.lessons?.[0]?.content || 'Content coming soon...'}</ReactMarkdown>
+                              <ReactMarkdown>{selectedModule.content || 'Content coming soon...'}</ReactMarkdown>
                             </div>
                           </div>
                         )}
@@ -396,23 +408,18 @@ export default function AcademyPage() {
                         <div className="p-8 sm:p-12 pt-0">
                           <div className="bg-slate-50 p-8 rounded-[32px] border border-slate-100">
                             <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
-                              <Zap className="w-4 h-4 text-blue-600" /> Key Takeaways
+                              <Zap className="w-4 h-4 text-blue-600" /> Module Description
                             </h4>
-                            <ul className="space-y-4">
-                              {(selectedModule.lessons?.[0]?.summary || ['Complete the lesson to see takeaways.']).map((item: string, i: number) => (
-                                <li key={i} className="flex items-start gap-4 text-slate-600">
-                                  <div className="mt-1.5 w-2 h-2 bg-blue-600 rounded-full shrink-0" />
-                                  <span className="text-base font-medium leading-relaxed">{item}</span>
-                                </li>
-                              ))}
-                            </ul>
+                            <p className="text-slate-600 font-medium leading-relaxed">
+                              {selectedModule.description}
+                            </p>
                           </div>
                         </div>
                       </div>
 
                       <div className="p-8 border-t border-slate-100 bg-white flex gap-4">
                         <Button 
-                          onClick={() => handleModuleComplete(selectedModule.lessons?.[0]?.id)}
+                          onClick={() => handleModuleComplete(selectedModule.id)}
                           className="flex-grow h-16 rounded-2xl bg-blue-600 hover:bg-blue-700 font-bold text-lg shadow-xl shadow-blue-100"
                         >
                           Complete Module
@@ -447,12 +454,17 @@ export default function AcademyPage() {
                       <MessageSquare className="w-8 h-8" />
                     </div>
                     <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-2">Scenario {practiceIndex + 1} of {practiceScenarios.length}</p>
-                    <h3 className="text-2xl font-bold text-slate-900 mb-10 leading-tight italic">
-                      &quot;{practiceScenarios[practiceIndex].scenario}&quot;
+                    <h4 className="text-lg font-black text-slate-900 mb-4">{practiceScenarios[practiceIndex].title}</h4>
+                    <h3 className="text-xl font-bold text-slate-900 mb-10 leading-tight italic">
+                      &quot;{practiceScenarios[practiceIndex].situation}&quot;
                     </h3>
+                    <p className="text-sm text-slate-500 mb-8 font-medium">Objection: {practiceScenarios[practiceIndex].objection}</p>
 
                           <div className="space-y-4">
-                            {practiceScenarios[practiceIndex].options.map((option: any, i: number) => (
+                            {[
+                              { text: practiceScenarios[practiceIndex].idealResponse, correct: true, feedback: 'Perfect! This addresses the objection directly and keeps the door open.' },
+                              { text: 'Let me talk to my manager and get back to you later.', correct: false, feedback: 'This sounds like you are avoiding the question. Try to handle it directly.' }
+                            ].map((option: any, i: number) => (
                               <button
                                 key={i}
                                 disabled={!!practiceFeedback}
@@ -546,7 +558,7 @@ export default function AcademyPage() {
               exit={{ opacity: 0, y: -20 }}
               className="max-w-2xl mx-auto"
             >
-              {courses.length > 0 && courses[0]?.quiz?.length > 0 ? (
+              {courses.length > 0 && courses[0]?.quizzes?.length > 0 ? (
                 !isQuizFinished ? (
                   <div className="bg-white p-8 sm:p-12 rounded-[40px] border border-slate-200 shadow-xl">
                     <div className="flex justify-between items-center mb-10">

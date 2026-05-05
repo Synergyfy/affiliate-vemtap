@@ -18,6 +18,8 @@ interface User {
   location?: string;
   address?: string;
   isKycVerified?: boolean;
+  totalEarnings?: number;
+  kycStatus?: string;
 }
 
 interface AuthContextType {

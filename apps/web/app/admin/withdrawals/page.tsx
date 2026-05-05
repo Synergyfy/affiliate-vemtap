@@ -12,7 +12,9 @@ import {
   MoreHorizontal,
   Check,
   X,
-  CreditCard
+  CreditCard,
+  Zap,
+  Loader2
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { cn } from '@/lib/utils';
@@ -23,15 +25,16 @@ export default function WithdrawalsManagement() {
   const [withdrawalsList, setWithdrawalsList] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [processingBulk, setProcessingBulk] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [wthData, statsData] = await Promise.all([
-          api.get('/affiliates/admin/withdrawals'),
-          api.get('/affiliates/admin/stats')
+        const [wthResponse, statsData] = await Promise.all([
+          api.get('/withdrawals?limit=50'),
+          api.get('/stats/admin') // Assuming an admin stats endpoint exists or fallback to users
         ]);
-        setWithdrawalsList(wthData || []);
+        setWithdrawalsList(wthResponse?.data || []);
         setStats(statsData);
       } catch (error) {
         console.error('Failed to fetch withdrawals data:', error);
@@ -42,11 +45,35 @@ export default function WithdrawalsManagement() {
     fetchData();
   }, []);
 
-  const handleProcess = async (id: string, name: string, status: string, note?: string) => {
+  const fetchWithdrawals = async () => {
     try {
-      await api.post(`/affiliates/admin/withdrawals/${id}/process`, { status, note });
+      const response = await api.get('/withdrawals?limit=50');
+      setWithdrawalsList(response?.data || []);
+    } catch (error) {
+      console.error('Refresh failed:', error);
+    }
+  };
+
+  const handleBulkTrigger = async () => {
+    if (!confirm('Are you sure you want to trigger bulk payouts? This will process all eligible pending earnings for verified affiliates.')) return;
+    
+    setProcessingBulk(true);
+    try {
+      const response = await api.post('/withdrawals/bulk-trigger');
+      showToast(`Bulk processing complete: ${response.successCount} successful payouts.`, 'success');
+      fetchWithdrawals();
+    } catch (error) {
+      showToast('Failed to trigger bulk payouts.', 'error');
+    } finally {
+      setProcessingBulk(false);
+    }
+  };
+
+  const handleProcess = async (id: string, name: string, status: string) => {
+    try {
+      await api.patch(`/withdrawals/${id}/status`, { status });
       showToast(`Withdrawal for ${name} has been ${status.toLowerCase()}.`, 'success');
-      setWithdrawalsList(prev => prev.map(w => w.id === id ? { ...w, status } : w));
+      fetchWithdrawals();
     } catch (error) {
       showToast(`Failed to ${status.toLowerCase()} withdrawal.`, 'error');
     }
@@ -83,21 +110,31 @@ export default function WithdrawalsManagement() {
 
         {/* Withdrawals Table */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+          <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <h3 className="text-lg font-bold text-slate-900">Withdrawal Requests</h3>
-            <div className="flex bg-slate-50 border border-slate-200 rounded-xl p-1">
+            <div className="flex items-center gap-3">
+              <div className="flex bg-slate-50 border border-slate-200 rounded-xl p-1">
+                <button 
+                  onClick={() => showToast("Showing all requests", "info")}
+                  className="px-3 py-1.5 text-xs font-bold bg-white text-slate-900 rounded-lg shadow-sm"
+                >All</button>
+                <button 
+                  onClick={() => showToast("Showing pending requests", "info")}
+                  className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 rounded-lg"
+                >Pending</button>
+                <button 
+                  onClick={() => showToast("Showing approved requests", "info")}
+                  className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 rounded-lg"
+                >Approved</button>
+              </div>
               <button 
-                onClick={() => showToast("Showing all requests", "info")}
-                className="px-3 py-1.5 text-xs font-bold bg-white text-slate-900 rounded-lg shadow-sm"
-              >All</button>
-              <button 
-                onClick={() => showToast("Showing pending requests", "info")}
-                className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 rounded-lg"
-              >Pending</button>
-              <button 
-                onClick={() => showToast("Showing approved requests", "info")}
-                className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 rounded-lg"
-              >Approved</button>
+                onClick={handleBulkTrigger}
+                disabled={processingBulk}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all shadow-lg disabled:opacity-50"
+              >
+                {processingBulk ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+                Trigger Bulk Payouts
+              </button>
             </div>
           </div>
           <div className="overflow-x-auto">
@@ -122,13 +159,13 @@ export default function WithdrawalsManagement() {
                     className="hover:bg-slate-50/50 transition-all group"
                   >
                     <td className="p-4">
-                      <p className="font-bold text-slate-900">{wth.affiliate?.user?.firstName} {wth.affiliate?.user?.lastName}</p>
+                      <p className="font-bold text-slate-900">{wth.user?.fullName || 'User'}</p>
                       <p className="text-xs text-slate-400 font-mono text-xs">{wth.id}</p>
                     </td>
                     <td className="p-4 text-sm text-slate-900 font-bold">₦{Number(wth.amount).toLocaleString()}</td>
                     <td className="p-4">
-                      <p className="text-sm font-medium text-slate-700">{wth.affiliate?.bankAccountDetails?.bank || 'Bank'}</p>
-                      <p className="text-xs text-slate-500">{wth.affiliate?.bankAccountDetails?.accountNumber || 'Acc Number'}</p>
+                      <p className="text-sm font-medium text-slate-700">{wth.bankName || 'Bank'}</p>
+                      <p className="text-xs text-slate-500">{wth.accountNumber || 'Acc Number'}</p>
                     </td>
                     <td className="p-4">
                       <span className={cn(
@@ -146,14 +183,16 @@ export default function WithdrawalsManagement() {
                         {wth.status === 'PENDING' && (
                           <>
                             <button 
-                              onClick={() => handleProcess(wth.id, wth.affiliate?.user?.firstName, 'APPROVED')}
-                              className="p-2 hover:bg-green-50 rounded-lg text-slate-400 hover:text-green-600 transition-all title='Approve'"
+                              onClick={() => handleProcess(wth.id, wth.user?.fullName, 'APPROVED')}
+                              className="p-2 hover:bg-green-50 rounded-lg text-slate-400 hover:text-green-600 transition-all"
+                              title="Approve"
                             >
                               <Check className="w-4 h-4" />
                             </button>
                             <button 
-                              onClick={() => handleProcess(wth.id, wth.affiliate?.user?.firstName, 'REJECTED')}
-                              className="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-all title='Reject'"
+                              onClick={() => handleProcess(wth.id, wth.user?.fullName, 'REJECTED')}
+                              className="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-all"
+                              title="Reject"
                             >
                               <X className="w-4 h-4" />
                             </button>
@@ -161,7 +200,7 @@ export default function WithdrawalsManagement() {
                         )}
                         {wth.status === 'APPROVED' && (
                           <button 
-                            onClick={() => handleProcess(wth.id, wth.affiliate?.user?.firstName, 'PAID')}
+                            onClick={() => handleProcess(wth.id, wth.user?.fullName, 'PAID')}
                             className="flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700 transition-all"
                           >
                             Mark as Paid

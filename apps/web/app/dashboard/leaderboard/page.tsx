@@ -28,8 +28,17 @@ export default function LeaderboardPage() {
   useEffect(() => {
     const fetchLeaderboard = async () => {
       try {
-        const data = await api.get('/affiliates/leaderboard');
-        setLeaderboardData(data);
+        const response = await api.get('/users/leaderboard');
+        const formattedData = (response || []).map((item: any, index: number) => ({
+          id: item.id,
+          rank: index + 1,
+          name: item.fullName,
+          avatar: item.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(item.fullName)}&background=random`,
+          earnings: item.totalEarnings || 0,
+          referrals: item.referrals || item._count?.referrals || 0,
+          trend: 'stable'
+        }));
+        setLeaderboardData(formattedData);
       } catch (error) {
         console.error('Failed to fetch leaderboard:', error);
       } finally {
@@ -41,8 +50,12 @@ export default function LeaderboardPage() {
 
   const tabs = ['This Week', 'This Month', 'All Time'];
 
-  const displayData = leaderboardData.length > 0 ? leaderboardData : [];
-  const topThree = displayData.slice(0, 3);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const displayData = leaderboardData.filter(item => 
+    item.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const topThree = leaderboardData.slice(0, 3);
   
   // Create safe fallbacks for podium to prevent crashes and keep UI pretty
   const podium = [
@@ -185,6 +198,8 @@ export default function LeaderboardPage() {
               <input 
                 type="text" 
                 placeholder="Search affiliate..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
               />
             </div>
@@ -262,12 +277,12 @@ export default function LeaderboardPage() {
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600 rounded-full blur-[100px] opacity-20 -mr-32 -mt-32" />
           <div className="flex items-center gap-6 relative z-10 text-center md:text-left flex-col md:flex-row">
             <div className="w-20 h-20 rounded-full border-4 border-white/10 flex items-center justify-center text-3xl font-black bg-white/5">
-              {displayData.findIndex(item => item.name.includes(user?.lastName || '')) + 1 || '--'}
+              {leaderboardData.findIndex(item => item.id === user?.id) + 1 || '--'}
             </div>
             <div>
               <h3 className="text-xl font-bold">Your Current Rank</h3>
               <p className="text-slate-400">
-                {displayData.findIndex(item => item.name.includes(user?.lastName || '')) !== -1 
+                {leaderboardData.findIndex(item => item.id === user?.id) !== -1 
                   ? "You are doing great! Keep it up." 
                   : "Start referring more businesses to climb the board!"}
               </p>
@@ -276,7 +291,7 @@ export default function LeaderboardPage() {
           <div className="flex items-center gap-4 relative z-10 w-full md:w-auto">
             <div className="flex-grow md:flex-none bg-white/10 px-6 py-4 rounded-2xl text-center">
               <p className="text-[10px] font-bold text-blue-300 uppercase tracking-widest mb-1">Total Earnings</p>
-              <p className="text-xl font-black">₦{Number(displayData.find(item => item.name.includes(user?.lastName || ''))?.earnings || 0).toLocaleString()}</p>
+              <p className="text-xl font-black">₦{Number(user?.totalEarnings || 0).toLocaleString()}</p>
             </div>
           </div>
         </div>

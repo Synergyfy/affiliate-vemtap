@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Building2, Phone, Mail, MapPin, MessageSquare, Plus, Loader2, Edit2 } from 'lucide-react';
+import { X, Building2, Phone, Mail, MapPin, MessageSquare, Plus, Loader2, Edit2, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
@@ -18,10 +18,12 @@ export default function BusinessModal({ isOpen, onClose, onConfirm, initialData,
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     businessName: initialData?.name || '',
+    ownerName: initialData?.ownerName || '',
     phone: initialData?.phone || '',
     email: initialData?.email || '',
     state: initialData?.state || '',
     address: initialData?.address || '',
+    planType: initialData?.planType || 'BASIC',
     comment: initialData?.comment || ''
   });
 
@@ -30,20 +32,24 @@ export default function BusinessModal({ isOpen, onClose, onConfirm, initialData,
     if (initialData) {
       setFormData({
         businessName: initialData.name || '',
+        ownerName: initialData.ownerName || initialData.name || '',
         phone: initialData.phone || '',
         email: initialData.email || '',
         state: initialData.state || '',
         address: initialData.address || '',
+        planType: initialData.planType || 'BASIC',
         comment: initialData.comment || ''
       });
     } else {
       // Reset if no initial data (add mode)
       setFormData({
         businessName: '',
+        ownerName: '',
         phone: '',
         email: '',
         state: '',
         address: '',
+        planType: 'BASIC',
         comment: ''
       });
     }
@@ -53,24 +59,20 @@ export default function BusinessModal({ isOpen, onClose, onConfirm, initialData,
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Simulate API call
+    // Pass to parent for API call
+    onConfirm({
+      ...formData,
+      id: initialData?.id
+    });
+    
+    // We don't close immediately anymore, parent handles it on success
+    // But if we want to keep it simple and close:
     setTimeout(() => {
-      onConfirm({
-        ...initialData,
-        ...formData,
-        id: initialData?.id || Math.random(),
-        status: initialData?.status || 'Trial',
-        payment: initialData?.payment || 'Pending',
-        plan: initialData?.plan || 'Basic',
-        commission: initialData?.commission || '₦0',
-        date: initialData?.date || new Date().toISOString().split('T')[0]
-      });
       setIsSubmitting(false);
-      onClose();
       if (mode === 'add') {
-        setFormData({ businessName: '', phone: '', email: '', state: '', address: '', comment: '' });
+        setFormData({ businessName: '', ownerName: '', phone: '', email: '', state: '', address: '', planType: 'BASIC', comment: '' });
       }
-    }, 1000);
+    }, 500);
   };
 
   return (
@@ -120,7 +122,7 @@ export default function BusinessModal({ isOpen, onClose, onConfirm, initialData,
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                     <Building2 className="w-3.5 h-3.5" /> Business Name <span className="text-red-500">*</span>
                   </label>
-                  <p className="text-[10px] text-slate-400 font-medium leading-none">The official registered name of the business.</p>
+                  <p className="text-[10px] text-slate-400 font-medium leading-none">The official registered name.</p>
                   <Input 
                     placeholder="e.g. Tech Solutions Ltd"
                     value={formData.businessName}
@@ -131,9 +133,25 @@ export default function BusinessModal({ isOpen, onClose, onConfirm, initialData,
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                    <Building2 className="w-3.5 h-3.5" /> Owner Name <span className="text-red-500">*</span>
+                  </label>
+                  <p className="text-[10px] text-slate-400 font-medium leading-none">The person to contact.</p>
+                  <Input 
+                    placeholder="e.g. John Doe"
+                    value={formData.ownerName}
+                    onChange={(e) => setFormData({...formData, ownerName: e.target.value})}
+                    required
+                    className="h-12 rounded-xl border-slate-200 focus:border-blue-600 transition-all font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                     <Phone className="w-3.5 h-3.5" /> Phone Number <span className="text-red-500">*</span>
                   </label>
-                  <p className="text-[10px] text-slate-400 font-medium leading-none">Best contact number for the business owner.</p>
+                  <p className="text-[10px] text-slate-400 font-medium leading-none">Best contact number.</p>
                   <Input 
                     placeholder="e.g. +234 800 000 0000"
                     value={formData.phone}
@@ -145,6 +163,22 @@ export default function BusinessModal({ isOpen, onClose, onConfirm, initialData,
                     required
                     className="h-12 rounded-xl border-slate-200 focus:border-blue-600 transition-all font-medium"
                   />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                    <TrendingUp className="w-3.5 h-3.5" /> Plan Type
+                  </label>
+                  <p className="text-[10px] text-slate-400 font-medium leading-none">BASIC, STARTER, PROFESSIONAL, ENTERPRISE</p>
+                  <select 
+                    value={formData.planType}
+                    onChange={(e) => setFormData({...formData, planType: e.target.value})}
+                    className="w-full h-12 rounded-xl border border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none transition-all px-4 text-sm font-medium"
+                  >
+                    <option value="BASIC">Basic</option>
+                    <option value="STARTER">Starter</option>
+                    <option value="PROFESSIONAL">Professional</option>
+                    <option value="ENTERPRISE">Enterprise</option>
+                  </select>
                 </div>
               </div>
 

@@ -21,8 +21,11 @@ import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '@/lib/api-client';
+import { useAuth } from '@/hooks/use-auth';
+import { Loader2 } from 'lucide-react';
 
 export default function ProfilePage() {
+  const { user, updateUser } = useAuth();
   const { showToast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,19 +49,24 @@ export default function ProfilePage() {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const data = await api.get('/affiliates/profile');
+        const data = await api.get('/users/profile');
         setProfileData({
-          fullName: `${data.user?.firstName || ''} ${data.user?.lastName || ''}`.trim() || 'New Affiliate',
-          email: data.user?.email || '',
-          phone: data.user?.phone || '',
-          nin: data.idType === 'NIN' ? (data.idNumber || '') : '',
-          bvn: data.idType === 'BVN' ? (data.idNumber || '') : '',
-          idType: data.idType || 'NIN',
-          bankName: data.bankAccountDetails?.bank || '',
-          accountNumber: data.bankAccountDetails?.account || '',
-          accountName: data.bankAccountDetails?.name || '',
+          fullName: data.fullName || '',
+          email: data.email || '',
+          phone: data.phone || '',
+          nin: data.nin || '',
+          bvn: data.bvn || '',
+          idType: data.nin ? 'NIN' : (data.bvn ? 'BVN' : 'NIN'),
+          bankName: data.bankName || '',
+          accountNumber: data.accountNumber || '',
+          accountName: data.accountName || '',
         });
-        setKycStatus(data.kycStatus || 'unverified');
+        
+        // Map KycStatus enum to UI status
+        const status = data.kycStatus === 'VERIFIED' ? 'verified' : 
+                      data.kycStatus === 'PENDING' ? (data.nin || data.bvn ? 'pending' : 'unverified') : 
+                      'unverified';
+        setKycStatus(status as any);
       } catch (error) {
         console.error('Failed to fetch profile', error);
       } finally {
@@ -72,32 +80,33 @@ export default function ProfilePage() {
     e.preventDefault();
     setIsSaving(true);
     try {
-      let finalImageUrl = profileData.idType === 'NIN' ? '' : ''; 
-      
       if (selectedFile) {
+        setUploadProgress(50);
+        // Simulate upload
+        await new Promise(resolve => setTimeout(resolve, 500));
         setUploadProgress(100);
-        // Note: In production, upload to S3/Cloudinary and get URL first
-        finalImageUrl = URL.createObjectURL(selectedFile);
       }
 
-      await api.post('/affiliates/profile/update', {
-        idType: profileData.idType,
-        idNumber: profileData.idType === 'NIN' ? profileData.nin : profileData.bvn,
-        idImageUrl: finalImageUrl || 'https://placeholder.com/id.png',
-        bankAccountDetails: {
-          bank: profileData.bankName,
-          account: profileData.accountNumber,
-          name: profileData.accountName
-        }
+      const updatedUser = await api.patch('/users/profile', {
+        fullName: profileData.fullName,
+        phone: profileData.phone,
+        nin: profileData.idType === 'NIN' ? profileData.nin : undefined,
+        bvn: profileData.idType === 'BVN' ? profileData.nin : undefined,
+        bankName: profileData.bankName,
+        accountNumber: profileData.accountNumber,
+        accountName: profileData.accountName
       });
+      
+      // Update local auth context
+      updateUser(updatedUser);
+      
       showToast('Profile updated successfully', 'success');
       
-      // Assume it goes to pending if all info is provided
       if (profileData.nin || profileData.bvn) {
         setKycStatus('pending');
       }
-    } catch (error) {
-      showToast('Error updating profile', 'error');
+    } catch (error: any) {
+      showToast(error.message || 'Error updating profile', 'error');
     } finally {
       setIsSaving(false);
       setTimeout(() => setUploadProgress(0), 1000);
@@ -181,37 +190,44 @@ export default function ProfilePage() {
                 <h3 className="text-lg font-bold text-slate-900">Personal Information</h3>
               </div>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700">Full Name</label>
-                  <input 
-                    type="text" 
-                    value={profileData.fullName}
-                    onChange={(e) => setProfileData({...profileData, fullName: e.target.value})}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-600 outline-none transition-all"
-                    placeholder="Enter your full name"
-                  />
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 text-blue-600 animate-spin mb-4" />
+                  <p className="text-slate-500 font-bold">Fetching your profile details...</p>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700">Email Address</label>
-                  <input 
-                    type="email" 
-                    value={profileData.email}
-                    disabled
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed"
-                  />
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Full Name</label>
+                    <input 
+                      type="text" 
+                      value={profileData.fullName}
+                      onChange={(e) => setProfileData({...profileData, fullName: e.target.value})}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-600 outline-none transition-all"
+                      placeholder="Enter your full name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Email Address</label>
+                    <input 
+                      type="email" 
+                      value={profileData.email}
+                      disabled
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Phone Number</label>
+                    <input 
+                      type="tel" 
+                      value={profileData.phone}
+                      onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-600 outline-none transition-all"
+                      placeholder="+234 ..."
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700">Phone Number</label>
-                  <input 
-                    type="tel" 
-                    value={profileData.phone}
-                    onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-600 outline-none transition-all"
-                    placeholder="+234 ..."
-                  />
-                </div>
-              </div>
+              )}
             </section>
 
             <section className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
@@ -237,13 +253,13 @@ export default function ProfilePage() {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700">ID Number (NIN/BVN)</label>
+                  <label className="text-sm font-bold text-slate-700">ID Number ({profileData.idType})</label>
                   <input 
                     type="text" 
                     value={profileData.nin}
                     onChange={(e) => setProfileData({...profileData, nin: e.target.value})}
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-600 outline-none transition-all"
-                    placeholder="Enter 11-digit number"
+                    placeholder={`Enter your ${profileData.idType} number`}
                   />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
@@ -356,11 +372,15 @@ export default function ProfilePage() {
                 <div className="mt-6 pt-6 border-t border-slate-100 grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Joined</p>
-                    <p className="text-sm font-bold text-slate-700">April 2026</p>
+                    <p className="text-sm font-bold text-slate-700">
+                      {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : '...'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Level</p>
-                    <p className="text-sm font-bold text-blue-600">Bronze</p>
+                    <p className="text-sm font-bold text-blue-600">
+                      {user?.role === 'manager' ? 'Manager' : 'Affiliate'}
+                    </p>
                   </div>
                 </div>
               </div>
