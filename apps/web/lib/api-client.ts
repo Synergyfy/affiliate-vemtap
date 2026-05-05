@@ -1,25 +1,22 @@
 /**
  * API Client for the Affiliate Platform.
- * Isolated from the main VemTap logic.
+ * Uses cookie-based authentication (httpOnly cookies set by the backend).
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4005/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://affiliateapi.vemtap.com/api/v1';
 
 let onUnauthorized: (() => void) | null = null;
 
 async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
-  const user = localStorage.getItem('vemtap_user');
-  const token = user ? JSON.parse(user).token : null;
-
-  const headers = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...options.headers,
+    ...(options.headers as Record<string, string> || {}),
   };
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers,
+    credentials: 'include', // Send cookies with every request
   });
 
   if (response.status === 401) {
@@ -35,16 +32,21 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
     throw new Error(errorData.message || 'API request failed');
   }
 
+  // Handle 204 No Content or empty responses
+  const contentType = response.headers.get('content-type');
+  if (response.status === 204 || !contentType?.includes('application/json')) {
+    return null;
+  }
+
   return response.json();
 }
 
 export const api = {
   get: (endpoint: string) => fetchWithAuth(endpoint, { method: 'GET' }),
-  post: (endpoint: string, body: any) => fetchWithAuth(endpoint, { method: 'POST', body: JSON.stringify(body) }),
+  post: (endpoint: string, body?: any) => fetchWithAuth(endpoint, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
   patch: (endpoint: string, body: any) => fetchWithAuth(endpoint, { method: 'PATCH', body: JSON.stringify(body) }),
   delete: (endpoint: string) => fetchWithAuth(endpoint, { method: 'DELETE' }),
   setUnauthorizedCallback: (callback: () => void) => {
     onUnauthorized = callback;
   },
 };
-
