@@ -44,6 +44,7 @@ import {
 import AffiliateAgreementModal from '@/components/dashboard/AffiliateAgreementModal';
 import OnboardingModal from '@/components/dashboard/OnboardingModal';
 import WhatsAppGroupModal from '@/components/dashboard/WhatsAppGroupModal';
+import { api } from '@/lib/api-client';
 
 const data = [
   { name: 'Jan', earnings: 4000 },
@@ -88,13 +89,79 @@ function DashboardOverviewContent() {
   const { showToast } = useToast();
   const { setIsNotificationsOpen } = useDashboard();
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  
+  const [dashboardData, setDashboardData] = useState<{
+    stats: any[];
+    milestone: any;
+    recentActivity: any[];
+    chartData: any[];
+  }>({
+    stats: stats,
+    milestone: { current: 12, target: 20 },
+    recentActivity: recentActivity,
+    chartData: chartData
+  });
+
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        const [profile, networkStats, recentCommissions, recentBusinesses] = await Promise.all([
+          api.get('/users/profile'),
+          api.get('/network/stats'),
+          api.get('/commissions/me?limit=3'),
+          api.get('/businesses/me?limit=3')
+        ]);
+
+        // Map Stats
+        const updatedStats = [
+          { ...stats[0], value: `₦${Number(profile.pendingEarnings || 0).toLocaleString()}` },
+          { ...stats[1], value: `₦${Number(profile.totalEarnings || 0).toLocaleString()}`, trend: `₦${Number(profile.pendingEarnings || 0).toLocaleString()} Bal` },
+          { ...stats[2], value: networkStats.totalNetworkBusinesses.toString() },
+          { ...stats[3], value: networkStats.activeAgentsCount.toString() },
+        ];
+
+        // Map Activity
+        const activity = [
+          ...(recentCommissions?.data || []).map((c: any) => ({
+            title: 'Commission Earned',
+            desc: c.description || `₦${c.amount} from ${c.business?.businessName || 'Business'}`,
+            type: 'commission',
+            time: c.createdAt
+          })),
+          ...(recentBusinesses?.data || []).map((b: any) => ({
+            title: 'New Referral',
+            desc: `${b.businessName} joined`,
+            type: 'referral',
+            time: b.createdAt
+          }))
+        ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()).slice(0, 5);
+
+        setDashboardData({
+          stats: updatedStats,
+          milestone: {
+            current: networkStats.totalNetworkBusinesses,
+            target: networkStats.milestones?.businesses?.target || 20
+          },
+          recentActivity: activity.length > 0 ? activity : recentActivity,
+          chartData: chartData // Backend chart endpoint returns empty for now
+        });
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error);
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+
+    fetchDashboard();
+  }, []);
 
   // Milestone logic
-  const currentProgress = 12;
-  const milestoneGoal = 20;
-  const progressPercent = (currentProgress / milestoneGoal) * 100;
+  const currentProgress = dashboardData.milestone.current;
+  const milestoneGoal = dashboardData.milestone.target;
+  const progressPercent = Math.min((currentProgress / milestoneGoal) * 100, 100);
 
-  const displayStats = stats;
+  const displayStats = dashboardData.stats;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -412,7 +479,7 @@ function DashboardOverviewContent() {
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
               <h3 className="text-lg font-bold text-slate-900 mb-6">Recent Activity</h3>
               <div className="space-y-6">
-                {recentActivity && recentActivity.length > 0 ? recentActivity.map((item: any, idx: number) => (
+                {dashboardData.recentActivity && dashboardData.recentActivity.length > 0 ? dashboardData.recentActivity.map((item: any, idx: number) => (
                   <div key={idx} className="flex gap-4">
                     <div className={cn(
                       "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",

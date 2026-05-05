@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Copy, 
   Share2, 
   Download, 
   Check, 
-  ExternalLink,
   QrCode as QrIcon,
   Link as LinkIcon
 } from 'lucide-react';
@@ -16,34 +15,34 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api-client';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function ReferralTools() {
+  const { user } = useAuth();
   const [copied, setCopied] = useState(false);
-  const [referralCode, setReferralCode] = useState('REF12345');
-  const [isLoading, setIsLoading] = useState(true);
+  const referralCode = user?.referralCode || 'SYSTEM';
 
-  useEffect(() => {
-    const fetchCode = async () => {
-      try {
-        const stats = await api.get('/affiliates/stats');
-        if (stats?.referralCode) {
-          setReferralCode(stats.referralCode);
-        }
-      } catch (error) {
-        console.error('Failed to fetch referral code', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchCode();
-  }, []);
-
-  const referralLink = `https://affiliates.vemtap.com/?ref=${referralCode}`;
+  const referralLink = `https://affiliates.vemtap.com/signup?ref=${referralCode}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(referralLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const shareOnSocial = (platform: string) => {
+    const text = encodeURIComponent(`Join Vemtap Affiliate Platform and start earning! Use my referral code: ${referralCode}`);
+    const url = encodeURIComponent(referralLink);
+    
+    let shareUrl = '';
+    switch(platform) {
+      case 'WhatsApp': shareUrl = `https://wa.me/?text=${text}%20${url}`; break;
+      case 'Twitter': shareUrl = `https://twitter.com/intent/tweet?text=${text}&url=${url}`; break;
+      case 'LinkedIn': shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${url}`; break;
+      case 'Facebook': shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`; break;
+    }
+    
+    if (shareUrl) window.open(shareUrl, '_blank');
   };
 
   const handleDownloadQR = () => {
@@ -166,6 +165,7 @@ export default function ReferralTools() {
               ].map((platform) => (
                 <button 
                   key={platform.name}
+                  onClick={() => shareOnSocial(platform.name)}
                   className={cn(
                     "flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition-transform hover:scale-105 active:scale-95",
                     platform.color

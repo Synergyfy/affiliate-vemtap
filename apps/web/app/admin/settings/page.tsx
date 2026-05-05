@@ -15,8 +15,9 @@ import {
 import AdminLayout from '@/components/admin/AdminLayout';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '@/lib/api-client';
+import Link from 'next/link';
 
 export default function SettingsManagement() {
   const { showToast } = useToast();
@@ -29,17 +30,36 @@ export default function SettingsManagement() {
   const [rewardDuration, setRewardDuration] = useState('1year');
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const data = await api.get('/settings');
+        if (data) {
+          setDirectRate(Math.round(data.directCommissionRate * 100));
+          setIndirectRate(Math.round(data.indirectCommissionRate * 100));
+          setManagerAffiliateTarget(data.subAffiliateUnlockCount || 30);
+          setFraudThreshold(data.fraudThresholdScore || 80);
+          setMinWithdrawal(Number(data.minWithdrawal));
+        }
+      } catch (error) {
+        console.error('Failed to fetch settings:', error);
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  const [fraudThreshold, setFraudThreshold] = useState(80);
+  const [minWithdrawal, setMinWithdrawal] = useState(5000);
+
   const handleSave = async () => {
     setLoading(true);
     try {
-      await api.patch('/affiliates/admin/settings', { 
-        directRate: Number(directRate), 
-        indirectRate: Number(indirectRate),
-        earningDuration,
-        timeLimitDays: Number(timeLimitDays),
-        managerAffiliateTarget: Number(managerAffiliateTarget),
-        managerBusinessTarget: Number(managerBusinessTarget),
-        rewardDuration
+      await api.patch('/settings', { 
+        directCommissionRate: Number(directRate) / 100, 
+        indirectCommissionRate: Number(indirectRate) / 100,
+        subAffiliateUnlockCount: Number(managerAffiliateTarget),
+        fraudThresholdScore: Number(fraudThreshold),
+        minWithdrawal: Number(minWithdrawal)
       });
       showToast("System configuration saved successfully.", "success");
     } catch (error) {
@@ -62,7 +82,11 @@ export default function SettingsManagement() {
           </div>
           <div>
             <h2 className="text-2xl font-bold text-slate-900">Platform Settings</h2>
-            <p className="text-sm text-slate-500 font-medium">Configure commission rates, payouts and system rules</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-slate-500 font-medium">Configure commission rates, payouts and system rules</p>
+              <span>•</span>
+              <Link href="/admin/settings/agreement" className="text-sm font-bold text-blue-600 hover:underline">Edit Affiliate Agreement</Link>
+            </div>
           </div>
         </div>
 
@@ -155,10 +179,10 @@ export default function SettingsManagement() {
                 </label>
                 <div className="relative">
                   <input 
-                    type="text" 
-                    defaultValue="5,000"
-                    readOnly
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold opacity-70"
+                    type="number" 
+                    value={minWithdrawal}
+                    onChange={(e) => setMinWithdrawal(Number(e.target.value))}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
                   />
                   <Coins className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 </div>
@@ -188,13 +212,13 @@ export default function SettingsManagement() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700">Max IP Usage (Accounts)</label>
                 <input 
                   type="number" 
-                  defaultValue={3}
+                  value={fraudThreshold}
+                  onChange={(e) => setFraudThreshold(Number(e.target.value))}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
                 />
-                <p className="text-xs text-slate-400">Flag after X accounts created from same IP.</p>
+                <p className="text-xs text-slate-400">Flag accounts with a risk score above this threshold.</p>
               </div>
 
               <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200">
