@@ -42,6 +42,13 @@ export class UsersController {
     return this.usersService.update(user.id, dto);
   }
 
+  @Get('leaderboard')
+  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get affiliate leaderboard' })
+  getLeaderboard(@Query('limit') limit?: number) {
+    return this.usersService.getLeaderboard(limit);
+  }
+
   // --- ADMIN ENDPOINTS ---
 
   @Get()
@@ -84,5 +91,12 @@ export class UsersController {
   @ApiOperation({ summary: 'Approve/Reject KYC (Admin only)' })
   updateKyc(@Param('id') id: string, @Body() dto: UpdateKycDto) {
     return this.usersService.updateKyc(id, dto);
+  }
+
+  @Patch(':id/role')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Update user role (Admin only)' })
+  updateRole(@Param('id') id: string, @Body() data: { role: Role }) {
+    return this.usersService.updateRole(id, data.role);
   }
 }

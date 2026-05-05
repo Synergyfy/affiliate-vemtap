@@ -25,35 +25,42 @@ export default function FraudMonitor() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [fraudData, statsData] = await Promise.all([
-          api.get('/affiliates/admin/fraud'),
-          api.get('/affiliates/admin/stats')
-        ]);
-        setFraudAlertsList(fraudData || []);
-        setStats(statsData);
-      } catch (error) {
-        console.error('Failed to fetch fraud data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
   }, []);
 
-  const handleStatusChange = async (id: string, name: string, isFlagged: boolean) => {
+  const fetchData = async () => {
     try {
-      await api.post(`/affiliates/admin/profiles/${id}/flag`, { 
-        isFlagged,
-        reason: isFlagged ? 'Fraud investigation' : 'Resolved'
-      });
-      showToast(`${name} has been ${isFlagged ? 'suspended' : 'whitelisted'}.`, isFlagged ? 'error' : 'success');
-      if (!isFlagged) {
-        setFraudAlertsList(prev => prev.filter(f => f.id !== id));
-      }
+      const [fraudResponse, statsData] = await Promise.all([
+        api.get('/fraud?limit=50'),
+        api.get('/admin/dashboard/stats')
+      ]);
+      setFraudAlertsList(fraudResponse?.data || []);
+      setStats(statsData);
     } catch (error) {
-      showToast('Failed to update status.', 'error');
+      console.error('Failed to fetch fraud data:', error);
+      showToast('Failed to load security alerts', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStatusChange = async (alertId: string, name: string, isResolving: boolean) => {
+    try {
+      const status = isResolving ? 'RESOLVED' : 'CONFIRMED';
+      const resolution = isResolving ? 'Marked as safe by admin' : 'Confirmed fraudulent activity';
+      
+      await api.patch(`/fraud/${alertId}/status`, { 
+        status,
+        resolution
+      });
+      
+      showToast(
+        isResolving ? `${name}'s alert resolved.` : `${name} has been flagged for review.`, 
+        isResolving ? 'success' : 'error'
+      );
+      fetchData();
+    } catch (error) {
+      showToast('Failed to update alert status.', 'error');
     }
   };
 
@@ -121,44 +128,58 @@ export default function FraudMonitor() {
                       className="hover:bg-slate-50/50 group transition-all"
                     >
                       <td className="p-4">
-                        <p className="font-bold text-slate-900">{alert.user?.firstName} {alert.user?.lastName}</p>
-                        <p className="text-xs text-slate-400 font-mono">{alert.id}</p>
+                        <p className="font-bold text-slate-900">{alert.user?.fullName || 'Unknown User'}</p>
+                        <p className="text-xs text-slate-400 font-mono">{alert.user?.email || alert.userId}</p>
                       </td>
                       <td className="p-4">
                         <div className="flex items-center gap-2">
-                          <AlertTriangle className="w-4 h-4 text-red-500" />
+                          <AlertTriangle className={cn(
+                            "w-4 h-4",
+                            alert.severity === 'CRITICAL' || alert.severity === 'HIGH' ? "text-red-500" : "text-amber-500"
+                          )} />
                           <div>
-                            <p className="text-sm font-bold text-slate-700">{alert.fraudReason || 'Suspicious activity'}</p>
-                            <p className="text-xs text-slate-500 max-w-xs truncate">Multiple flagged actions detected.</p>
+                            <p className="text-sm font-bold text-slate-700">{alert.type?.replace(/_/g, ' ')}</p>
+                            <p className="text-xs text-slate-500 max-w-xs truncate">{alert.description}</p>
                           </div>
                         </div>
                       </td>
                       <td className="p-4">
-                        <span className="text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider bg-red-100 text-red-600">
-                          High
+                        <span className={cn(
+                          "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
+                          alert.severity === 'CRITICAL' || alert.severity === 'HIGH' ? "bg-red-100 text-red-600" : 
+                          alert.severity === 'MEDIUM' ? "bg-amber-100 text-amber-600" : "bg-blue-100 text-blue-600"
+                        )}>
+                          {alert.severity}
                         </span>
                       </td>
-                      <td className="p-4 text-sm text-slate-500">{new Date(alert.updatedAt).toLocaleDateString()}</td>
+                      <td className="p-4 text-sm text-slate-500">{new Date(alert.createdAt).toLocaleDateString()}</td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-2 transition-opacity">
                           <button 
-                            onClick={() => showToast(`Viewing logs...`, 'info')}
-                            className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-900 transition-all title='View Details'"
+                            onClick={() => showToast(`Viewing investigation details...`, 'info')}
+                            className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-900 transition-all"
+                            title="View Details"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
-                          <button 
-                            onClick={() => handleStatusChange(alert.id, alert.user?.firstName, false)}
-                            className="p-2 hover:bg-blue-50 rounded-lg text-slate-400 hover:text-blue-600 transition-all title='Whiteslist'"
-                          >
-                            <ShieldCheck className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={() => handleStatusChange(alert.id, alert.user?.firstName, true)}
-                            className="p-2 hover:bg-red-50 rounded-lg text-red-600 transition-all title='Suspend Account'"
-                          >
-                            <UserX className="w-4 h-4" />
-                          </button>
+                          {alert.status !== 'RESOLVED' && (
+                            <>
+                              <button 
+                                onClick={() => handleStatusChange(alert.id, alert.user?.fullName || 'User', true)}
+                                className="p-2 hover:bg-blue-50 rounded-lg text-slate-400 hover:text-blue-600 transition-all"
+                                title="Resolve / Whitelist"
+                              >
+                                <ShieldCheck className="w-4 h-4" />
+                              </button>
+                              <button 
+                                onClick={() => handleStatusChange(alert.id, alert.user?.fullName || 'User', false)}
+                                className="p-2 hover:bg-red-50 rounded-lg text-red-600 transition-all"
+                                title="Confirm Fraud"
+                              >
+                                <UserX className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </motion.tr>

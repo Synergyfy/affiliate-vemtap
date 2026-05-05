@@ -249,6 +249,29 @@ export class UsersService {
     });
   }
 
+  async updateRole(id: string, role: any) {
+    return this.prisma.user.update({
+      where: { id },
+      data: { role },
+    });
+  }
+
+  async getLeaderboard(limit: number = 10) {
+    return this.prisma.user.findMany({
+      where: { role: "AFFILIATE", status: "ACTIVE" },
+      orderBy: { totalEarnings: "desc" },
+      take: limit,
+      select: {
+        id: true,
+        fullName: true,
+        totalEarnings: true,
+        _count: {
+          select: { referrals: true },
+        },
+      },
+    });
+  }
+
   private async generateUniqueReferralCode(): Promise<string> {
     let code: string;
     let exists = true;

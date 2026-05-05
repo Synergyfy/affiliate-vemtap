@@ -49,46 +49,79 @@ export default function WalletPage() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [amount, setAmount] = useState('');
   
-  const kycStatus = user?.isKycVerified ? 'verified' : 'unverified';
+  const kycStatus = user?.kycStatus === 'VERIFIED' ? 'verified' : 
+                   user?.kycStatus === 'PENDING' ? 'pending' : 'unverified';
 
   useEffect(() => {
     const fetchWalletData = async () => {
       try {
-        const [statsData, profileData, activityData] = await Promise.all([
-          api.get('/affiliates/stats'),
-          api.get('/affiliates/profile'),
-          api.get('/affiliates/activity')
+        const [profileData, commissionResponse, withdrawalResponse] = await Promise.all([
+          api.get('/users/profile'),
+          api.get('/commissions/me?limit=10'),
+          api.get('/withdrawals/me?limit=10')
         ]);
-        if (statsData) {
-          setStats({
-            balance: statsData.balance || 0,
-            totalEarned: statsData.totalEarned || 0,
-            pending: statsData.pending || 0
-          });
-        }
+        
         if (profileData) {
           setProfile(profileData);
+          setStats({
+            balance: Number(profileData.pendingEarnings || 0),
+            totalEarned: Number(profileData.totalEarnings || 0),
+            pending: 0 // Backend currently puts all unpaid in pendingEarnings
+          });
         }
-        if (activityData) {
-          setTransactions(activityData);
-        }
+        
+        // Combine commissions and withdrawals for transaction history
+        const combinedTransactions = [
+          ...(commissionResponse?.data || []).map((c: any) => ({
+            id: c.id,
+            type: 'commission',
+            title: 'Commission Earned',
+            desc: c.description || `Earnings from ${c.business?.businessName || 'referral'}`,
+            amount: Number(c.amount),
+            status: c.status === 'PAID' ? 'Completed' : 'Pending',
+            time: c.createdAt
+          })),
+          ...(withdrawalResponse?.data || []).map((w: any) => ({
+            id: w.id,
+            type: 'withdrawal',
+            title: 'Withdrawal',
+            desc: `Transfer to ${w.bankName}`,
+            amount: Number(w.amount),
+            status: w.status === 'PAID' ? 'Completed' : 'Pending',
+            time: w.createdAt
+          }))
+        ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+        
+        setTransactions(combinedTransactions);
       } catch (error) {
         console.error('Failed to fetch wallet data:', error);
       }
     };
     fetchWalletData();
-  }, []);
+  }, [user]);
 
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
     if (kycStatus !== 'verified') return;
+    if (Number(amount) < 5000) {
+      showToast('Minimum withdrawal is ₦5,000', 'error');
+      return;
+    }
     
     setIsWithdrawing(true);
     try {
-      await api.post('/affiliates/withdraw', { amount: Number(amount) });
+      await api.post('/withdrawals', { amount: Number(amount) });
       showToast('Withdrawal successful! Processing will take 24-48 hours.', 'success');
       setShowForm(false);
-      setStats((prev) => ({ ...prev, balance: prev.balance - Number(amount) }));
+      setAmount('');
+      
+      // Refresh balance
+      const updatedProfile = await api.get('/users/profile');
+      setStats({
+        balance: Number(updatedProfile.pendingEarnings || 0),
+        totalEarned: Number(updatedProfile.totalEarnings || 0),
+        pending: 0
+      });
     } catch (error: any) {
       console.error('Withdrawal failed:', error);
       showToast(error?.message || 'Failed to process withdrawal.', 'error');
@@ -177,10 +210,10 @@ export default function WalletPage() {
                     <h4 className="text-sm font-bold">Payout Destination</h4>
                   </div>
                   
-                  {profile?.bankAccountDetails?.bank ? (
+                  {profile?.bankName ? (
                     <div className="space-y-1">
-                      <p className="text-sm font-bold text-slate-800">{profile.bankAccountDetails.name}</p>
-                      <p className="text-xs text-slate-500">{profile.bankAccountDetails.bank} • {profile.bankAccountDetails.account}</p>
+                      <p className="text-sm font-bold text-slate-800">{profile.accountName}</p>
+                      <p className="text-xs text-slate-500">{profile.bankName} • {profile.accountNumber}</p>
                     </div>
                   ) : (
                     <div className="bg-red-50 p-4 rounded-xl border border-red-100">
@@ -284,42 +317,48 @@ export default function WalletPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {earningsData.map((item) => (
+                {transactions.filter(t => t.type === 'commission').slice(0, 5).map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4">
-                      <p className="text-sm font-bold text-slate-900">{item.name}</p>
-                      <p className="text-[10px] text-slate-400 font-medium uppercase tracking-tighter">{item.date}</p>
+                      <p className="text-sm font-bold text-slate-900">{item.desc.replace('Earnings from ', '')}</p>
+                      <p className="text-[10px] text-slate-400 font-medium uppercase tracking-tighter">
+                        {new Date(item.time).toLocaleDateString()}
+                      </p>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-xs font-bold text-slate-600 px-2 py-1 bg-slate-100 rounded-md">{item.plan}</span>
+                      <span className="text-xs font-bold text-slate-600 px-2 py-1 bg-slate-100 rounded-md">Direct</span>
                     </td>
                     <td className="px-6 py-4">
                       <span className={cn(
                         "text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full border",
-                        item.status === 'Active' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-red-50 text-red-600 border-red-100"
+                        item.status === 'Completed' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-orange-50 text-orange-600 border-orange-100"
                       )}>
-                        {item.status}
+                        {item.status === 'Completed' ? 'Paid' : 'Pending'}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col gap-1">
-                        <span className="text-xs font-bold text-slate-900">{item.month}</span>
+                        <span className="text-xs font-bold text-slate-900">Current</span>
                         <div className="w-12 h-1 bg-slate-100 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-blue-600" 
-                            style={{ width: `${(parseInt(item.month.split('/')[0]) / parseInt(item.month.split('/')[1])) * 100}%` }} 
-                          />
+                          <div className="h-full bg-blue-600 w-full" />
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm font-black text-emerald-600">{item.affiliateEarning}</span>
+                      <span className="text-sm font-black text-emerald-600">₦{item.amount.toLocaleString()}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm font-black text-blue-600">{item.managerEarning}</span>
+                      <span className="text-sm font-black text-blue-600">₦0</span>
                     </td>
                   </tr>
                 ))}
+                {transactions.filter(t => t.type === 'commission').length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-slate-400 text-sm font-medium">
+                      No commission data yet.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -355,7 +394,7 @@ export default function WalletPage() {
                     "text-sm sm:text-base font-bold",
                     tx.type === 'commission' ? "text-emerald-600" : "text-slate-900"
                   )}>
-                    {tx.type === 'commission' ? '+' : ''}{tx.amount || tx.desc.match(/₦(\d+)/)?.[0] || ''}
+                    {tx.type === 'commission' ? '+' : '-'}₦{tx.amount.toLocaleString()}
                   </p>
                   <div className="flex items-center justify-end gap-1 mt-1">
                     {tx.status === 'Completed' ? (

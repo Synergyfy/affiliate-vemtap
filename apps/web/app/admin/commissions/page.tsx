@@ -31,14 +31,21 @@ export default function CommissionsManagement() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [commData, statsData] = await Promise.all([
-          api.get('/affiliates/admin/commissions'),
-          api.get('/affiliates/admin/stats')
+        const [commResponse, settingsData] = await Promise.all([
+          api.get('/commissions?limit=50'),
+          api.get('/settings')
         ]);
-        setCommissionsList(commData || []);
-        // stats might contain settings or I can fetch settings specifically
+        setCommissionsList(commResponse?.data || []);
+        
+        if (settingsData) {
+          setDirectRate(Math.round(settingsData.directCommissionRate * 100));
+          setIndirectRate(Math.round(settingsData.indirectCommissionRate * 100));
+          // Earning duration mapping if present in backend, default to 3months
+          setEarningDuration(settingsData.earningDuration || '3months');
+        }
       } catch (error) {
-        console.error('Failed to fetch commissions:', error);
+        console.error('Failed to fetch commissions data:', error);
+        showToast("Failed to load commissions data.", "error");
       } finally {
         setLoading(false);
       }
@@ -49,10 +56,10 @@ export default function CommissionsManagement() {
   const handleUpdateRules = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.patch('/affiliates/admin/settings', { 
-        directRate: Number(directRate), 
-        indirectRate: Number(indirectRate),
-        earningDuration
+      await api.patch('/settings', { 
+        directCommissionRate: Number(directRate) / 100, 
+        indirectCommissionRate: Number(indirectRate) / 100,
+        // earningDuration is a UI-only feature for now unless added to schema
       });
       showToast("Global commission rules updated successfully.", "success");
     } catch (error) {
@@ -223,30 +230,30 @@ export default function CommissionsManagement() {
                       className="hover:bg-slate-50/50 transition-all group"
                     >
                       <td className="p-4">
-                        <span className="font-bold text-slate-900">{comm.affiliate?.user?.firstName} {comm.affiliate?.user?.lastName}</span>
+                        <span className="font-bold text-slate-900">{comm.user?.fullName || 'Unknown'}</span>
                       </td>
                       <td className="p-4">
-                        <span className="text-sm text-slate-600">{comm.referredBusiness?.name || 'Vemtap Subscription'}</span>
+                        <span className="text-sm text-slate-600">{comm.business?.name || 'Vemtap Subscription'}</span>
                       </td>
                       <td className="p-4 text-sm text-slate-900 font-bold">₦{Number(comm.amount).toLocaleString()}</td>
                       <td className="p-4">
                         <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-lg">
-                          {comm.description || 'Commission'}
+                          {comm.type === 'DIRECT' ? 'Direct Referral' : 'Network Bonus'}
                         </span>
                       </td>
                       <td className="p-4">
                         <span className={cn(
                           "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
                           comm.status === 'PAID' ? "bg-green-100 text-green-600" : 
-                          comm.status === 'APPROVED' ? "bg-blue-100 text-blue-600" : "bg-orange-100 text-orange-600"
+                          comm.status === 'PENDING' ? "bg-orange-100 text-orange-600" : "bg-blue-100 text-blue-600"
                         )}>
                           {comm.status}
                         </span>
                       </td>
                       <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-2 transition-opacity">
+                        <div className="flex items-center justify-end gap-2">
                           <button 
-                            onClick={() => showToast("Adjusting...", "info")}
+                            onClick={() => showToast("Details coming soon", "info")}
                             className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-900 transition-all"
                           >
                             <MoreHorizontal className="w-4 h-4" />

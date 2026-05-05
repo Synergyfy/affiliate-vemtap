@@ -82,12 +82,13 @@ const initialAffiliates = [
 export default function AffiliatesManagement() {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'All' | 'Managers'>('All');
-  const [affiliates, setAffiliates] = useState(initialAffiliates);
-  const [selectedAffiliate, setSelectedAffiliate] = useState<typeof initialAffiliates[0] | null>(null);
+  const [affiliates, setAffiliates] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedAffiliate, setSelectedAffiliate] = useState<any | null>(null);
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Suspended'>('All');
+  const [statusFilter, setStatusFilter] = useState<'All' | 'ACTIVE' | 'SUSPENDED'>('All');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const filterRef = useRef<HTMLDivElement>(null);
@@ -109,8 +110,38 @@ export default function AffiliatesManagement() {
     type: 'upgrade'
   });
 
+  useEffect(() => {
+    fetchAffiliates();
+  }, [activeTab, statusFilter]);
+
+  const fetchAffiliates = async () => {
+    setLoading(true);
+    try {
+      const response = await api.get('/users');
+      // Format backend data to frontend expectations
+      const data = (response?.data || []).map((user: any) => ({
+        id: user.id,
+        name: user.fullName,
+        email: user.email,
+        phone: user.phone,
+        joined: new Date(user.createdAt).toLocaleDateString(),
+        referrals: user.referralCount || 0,
+        earnings: `₦${Number(user.totalEarnings || 0).toLocaleString()}`,
+        status: user.status, // ACTIVE, SUSPENDED
+        role: user.role // AFFILIATE, ADMIN, SUPER_ADMIN
+      }));
+      setAffiliates(data);
+    } catch (error) {
+      console.error('Failed to fetch affiliates:', error);
+      showToast('Failed to load affiliates list', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredAffiliates = affiliates.filter(affiliate => {
-    const matchesTab = activeTab === 'All' || affiliate.role === 'Manager';
+    const isManager = affiliate.role === 'ADMIN' || affiliate.role === 'SUPER_ADMIN';
+    const matchesTab = activeTab === 'All' || isManager;
     const matchesStatus = statusFilter === 'All' || affiliate.status === statusFilter;
     const matchesSearch = 
       affiliate.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -121,19 +152,19 @@ export default function AffiliatesManagement() {
   });
 
   const handleStatusChange = (id: string, name: string, currentStatus: string) => {
-    const type = currentStatus === 'Active' ? 'suspend' : 'reactivate';
+    const type = currentStatus === 'ACTIVE' ? 'suspend' : 'reactivate';
     setConfirmModal({
       isOpen: true,
       id,
       name,
-      currentRole: '', // Not relevant for status change but required by type
+      currentRole: '',
       currentStatus,
       type
     });
   };
 
   const handleRoleToggle = (id: string, name: string, currentRole: string) => {
-    const type = currentRole === 'Manager' ? 'downgrade' : 'upgrade';
+    const type = currentRole === 'ADMIN' || currentRole === 'SUPER_ADMIN' ? 'downgrade' : 'upgrade';
     setConfirmModal({
       isOpen: true,
       id,
@@ -142,27 +173,6 @@ export default function AffiliatesManagement() {
       currentStatus: '',
       type
     });
-  };
-
-  const executeAction = () => {
-    const { id, currentRole, currentStatus, type } = confirmModal;
-    
-    if (type === 'upgrade' || type === 'downgrade') {
-      const newRole = currentRole === 'Manager' ? 'Affiliate' : 'Manager';
-      setAffiliates(prev => prev.map(a => a.id === id ? { ...a, role: newRole } : a));
-      showToast(`Role updated to ${newRole} for ${id}`, 'success');
-    } else {
-      const newStatus = currentStatus === 'Active' ? 'Suspended' : 'Active';
-      setAffiliates(prev => prev.map(a => a.id === id ? { ...a, status: newStatus } : a));
-      showToast(`Status updated to ${newStatus} for ${id}`, 'success');
-    }
-    
-    setConfirmModal(prev => ({ ...prev, isOpen: false }));
-  };
-
-  const handleViewProfile = (affiliate: typeof initialAffiliates[0]) => {
-    setSelectedAffiliate(affiliate);
-    setIsSidePanelOpen(true);
   };
 
   // Close dropdown when clicking outside
@@ -179,14 +189,44 @@ export default function AffiliatesManagement() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const fetchAffiliates = async () => {
-    // Mock fetching for now to resolve reference error
-    console.log('Fetching affiliates...');
+  const executeAction = async () => {
+    const { id, currentRole, currentStatus, type } = confirmModal;
+    
+    try {
+      if (type === 'upgrade' || type === 'downgrade') {
+        const newRole = currentRole === 'ADMIN' ? 'AFFILIATE' : 'ADMIN';
+        await api.patch(`/users/${id}/role`, { role: newRole });
+        showToast(`Role updated to ${newRole} for user`, 'success');
+      } else {
+        const newStatus = currentStatus === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
+        await api.patch(`/users/${id}/status`, { status: newStatus });
+        showToast(`Status updated to ${newStatus} for user`, 'success');
+      }
+      fetchAffiliates();
+    } catch (error) {
+      showToast('Failed to update user', 'error');
+    }
+    
+    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const handleViewProfile = async (affiliate: any) => {
+    try {
+      const data = await api.get(`/users/${affiliate.id}`);
+      setSelectedAffiliate({
+        ...affiliate,
+        ...data,
+        name: data.fullName // Sync backend naming
+      });
+      setIsSidePanelOpen(true);
+    } catch (error) {
+      showToast('Failed to load user profile', 'error');
+    }
   };
 
   const handleApprove = async (id: string, name: string) => {
     try {
-      await api.post(`/affiliates/admin/profiles/${id}/verify-kyc`, { status: 'verified' });
+      await api.patch(`/users/${id}/kyc`, { status: 'VERIFIED' });
       showToast(`${name}'s KYC has been verified.`, 'success');
       fetchAffiliates();
     } catch (error) {
@@ -343,8 +383,8 @@ export default function AffiliatesManagement() {
                     <td className="p-4">
                       <span className={cn(
                         "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
-                        affiliate.status === 'Active' ? "bg-green-100 text-green-600" : 
-                        affiliate.status === 'Suspended' ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-400"
+                        affiliate.status === 'ACTIVE' ? "bg-green-100 text-green-600" : 
+                        affiliate.status === 'SUSPENDED' ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-400"
                       )}>
                         {affiliate.status}
                       </span>
@@ -361,7 +401,7 @@ export default function AffiliatesManagement() {
                         </button>
 
                         {/* Upgrade/Downgrade Action */}
-                        {affiliate.role === 'Manager' ? (
+                        {affiliate.role === 'ADMIN' || affiliate.role === 'SUPER_ADMIN' ? (
                           <button 
                             onClick={() => handleRoleToggle(affiliate.id, affiliate.name, affiliate.role)}
                             className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-all" 
@@ -396,7 +436,7 @@ export default function AffiliatesManagement() {
                                 exit={{ opacity: 0, scale: 0.95, y: 10 }}
                                 className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 overflow-hidden"
                               >
-                                {affiliate.status === 'Active' ? (
+                                {affiliate.status === 'ACTIVE' ? (
                                   <button 
                                     onClick={() => {
                                       handleStatusChange(affiliate.id, affiliate.name, affiliate.status);
@@ -601,7 +641,7 @@ export default function AffiliatesManagement() {
                     Edit Profile
                   </Button>
                   <Button variant="outline" className="flex-1 rounded-2xl h-12 font-bold text-red-600 border-red-100 hover:bg-red-50" onClick={() => handleStatusChange(selectedAffiliate.id, selectedAffiliate.name, selectedAffiliate.status)}>
-                    {selectedAffiliate.status === 'Active' ? 'Suspend Account' : 'Reactivate Account'}
+                    {selectedAffiliate.status === 'ACTIVE' ? 'Suspend Account' : 'Reactivate Account'}
                   </Button>
                 </div>
               </div>

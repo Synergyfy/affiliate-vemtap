@@ -10,14 +10,28 @@ import {
   Clock, 
   XCircle,
   TrendingUp,
-  Download
+  Download,
+  Plus, 
+  Eye, 
+  Bell, 
+  Edit2, 
+  X, 
+  Building2, 
+  MapPin, 
+  Phone, 
+  Mail, 
+  Calendar, 
+  TrendingUp as TrendingUpIcon, 
+  Activity,
+  Loader2
 } from 'lucide-react';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import BusinessModal from '@/components/dashboard/BusinessModal';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Eye, Bell, Edit2, X, Building2, MapPin, Phone, Mail, Calendar, TrendingUp as TrendingUpIcon, Activity } from 'lucide-react';
+import { api } from '@/lib/api-client';
+import { useAuth } from '@/hooks/use-auth';
 import { AnimatePresence } from 'framer-motion';
 
 const initialBusinesses = [
@@ -43,8 +57,10 @@ const paymentColors = {
 };
 
 export default function BusinessesPage() {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
-  const [businesses, setBusinesses] = useState(initialBusinesses);
+  const [businesses, setBusinesses] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [selectedBusiness, setSelectedBusiness] = useState<any>(null);
@@ -53,21 +69,56 @@ export default function BusinessesPage() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
 
-  const handleAddOrEditBusiness = (data: any) => {
-    if (modalMode === 'add') {
-      const formattedBusiness = {
-        ...data,
-        name: data.businessName,
-        id: Math.random()
-      };
-      setBusinesses([formattedBusiness, ...businesses]);
-      showToast(`${formattedBusiness.name} has been added successfully!`, 'success');
-    } else {
-      setBusinesses(prev => prev.map(b => b.id === data.id ? { ...b, ...data, name: data.businessName } : b));
-      showToast(`${data.businessName} has been updated!`, 'success');
+  const fetchBusinesses = async () => {
+    setIsLoading(true);
+    try {
+      const response = await api.get('/businesses/me');
+      // Map backend fields to frontend expectations
+      const mapped = (response.data || []).map((b: any) => ({
+        ...b,
+        name: b.businessName,
+        plan: b.planType,
+        payment: b.status === 'ACTIVE' ? 'Paid' : b.status === 'TRIAL' ? 'Pending' : 'Unpaid',
+        commission: `₦${Number(b.commissionAmount || 0).toLocaleString()}`,
+        date: new Date(b.createdAt).toISOString().split('T')[0]
+      }));
+      setBusinesses(mapped);
+    } catch (error) {
+      showToast('Failed to load businesses', 'error');
+    } finally {
+      setIsLoading(false);
     }
-    setIsModalOpen(false);
-    setSelectedBusiness(null);
+  };
+
+  useEffect(() => {
+    fetchBusinesses();
+  }, []);
+
+  const handleAddOrEditBusiness = async (data: any) => {
+    try {
+      if (modalMode === 'add') {
+        await api.post('/businesses', {
+          businessName: data.businessName,
+          ownerName: data.ownerName,
+          email: data.email,
+          phone: data.phone,
+          address: data.address,
+          planType: data.planType || 'BASIC',
+          referralCode: user?.referralCode || 'SYSTEM',
+        });
+        
+        showToast(`${data.businessName} has been registered successfully!`, 'success');
+        fetchBusinesses();
+      } else {
+        // Backend currently missing Patch /businesses/:id for affiliates
+        showToast(`Editing is currently restricted to Admins.`, 'info');
+      }
+    } catch (error: any) {
+      showToast(error.message || 'Action failed', 'error');
+    } finally {
+      setIsModalOpen(false);
+      setSelectedBusiness(null);
+    }
   };
 
   // Close dropdown when clicking outside
@@ -288,7 +339,7 @@ export default function BusinessesPage() {
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 font-bold">
-                      {business.name.charAt(0)}
+                      {business.name?.charAt(0) || 'B'}
                     </div>
                     <div>
                       <h4 className="font-bold text-slate-900">{business.name}</h4>
@@ -362,13 +413,17 @@ export default function BusinessesPage() {
               </motion.div>
             ))}
           </div>
-          {filteredBusinesses.length === 0 && (
+          {(isLoading || filteredBusinesses.length === 0) && (
             <div className="p-12 text-center">
               <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Search className="w-8 h-8 text-slate-300" />
+                {isLoading ? <Loader2 className="w-8 h-8 text-blue-600 animate-spin" /> : <Search className="w-8 h-8 text-slate-300" />}
               </div>
-              <h4 className="text-lg font-bold text-slate-900 mb-1">No businesses found</h4>
-              <p className="text-slate-500">Try adjusting your search or filters.</p>
+              <h4 className="text-lg font-bold text-slate-900 mb-1">
+                {isLoading ? 'Loading businesses...' : 'No businesses found'}
+              </h4>
+              <p className="text-slate-500">
+                {isLoading ? 'Please wait while we fetch your referrals.' : 'Try adjusting your search or filters.'}
+              </p>
             </div>
           )}
         </div>
