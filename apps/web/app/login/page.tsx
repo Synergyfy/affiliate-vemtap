@@ -35,11 +35,11 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
     try {
-      await login(data.email);
+      await login(data.email, data.password);
       showToast('Logged in successfully!', 'success');
       router.push('/dashboard');
-    } catch (error) {
-      showToast('Invalid credentials.', 'error');
+    } catch (error: any) {
+      showToast(error.message || 'Invalid credentials.', 'error');
       console.error('Login error:', error);
     } finally {
       setIsLoading(false);
