@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotificationType } from '@prisma/client';
+import { NotificationType, Prisma } from '@prisma/client';
 import { BroadcastRecipientType, NotificationChannel } from './dto/notification.dto';
 import { ResendService } from '../otp/resend.service';
 import { PushService } from './push.service';
@@ -11,7 +11,7 @@ export class NotificationsService {
     private readonly prisma: PrismaService,
     private readonly resendService: ResendService,
     private readonly pushService: PushService,
-  ) {}
+  ) { }
 
   async findAllAdmin(pagination: { skip?: number; take?: number }) {
     const [data, total] = await Promise.all([
@@ -26,7 +26,7 @@ export class NotificationsService {
     return { data, total };
   }
 
-  async create(data: { userId?: string; type: NotificationType; title: string; message: string; data?: any }) {
+  async create(data: { userId?: string; type: NotificationType; title: string; message: string; data?: Record<string, any> }) {
     return this.prisma.notification.create({
       data,
     });
@@ -36,12 +36,12 @@ export class NotificationsService {
     type: NotificationType,
     title: string,
     message: string,
-    data?: any,
+    data?: Record<string, any>,
     recipients: BroadcastRecipientType = BroadcastRecipientType.ALL,
     channels: NotificationChannel[] = [NotificationChannel.IN_APP],
   ) {
     // 1. Filter Users
-    const where: any = { status: 'ACTIVE' };
+    const where: Prisma.UserWhereInput = { status: 'ACTIVE' };
 
     if (recipients === BroadcastRecipientType.TOP_EARNERS) {
       where.totalEarnings = { gte: 10000 };

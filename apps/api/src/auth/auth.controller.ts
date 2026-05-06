@@ -6,9 +6,16 @@ import { Response, Request } from 'express';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { User } from '@prisma/client';
 
 const REFRESH_TOKEN_KEY = 'refresh_token';
 const ACCESS_TOKEN_KEY = 'access_token';
+
+interface TokenPayload {
+  sub: string;
+  email: string;
+  tokenVersion?: number;
+}
 
 @ApiTags('auth')
 @Controller('auth')
@@ -34,8 +41,9 @@ export class AuthController {
 
   @Post('signup')
   @ApiOperation({ summary: 'Register a new user' })
-  async signup(@Body() createUserDto: CreateUserDto, @Res({ passthrough: true }) res: Response) {
-    const { accessToken, refreshToken, user } = await this.authService.signup(createUserDto);
+  async signup(@Body() createUserDto: CreateUserDto, @Res({ passthrough: true }) res: Response, @Req() req: Request) {
+    const ip = req.header('x-forwarded-for') || req.ip || req.socket.remoteAddress;
+    const { accessToken, refreshToken, user } = await this.authService.signup(createUserDto, ip);
     this.setCookies(res, accessToken, refreshToken);
     return { user };
   }
@@ -43,9 +51,10 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login with email/phone and password' })
-  async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response) {
+  async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response, @Req() req: Request) {
+    const ip = req.header('x-forwarded-for') || req.ip || req.socket.remoteAddress;
     const validUser = await this.authService.validateUser(loginDto.email, loginDto.password);
-    const { accessToken, refreshToken, user } = await this.authService.login(validUser);
+    const { accessToken, refreshToken, user } = await this.authService.login(validUser, ip);
     this.setCookies(res, accessToken, refreshToken);
     return { user };
   }
@@ -59,7 +68,7 @@ export class AuthController {
       throw new UnauthorizedException('Refresh token not found');
     }
 
-    const decoded = this.authService.jwtService.decode(refreshToken) as any;
+    const decoded = this.authService.jwtService.decode(refreshToken) as TokenPayload;
     if (!decoded || !decoded.sub) {
       throw new UnauthorizedException('Invalid refresh token payload');
     }
@@ -82,7 +91,7 @@ export class AuthController {
   @Post('invalidate-all')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Invalidate all sessions for the user' })
-  async invalidateAll(@CurrentUser() user: any, @Res({ passthrough: true }) res: Response) {
+  async invalidateAll(@CurrentUser() user: Omit<User, 'password'>, @Res({ passthrough: true }) res: Response) {
     await this.authService.invalidateAllTokens(user.id);
     res.clearCookie(ACCESS_TOKEN_KEY);
     res.clearCookie(REFRESH_TOKEN_KEY);
@@ -92,7 +101,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('me')
   @ApiOperation({ summary: 'Get current user profile' })
-  async getProfile(@CurrentUser() user: any) {
+  async getProfile(@CurrentUser() user: Omit<User, 'password'>) {
     return { user };
   }
 }

@@ -333,7 +333,7 @@ export class DashboardService {
     });
   }
 
-  private groupDataByDate(data: any[], valueField?: string) {
+  private groupDataByDate(data: Array<Record<string, any>>, valueField?: string) {
     const grouped = data.reduce((acc, item) => {
       const date = item.createdAt.toISOString().split('T')[0];
       const value = valueField ? Number(item[valueField]) : 1;

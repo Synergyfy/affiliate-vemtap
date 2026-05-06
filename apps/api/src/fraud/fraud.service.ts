@@ -1,12 +1,18 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { FraudStatus, Severity } from '@prisma/client';
+import { FraudStatus, Severity, FraudType } from '@prisma/client';
 
 @Injectable()
 export class FraudService {
   private readonly logger = new Logger(FraudService.name);
 
   constructor(private readonly prisma: PrismaService) {}
+
+  async createAlert(data: { userId: string; type: FraudType; severity: Severity; description: string; evidence?: Record<string, any> }) {
+    return this.prisma.fraudAlert.create({
+      data,
+    });
+  }
 
   async findAll(pagination: { skip?: number; take?: number }) {
     const [data, total] = await Promise.all([

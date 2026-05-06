@@ -123,4 +123,35 @@ describe('UsersService', () => {
       expect(csv).toBe('ID,Email,Full Name,Phone,Role,Status,KYC Status,Tier,Total Earnings,Created At');
     });
   });
+
+  describe('signAgreement', () => {
+    it('should update user signedAgreementVersion', async () => {
+      (mockPrisma as any).platformSettings = { findFirst: jest.fn().mockResolvedValue({ agreementVersion: 5 }) };
+      mockPrisma.user.update.mockResolvedValue({ id: '1', signedAgreementVersion: 5 });
+
+      const result = await service.signAgreement('1');
+      expect(result.signedAgreementVersion).toBe(5);
+      expect(mockPrisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ signedAgreementVersion: 5 })
+      }));
+    });
+  });
+
+  describe('getAgreementStatus', () => {
+    it('should return up-to-date if versions match', async () => {
+      (mockPrisma as any).platformSettings = { findFirst: jest.fn().mockResolvedValue({ agreementVersion: 5 }) };
+      mockPrisma.user.findUnique.mockResolvedValue({ signedAgreementVersion: 5 });
+
+      const status = await service.getAgreementStatus('1');
+      expect(status.isUpToDate).toBe(true);
+    });
+
+    it('should return not up-to-date if versions differ', async () => {
+      (mockPrisma as any).platformSettings = { findFirst: jest.fn().mockResolvedValue({ agreementVersion: 5 }) };
+      mockPrisma.user.findUnique.mockResolvedValue({ signedAgreementVersion: 4 });
+
+      const status = await service.getAgreementStatus('1');
+      expect(status.isUpToDate).toBe(false);
+    });
+  });
 });

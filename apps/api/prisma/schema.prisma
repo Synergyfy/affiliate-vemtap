@@ -58,6 +58,10 @@ model User {
   hasClaimedAgentBonus      Boolean   @default(false)
   hasClaimedBusinessBonus   Boolean   @default(false)
   
+  signedAgreementVersion    Int?
+  signedAt                 DateTime?
+  lastLoginIp              String?
+  
   tier            Tier      @default(BRONZE)
   newEmail        String?
   emailVerificationCode String?
@@ -67,6 +71,7 @@ model User {
   @@index([referredBy])
   @@index([referrerId])
   @@index([paystackRecipientCode])
+  @@index([lastLoginIp])
 }
 
 enum Tier {
@@ -388,6 +393,14 @@ model PlatformSettings {
   referralUnlockCount     Int    @default(0)
   
   earningDurationMonths   Int    @default(12)
+  
+  agreementTemplate       String?   @db.Text
+  agreementVersion        Int       @default(1)
+  
+  linkExpiryDays          Int       @default(30)
+  managerRewardDurationMonths Int    @default(12)
+  
+  maxIpUsage              Int       @default(2)
   
   updatedAt               DateTime @updatedAt
 }

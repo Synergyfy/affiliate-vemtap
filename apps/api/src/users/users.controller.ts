@@ -67,6 +67,20 @@ export class UsersController {
     return this.usersService.getLeaderboard(limit);
   }
 
+  @Post('agreement/sign')
+  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Sign the latest affiliate agreement' })
+  signAgreement(@CurrentUser() user: { id: string }) {
+    return this.usersService.signAgreement(user.id);
+  }
+
+  @Get('agreement/status')
+  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Check if user has signed the latest agreement' })
+  getAgreementStatus(@CurrentUser() user: { id: string }) {
+    return this.usersService.getAgreementStatus(user.id);
+  }
+
   // --- ADMIN ENDPOINTS ---
 
   @Get('export')

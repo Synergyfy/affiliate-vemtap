@@ -1,8 +1,9 @@
 import { Injectable, ConflictException, Logger, BadRequestException, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateUserDto } from "./dto/create-user.dto";
+import { UpdateProfileDto } from "./dto/update-profile.dto";
 import * as bcrypt from "bcryptjs";
-import { User, Tier } from "@prisma/client";
+import { User, Tier, Role, UserStatus, KycStatus, Prisma } from "@prisma/client";
 import { PaystackService } from "../payments/paystack.service";
 import { OtpService } from "../otp/otp.service";
 import { ResendService } from "../otp/resend.service";
@@ -84,8 +85,8 @@ export class UsersService {
     return result;
   }
 
-  async update(userId: string, dto: any): Promise<Omit<User, "password">> {
-    const data = { ...dto };
+  async update(userId: string, dto: UpdateProfileDto): Promise<Omit<User, "password">> {
+    const data: Prisma.UserUpdateInput = { ...dto };
     const currentUser = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -97,36 +98,31 @@ export class UsersService {
     // Auto-calculate tier based on current referral count
     data.tier = this.calculateTier(currentUser.referralCount);
 
-    if (data.phone || data.email) {
+    if (dto.phone) {
       const existing = await this.prisma.user.findFirst({
         where: {
           AND: [
             { id: { not: userId } },
-            {
-              OR: [
-                data.email ? { email: data.email } : {},
-                data.phone ? { phone: data.phone } : {},
-              ].filter((q) => Object.keys(q).length > 0),
-            },
+            { phone: dto.phone },
           ],
         },
       });
 
       if (existing) {
-        throw new ConflictException("Email or phone already in use");
+        throw new ConflictException("Phone already in use");
       }
     }
 
-    if (data.password) {
-      data.password = await bcrypt.hash(data.password, 10);
+    if (dto.password) {
+      data.password = await bcrypt.hash(dto.password, 10);
     }
 
     // Handle Paystack Recipient Creation
-    const bankName = data.bankName || currentUser.bankName;
-    const accountNumber = data.accountNumber || currentUser.accountNumber;
-    const accountName = data.accountName || currentUser.accountName || currentUser.fullName;
+    const bankName = dto.bankName || currentUser.bankName;
+    const accountNumber = dto.accountNumber || currentUser.accountNumber;
+    const accountName = dto.accountName || currentUser.accountName || currentUser.fullName;
 
-    if (bankName && accountNumber && (data.bankName || data.accountNumber)) {
+    if (bankName && accountNumber && (dto.bankName || dto.accountNumber)) {
       try {
         const bankCode = await this.getBankCode(bankName);
         if (bankCode) {
@@ -282,21 +278,21 @@ export class UsersService {
     return result;
   }
 
-  async updateStatus(id: string, data: any) {
+  async updateStatus(id: string, data: { status: UserStatus }) {
     return this.prisma.user.update({
       where: { id },
       data: { status: data.status },
     });
   }
 
-  async updateKyc(id: string, data: any) {
+  async updateKyc(id: string, data: { status: KycStatus }) {
     return this.prisma.user.update({
       where: { id },
       data: { kycStatus: data.status },
     });
   }
 
-  async updateRole(id: string, role: any) {
+  async updateRole(id: string, role: Role) {
     return this.prisma.user.update({
       where: { id },
       data: { role },
@@ -366,6 +362,38 @@ export class UsersService {
     );
 
     return [header.join(","), ...rows].join("\n");
+  }
+
+  async signAgreement(userId: string): Promise<Omit<User, "password">> {
+    const settings = await this.prisma.platformSettings.findFirst();
+    if (!settings) throw new NotFoundException("Platform settings not found");
+
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        signedAgreementVersion: settings.agreementVersion,
+        signedAt: new Date(),
+      },
+    });
+
+    const { password: _, ...result } = user;
+    return result;
+  }
+
+  async getAgreementStatus(userId: string): Promise<{ isUpToDate: boolean; signedVersion: number | null; latestVersion: number }> {
+    const [user, settings] = await Promise.all([
+      this.prisma.user.findUnique({ where: { id: userId }, select: { signedAgreementVersion: true } }),
+      this.prisma.platformSettings.findFirst({ select: { agreementVersion: true } }),
+    ]);
+
+    if (!user) throw new NotFoundException("User not found");
+    if (!settings) throw new NotFoundException("Platform settings not found");
+
+    return {
+      isUpToDate: user.signedAgreementVersion === settings.agreementVersion,
+      signedVersion: user.signedAgreementVersion,
+      latestVersion: settings.agreementVersion,
+    };
   }
 
   private async generateUniqueReferralCode(): Promise<string> {

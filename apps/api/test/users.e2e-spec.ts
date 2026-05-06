@@ -114,6 +114,33 @@ describe("UsersController (e2e)", () => {
     expect(resGold.body.tier).toBe(Tier.GOLD);
   });
 
+  describe("Affiliate Agreement", () => {
+    it("/users/agreement/status (GET) - should show status", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/users/agreement/status")
+        .set("Cookie", cookies)
+        .expect(200);
+
+      expect(res.body).toHaveProperty("isUpToDate");
+      expect(res.body.isUpToDate).toBe(false); // Initially signedVersion is null, settings version is 1
+    });
+
+    it("/users/agreement/sign (POST) - should sign agreement", async () => {
+      const res = await request(app.getHttpServer())
+        .post("/users/agreement/sign")
+        .set("Cookie", cookies)
+        .expect(201);
+
+      expect(res.body.signedAgreementVersion).toBe(1);
+      
+      const statusRes = await request(app.getHttpServer())
+        .get("/users/agreement/status")
+        .set("Cookie", cookies)
+        .expect(200);
+      expect(statusRes.body.isUpToDate).toBe(true);
+    });
+  });
+
   it("should complete the email update flow via OTP", async () => {
     const newEmail = "newprofile@test.com";
 
