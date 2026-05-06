@@ -66,7 +66,7 @@ export class ShortLinksService {
   }
 
   private formatShortLink(link: any) {
-    const domain = this.configService.get<string>('VEMTAP_SHORT_LINK_DOMAIN') || 'https://vemtap.link';
+    const domain = this.configService.get<string>('VEMTAP_URL') || 'https://vemtap.com';
     return {
       ...link,
       fullUrl: `${domain}/${link.code}`,

@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
+import { ConfigService } from "@nestjs/config";
 import { Cache } from "cache-manager";
 import { PrismaService } from "../prisma/prisma.service";
 import {
@@ -14,6 +15,7 @@ export class DashboardService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
@@ -204,6 +206,7 @@ export class DashboardService {
       activeReferrals,
       referralCount: user?.referralCount || 0,
       totalClicks,
+      referralSignupUrl: this.configService.get<string>('VEMTAP_SIGNUP_URL') || 'https://vemtap.com/signup',
     };
   }
 

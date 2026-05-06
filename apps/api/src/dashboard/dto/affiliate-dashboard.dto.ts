@@ -25,6 +25,18 @@ export class AffiliateStatsResponseDto {
     description: "Total number of successful referrals",
   })
   referralCount: number;
+
+  @ApiProperty({
+    example: 125,
+    description: "Total number of clicks on affiliate links",
+  })
+  totalClicks: number;
+
+  @ApiProperty({
+    example: "https://vemtap.com/signup",
+    description: "The base URL for affiliate referral signups",
+  })
+  referralSignupUrl: string;
 }
 
 export class GetLeaderboardQueryDto {
