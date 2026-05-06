@@ -92,6 +92,26 @@ describe('NotificationsService', () => {
       );
     });
 
+    it('should filter for NEW_AFFILIATES', async () => {
+      await service.broadcast(
+        NotificationType.SYSTEM,
+        'Title',
+        'Message',
+        {},
+        BroadcastRecipientType.NEW_AFFILIATES,
+      );
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            createdAt: expect.objectContaining({
+              gte: expect.any(Date),
+            }),
+          }),
+        }),
+      );
+    });
+
     it('should dispatch to all channels', async () => {
       jest.spyOn(prisma.user, 'findMany').mockResolvedValue([
         { id: '1', email: 'user1@example.com' },
