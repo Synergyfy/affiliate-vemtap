@@ -23,6 +23,8 @@ import { ApiKeysModule } from './api-keys/api-keys.module';
 import { ExternalModule } from './external/external.module';
 import { StorageModule } from './storage/storage.module';
 import { OtpModule } from './otp/otp.module';
+import { TrackingModule } from './tracking/tracking.module';
+import { ShortLinksModule } from './tools/short-links/short-links.module';
 
 @Module({
   imports: [
@@ -34,6 +36,7 @@ import { OtpModule } from './otp/otp.module';
     RedisModule,
     UsersModule,
     AuthModule,
+    ShortLinksModule,
     ToolsModule,
     BusinessesModule,
     NetworkModule,
@@ -51,6 +54,7 @@ import { OtpModule } from './otp/otp.module';
     ExternalModule,
     StorageModule,
     OtpModule,
+    TrackingModule,
   ],
   controllers: [AppController],
   providers: [AppService],

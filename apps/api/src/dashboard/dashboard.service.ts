@@ -92,7 +92,7 @@ export class DashboardService {
   }
 
   async getAffiliateStats(userId: string) {
-    const [user, activeReferrals] = await Promise.all([
+    const [user, activeReferrals, totalClicks] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
         select: {
@@ -104,6 +104,9 @@ export class DashboardService {
       this.prisma.business.count({
         where: { affiliateId: userId, status: 'ACTIVE' },
       }),
+      this.prisma.linkClick.count({
+        where: { userId },
+      }),
     ]);
 
     return {
@@ -111,6 +114,7 @@ export class DashboardService {
       pendingEarnings: Number(user?.pendingEarnings || 0),
       activeReferrals,
       referralCount: user?.referralCount || 0,
+      totalClicks,
     };
   }
 
@@ -134,7 +138,7 @@ export class DashboardService {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const [commissions, referrals] = await Promise.all([
+    const [commissions, referrals, clicks] = await Promise.all([
       this.prisma.commission.findMany({
         where: {
           userId,
@@ -151,11 +155,20 @@ export class DashboardService {
         select: { createdAt: true },
         orderBy: { createdAt: 'asc' },
       }),
+      this.prisma.linkClick.findMany({
+        where: {
+          userId,
+          createdAt: { gte: thirtyDaysAgo },
+        },
+        select: { createdAt: true },
+        orderBy: { createdAt: 'asc' },
+      }),
     ]);
 
     return {
       earningsHistory: this.groupDataByDate(commissions, 'amount'),
       referralTrends: this.groupDataByDate(referrals),
+      clickTrends: this.groupDataByDate(clicks),
     };
   }
 

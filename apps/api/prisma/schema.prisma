@@ -46,6 +46,8 @@ model User {
   transactions    Transaction[]
   notifications   Notification[]
   trainingProgress TrainingProgress[]
+  shortLinks      ShortLink[]
+  linkClicks      LinkClick[]
   
   tokenVersion    Int       @default(0)
   paystackSubaccountId String?
@@ -499,4 +501,38 @@ model ApiKey {
   @@index([keyHash])
   @@index([prefix])
   @@index([isActive])
+}
+
+model ShortLink {
+  id          String   @id @default(uuid())
+  code        String   @unique // e.g., "lo"
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([code])
+}
+
+model LinkClick {
+  id            String    @id @default(uuid())
+  
+  referralCode  String?   
+  shortLinkCode String?   
+  
+  userId        String?   // Attributed affiliate
+  user          User?      @relation(fields: [userId], references: [id])
+
+  ip            String?
+  userAgent     String?
+  referer       String?
+  
+  createdAt     DateTime  @default(now())
+
+  @@index([referralCode])
+  @@index([shortLinkCode])
+  @@index([userId])
+  @@index([createdAt])
 }
