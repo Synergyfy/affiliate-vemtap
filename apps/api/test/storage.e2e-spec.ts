@@ -4,13 +4,13 @@ import * as request from "supertest";
 import { AppModule } from "../src/app.module";
 import * as cookieParser from "cookie-parser";
 import { PrismaService } from "../src/prisma/prisma.service";
-import { Role, Tier } from "@prisma/client";
+import { Role } from "@prisma/client";
 import * as bcrypt from "bcryptjs";
 import { ResendService } from "../src/otp/resend.service";
 import { PaystackService } from "../src/payments/paystack.service";
 import { RedisService } from "../src/redis/redis.service";
 
-describe("UsersController (e2e)", () => {
+describe("StorageController (e2e)", () => {
   let app: INestApplication;
   let prismaService: PrismaService;
   let cookies: string[] = [];
@@ -50,18 +50,18 @@ describe("UsersController (e2e)", () => {
     const password = await bcrypt.hash("password123", 10);
     await prismaService.user.create({
       data: {
-        email: "profile@test.com",
-        fullName: "Original Name",
-        phone: "999",
+        email: "storage@test.com",
+        fullName: "Storage User",
+        phone: "555",
         password,
         role: Role.AFFILIATE,
-        referralCode: "PROF01",
+        referralCode: "STOR01",
       },
     });
 
     const loginRes = await request(app.getHttpServer())
       .post("/auth/login")
-      .send({ email: "profile@test.com", password: "password123" });
+      .send({ email: "storage@test.com", password: "password123" });
 
     cookies = (loginRes.headers["set-cookie"] as any).map(
       (c: string) => c.split(";")[0],
@@ -73,77 +73,41 @@ describe("UsersController (e2e)", () => {
     await app.close();
   });
 
-  it("/users/profile (GET) - should return current user profile", async () => {
+  it("/storage/upload (POST) - should upload an image successfully", async () => {
     const res = await request(app.getHttpServer())
-      .get("/users/profile")
+      .post("/storage/upload")
       .set("Cookie", cookies)
-      .expect(200);
-
-    expect(res.body.fullName).toBe("Original Name");
-    expect(res.body.email).toBe("profile@test.com");
-    expect(res.body.password).toBeUndefined();
-  });
-
-  it("/users/profile (PATCH) - should update tier based on referral count", async () => {
-    // Manually set referral count to 15 (SILVER tier: 11-50)
-    await prismaService.user.update({
-      where: { email: "profile@test.com" },
-      data: { referralCount: 15 },
-    });
-
-    const res = await request(app.getHttpServer())
-      .patch("/users/profile")
-      .set("Cookie", cookies)
-      .send({ fullName: "Tier Tester" })
-      .expect(200);
-
-    expect(res.body.tier).toBe(Tier.SILVER);
-
-    // Update to 60 (GOLD tier: 51+)
-    await prismaService.user.update({
-      where: { email: "profile@test.com" },
-      data: { referralCount: 60 },
-    });
-
-    const resGold = await request(app.getHttpServer())
-      .patch("/users/profile")
-      .set("Cookie", cookies)
-      .send({ fullName: "Gold Tester" })
-      .expect(200);
-
-    expect(resGold.body.tier).toBe(Tier.GOLD);
-  });
-
-  it("should complete the email update flow via OTP", async () => {
-    const newEmail = "newprofile@test.com";
-
-    // 1. Request update
-    await request(app.getHttpServer())
-      .post("/users/request-email-update")
-      .set("Cookie", cookies)
-      .send({ newEmail })
+      .attach("file", Buffer.from("fake-image-content"), "test-image.png")
+      .field("folder", "kyc")
       .expect(201);
 
-    // 2. Get code from DB
-    const user = await prismaService.user.findFirst({
-      where: { email: "profile@test.com" },
-    });
-    const code = user?.emailVerificationCode;
-    expect(code).toBeDefined();
+    expect(res.body.url).toBeDefined();
+    expect(res.body.url).toContain("storage.vemtap.com/kyc/");
+    expect(res.body.url).toContain("test-image.png");
+  });
 
-    // 3. Verify update
-    const verifyRes = await request(app.getHttpServer())
-      .post("/users/verify-email-update")
+  it("/storage/upload (POST) - should upload a PDF successfully", async () => {
+    const res = await request(app.getHttpServer())
+      .post("/storage/upload")
       .set("Cookie", cookies)
-      .send({ code })
+      .attach("file", Buffer.from("fake-pdf-content"), "test-doc.pdf")
       .expect(201);
 
-    expect(verifyRes.body.email).toBe(newEmail);
+    expect(res.body.url).toContain(".pdf");
+  });
 
-    // 4. Verify login with new email
+  it("/storage/upload (POST) - should fail for invalid file types", async () => {
     await request(app.getHttpServer())
-      .post("/auth/login")
-      .send({ email: newEmail, password: "password123" })
-      .expect(200);
+      .post("/storage/upload")
+      .set("Cookie", cookies)
+      .attach("file", Buffer.from("fake-exe-content"), "danger.exe")
+      .expect(400);
+  });
+
+  it("/storage/upload (POST) - should fail if not authenticated", async () => {
+    await request(app.getHttpServer())
+      .post("/storage/upload")
+      .attach("file", Buffer.from("content"), "test.png")
+      .expect(401);
   });
 });

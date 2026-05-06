@@ -51,10 +51,26 @@ model User {
   paystackSubaccountId String?
   paystackRecipientCode String?
   
+  managerQualificationExpiry DateTime?
+  isManagerMode             Boolean   @default(false)
+  hasClaimedAgentBonus      Boolean   @default(false)
+  hasClaimedBusinessBonus   Boolean   @default(false)
+  
+  tier            Tier      @default(BRONZE)
+  newEmail        String?
+  emailVerificationCode String?
+  emailVerificationExpiry DateTime?
+
   @@index([referralCode])
   @@index([referredBy])
   @@index([referrerId])
   @@index([paystackRecipientCode])
+}
+
+enum Tier {
+  BRONZE
+  SILVER
+  GOLD
 }
 
 enum Role {
@@ -97,6 +113,7 @@ model Business {
   status          BusinessStatus @default(TRIAL)
   trialEndsAt     DateTime?
   paidAt          DateTime?
+  lastReminderAt  DateTime?
   
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -106,6 +123,7 @@ model Business {
   @@index([affiliateId])
   @@index([referralCode])
   @@index([status])
+  @@index([status, createdAt])
 }
 
 enum PlanType {

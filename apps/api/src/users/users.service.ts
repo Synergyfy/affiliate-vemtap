@@ -1,9 +1,11 @@
-import { Injectable, ConflictException, Logger } from "@nestjs/common";
+import { Injectable, ConflictException, Logger, BadRequestException, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateUserDto } from "./dto/create-user.dto";
 import * as bcrypt from "bcryptjs";
-import { User } from "@prisma/client";
+import { User, Tier } from "@prisma/client";
 import { PaystackService } from "../payments/paystack.service";
+import { OtpService } from "../otp/otp.service";
+import { ResendService } from "../otp/resend.service";
 
 @Injectable()
 export class UsersService {
@@ -12,6 +14,8 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly paystackService: PaystackService,
+    private readonly otpService: OtpService,
+    private readonly resendService: ResendService,
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<Omit<User, "password">> {
@@ -23,7 +27,6 @@ export class UsersService {
       ...rest
     } = createUserDto;
 
-    // Check if user exists
     const existingUser = await this.prisma.user.findFirst({
       where: {
         OR: [{ email }, { phone }],
@@ -36,13 +39,9 @@ export class UsersService {
       );
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Generate unique referral code (e.g., VEM-XXXXXX)
     const uniqueReferralCode = await this.generateUniqueReferralCode();
 
-    // Check sponsor if provided
     let referrerId: string | null = null;
     if (sponsorCode) {
       const sponsor = await this.prisma.user.findUnique({
@@ -62,6 +61,7 @@ export class UsersService {
         referralCode: uniqueReferralCode,
         referredBy: sponsorCode,
         referrerId,
+        tier: Tier.BRONZE,
       },
     });
 
@@ -91,10 +91,12 @@ export class UsersService {
     });
 
     if (!currentUser) {
-      throw new ConflictException("User not found");
+      throw new NotFoundException("User not found");
     }
 
-    // Check if phone or email is being updated and if it conflicts
+    // Auto-calculate tier based on current referral count
+    data.tier = this.calculateTier(currentUser.referralCount);
+
     if (data.phone || data.email) {
       const existing = await this.prisma.user.findFirst({
         where: {
@@ -122,8 +124,7 @@ export class UsersService {
     // Handle Paystack Recipient Creation
     const bankName = data.bankName || currentUser.bankName;
     const accountNumber = data.accountNumber || currentUser.accountNumber;
-    const accountName =
-      data.accountName || currentUser.accountName || currentUser.fullName;
+    const accountName = data.accountName || currentUser.accountName || currentUser.fullName;
 
     if (bankName && accountNumber && (data.bankName || data.accountNumber)) {
       try {
@@ -137,20 +138,10 @@ export class UsersService {
 
           if (recipient && recipient.recipient_code) {
             data.paystackRecipientCode = recipient.recipient_code;
-            this.logger.log(
-              `Created Paystack recipient ${recipient.recipient_code} for user ${userId}`,
-            );
           }
-        } else {
-          this.logger.warn(
-            `Could not find bank code for bank name: ${bankName}`,
-          );
         }
       } catch (error) {
-        this.logger.error(
-          `Failed to create Paystack recipient for user ${userId}: ${error.message}`,
-        );
-        // We don't block the update if recipient creation fails, but it's logged
+        this.logger.error(`Failed to create Paystack recipient: ${error.message}`);
       }
     }
 
@@ -163,21 +154,76 @@ export class UsersService {
     return result;
   }
 
+  async requestEmailUpdate(userId: string, newEmail: string): Promise<{ message: string }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const existing = await this.prisma.user.findUnique({ where: { email: newEmail } });
+    if (existing) throw new ConflictException('Email already in use');
+
+    const code = this.otpService.generateOtp();
+    const expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        newEmail,
+        emailVerificationCode: code,
+        emailVerificationExpiry: expiry,
+      },
+    });
+
+    const sent = await this.resendService.sendOtpEmail(newEmail, code);
+    if (!sent) throw new BadRequestException('Failed to send verification email');
+
+    return { message: 'Verification code sent to your new email' };
+  }
+
+  async verifyEmailUpdate(userId: string, code: string): Promise<Omit<User, 'password'>> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    if (!user.emailVerificationCode || !user.newEmail) {
+      throw new BadRequestException('No email update request found');
+    }
+
+    if (user.emailVerificationCode !== code) {
+      throw new BadRequestException('Invalid verification code');
+    }
+
+    if (this.otpService.isExpired(user.emailVerificationExpiry!)) {
+      throw new BadRequestException('Verification code has expired');
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        email: user.newEmail,
+        newEmail: null,
+        emailVerificationCode: null,
+        emailVerificationExpiry: null,
+      },
+    });
+
+    const { password: _, ...result } = updatedUser;
+    return result;
+  }
+
+  private calculateTier(referralCount: number): Tier {
+    if (referralCount >= 51) return Tier.GOLD;
+    if (referralCount >= 11) return Tier.SILVER;
+    return Tier.BRONZE;
+  }
+
   private async getBankCode(bankName: string): Promise<string | null> {
     try {
       const banks = await this.paystackService.listBanks();
       if (!banks) return null;
 
       const normalizedSearch = bankName.toLowerCase().replace(/[^a-z0-9]/g, "");
-
       const bank = banks.find((b: any) => {
-        const normalizedBankName = b.name
-          .toLowerCase()
-          .replace(/[^a-z0-9]/g, "");
-        return (
-          normalizedBankName.includes(normalizedSearch) ||
-          normalizedSearch.includes(normalizedBankName)
-        );
+        const normalizedBankName = b.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+        return normalizedBankName.includes(normalizedSearch) || normalizedSearch.includes(normalizedBankName);
       });
 
       return bank ? bank.code : null;
@@ -208,6 +254,7 @@ export class UsersService {
           role: true,
           status: true,
           kycStatus: true,
+          tier: true,
           referralCode: true,
           createdAt: true,
           totalEarnings: true,
@@ -277,10 +324,7 @@ export class UsersService {
     let exists = true;
 
     while (exists) {
-      const randomStr = Math.random()
-        .toString(36)
-        .substring(2, 8)
-        .toUpperCase();
+      const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
       code = `VEM-${randomStr}`;
       const user = await this.prisma.user.findUnique({
         where: { referralCode: code },

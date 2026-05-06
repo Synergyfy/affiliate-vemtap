@@ -21,6 +21,8 @@ import { TransactionsModule } from './transactions/transactions.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ApiKeysModule } from './api-keys/api-keys.module';
 import { ExternalModule } from './external/external.module';
+import { StorageModule } from './storage/storage.module';
+import { OtpModule } from './otp/otp.module';
 
 @Module({
   imports: [
@@ -47,6 +49,8 @@ import { ExternalModule } from './external/external.module';
     PaymentsModule,
     ApiKeysModule,
     ExternalModule,
+    StorageModule,
+    OtpModule,
   ],
   controllers: [AppController],
   providers: [AppService],

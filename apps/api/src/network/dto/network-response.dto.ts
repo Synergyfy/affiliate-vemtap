@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { UserStatus } from '@prisma/client';
+import { IsEnum, IsString, IsNotEmpty } from 'class-validator';
 
 export class NetworkRecruitResponseDto {
   @ApiProperty()
@@ -25,6 +26,9 @@ export class NetworkRecruitResponseDto {
 
   @ApiProperty()
   businessCount: number;
+
+  @ApiProperty({ description: '10% of the recruit\'s total business volume' })
+  managerShare: number;
 }
 
 export class PaginatedNetworkRecruitResponseDto {
@@ -40,22 +44,56 @@ export class PaginatedNetworkRecruitResponseDto {
   };
 }
 
+class MilestoneInfo {
+  @ApiProperty()
+  current: number;
+
+  @ApiProperty()
+  target: number;
+
+  @ApiProperty()
+  isReached: boolean;
+}
+
+class MilestonesDto {
+  @ApiProperty({ type: MilestoneInfo })
+  agents: MilestoneInfo;
+
+  @ApiProperty({ type: MilestoneInfo })
+  businesses: MilestoneInfo;
+}
+
 export class NetworkStatsResponseDto {
   @ApiProperty()
-  directRecruits: number;
+  activeAgentsCount: number;
 
   @ApiProperty()
-  totalNetworkSize: number;
+  totalNetworkBusinesses: number;
+
+  @ApiProperty({ type: MilestonesDto })
+  milestones: MilestonesDto;
+
+  @ApiProperty({ required: false, nullable: true })
+  managerQualificationExpiry: Date | null;
 
   @ApiProperty()
-  activeRecruits: number;
+  isManagerMode: boolean;
 
   @ApiProperty()
-  totalNetworkEarnings: number;
+  hasClaimedAgentBonus: boolean;
 
   @ApiProperty()
-  milestoneProgress: number;
+  hasClaimedBusinessBonus: boolean;
+}
 
-  @ApiProperty()
-  nextMilestone: string;
+export enum BonusType {
+  AGENT = 'AGENT',
+  BUSINESS = 'BUSINESS',
+}
+
+export class ClaimBonusDto {
+  @ApiProperty({ enum: BonusType })
+  @IsEnum(BonusType)
+  @IsNotEmpty()
+  type: BonusType;
 }

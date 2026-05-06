@@ -2,6 +2,7 @@ import {
   Controller, 
   Get, 
   Patch, 
+  Post,
   Body, 
   Param,
   Query,
@@ -12,6 +13,7 @@ import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateUserStatusDto, UpdateKycDto } from './dto/admin-user.dto';
 import { UserResponseDto, PaginatedUserResponseDto } from './dto/user-response.dto';
+import { RequestEmailUpdateDto, VerifyEmailUpdateDto } from './dto/email-update.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -40,6 +42,20 @@ export class UsersController {
   @ApiOkResponse({ type: UserResponseDto })
   updateProfile(@CurrentUser() user: { id: string }, @Body() dto: UpdateProfileDto) {
     return this.usersService.update(user.id, dto);
+  }
+
+  @Post('request-email-update')
+  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Request an email update with OTP' })
+  requestEmailUpdate(@CurrentUser() user: { id: string }, @Body() dto: RequestEmailUpdateDto) {
+    return this.usersService.requestEmailUpdate(user.id, dto.newEmail);
+  }
+
+  @Post('verify-email-update')
+  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Verify OTP and update email' })
+  verifyEmailUpdate(@CurrentUser() user: { id: string }, @Body() dto: VerifyEmailUpdateDto) {
+    return this.usersService.verifyEmailUpdate(user.id, dto.code);
   }
 
   @Get('leaderboard')
