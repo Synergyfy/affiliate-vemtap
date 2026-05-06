@@ -4,12 +4,21 @@ import * as request from "supertest";
 import { AppModule } from "../src/app.module";
 import * as cookieParser from "cookie-parser";
 import { PrismaService } from "../src/prisma/prisma.service";
-import { Role, FraudStatus, NotificationType } from "@prisma/client";
+import {
+  Role,
+  FraudStatus,
+  NotificationType,
+  WithdrawalStatus,
+  KycStatus,
+} from "@prisma/client";
 import * as bcrypt from "bcryptjs";
+import { CACHE_MANAGER } from "@nestjs/cache-manager";
+import { Cache } from "cache-manager";
 
 describe("Admin Backend (e2e)", () => {
   let app: INestApplication;
   let prismaService: PrismaService;
+  let cacheManager: Cache;
   let adminCookies: string[] = [];
   let affiliateCookies: string[] = [];
 
@@ -26,10 +35,17 @@ describe("Admin Backend (e2e)", () => {
     await app.init();
 
     prismaService = app.get<PrismaService>(PrismaService);
+    cacheManager = app.get<Cache>(CACHE_MANAGER);
 
-    // Cleanup before tests
+    // Clear cache before tests
+    await cacheManager.del("admin_stats");
+
+    // Cleanup before tests (delete withdrawals first due to FK constraints)
+    await prismaService.withdrawal.deleteMany({});
     await prismaService.fraudAlert.deleteMany({});
-    await prismaService.user.deleteMany({ where: { email: { contains: 'test.com' } } });
+    await prismaService.user.deleteMany({
+      where: { email: { contains: "test.com" } },
+    });
 
     // Setup test users
     const password = await bcrypt.hash("password123", 10);
@@ -93,9 +109,12 @@ describe("Admin Backend (e2e)", () => {
       },
     });
 
-    // Final cleanup
+    // Final cleanup (delete withdrawals first due to FK constraints)
+    await prismaService.withdrawal.deleteMany({});
     await prismaService.fraudAlert.deleteMany({});
-    await prismaService.user.deleteMany({ where: { email: { contains: 'test.com' } } });
+    await prismaService.user.deleteMany({
+      where: { email: { contains: "test.com" } },
+    });
 
     await app.close();
   });
@@ -117,6 +136,96 @@ describe("Admin Backend (e2e)", () => {
         .get("/admin/dashboard/stats")
         .set("Cookie", affiliateCookies)
         .expect(403);
+    });
+
+    it("/admin/dashboard/stats (GET) - should return withdrawal breakdown by status", async () => {
+      // Clear cache to get fresh data
+      await cacheManager.del("admin_stats");
+
+      // Create a test user with KYC verified for withdrawal
+      const testUser = await prismaService.user.create({
+        data: {
+          email: `wth-user-${Date.now()}@test.com`,
+          fullName: "Withdrawal Test User",
+          phone: `wth-phone-${Date.now()}`,
+          password: "password123",
+          role: Role.AFFILIATE,
+          referralCode: `WTH${Date.now()}`,
+          kycStatus: KycStatus.VERIFIED,
+          bankName: "Test Bank",
+          accountNumber: "1234567890",
+          accountName: "Test User",
+          pendingEarnings: 10000,
+        },
+      });
+
+      // Create withdrawals with different statuses
+      await prismaService.withdrawal.create({
+        data: {
+          userId: testUser.id,
+          amount: 1000,
+          fee: 100,
+          netAmount: 900,
+          bankName: "Test Bank",
+          accountNumber: "1234567890",
+          accountName: "Test User",
+          status: WithdrawalStatus.PENDING,
+        },
+      });
+
+      await prismaService.withdrawal.create({
+        data: {
+          userId: testUser.id,
+          amount: 2000,
+          fee: 100,
+          netAmount: 1900,
+          bankName: "Test Bank",
+          accountNumber: "1234567890",
+          accountName: "Test User",
+          status: WithdrawalStatus.APPROVED,
+        },
+      });
+
+      await prismaService.withdrawal.create({
+        data: {
+          userId: testUser.id,
+          amount: 3000,
+          fee: 100,
+          netAmount: 2900,
+          bankName: "Test Bank",
+          accountNumber: "1234567890",
+          accountName: "Test User",
+          status: WithdrawalStatus.PROCESSING,
+        },
+      });
+
+      await prismaService.withdrawal.create({
+        data: {
+          userId: testUser.id,
+          amount: 5000,
+          fee: 100,
+          netAmount: 4900,
+          bankName: "Test Bank",
+          accountNumber: "1234567890",
+          accountName: "Test User",
+          status: WithdrawalStatus.PAID,
+        },
+      });
+
+      const res = await request(app.getHttpServer())
+        .get("/admin/dashboard/stats")
+        .set("Cookie", adminCookies)
+        .expect(200);
+
+      expect(res.body.pendingPayouts).toBe(1000);
+      expect(res.body.approvedPayouts).toBe(2000);
+      expect(res.body.completedPayouts).toBe(8000); // 3000 (processing) + 5000 (paid)
+
+      // Cleanup
+      await prismaService.withdrawal.deleteMany({
+        where: { userId: testUser.id },
+      });
+      await prismaService.user.delete({ where: { id: testUser.id } });
     });
   });
 
@@ -173,10 +282,15 @@ describe("Admin Backend (e2e)", () => {
       await request(app.getHttpServer())
         .patch(`/fraud/${alert.id}/status`)
         .set("Cookie", adminCookies)
-        .send({ status: FraudStatus.CONFIRMED, resolution: "Confirmed critical" })
+        .send({
+          status: FraudStatus.CONFIRMED,
+          resolution: "Confirmed critical",
+        })
         .expect(200);
 
-      const updatedUser = await prismaService.user.findUnique({ where: { id: suspect.id } });
+      const updatedUser = await prismaService.user.findUnique({
+        where: { id: suspect.id },
+      });
       expect(updatedUser?.status).toBe("SUSPENDED");
     });
   });
@@ -211,8 +325,12 @@ describe("Admin Backend (e2e)", () => {
         .expect(200);
 
       expect(res.header["content-type"]).toContain("text/csv");
-      expect(res.header["content-disposition"]).toContain("attachment; filename=users.csv");
-      expect(res.text).toContain("ID,Email,Full Name,Phone,Role,Status,KYC Status,Tier,Total Earnings,Created At");
+      expect(res.header["content-disposition"]).toContain(
+        "attachment; filename=users.csv",
+      );
+      expect(res.text).toContain(
+        "ID,Email,Full Name,Phone,Role,Status,KYC Status,Tier,Total Earnings,Created At",
+      );
     });
   });
 
@@ -226,7 +344,7 @@ describe("Admin Backend (e2e)", () => {
           title: "Broadcast Title",
           message: "Broadcast Message",
           recipients: "ALL",
-          channels: ["IN_APP"]
+          channels: ["IN_APP"],
         })
         .expect(201);
 
