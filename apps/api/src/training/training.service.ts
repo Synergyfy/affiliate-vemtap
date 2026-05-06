@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CreateTrainingModuleDto, UpdateTrainingModuleDto, UpdateTrainingProgressDto } from './dto/training.dto';
 
 @Injectable()
 export class TrainingService {
@@ -34,7 +35,7 @@ export class TrainingService {
     return module;
   }
 
-  async createModule(data: any) {
+  async createModule(data: CreateTrainingModuleDto) {
     return this.prisma.trainingModule.create({
       data: {
         ...data,
@@ -44,10 +45,15 @@ export class TrainingService {
     });
   }
 
-  async updateModule(id: string, data: any) {
+  async updateModule(id: string, data: UpdateTrainingModuleDto) {
+    const { quizzes, scenarios, ...moduleData } = data;
     return this.prisma.trainingModule.update({
       where: { id },
-      data,
+      data: {
+        ...moduleData,
+        quizzes: quizzes ? { deleteMany: {}, create: quizzes } : undefined,
+        scenarios: scenarios ? { deleteMany: {}, create: scenarios } : undefined,
+      },
     });
   }
 
@@ -81,7 +87,7 @@ export class TrainingService {
     });
   }
 
-  async updateProgress(userId: string, moduleId: string, data: any) {
+  async updateProgress(userId: string, moduleId: string, data: UpdateTrainingProgressDto) {
     return this.prisma.trainingProgress.upsert({
       where: { userId_moduleId: { userId, moduleId } },
       update: data,

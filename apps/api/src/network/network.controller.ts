@@ -1,12 +1,12 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiOkResponse } from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiOkResponse, ApiCreatedResponse } from '@nestjs/swagger';
 import { NetworkService } from './network.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { PaginatedNetworkRecruitResponseDto, NetworkStatsResponseDto } from './dto/network-response.dto';
+import { PaginatedNetworkRecruitResponseDto, NetworkStatsResponseDto, ClaimBonusDto } from './dto/network-response.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 
 @ApiTags('network')
@@ -43,5 +43,21 @@ export class NetworkController {
   @ApiOkResponse({ type: NetworkStatsResponseDto })
   getStats(@CurrentUser() user: { id: string }) {
     return this.networkService.getStats(user.id);
+  }
+
+  @Post('claim-bonus')
+  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Claim a milestone bonus' })
+  @ApiCreatedResponse({ description: 'Bonus claimed successfully' })
+  claimBonus(@CurrentUser() user: { id: string }, @Body() claimBonusDto: ClaimBonusDto) {
+    return this.networkService.claimBonus(user.id, claimBonusDto.type);
+  }
+
+  @Post('toggle-manager-mode')
+  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Toggle Extended Earnings (Manager Mode)' })
+  @ApiCreatedResponse({ description: 'Manager mode toggled successfully' })
+  toggleManagerMode(@CurrentUser() user: { id: string }) {
+    return this.networkService.toggleManagerMode(user.id);
   }
 }

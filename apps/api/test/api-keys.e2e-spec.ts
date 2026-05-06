@@ -30,6 +30,7 @@ describe("ApiKeys (e2e)", () => {
 
     // Cleanup
     await prismaService.apiKey.deleteMany({});
+    await prismaService.business.deleteMany({});
     await prismaService.user.deleteMany({});
 
     const password = await bcrypt.hash("password123", 10);
@@ -70,6 +71,7 @@ describe("ApiKeys (e2e)", () => {
 
   afterAll(async () => {
     await prismaService.apiKey.deleteMany({});
+    await prismaService.business.deleteMany({});
     await prismaService.user.deleteMany({});
     await app.close();
   });

@@ -15,6 +15,7 @@ describe('ToolsService', () => {
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      count: jest.fn(),
     },
   };
 
@@ -41,19 +42,31 @@ describe('ToolsService', () => {
   describe('findAll', () => {
     it('should return published tools by default', async () => {
       mockPrisma.marketingTool.findMany.mockResolvedValue([]);
-      await service.findAll();
+      mockPrisma.marketingTool.count.mockResolvedValue(0);
+      
+      const result = await service.findAll();
+      
+      expect(result).toEqual({ data: [], total: 0 });
       expect(prisma.marketingTool.findMany).toHaveBeenCalledWith({
         where: { isPublished: true },
         orderBy: { createdAt: 'desc' },
+        skip: undefined,
+        take: undefined,
       });
     });
 
     it('should return all tools if specified', async () => {
       mockPrisma.marketingTool.findMany.mockResolvedValue([]);
-      await service.findAll(false);
+      mockPrisma.marketingTool.count.mockResolvedValue(0);
+
+      const result = await service.findAll(false);
+      
+      expect(result).toEqual({ data: [], total: 0 });
       expect(prisma.marketingTool.findMany).toHaveBeenCalledWith({
         where: {},
         orderBy: { createdAt: 'desc' },
+        skip: undefined,
+        take: undefined,
       });
     });
   });

@@ -46,15 +46,38 @@ model User {
   transactions    Transaction[]
   notifications   Notification[]
   trainingProgress TrainingProgress[]
+  shortLinks      ShortLink[]
+  linkClicks      LinkClick[]
   
   tokenVersion    Int       @default(0)
   paystackSubaccountId String?
   paystackRecipientCode String?
   
+  managerQualificationExpiry DateTime?
+  isManagerMode             Boolean   @default(false)
+  hasClaimedAgentBonus      Boolean   @default(false)
+  hasClaimedBusinessBonus   Boolean   @default(false)
+  
+  signedAgreementVersion    Int?
+  signedAt                 DateTime?
+  lastLoginIp              String?
+  
+  tier            Tier      @default(BRONZE)
+  newEmail        String?
+  emailVerificationCode String?
+  emailVerificationExpiry DateTime?
+
   @@index([referralCode])
   @@index([referredBy])
   @@index([referrerId])
   @@index([paystackRecipientCode])
+  @@index([lastLoginIp])
+}
+
+enum Tier {
+  BRONZE
+  SILVER
+  GOLD
 }
 
 enum Role {
@@ -97,6 +120,7 @@ model Business {
   status          BusinessStatus @default(TRIAL)
   trialEndsAt     DateTime?
   paidAt          DateTime?
+  lastReminderAt  DateTime?
   
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -106,6 +130,7 @@ model Business {
   @@index([affiliateId])
   @@index([referralCode])
   @@index([status])
+  @@index([status, createdAt])
 }
 
 enum PlanType {
@@ -284,6 +309,8 @@ model TrainingModule {
   scenarios       Scenario[]
   progress        TrainingProgress[]
   
+  pdfUrl          String?
+  
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }
@@ -314,6 +341,9 @@ model Scenario {
   situation       String
   objection       String
   idealResponse   String
+  
+  options         Json?
+  correctAnswerIndex Int?
   
   order           Int
   
@@ -361,6 +391,16 @@ model PlatformSettings {
   fraudThresholdScore     Int    @default(80)
   
   referralUnlockCount     Int    @default(0)
+  
+  earningDurationMonths   Int    @default(12)
+  
+  agreementTemplate       String?   @db.Text
+  agreementVersion        Int       @default(1)
+  
+  linkExpiryDays          Int       @default(30)
+  managerRewardDurationMonths Int    @default(12)
+  
+  maxIpUsage              Int       @default(2)
   
   updatedAt               DateTime @updatedAt
 }
@@ -481,4 +521,38 @@ model ApiKey {
   @@index([keyHash])
   @@index([prefix])
   @@index([isActive])
+}
+
+model ShortLink {
+  id          String   @id @default(uuid())
+  code        String   @unique // e.g., "lo"
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([code])
+}
+
+model LinkClick {
+  id            String    @id @default(uuid())
+  
+  referralCode  String?   
+  shortLinkCode String?   
+  
+  userId        String?   // Attributed affiliate
+  user          User?      @relation(fields: [userId], references: [id])
+
+  ip            String?
+  userAgent     String?
+  referer       String?
+  
+  createdAt     DateTime  @default(now())
+
+  @@index([referralCode])
+  @@index([shortLinkCode])
+  @@index([userId])
+  @@index([createdAt])
 }
