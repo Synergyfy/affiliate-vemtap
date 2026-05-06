@@ -6,7 +6,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { AdminStatsResponseDto, DashboardChartsResponseDto } from './dto/dashboard-response.dto';
+import { AdminStatsResponseDto, DashboardChartsResponseDto, ManagerPerformanceResponseDto } from './dto/dashboard-response.dto';
 
 @ApiTags('admin-dashboard')
 @ApiBearerAuth()
@@ -19,21 +19,21 @@ export class DashboardController {
   @Get('stats')
   @ApiOperation({ summary: 'Get overall admin statistics' })
   @ApiOkResponse({ type: AdminStatsResponseDto })
-  getStats() {
+  async getStats(): Promise<AdminStatsResponseDto> {
     return this.dashboardService.getAdminStats();
   }
 
   @Get('manager-performance')
   @ApiOperation({ summary: 'Get manager performance metrics' })
-  @ApiOkResponse({ type: Object })
-  getManagerPerformance(@CurrentUser() user: { id: string }) {
+  @ApiOkResponse({ type: ManagerPerformanceResponseDto })
+  async getManagerPerformance(@CurrentUser() user: { id: string }): Promise<ManagerPerformanceResponseDto> {
     return this.dashboardService.getManagerPerformance(user.id);
   }
 
   @Get('charts')
   @ApiOperation({ summary: 'Get data for dashboard charts' })
   @ApiOkResponse({ type: DashboardChartsResponseDto })
-  getCharts() {
+  async getCharts(): Promise<DashboardChartsResponseDto> {
     return this.dashboardService.getDashboardCharts();
   }
 }

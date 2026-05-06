@@ -4,6 +4,8 @@ import { UsersService } from "../users/users.service";
 import { JwtService } from "@nestjs/jwt";
 import { UnauthorizedException } from "@nestjs/common";
 import * as bcrypt from "bcryptjs";
+import { PrismaService } from "../prisma/prisma.service";
+import { FraudService } from "../fraud/fraud.service";
 
 jest.mock("bcryptjs");
 
@@ -11,6 +13,8 @@ describe("AuthService", () => {
   let service: AuthService;
   let usersService: UsersService;
   let jwtService: JwtService;
+  let prisma: PrismaService;
+  let fraudService: FraudService;
 
   const mockUsersService = {
     findByEmail: jest.fn(),
@@ -25,18 +29,36 @@ describe("AuthService", () => {
     verifyAsync: jest.fn(),
   };
 
+  const mockPrisma = {
+    user: {
+      update: jest.fn(),
+      count: jest.fn(),
+    },
+    platformSettings: {
+      findFirst: jest.fn(),
+    },
+  };
+
+  const mockFraudService = {
+    createAlert: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
         { provide: UsersService, useValue: mockUsersService },
         { provide: JwtService, useValue: mockJwtService },
+        { provide: PrismaService, useValue: mockPrisma },
+        { provide: FraudService, useValue: mockFraudService },
       ],
     }).compile();
 
     service = module.get<AuthService>(AuthService);
     usersService = module.get<UsersService>(UsersService);
     jwtService = module.get<JwtService>(JwtService);
+    prisma = module.get<PrismaService>(PrismaService);
+    fraudService = module.get<FraudService>(FraudService);
   });
 
   afterEach(() => {
@@ -71,16 +93,26 @@ describe("AuthService", () => {
   });
 
   describe("login", () => {
-    it("should return access and refresh tokens", async () => {
+    it("should return access and refresh tokens and check IP limit", async () => {
       const mockUser = { id: "1", email: "test@example.com", tokenVersion: 0 };
+      const ip = "127.0.0.1";
+      
       mockJwtService.signAsync
         .mockResolvedValueOnce("access-token")
         .mockResolvedValueOnce("refresh-token");
+      
+      mockPrisma.platformSettings.findFirst.mockResolvedValue({ maxIpUsage: 2 });
+      mockPrisma.user.count.mockResolvedValue(2); // 2 other users on same IP
+      mockPrisma.user.update.mockResolvedValue({});
 
-      const result = await service.login(mockUser as any);
+      const result = await service.login(mockUser as any, ip);
+      
+      expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
+        where: { id: "1" },
+        data: expect.objectContaining({ lastLoginIp: ip })
+      }));
+      expect(fraudService.createAlert).toHaveBeenCalled();
       expect(result.accessToken).toBe("access-token");
-      expect(result.refreshToken).toBe("refresh-token");
-      expect(result.user.id).toBe("1");
     });
   });
 

@@ -1,5 +1,6 @@
 import { Injectable, OnModuleInit, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { UpdateSettingsDto } from './dto/update-settings.dto';
 
 @Injectable()
 export class SettingsService implements OnModuleInit {
@@ -17,6 +18,11 @@ export class SettingsService implements OnModuleInit {
           withdrawalFee: 100,
           subAffiliateUnlockCount: 5,
           fraudThresholdScore: 80,
+          earningDurationMonths: 12,
+          agreementVersion: 1,
+          linkExpiryDays: 30,
+          managerRewardDurationMonths: 12,
+          maxIpUsage: 2,
         },
       });
     }
@@ -26,7 +32,7 @@ export class SettingsService implements OnModuleInit {
     return this.prisma.platformSettings.findFirst();
   }
 
-  async updateSettings(data: any) {
+  async updateSettings(data: UpdateSettingsDto) {
     const settings = await this.prisma.platformSettings.findFirst();
     if (!settings) {
       throw new NotFoundException('Platform settings not found');

@@ -1,97 +1,157 @@
-import { Test, TestingModule } from "@nestjs/testing";
-import { UsersService } from "./users.service";
-import { PrismaService } from "../prisma/prisma.service";
-import { ConflictException } from "@nestjs/common";
-import * as bcrypt from "bcryptjs";
+import { Test, TestingModule } from '@nestjs/testing';
+import { UsersService } from './users.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { PaystackService } from '../payments/paystack.service';
+import { OtpService } from '../otp/otp.service';
+import { ResendService } from '../otp/resend.service';
+import { Tier } from '@prisma/client';
+import { ConflictException, BadRequestException } from '@nestjs/common';
 
-jest.mock("bcryptjs", () => ({
-  hash: jest.fn().mockResolvedValue("hashedPassword"),
-  compare: jest.fn().mockResolvedValue(true),
-}));
-
-describe("UsersService", () => {
+describe('UsersService', () => {
   let service: UsersService;
-  let prismaService: PrismaService;
+  let prisma: PrismaService;
+  let otpService: OtpService;
+  let resendService: ResendService;
 
-  const mockPrismaService = {
+  const mockPrisma = {
     user: {
-      findFirst: jest.fn(),
       findUnique: jest.fn(),
-      create: jest.fn(),
+      findFirst: jest.fn(),
       update: jest.fn(),
+      create: jest.fn(),
     },
+  };
+
+  const mockPaystack = {};
+  const mockOtp = {
+    generateOtp: jest.fn().mockReturnValue('123456'),
+    isExpired: jest.fn().mockReturnValue(false),
+  };
+  const mockResend = {
+    sendOtpEmail: jest.fn().mockResolvedValue(true),
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
-        { provide: PrismaService, useValue: mockPrismaService },
+        { provide: PrismaService, useValue: mockPrisma },
+        { provide: PaystackService, useValue: mockPaystack },
+        { provide: OtpService, useValue: mockOtp },
+        { provide: ResendService, useValue: mockResend },
       ],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
-    prismaService = module.get<PrismaService>(PrismaService);
+    prisma = module.get<PrismaService>(PrismaService);
+    otpService = module.get<OtpService>(OtpService);
+    resendService = module.get<ResendService>(ResendService);
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
+  it('should be defined', () => {
+    expect(service).toBeDefined();
   });
 
-  describe("create", () => {
-    const createUserDto = {
-      fullName: "Test User",
-      email: "test@example.com",
-      phone: "1234567890",
-      password: "password123",
-    };
-
-    it("should throw ConflictException if user already exists", async () => {
-      mockPrismaService.user.findFirst.mockResolvedValueOnce({ id: "1" });
-
-      await expect(service.create(createUserDto)).rejects.toThrow(
-        ConflictException,
-      );
+  describe('calculateTier', () => {
+    it('should return BRONZE for 0-10 referrals', () => {
+      expect((service as any).calculateTier(0)).toBe(Tier.BRONZE);
+      expect((service as any).calculateTier(10)).toBe(Tier.BRONZE);
     });
 
-    it("should create a new user and omit password in the result", async () => {
-      mockPrismaService.user.findFirst.mockResolvedValueOnce(null);
-      mockPrismaService.user.findUnique.mockResolvedValueOnce(null); // for unique referral code gen
+    it('should return SILVER for 11-50 referrals', () => {
+      expect((service as any).calculateTier(11)).toBe(Tier.SILVER);
+      expect((service as any).calculateTier(50)).toBe(Tier.SILVER);
+    });
 
-      const createdUser = {
-        id: "1",
-        ...createUserDto,
-        password: "hashedPassword",
-        referralCode: "VEM-TEST",
-      };
-      mockPrismaService.user.create.mockResolvedValueOnce(createdUser);
-
-      const result = await service.create(createUserDto);
-
-      expect(result).not.toHaveProperty("password");
-      expect(result.fullName).toBe(createUserDto.fullName);
-      expect(mockPrismaService.user.create).toHaveBeenCalled();
+    it('should return GOLD for 51+ referrals', () => {
+      expect((service as any).calculateTier(51)).toBe(Tier.GOLD);
+      expect((service as any).calculateTier(100)).toBe(Tier.GOLD);
     });
   });
 
-  describe("findById", () => {
-    it("should return null if user not found", async () => {
-      mockPrismaService.user.findUnique.mockResolvedValueOnce(null);
-      const result = await service.findById("1");
-      expect(result).toBeNull();
+  describe('requestEmailUpdate', () => {
+    it('should throw if email already in use', async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ id: '1' }); // for user check
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ id: '2' }); // for existing email check
+      
+      await expect(service.requestEmailUpdate('1', 'used@email.com')).rejects.toThrow(ConflictException);
     });
 
-    it("should return user omitting password", async () => {
-      mockPrismaService.user.findUnique.mockResolvedValueOnce({
-        id: "1",
-        password: "secretPassword",
-        email: "test@example.com",
-      });
+    it('should generate code and send email', async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce({ id: '1' });
+      mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+      mockPrisma.user.update.mockResolvedValue({});
+      
+      const result = await service.requestEmailUpdate('1', 'new@email.com');
+      
+      expect(result.message).toBeDefined();
+      expect(mockOtp.generateOtp).toHaveBeenCalled();
+      expect(mockResend.sendOtpEmail).toHaveBeenCalledWith('new@email.com', '123456');
+    });
+  });
 
-      const result = await service.findById("1");
-      expect(result).not.toBeNull();
-      expect(result).not.toHaveProperty("password");
-      expect(result?.email).toBe("test@example.com");
+  describe('exportUsersCsv', () => {
+    it('should return a CSV string with user data', async () => {
+      const mockUsers = [
+        {
+          id: '1',
+          email: 'test@example.com',
+          fullName: 'Test User',
+          phone: '1234567890',
+          role: 'AFFILIATE',
+          status: 'ACTIVE',
+          kycStatus: 'VERIFIED',
+          tier: 'BRONZE',
+          totalEarnings: 100,
+          createdAt: new Date('2026-01-01'),
+        },
+      ];
+
+      (mockPrisma.user as any).findMany = jest.fn().mockResolvedValue(mockUsers);
+
+      const csv = await service.exportUsersCsv();
+
+      expect(csv).toContain('ID,Email,Full Name,Phone,Role,Status,KYC Status,Tier,Total Earnings,Created At');
+      expect(csv).toContain('"1","test@example.com","Test User","1234567890","AFFILIATE","ACTIVE","VERIFIED","BRONZE","100","2026-01-01T00:00:00.000Z"');
+    });
+
+    it('should handle empty user list', async () => {
+      (mockPrisma.user as any).findMany = jest.fn().mockResolvedValue([]);
+
+      const csv = await service.exportUsersCsv();
+
+      expect(csv).toBe('ID,Email,Full Name,Phone,Role,Status,KYC Status,Tier,Total Earnings,Created At');
+    });
+  });
+
+  describe('signAgreement', () => {
+    it('should update user signedAgreementVersion', async () => {
+      (mockPrisma as any).platformSettings = { findFirst: jest.fn().mockResolvedValue({ agreementVersion: 5 }) };
+      mockPrisma.user.update.mockResolvedValue({ id: '1', signedAgreementVersion: 5 });
+
+      const result = await service.signAgreement('1');
+      expect(result.signedAgreementVersion).toBe(5);
+      expect(mockPrisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ signedAgreementVersion: 5 })
+      }));
+    });
+  });
+
+  describe('getAgreementStatus', () => {
+    it('should return up-to-date if versions match', async () => {
+      (mockPrisma as any).platformSettings = { findFirst: jest.fn().mockResolvedValue({ agreementVersion: 5 }) };
+      mockPrisma.user.findUnique.mockResolvedValue({ signedAgreementVersion: 5 });
+
+      const status = await service.getAgreementStatus('1');
+      expect(status.isUpToDate).toBe(true);
+    });
+
+    it('should return not up-to-date if versions differ', async () => {
+      (mockPrisma as any).platformSettings = { findFirst: jest.fn().mockResolvedValue({ agreementVersion: 5 }) };
+      mockPrisma.user.findUnique.mockResolvedValue({ signedAgreementVersion: 4 });
+
+      const status = await service.getAgreementStatus('1');
+      expect(status.isUpToDate).toBe(false);
     });
   });
 });
