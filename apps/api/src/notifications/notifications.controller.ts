@@ -1,31 +1,61 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiOkResponse } from '@nestjs/swagger';
-import { NotificationsService } from './notifications.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { Role } from '@prisma/client';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { CreateNotificationDto, BroadcastNotificationDto } from './dto/notification.dto';
-import { NotificationResponseDto, PaginatedNotificationResponseDto } from './dto/notification-response.dto';
-import { PaginationDto } from '../common/dto/pagination.dto';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+} from "@nestjs/common";
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiResponse,
+  ApiBody,
+} from "@nestjs/swagger";
+import { NotificationsService } from "./notifications.service";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { RolesGuard } from "../auth/guards/roles.guard";
+import { Roles } from "../auth/decorators/roles.decorator";
+import { Role } from "@prisma/client";
+import { CurrentUser } from "../auth/decorators/current-user.decorator";
+import {
+  CreateNotificationDto,
+  BroadcastNotificationDto,
+} from "./dto/notification.dto";
+import {
+  NotificationResponseDto,
+  PaginatedNotificationResponseDto,
+} from "./dto/notification-response.dto";
+import { PaginationDto } from "../common/dto/pagination.dto";
 
-@ApiTags('notifications')
-@ApiBearerAuth()
-@Controller('notifications')
+@ApiTags("notifications")
+@ApiBearerAuth("JWT")
+@Controller("notifications")
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
-  @Get('me')
+  @Get("me")
   @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Get current user notifications' })
-  @ApiOkResponse({ type: PaginatedNotificationResponseDto })
-  async findAll(@CurrentUser() user: { id: string }, @Query() paginationDto: PaginationDto) {
-    const { data, total } = await this.notificationsService.findUserNotifications(user.id, {
-      skip: paginationDto.skip,
-      take: paginationDto.take,
-    });
+  @ApiOperation({ summary: "Get current user notifications" })
+  @ApiOkResponse({
+    type: PaginatedNotificationResponseDto,
+    description: "User notifications retrieved",
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  async findAll(
+    @CurrentUser() user: { id: string },
+    @Query() paginationDto: PaginationDto,
+  ) {
+    const { data, total } =
+      await this.notificationsService.findUserNotifications(user.id, {
+        skip: paginationDto.skip,
+        take: paginationDto.take,
+      });
 
     return {
       data,
@@ -38,19 +68,21 @@ export class NotificationsController {
     };
   }
 
-  @Patch(':id/read')
+  @Patch(":id/read")
   @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Mark notification as read' })
-  @ApiOkResponse({ type: NotificationResponseDto })
-  markAsRead(@Param('id') id: string, @CurrentUser() user: { id: string }) {
+  @ApiOperation({ summary: "Mark notification as read" })
+  @ApiOkResponse({
+    type: NotificationResponseDto,
+    description: "Notification marked as read",
+  })
+  @ApiResponse({ status: 404, description: "Notification not found" })
+  markAsRead(@Param("id") id: string, @CurrentUser() user: { id: string }) {
     return this.notificationsService.markAsRead(id, user.id);
   }
 
-  // --- ADMIN ENDPOINTS ---
-
   @Get()
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  @ApiOperation({ summary: 'List all notifications sent (Admin only)' })
+  @ApiOperation({ summary: "List all notifications sent (Admin only)" })
   @ApiOkResponse({ type: PaginatedNotificationResponseDto })
   async findAllAdmin(@Query() paginationDto: PaginationDto) {
     const { data, total } = await this.notificationsService.findAllAdmin({
@@ -69,16 +101,82 @@ export class NotificationsController {
     };
   }
 
-  @Post('broadcast')
+  @Post("broadcast")
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Send notification to all active users with filtering (Admin only)' })
+  @ApiOperation({
+    summary:
+      "Send notification to all active users with filtering (Admin only)",
+  })
+  @ApiBody({
+    type: BroadcastNotificationDto,
+    description: "Broadcast notification details",
+    examples: {
+      all: {
+        value: {
+          type: "SYSTEM",
+          title: "Maintenance Notice",
+          message: "System maintenance on May 10th",
+          recipients: "ALL",
+          channels: ["IN_APP", "EMAIL"],
+        },
+      },
+      topEarners: {
+        value: {
+          type: "PROMOTION",
+          title: "Bonus Event",
+          message: "Double commissions this weekend!",
+          recipients: "TOP_EARNERS",
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: "Broadcast sent successfully",
+    example: { message: "Notification sent to 150 users" },
+  })
   broadcast(@Body() dto: BroadcastNotificationDto) {
-    return this.notificationsService.broadcast(dto.type, dto.title, dto.message, dto.data, dto.recipients, dto.channels);
+    return this.notificationsService.broadcast(
+      dto.type,
+      dto.title,
+      dto.message,
+      dto.data,
+      dto.recipients,
+      dto.channels,
+    );
   }
 
-  @Post('direct')
+  @Post("direct")
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Send notification to a specific user (Admin only)' })
+  @ApiOperation({
+    summary: "Send notification to a specific user (Admin only)",
+  })
+  @ApiBody({
+    type: CreateNotificationDto,
+    description: "Direct notification details",
+    examples: {
+      default: {
+        value: {
+          userId: "user-uuid",
+          type: "SYSTEM",
+          title: "Account Update",
+          message: "Your profile has been updated",
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: "Notification sent to user",
+    example: {
+      id: "notif-uuid",
+      userId: "user-uuid",
+      title: "Account Update",
+      message: "Your profile has been updated",
+      isRead: false,
+    },
+  })
+  @ApiResponse({ status: 404, description: "User not found" })
   create(@Body() dto: CreateNotificationDto) {
     return this.notificationsService.create(dto);
   }
