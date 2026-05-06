@@ -18,12 +18,43 @@ export class AdminStatsResponseDto {
 
   @ApiProperty()
   fraudAlerts: number;
+
+  @ApiProperty()
+  commissionsTrendPercentage: number;
+}
+
+export class ChartDataPointDto {
+  @ApiProperty()
+  date: string;
+
+  @ApiProperty()
+  value: number;
 }
 
 export class DashboardChartsResponseDto {
+  @ApiProperty({ type: [ChartDataPointDto] })
+  revenueGrowth: ChartDataPointDto[];
+
+  @ApiProperty({ type: [ChartDataPointDto] })
+  affiliateSignups: ChartDataPointDto[];
+}
+
+export class ManagerPerformanceResponseDto {
   @ApiProperty()
-  revenueGrowth: any[];
+  activeAgentsCount: number;
 
   @ApiProperty()
-  affiliateSignups: any[];
+  newNetworkBusinessesCount: number;
+
+  @ApiProperty()
+  networkSize: number;
+
+  @ApiProperty()
+  isQualified: boolean;
+
+  @ApiProperty()
+  targetAgents: number;
+
+  @ApiProperty()
+  targetBusinesses: number;
 }

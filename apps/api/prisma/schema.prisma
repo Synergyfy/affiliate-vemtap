@@ -387,6 +387,8 @@ model PlatformSettings {
   
   referralUnlockCount     Int    @default(0)
   
+  earningDurationMonths   Int    @default(12)
+  
   updatedAt               DateTime @updatedAt
 }
 

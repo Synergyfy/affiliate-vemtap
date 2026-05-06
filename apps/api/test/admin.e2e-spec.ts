@@ -27,6 +27,10 @@ describe("Admin Backend (e2e)", () => {
 
     prismaService = app.get<PrismaService>(PrismaService);
 
+    // Cleanup before tests
+    await prismaService.fraudAlert.deleteMany({});
+    await prismaService.user.deleteMany({ where: { email: { contains: 'test.com' } } });
+
     // Setup test users
     const password = await bcrypt.hash("password123", 10);
 
@@ -85,8 +89,14 @@ describe("Admin Backend (e2e)", () => {
         withdrawalFee: 100,
         subAffiliateUnlockCount: 5,
         fraudThresholdScore: 80,
+        earningDurationMonths: 12,
       },
     });
+
+    // Final cleanup
+    await prismaService.fraudAlert.deleteMany({});
+    await prismaService.user.deleteMany({ where: { email: { contains: 'test.com' } } });
+
     await app.close();
   });
 
@@ -99,6 +109,7 @@ describe("Admin Backend (e2e)", () => {
 
       expect(res.body).toHaveProperty("totalAffiliates");
       expect(res.body).toHaveProperty("activeAffiliates");
+      expect(res.body).toHaveProperty("commissionsTrendPercentage");
     });
 
     it("/admin/dashboard/stats (GET) - should block affiliate", async () => {
@@ -137,6 +148,37 @@ describe("Admin Backend (e2e)", () => {
       expect(res.body.status).toBe(FraudStatus.RESOLVED);
       expect(res.body.resolution).toBe("Fixed");
     });
+
+    it("/fraud/:id/status (PATCH) - should automatically suspend user for CRITICAL fraud", async () => {
+      const suspect = await prismaService.user.create({
+        data: {
+          email: `suspect-${Date.now()}@test.com`,
+          fullName: "Suspect User",
+          phone: `suspect-phone-${Date.now()}`,
+          password: "password123",
+          role: Role.AFFILIATE,
+          referralCode: `SUSPECT-${Date.now()}`,
+        },
+      });
+
+      const alert = await prismaService.fraudAlert.create({
+        data: {
+          userId: suspect.id,
+          type: "MULTIPLE_ACCOUNTS",
+          severity: "CRITICAL",
+          description: "Critical fraud",
+        },
+      });
+
+      await request(app.getHttpServer())
+        .patch(`/fraud/${alert.id}/status`)
+        .set("Cookie", adminCookies)
+        .send({ status: FraudStatus.CONFIRMED, resolution: "Confirmed critical" })
+        .expect(200);
+
+      const updatedUser = await prismaService.user.findUnique({ where: { id: suspect.id } });
+      expect(updatedUser?.status).toBe("SUSPENDED");
+    });
   });
 
   describe("SettingsController", () => {
@@ -153,15 +195,29 @@ describe("Admin Backend (e2e)", () => {
       const res = await request(app.getHttpServer())
         .patch("/settings")
         .set("Cookie", adminCookies)
-        .send({ directCommissionRate: 0.2 })
+        .send({ directCommissionRate: 0.2, earningDurationMonths: 24 })
         .expect(200);
 
       expect(Number(res.body.directCommissionRate)).toBe(0.2);
+      expect(res.body.earningDurationMonths).toBe(24);
+    });
+  });
+
+  describe("UsersController", () => {
+    it("/users/export (GET) - should export users as CSV", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/users/export")
+        .set("Cookie", adminCookies)
+        .expect(200);
+
+      expect(res.header["content-type"]).toContain("text/csv");
+      expect(res.header["content-disposition"]).toContain("attachment; filename=users.csv");
+      expect(res.text).toContain("ID,Email,Full Name,Phone,Role,Status,KYC Status,Tier,Total Earnings,Created At");
     });
   });
 
   describe("NotificationsController", () => {
-    it("/notifications/broadcast (POST) - should broadcast notification", async () => {
+    it("/notifications/broadcast (POST) - should broadcast notification with filtering and channels", async () => {
       const res = await request(app.getHttpServer())
         .post("/notifications/broadcast")
         .set("Cookie", adminCookies)
@@ -169,10 +225,13 @@ describe("Admin Backend (e2e)", () => {
           type: NotificationType.SYSTEM,
           title: "Broadcast Title",
           message: "Broadcast Message",
+          recipients: "ALL",
+          channels: ["IN_APP"]
         })
         .expect(201);
 
-      expect(res.body.count).toBeDefined();
+      expect(res.body.recipientCount).toBeDefined();
+      expect(res.body.results.inApp.count).toBeGreaterThanOrEqual(1);
     });
 
     it("/notifications/me (GET) - should allow affiliate to see notifications", async () => {

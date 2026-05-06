@@ -29,10 +29,17 @@ describe('DashboardService', () => {
             business: {
               findMany: jest.fn(),
               count: jest.fn(),
+              aggregate: jest.fn(),
             },
             commission: {
               groupBy: jest.fn(),
               aggregate: jest.fn(),
+            },
+            withdrawal: {
+              aggregate: jest.fn(),
+            },
+            fraudAlert: {
+              count: jest.fn(),
             },
           },
         },
@@ -122,6 +129,63 @@ describe('DashboardService', () => {
       expect(result.affiliateSignups).toBeDefined();
       expect(prisma.business.findMany).toHaveBeenCalled();
       expect(prisma.user.findMany).toHaveBeenCalled();
+    });
+  });
+
+  describe('getAdminStats', () => {
+    it('should return admin stats including commissions trend percentage', async () => {
+      jest.spyOn(prisma.user, 'count').mockResolvedValue(10);
+      jest.spyOn(prisma.business, 'aggregate').mockResolvedValue({ _sum: { subscriptionAmount: 1000 } } as any);
+      jest.spyOn(prisma.withdrawal, 'aggregate').mockResolvedValue({ _sum: { amount: 200 } } as any);
+      jest.spyOn(prisma.fraudAlert, 'count').mockResolvedValue(1);
+
+      // Mock commissions: totalPaid, currentMonth, previousMonth
+      jest.spyOn(prisma.commission, 'aggregate')
+        .mockResolvedValueOnce({ _sum: { amount: 5000 } } as any) // total paid
+        .mockResolvedValueOnce({ _sum: { amount: 1500 } } as any) // current month
+        .mockResolvedValueOnce({ _sum: { amount: 1000 } } as any); // previous month
+
+      const result = await service.getAdminStats();
+
+      expect(result.commissionsTrendPercentage).toBe(50);
+      expect(result.totalAffiliates).toBe(10);
+    });
+
+    it('should handle zero previous commissions for trend percentage', async () => {
+      jest.spyOn(prisma.user, 'count').mockResolvedValue(10);
+      jest.spyOn(prisma.business, 'aggregate').mockResolvedValue({ _sum: { subscriptionAmount: 1000 } } as any);
+      jest.spyOn(prisma.withdrawal, 'aggregate').mockResolvedValue({ _sum: { amount: 200 } } as any);
+      jest.spyOn(prisma.fraudAlert, 'count').mockResolvedValue(1);
+
+      jest.spyOn(prisma.commission, 'aggregate')
+        .mockResolvedValueOnce({ _sum: { amount: 500 } } as any) // total paid
+        .mockResolvedValueOnce({ _sum: { amount: 500 } } as any) // current month
+        .mockResolvedValueOnce({ _sum: { amount: 0 } } as any); // previous month
+
+      const result = await service.getAdminStats();
+
+      expect(result.commissionsTrendPercentage).toBe(100);
+    });
+  });
+
+  describe('getManagerPerformance', () => {
+    it('should return manager performance including networkSize', async () => {
+      const recruits = [
+        { id: 'recruit1', referralCount: 1 },
+        { id: 'recruit2', referralCount: 0 },
+      ];
+
+      jest.spyOn(prisma.user, 'findMany')
+        .mockResolvedValueOnce(recruits as any) // First call: recruits within 90 days
+        .mockResolvedValueOnce([{ id: 'recruit1' }, { id: 'recruit2' }] as any); // Second call: directReferralIds (all time)
+
+      jest.spyOn(prisma.business, 'count').mockResolvedValue(50);
+      jest.spyOn(prisma.user, 'count').mockResolvedValue(120); // networkSize
+
+      const result = await service.getManagerPerformance('managerId');
+
+      expect(result.networkSize).toBe(120);
+      expect(result.activeAgentsCount).toBe(1);
     });
   });
 });

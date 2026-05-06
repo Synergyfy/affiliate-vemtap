@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
+import { AdminStatsResponseDto, DashboardChartsResponseDto, ManagerPerformanceResponseDto } from './dto/dashboard-response.dto';
 
 @Injectable()
 export class DashboardService {
@@ -12,10 +13,15 @@ export class DashboardService {
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
-  async getAdminStats() {
+  async getAdminStats(): Promise<AdminStatsResponseDto> {
     const cacheKey = 'admin_stats';
-    const cachedData = await this.cacheManager.get(cacheKey);
+    const cachedData = await this.cacheManager.get<AdminStatsResponseDto>(cacheKey);
     if (cachedData) return cachedData;
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const sixtyDaysAgo = new Date();
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
     const [
       totalAffiliates,
       activeAffiliates,
@@ -23,6 +29,8 @@ export class DashboardService {
       commissionsPaid,
       pendingPayouts,
       fraudAlerts,
+      currentCommissions,
+      previousCommissions,
     ] = await Promise.all([
       this.prisma.user.count({ where: { role: 'AFFILIATE' } }),
       this.prisma.user.count({ where: { role: 'AFFILIATE', status: 'ACTIVE' } }),
@@ -39,7 +47,21 @@ export class DashboardService {
         _sum: { amount: true },
       }),
       this.prisma.fraudAlert.count({ where: { status: 'OPEN' } }),
+      this.prisma.commission.aggregate({
+        where: { status: 'PAID', createdAt: { gte: thirtyDaysAgo } },
+        _sum: { amount: true },
+      }),
+      this.prisma.commission.aggregate({
+        where: { status: 'PAID', createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } },
+        _sum: { amount: true },
+      }),
     ]);
+
+    const currentVal = Number(currentCommissions._sum.amount || 0);
+    const previousVal = Number(previousCommissions._sum.amount || 0);
+    const trend = previousVal === 0 
+      ? (currentVal > 0 ? 100 : 0) 
+      : Math.round(((currentVal - previousVal) / previousVal) * 100);
 
     const stats = {
       totalAffiliates,
@@ -48,13 +70,14 @@ export class DashboardService {
       commissionsPaid: Number(commissionsPaid._sum.amount || 0),
       pendingPayouts: Number(pendingPayouts._sum.amount || 0),
       fraudAlerts,
+      commissionsTrendPercentage: trend,
     };
 
     await this.cacheManager.set(cacheKey, stats, 300 * 1000); // 5 minutes in ms
     return stats;
   }
 
-  async getManagerPerformance(managerId: string) {
+  async getManagerPerformance(managerId: string): Promise<ManagerPerformanceResponseDto> {
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
@@ -72,9 +95,20 @@ export class DashboardService {
 
     const activeAgents = recruits.filter(r => r.referralCount > 0);
 
+    // Network Size: Sum of referrals' referrals (all time)
+    const directReferralIds = await this.prisma.user.findMany({
+      where: { referrerId: managerId },
+      select: { id: true }
+    }).then(users => users.map(u => u.id));
+
+    const networkSize = await this.prisma.user.count({
+      where: { referrerId: { in: directReferralIds } }
+    });
+
     return {
       activeAgentsCount: activeAgents.length,
-      totalBusinessesCount: networkBusinesses,
+      newNetworkBusinessesCount: networkBusinesses,
+      networkSize,
       isQualified: activeAgents.length >= 30 && networkBusinesses >= 100,
       targetAgents: 30,
       targetBusinesses: 100,
@@ -82,7 +116,7 @@ export class DashboardService {
   }
 
 
-  async getDashboardCharts() {
+  async getDashboardCharts(): Promise<DashboardChartsResponseDto> {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 

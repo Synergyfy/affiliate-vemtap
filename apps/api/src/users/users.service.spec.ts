@@ -89,4 +89,38 @@ describe('UsersService', () => {
       expect(mockResend.sendOtpEmail).toHaveBeenCalledWith('new@email.com', '123456');
     });
   });
+
+  describe('exportUsersCsv', () => {
+    it('should return a CSV string with user data', async () => {
+      const mockUsers = [
+        {
+          id: '1',
+          email: 'test@example.com',
+          fullName: 'Test User',
+          phone: '1234567890',
+          role: 'AFFILIATE',
+          status: 'ACTIVE',
+          kycStatus: 'VERIFIED',
+          tier: 'BRONZE',
+          totalEarnings: 100,
+          createdAt: new Date('2026-01-01'),
+        },
+      ];
+
+      (mockPrisma.user as any).findMany = jest.fn().mockResolvedValue(mockUsers);
+
+      const csv = await service.exportUsersCsv();
+
+      expect(csv).toContain('ID,Email,Full Name,Phone,Role,Status,KYC Status,Tier,Total Earnings,Created At');
+      expect(csv).toContain('"1","test@example.com","Test User","1234567890","AFFILIATE","ACTIVE","VERIFIED","BRONZE","100","2026-01-01T00:00:00.000Z"');
+    });
+
+    it('should handle empty user list', async () => {
+      (mockPrisma.user as any).findMany = jest.fn().mockResolvedValue([]);
+
+      const csv = await service.exportUsersCsv();
+
+      expect(csv).toBe('ID,Email,Full Name,Phone,Role,Status,KYC Status,Tier,Total Earnings,Created At');
+    });
+  });
 });

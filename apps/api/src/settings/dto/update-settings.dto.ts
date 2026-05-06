@@ -40,4 +40,10 @@ export class UpdateSettingsDto {
   @Min(0)
   @Max(100)
   fraudThresholdScore?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  earningDurationMonths?: number;
 }

@@ -1,9 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { FraudStatus } from '@prisma/client';
+import { FraudStatus, Severity } from '@prisma/client';
 
 @Injectable()
 export class FraudService {
+  private readonly logger = new Logger(FraudService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(pagination: { skip?: number; take?: number }) {
@@ -31,6 +33,15 @@ export class FraudService {
       where: { id },
     });
     if (!alert) throw new NotFoundException('Fraud alert not found');
+
+    // Automated Suspension Hook
+    if (status === 'CONFIRMED' && alert.severity === 'CRITICAL') {
+      await this.prisma.user.update({
+        where: { id: alert.userId },
+        data: { status: 'SUSPENDED' },
+      });
+      this.logger.warn(`User ${alert.userId} automatically SUSPENDED due to confirmed CRITICAL fraud alert ${id}`);
+    }
 
     return this.prisma.fraudAlert.update({
       where: { id },

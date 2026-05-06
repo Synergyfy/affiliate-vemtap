@@ -319,6 +319,55 @@ export class UsersService {
     });
   }
 
+  async exportUsersCsv(): Promise<string> {
+    const users = await this.prisma.user.findMany({
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        phone: true,
+        role: true,
+        status: true,
+        kycStatus: true,
+        tier: true,
+        totalEarnings: true,
+        createdAt: true,
+      },
+    });
+
+    const header = [
+      "ID",
+      "Email",
+      "Full Name",
+      "Phone",
+      "Role",
+      "Status",
+      "KYC Status",
+      "Tier",
+      "Total Earnings",
+      "Created At",
+    ];
+    const rows = users.map((u) =>
+      [
+        u.id,
+        u.email,
+        u.fullName,
+        u.phone,
+        u.role,
+        u.status,
+        u.kycStatus,
+        u.tier,
+        u.totalEarnings.toString(),
+        u.createdAt.toISOString(),
+      ]
+        .map((val) => `"${val}"`)
+        .join(","),
+    );
+
+    return [header.join(","), ...rows].join("\n");
+  }
+
   private async generateUniqueReferralCode(): Promise<string> {
     let code: string;
     let exists = true;

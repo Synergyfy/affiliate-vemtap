@@ -17,6 +17,7 @@ export class SettingsService implements OnModuleInit {
           withdrawalFee: 100,
           subAffiliateUnlockCount: 5,
           fraudThresholdScore: 80,
+          earningDurationMonths: 12,
         },
       });
     }

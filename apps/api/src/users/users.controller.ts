@@ -6,8 +6,10 @@ import {
   Body, 
   Param,
   Query,
+  Res,
   UseGuards 
 } from '@nestjs/common';
+import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiOkResponse, ApiQuery } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -66,6 +68,16 @@ export class UsersController {
   }
 
   // --- ADMIN ENDPOINTS ---
+
+  @Get('export')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Export all users as CSV' })
+  async exportUsers(@Res() res: Response) {
+    const csv = await this.usersService.exportUsersCsv();
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=users.csv');
+    return res.status(200).send(csv);
+  }
 
   @Get()
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)

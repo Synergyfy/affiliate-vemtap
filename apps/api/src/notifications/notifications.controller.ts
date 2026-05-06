@@ -71,9 +71,9 @@ export class NotificationsController {
 
   @Post('broadcast')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Send notification to all active users (Admin only)' })
+  @ApiOperation({ summary: 'Send notification to all active users with filtering (Admin only)' })
   broadcast(@Body() dto: BroadcastNotificationDto) {
-    return this.notificationsService.broadcast(dto.type, dto.title, dto.message, dto.data);
+    return this.notificationsService.broadcast(dto.type, dto.title, dto.message, dto.data, dto.recipients, dto.channels);
   }
 
   @Post('direct')

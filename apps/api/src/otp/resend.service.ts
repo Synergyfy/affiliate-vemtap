@@ -56,4 +56,45 @@ export class ResendService {
       return false;
     }
   }
+
+  async sendBroadcastEmail(emails: string[], subject: string, message: string): Promise<number> {
+    if (!this.resend) {
+      this.logger.error('Resend client not initialized. Cannot send broadcast.');
+      return 0;
+    }
+
+    let sentCount = 0;
+    const batchSize = 10;
+    
+    for (let i = 0; i < emails.length; i += batchSize) {
+      const batch = emails.slice(i, i + batchSize);
+      await Promise.all(
+        batch.map(async (email) => {
+          try {
+            const { error } = await this.resend.emails.send({
+              from: `Vemtap <${this.fromEmail}>`,
+              to: [email],
+              subject: subject,
+              html: `
+                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                  <h2 style="color: #333;">${subject}</h2>
+                  <div style="color: #444; line-height: 1.6; white-space: pre-wrap;">
+                    ${message}
+                  </div>
+                  <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                  <p style="font-size: 12px; color: #999;">&copy; 2026 Vemtap. All rights reserved.</p>
+                </div>
+              `,
+            });
+            if (!error) sentCount++;
+          } catch (err) {
+            this.logger.error(`Failed to send broadcast email to ${email}`, err);
+          }
+        }),
+      );
+    }
+
+    this.logger.log(`Broadcast completed. Sent ${sentCount} emails.`);
+    return sentCount;
+  }
 }

@@ -23,5 +23,8 @@ export class PlatformSettingsResponseDto {
   fraudThresholdScore: number;
 
   @ApiProperty()
+  earningDurationMonths: number;
+
+  @ApiProperty()
   updatedAt: Date;
 }
