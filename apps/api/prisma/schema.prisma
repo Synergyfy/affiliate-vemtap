@@ -304,6 +304,8 @@ model TrainingModule {
   scenarios       Scenario[]
   progress        TrainingProgress[]
   
+  pdfUrl          String?
+  
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }
@@ -334,6 +336,9 @@ model Scenario {
   situation       String
   objection       String
   idealResponse   String
+  
+  options         Json?
+  correctAnswerIndex Int?
   
   order           Int
   

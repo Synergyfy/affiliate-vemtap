@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsOptional, IsString } from 'class-validator';
 
 export class AffiliateStatsResponseDto {
   @ApiProperty({ example: 150000.50 })
@@ -12,6 +13,17 @@ export class AffiliateStatsResponseDto {
 
   @ApiProperty({ example: 45 })
   referralCount: number;
+}
+
+export class GetLeaderboardQueryDto {
+  @ApiProperty({ required: false, default: 10 })
+  @IsOptional()
+  limit?: number;
+
+  @ApiProperty({ required: false, default: 'all', enum: ['week', 'month', 'all'] })
+  @IsOptional()
+  @IsString()
+  timeframe?: string;
 }
 
 export class AffiliateForecastResponseDto {
@@ -53,4 +65,7 @@ export class LeaderboardResponseDto {
 
   @ApiProperty({ example: 150 })
   referralCount: number;
+
+  @ApiProperty({ example: 'up', enum: ['up', 'down', 'stable'] })
+  trend?: string;
 }

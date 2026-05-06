@@ -10,7 +10,8 @@ import {
   AffiliateStatsResponseDto, 
   AffiliateForecastResponseDto, 
   AffiliateChartsResponseDto,
-  LeaderboardResponseDto
+  LeaderboardResponseDto,
+  GetLeaderboardQueryDto
 } from './dto/affiliate-dashboard.dto';
 
 @ApiTags('affiliate-dashboard')
@@ -45,7 +46,10 @@ export class AffiliateDashboardController {
   @Get('leaderboard')
   @ApiOperation({ summary: 'Get global top affiliates leaderboard' })
   @ApiOkResponse({ type: [LeaderboardResponseDto] })
-  getLeaderboard(@Query('limit') limit?: number) {
-    return this.dashboardService.getGlobalLeaderboard(limit ? Number(limit) : 10);
+  getLeaderboard(@Query() query: GetLeaderboardQueryDto) {
+    return this.dashboardService.getGlobalLeaderboard(
+      query.limit ? Number(query.limit) : 10,
+      query.timeframe || 'all',
+    );
   }
 }

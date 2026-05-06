@@ -6,7 +6,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { CreateTrainingModuleDto, UpdateTrainingModuleDto } from './dto/training.dto';
+import { CreateTrainingModuleDto, UpdateTrainingModuleDto, UpdateTrainingProgressDto } from './dto/training.dto';
 import { TrainingModuleResponseDto, PaginatedTrainingModuleResponseDto } from './dto/training-response.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 
@@ -43,7 +43,7 @@ export class TrainingController {
   @ApiOperation({ summary: 'Update progress for a module' })
   updateProgress(
     @Param('id') moduleId: string,
-    @Body() data: any,
+    @Body() data: UpdateTrainingProgressDto,
     @CurrentUser() user: { id: string },
   ) {
     return this.trainingService.updateProgress(user.id, moduleId, data);

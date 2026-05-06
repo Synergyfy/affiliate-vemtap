@@ -199,6 +199,7 @@ describe("Admin Backend (e2e)", () => {
           order: 1,
           category: "Sales",
           isPublished: true,
+          pdfUrl: "https://example.com/test.pdf",
           quizzes: [
             {
               question: "Q1",
@@ -207,11 +208,34 @@ describe("Admin Backend (e2e)", () => {
               order: 1,
             },
           ],
+          scenarios: [
+            {
+              title: "Test Scenario",
+              situation: "Sit",
+              objection: "Obj",
+              idealResponse: "Response",
+              options: ["Correct", "Wrong"],
+              correctAnswerIndex: 0,
+              order: 1,
+            },
+          ],
         })
         .expect(201);
 
       moduleId = res.body.id;
       expect(res.body.title).toBe("Test Module");
+      expect(res.body.pdfUrl).toBe("https://example.com/test.pdf");
+    });
+
+    it("/training/admin/modules/:id (GET) - should return full module details with scenarios", async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/training/admin/modules/${moduleId}`)
+        .set("Cookie", adminCookies)
+        .expect(200);
+
+      expect(res.body.scenarios).toHaveLength(1);
+      expect(res.body.scenarios[0].options).toEqual(["Correct", "Wrong"]);
+      expect(res.body.scenarios[0].correctAnswerIndex).toBe(0);
     });
 
     it("/training/modules (GET) - should allow affiliate to see published modules", async () => {

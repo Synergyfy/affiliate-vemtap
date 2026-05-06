@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CommissionStatus } from '@prisma/client';
 
 @Injectable()
 export class CommissionsService {
   constructor(private prisma: PrismaService) {}
 
   async findAll(userId: string, pagination: { skip?: number; take?: number }) {
-    const [data, total] = await Promise.all([
+    const [commissions, total] = await Promise.all([
       this.prisma.commission.findMany({
         where: { userId },
         skip: pagination.skip,
@@ -14,8 +15,14 @@ export class CommissionsService {
         include: {
           business: {
             select: {
+              id: true,
               businessName: true,
               planType: true,
+              status: true,
+              createdAt: true,
+              _count: {
+                select: { commissions: true },
+              },
             },
           },
         },
@@ -23,6 +30,22 @@ export class CommissionsService {
       }),
       this.prisma.commission.count({ where: { userId } }),
     ]);
+
+    const data = commissions.map(c => {
+      if (c.business) {
+        const { _count, ...restBusiness } = c.business;
+        return {
+          ...c,
+          business: {
+            ...restBusiness,
+            paidMonths: _count?.commissions || 0,
+            totalMonths: 12, // Placeholder for total subscription duration
+          },
+        };
+      }
+      return c;
+    });
+
     return { data, total };
   }
 
@@ -65,7 +88,7 @@ export class CommissionsService {
     return { data, total };
   }
 
-  async updateStatus(id: string, data: any) {
+  async updateStatus(id: string, data: { status: CommissionStatus }) {
     return this.prisma.commission.update({
       where: { id },
       data: { status: data.status },

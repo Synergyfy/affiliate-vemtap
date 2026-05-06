@@ -1,6 +1,7 @@
-import { IsString, IsOptional, IsInt, IsBoolean, IsArray, ValidateNested } from 'class-validator';
+import { IsString, IsOptional, IsInt, IsBoolean, IsArray, ValidateNested, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+import { ProgressStatus } from '@prisma/client';
 
 class QuizDto {
   @ApiProperty()
@@ -42,6 +43,16 @@ class ScenarioDto {
   @IsString()
   idealResponse: string;
 
+  @ApiProperty({ type: [String], required: false })
+  @IsOptional()
+  @IsArray()
+  options?: string[];
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  correctAnswerIndex?: number;
+
   @ApiProperty()
   @IsInt()
   order: number;
@@ -64,6 +75,11 @@ export class CreateTrainingModuleDto {
   @IsOptional()
   @IsString()
   videoUrl?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  pdfUrl?: string;
 
   @ApiProperty()
   @IsInt()
@@ -104,4 +120,19 @@ export class UpdateTrainingModuleDto extends CreateTrainingModuleDto {
   order: number;
   @IsOptional()
   category: string;
+}
+
+export class UpdateTrainingProgressDto {
+  @ApiProperty({ enum: ProgressStatus })
+  @IsEnum(ProgressStatus)
+  status: ProgressStatus;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  quizScore?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  completedAt?: Date;
 }

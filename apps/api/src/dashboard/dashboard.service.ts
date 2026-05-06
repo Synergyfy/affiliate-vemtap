@@ -83,11 +83,31 @@ export class DashboardService {
 
 
   async getDashboardCharts() {
-    // This could be more complex, e.g., monthly growth
-    // For now returning empty or placeholder structure
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const [businesses, users] = await Promise.all([
+      this.prisma.business.findMany({
+        where: {
+          status: 'ACTIVE',
+          createdAt: { gte: thirtyDaysAgo },
+        },
+        select: { createdAt: true, subscriptionAmount: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.user.findMany({
+        where: {
+          role: 'AFFILIATE',
+          createdAt: { gte: thirtyDaysAgo },
+        },
+        select: { createdAt: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+    ]);
+
     return {
-      revenueGrowth: [],
-      affiliateSignups: [],
+      revenueGrowth: this.groupDataByDate(businesses, 'subscriptionAmount'),
+      affiliateSignups: this.groupDataByDate(users),
     };
   }
 
@@ -172,24 +192,111 @@ export class DashboardService {
     };
   }
 
-  async getGlobalLeaderboard(limit: number = 10) {
-    const topAffiliates = await this.prisma.user.findMany({
-      where: { role: 'AFFILIATE', status: 'ACTIVE' },
-      orderBy: { totalEarnings: 'desc' },
-      take: limit,
-      select: {
-        fullName: true,
-        totalEarnings: true,
-        referralCount: true,
-      },
-    });
+  async getGlobalLeaderboard(limit: number = 10, timeframe: string = 'all') {
+    const now = new Date();
+    let startDate: Date | null = null;
+    let prevStartDate: Date | null = null;
+    let prevEndDate: Date | null = null;
 
-    return topAffiliates.map((a, index) => ({
-      rank: index + 1,
-      fullName: a.fullName,
-      totalEarnings: Number(a.totalEarnings),
-      referralCount: a.referralCount,
-    }));
+    if (timeframe === 'week') {
+      startDate = new Date(now);
+      startDate.setDate(startDate.getDate() - 7);
+      prevStartDate = new Date(startDate);
+      prevStartDate.setDate(prevStartDate.getDate() - 7);
+      prevEndDate = startDate;
+    } else if (timeframe === 'month') {
+      startDate = new Date(now);
+      startDate.setMonth(startDate.getMonth() - 1);
+      prevStartDate = new Date(startDate);
+      prevStartDate.setMonth(prevStartDate.getMonth() - 1);
+      prevEndDate = startDate;
+    }
+
+    type LeaderboardEntry = { id: string; fullName: string; totalEarnings: number; referralCount: number; };
+    let rankings: LeaderboardEntry[] = [];
+    if (!startDate) {
+      // All time - use totalEarnings field for efficiency
+      const users = await this.prisma.user.findMany({
+        where: { role: 'AFFILIATE', status: 'ACTIVE' },
+        orderBy: { totalEarnings: 'desc' },
+        take: limit,
+        select: { id: true, fullName: true, totalEarnings: true, referralCount: true },
+      });
+      rankings = users.map(u => ({
+        id: u.id,
+        fullName: u.fullName,
+        totalEarnings: Number(u.totalEarnings),
+        referralCount: u.referralCount,
+      }));
+    } else {
+      // Time-filtered - aggregate commissions
+      const earnings = await this.prisma.commission.groupBy({
+        by: ['userId'],
+        where: {
+          createdAt: { gte: startDate },
+          status: { in: ['APPROVED', 'PAID'] },
+        },
+        _sum: { amount: true },
+        orderBy: { _sum: { amount: 'desc' } },
+        take: limit,
+      });
+
+      // Fetch user details for these earnings
+      const userIds = earnings.map(e => e.userId);
+      const users = await this.prisma.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, fullName: true, referralCount: true },
+      });
+
+      rankings = earnings.map(e => {
+        const user = users.find(u => u.id === e.userId);
+        return {
+          id: e.userId,
+          fullName: user?.fullName || 'Unknown',
+          totalEarnings: Number(e._sum.amount || 0),
+          referralCount: user?.referralCount || 0,
+        };
+      });
+    }
+
+    // Calculate Trend (compare with previous period if applicable)
+    // For simplicity, we compare rank in current list vs rank in previous list
+    let prevRankings: string[] = [];
+    if (startDate && prevStartDate && prevEndDate) {
+      const prevEarnings = await this.prisma.commission.groupBy({
+        by: ['userId'],
+        where: {
+          createdAt: { gte: prevStartDate, lt: prevEndDate },
+          status: { in: ['APPROVED', 'PAID'] },
+        },
+        _sum: { amount: true },
+        orderBy: { _sum: { amount: 'desc' } },
+        take: limit * 2, // Take more to find previous ranks of current top users
+      });
+      prevRankings = prevEarnings.map(e => e.userId);
+    }
+
+    return rankings.map((a, index) => {
+      let trend = 'stable';
+      if (prevRankings.length > 0) {
+        const prevIndex = prevRankings.indexOf(a.id);
+        if (prevIndex === -1) {
+          trend = 'up'; // New entry in top list
+        } else if (prevIndex > index) {
+          trend = 'up'; // Rank improved (lower index is better)
+        } else if (prevIndex < index) {
+          trend = 'down'; // Rank dropped
+        }
+      }
+
+      return {
+        rank: index + 1,
+        fullName: a.fullName,
+        totalEarnings: Number(a.totalEarnings),
+        referralCount: a.referralCount,
+        trend,
+      };
+    });
   }
 
   private groupDataByDate(data: any[], valueField?: string) {

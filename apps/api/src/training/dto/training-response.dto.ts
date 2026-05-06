@@ -16,6 +16,9 @@ export class TrainingModuleResponseDto {
   @ApiProperty({ required: false })
   videoUrl?: string;
 
+  @ApiProperty({ required: false })
+  pdfUrl?: string;
+
   @ApiProperty()
   order: number;
 
