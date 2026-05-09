@@ -8,9 +8,10 @@ interface LeadCreationModalProps {
   isOpen: boolean;
   onClose: () => void;
   agentId?: string;
+  isAdmin?: boolean;
 }
 
-export default function LeadCreationModal({ isOpen, onClose, agentId }: LeadCreationModalProps) {
+export default function LeadCreationModal({ isOpen, onClose, agentId, isAdmin = false }: LeadCreationModalProps) {
   if (!isOpen) return null;
 
   return (
@@ -50,6 +51,7 @@ export default function LeadCreationModal({ isOpen, onClose, agentId }: LeadCrea
               agentId={agentId} 
               isPublic={false} 
               onSuccess={onClose} 
+              isAdmin={isAdmin}
             />
           </div>
         </motion.div>
