@@ -6,7 +6,6 @@ import * as bcrypt from "bcryptjs";
 
 describe("ApiKeysService", () => {
   let service: ApiKeysService;
-  let prisma: PrismaService;
 
   const mockPrisma = {
     apiKey: {
@@ -26,7 +25,6 @@ describe("ApiKeysService", () => {
     }).compile();
 
     service = module.get<ApiKeysService>(ApiKeysService);
-    prisma = module.get<PrismaService>(PrismaService);
   });
 
   afterEach(() => {

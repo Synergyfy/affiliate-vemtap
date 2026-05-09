@@ -11,7 +11,7 @@ describe("AffiliateDashboard (e2e)", () => {
   let app: INestApplication;
   let prismaService: PrismaService;
   let cookies: string[] = [];
-  let affiliateId: string;
+  let _affiliateId: string;
   let businessId: string;
 
   beforeAll(async () => {
@@ -44,7 +44,7 @@ describe("AffiliateDashboard (e2e)", () => {
         referralCode: "DASH001",
       },
     });
-    affiliateId = user.id;
+    _affiliateId = user.id;
 
     // Create some data
     const biz = await prismaService.business.create({

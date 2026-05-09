@@ -41,9 +41,11 @@ export default function ProfilePage() {
     bankName: '',
     accountNumber: '',
     accountName: '',
+    avatar: '',
   });
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
@@ -60,6 +62,7 @@ export default function ProfilePage() {
           bankName: data.bankName || '',
           accountNumber: data.accountNumber || '',
           accountName: data.accountName || '',
+          avatar: data.avatar || '',
         });
         
         // Map KycStatus enum to UI status
@@ -111,6 +114,38 @@ export default function ProfilePage() {
       setIsSaving(false);
       setTimeout(() => setUploadProgress(0), 1000);
     }
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (file.size > 2 * 1024 * 1024) {
+        showToast('Profile picture must be under 2MB', 'error');
+        return;
+      }
+      setAvatarFile(file);
+      
+      // Simulate direct upload for the avatar
+      showToast('Uploading profile picture...', 'info');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const avatarUrl = reader.result as string;
+        setProfileData(prev => ({ ...prev, avatar: avatarUrl }));
+        if (user) {
+          updateUser({ ...user, avatar: avatarUrl });
+        }
+        showToast('Profile picture updated!', 'success');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const startVerification = () => {
+    const kycSection = document.getElementById('kyc-section');
+    kycSection?.scrollIntoView({ behavior: 'smooth' });
+    showToast('Please fill in your ID details and upload a document.', 'info');
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -173,7 +208,10 @@ export default function ProfilePage() {
             </div>
           </div>
           {kycStatus === 'unverified' && (
-            <Button className="bg-amber-600 hover:bg-amber-700 text-white border-none shadow-lg shadow-amber-200">
+            <Button 
+              onClick={startVerification}
+              className="bg-amber-600 hover:bg-amber-700 text-white border-none shadow-lg shadow-amber-200"
+            >
               Verify Now
             </Button>
           )}
@@ -230,7 +268,10 @@ export default function ProfilePage() {
               )}
             </section>
 
-            <section className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+            <section 
+              id="kyc-section"
+              className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6"
+            >
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600">
                   <ShieldCheck className="w-4 h-4" />
@@ -360,12 +401,17 @@ export default function ProfilePage() {
               <div className="h-24 bg-gradient-to-r from-blue-600 to-blue-400" />
               <div className="px-6 pb-8 text-center">
                 <div className="relative -mt-12 mb-4 inline-block">
-                  <div className="w-24 h-24 rounded-full border-4 border-white bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden">
-                    <User className="w-12 h-12" />
+                  <div className="w-24 h-24 rounded-full border-4 border-white bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden shadow-xl">
+                    {profileData.avatar ? (
+                      <img src={profileData.avatar} className="w-full h-full object-cover" alt="Profile" />
+                    ) : (
+                      <User className="w-12 h-12" />
+                    )}
                   </div>
-                  <button className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full border-2 border-white hover:bg-blue-700 transition-colors">
+                  <label className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full border-2 border-white hover:bg-blue-700 transition-colors cursor-pointer shadow-lg active:scale-90">
                     <Camera className="w-4 h-4" />
-                  </button>
+                    <input type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} />
+                  </label>
                 </div>
                 <h4 className="text-xl font-bold text-slate-900">{profileData.fullName || 'New Affiliate'}</h4>
                 <p className="text-sm text-slate-500">{profileData.email}</p>

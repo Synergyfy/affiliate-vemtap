@@ -17,12 +17,14 @@ import {
   Bell,
   Settings,
   BookOpen,
-  FileText
+  FileText,
+  Target
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const adminSidebarItems = [
   { name: 'Admin Overview', icon: Shield, href: '/admin' },
+  { name: 'Operations Command', icon: Target, href: '/admin/operations' },
   { name: 'Affiliates', icon: Users, href: '/admin/affiliates' },
   { name: 'Businesses & Referrals', icon: Briefcase, href: '/admin/referrals' },
   { name: 'Commissions', icon: Percent, href: '/admin/commissions' },

@@ -1,48 +1,92 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Copy, 
   Share2, 
   Download, 
   Check, 
   QrCode as QrIcon,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Building2,
+  UserPlus,
+  Rocket,
+  ShieldCheck,
+  ChevronRight,
+  Target
 } from 'lucide-react';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { QRCodeSVG } from 'qrcode.react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
-import { api } from '@/lib/api-client';
 import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ReferralTools() {
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<'business' | 'agent'>('business');
   const [copied, setCopied] = useState(false);
   const referralCode = user?.referralCode || 'SYSTEM';
 
-  const referralLink = `https://affiliates.vemtap.com/signup?ref=${referralCode}`;
+  const links = {
+    business: {
+      title: 'Business Onboarding',
+      desc: 'Use this link to register new businesses. They will be added to your direct portfolio once they complete setup on vemtap.com.',
+      url: `https://vemtap.com/register?ref=${referralCode}`,
+      icon: Building2,
+      color: 'blue',
+      badge: 'Revenue Source'
+    },
+    agent: {
+      title: 'Agent Recruitment',
+      desc: 'Use this link to refer other affiliate agents. Build your team and earn indirect commissions from their performance.',
+      url: `https://affiliates.vemtap.com/signup?ref=${referralCode}`,
+      icon: UserPlus,
+      color: 'emerald',
+      badge: 'Team Growth'
+    }
+  };
+
+  const activeLink = links[activeTab];
+
+  const { showToast } = useToast();
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(referralLink);
+    navigator.clipboard.writeText(activeLink.url);
     setCopied(true);
+    showToast('Link copied to clipboard!', 'success');
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const shareOnSocial = (platform: string) => {
-    const text = encodeURIComponent(`Join Vemtap Affiliate Platform and start earning! Use my referral code: ${referralCode}`);
-    const url = encodeURIComponent(referralLink);
-    
-    let shareUrl = '';
-    switch(platform) {
-      case 'WhatsApp': shareUrl = `https://wa.me/?text=${text}%20${url}`; break;
-      case 'Twitter': shareUrl = `https://twitter.com/intent/tweet?text=${text}&url=${url}`; break;
-      case 'LinkedIn': shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${url}`; break;
-      case 'Facebook': shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`; break;
+  const handleShare = async () => {
+    const shareData = {
+      title: activeLink.title,
+      text: activeLink.desc,
+      url: activeLink.url,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        handleCopy();
+        showToast('Sharing not supported on this browser. Link copied instead.', 'info');
+      }
+    } catch (err) {
+      console.log('Error sharing:', err);
     }
-    
-    if (shareUrl) window.open(shareUrl, '_blank');
+  };
+
+  const handleDownloadBanners = () => {
+    showToast('Preparing your marketing banners...', 'info');
+    setTimeout(() => {
+      // Simulate a download of a PDF/ZIP kit
+      const link = document.createElement('a');
+      link.href = '#';
+      link.download = `Vemtap_${activeTab}_Marketing_Kit.zip`;
+      showToast('Marketing Kit download started!', 'success');
+    }, 1500);
   };
 
   const handleDownloadQR = () => {
@@ -53,131 +97,247 @@ export default function ReferralTools() {
     const ctx = canvas.getContext('2d');
     const img = new Image();
     img.onload = () => {
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx?.drawImage(img, 0, 0);
+      canvas.width = img.width + 100;
+      canvas.height = img.height + 200;
+      ctx!.fillStyle = '#ffffff';
+      ctx!.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw Header
+      ctx!.fillStyle = '#0f172a';
+      ctx!.font = 'bold 24px Inter';
+      ctx!.fillText('VEMTAP AFFILIATE', 50, 60);
+      
+      // Draw QR
+      ctx?.drawImage(img, 50, 100);
+      
+      // Draw Footer
+      ctx!.fillStyle = '#64748b';
+      ctx!.font = '14px Inter';
+      ctx!.fillText(`Scan to join: ${activeTab === 'business' ? 'Merchant' : 'Team'}`, 50, canvas.height - 40);
+
       const pngFile = canvas.toDataURL('image/png');
       const downloadLink = document.createElement('a');
-      downloadLink.download = 'vemtap-referral-qr.png';
+      downloadLink.download = `vemtap-${activeTab}-qr-kit.png`;
       downloadLink.href = pngFile;
       downloadLink.click();
+      showToast('QR Kit downloaded!', 'success');
     };
     img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
   };
 
   return (
     <DashboardLayout>
-      <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8">
-        <div className="text-center mb-8 sm:mb-12">
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Referral Tools</h2>
-          <p className="text-sm sm:text-base text-slate-500">Use these tools to share Vemtap with your network and earn commissions.</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-          {/* Referral Link Card */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between"
-          >
-            <div>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6">
-                <LinkIcon className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
-              </div>
-              <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2">Your Referral Link</h3>
-              <p className="text-sm sm:text-base text-slate-500 mb-6">Share this link directly with businesses or on your social media platforms.</p>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="relative group">
-                <div className="absolute inset-0 bg-blue-600/5 rounded-xl blur-lg group-hover:bg-blue-600/10 transition-all" />
-                <div className="relative flex items-center gap-2 bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-200">
-                  <span className="text-xs sm:text-sm font-medium text-slate-600 truncate flex-grow">{referralLink}</span>
-                  <button 
-                    onClick={handleCopy}
-                    className="p-2 hover:bg-white rounded-lg transition-colors text-blue-600 shrink-0"
-                  >
-                    {copied ? <Check className="w-4 h-4 sm:w-5 sm:h-5" /> : <Copy className="w-4 h-4 sm:w-5 sm:h-5" />}
-                  </button>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <Button className="flex-grow text-sm sm:text-base" onClick={handleCopy}>
-                  {copied ? 'Copied!' : 'Copy Link'}
-                </Button>
-                <Button variant="outline" className="p-3 shrink-0">
-                  <Share2 className="w-5 h-5" />
-                </Button>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* QR Code Card */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col items-center text-center"
-          >
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-50 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-6">
-              <QrIcon className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
-            </div>
-            <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2">QR Code</h3>
-            <p className="text-sm sm:text-base text-slate-500 mb-6 sm:mb-8">Download and print this QR code for physical marketing or presentations.</p>
-            
-            <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border-4 border-slate-50 shadow-inner mb-6 sm:mb-8">
-              <QRCodeSVG 
-                id="referral-qr"
-                value={referralLink} 
-                size={140}
-                level="H"
-                includeMargin={false}
-                imageSettings={{
-                  src: "https://vemtap.com/favicon.ico",
-                  x: undefined,
-                  y: undefined,
-                  height: 30,
-                  width: 30,
-                  excavate: true,
-                }}
-              />
-            </div>
-
-            <Button variant="outline" className="w-full text-sm sm:text-base" onClick={handleDownloadQR}>
-              <Download className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-              Download PNG
-            </Button>
-          </motion.div>
-        </div>
-
-        {/* Share Buttons */}
-        <div className="bg-slate-900 rounded-3xl p-6 sm:p-8 text-white">
-          <div className="flex flex-col lg:flex-row items-center lg:items-start justify-between gap-6 sm:gap-8">
-            <div className="text-center lg:text-left">
-              <h4 className="text-lg sm:text-xl font-bold mb-2">Quick Share</h4>
-              <p className="text-sm sm:text-base text-slate-400">Share your referral link instantly on these platforms.</p>
-            </div>
-            <div className="grid grid-cols-2 sm:flex sm:flex-wrap justify-center gap-3 sm:gap-4 w-full lg:w-auto">
-              {[
-                { name: 'WhatsApp', color: 'bg-[#25D366]', icon: Share2 },
-                { name: 'Twitter', color: 'bg-[#1DA1F2]', icon: Share2 },
-                { name: 'LinkedIn', color: 'bg-[#0077B5]', icon: Share2 },
-                { name: 'Facebook', color: 'bg-[#1877F2]', icon: Share2 },
-              ].map((platform) => (
-                <button 
-                  key={platform.name}
-                  onClick={() => shareOnSocial(platform.name)}
-                  className={cn(
-                    "flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition-transform hover:scale-105 active:scale-95",
-                    platform.color
-                  )}
-                >
-                  <platform.icon className="w-4 h-4 sm:w-5 sm:h-5" />
-                  {platform.name}
-                </button>
-              ))}
-            </div>
+      <div className="max-w-5xl mx-auto space-y-10">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b border-slate-100 pb-10">
+          <div>
+            <h2 className="text-3xl font-black text-slate-900 leading-tight">Referral Engine</h2>
+            <p className="text-sm text-slate-500 font-medium max-w-md mt-2">
+              Scale your earnings by onboarding businesses or growing your sub-agent network.
+            </p>
+          </div>
+          
+          {/* Tab Switcher */}
+          <div className="bg-slate-100 p-1.5 rounded-[24px] flex items-center gap-1 shadow-inner border border-slate-200 w-full md:w-auto">
+            <button 
+              onClick={() => setActiveTab('business')}
+              className={cn(
+                "flex-grow md:flex-grow-0 flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all",
+                activeTab === 'business' ? "bg-white text-blue-600 shadow-lg" : "text-slate-500 hover:text-slate-700"
+              )}
+            >
+              <Building2 className="w-4 h-4" />
+              Business Link
+            </button>
+            <button 
+              onClick={() => setActiveTab('agent')}
+              className={cn(
+                "flex-grow md:flex-grow-0 flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all",
+                activeTab === 'agent' ? "bg-white text-emerald-600 shadow-lg" : "text-slate-500 hover:text-slate-700"
+              )}
+            >
+              <UserPlus className="w-4 h-4" />
+              Agent Link
+            </button>
           </div>
         </div>
+
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="grid lg:grid-cols-5 gap-8"
+          >
+            {/* Link Details Card */}
+            <div className="lg:col-span-3 space-y-8">
+              <div className="bg-white p-8 sm:p-10 rounded-[48px] border border-slate-100 shadow-2xl shadow-slate-100 relative overflow-hidden group">
+                <div className="relative z-10">
+                  <div className={cn(
+                    "inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-6 border",
+                    activeTab === 'business' ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-emerald-50 text-emerald-600 border-emerald-100"
+                  )}>
+                    <Rocket className="w-3.5 h-3.5" />
+                    {activeLink.badge}
+                  </div>
+                  
+                  <h3 className="text-3xl font-black text-slate-900 mb-4">{activeLink.title}</h3>
+                  <p className="text-slate-500 text-sm font-medium leading-relaxed mb-10 max-w-md">
+                    {activeLink.desc}
+                  </p>
+
+                  <div className="space-y-6">
+                    {/* Analytics Row */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-slate-50 p-4 rounded-3xl border border-slate-100 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-blue-600">
+                          <Target className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Link Clicks</p>
+                          <h4 className="text-lg font-black text-slate-900">128</h4>
+                        </div>
+                      </div>
+                      <div className="bg-slate-50 p-4 rounded-3xl border border-slate-100 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-emerald-600">
+                          <QrIcon className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">QR Scans</p>
+                          <h4 className="text-lg font-black text-slate-900">42</h4>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="relative group/link">
+                      <div className="absolute inset-0 bg-slate-900/5 rounded-2xl blur-lg group-hover/link:bg-slate-900/10 transition-all" />
+                      <div className="relative flex items-center gap-3 bg-slate-50 p-4 rounded-3xl border border-slate-200">
+                        <LinkIcon className="w-5 h-5 text-slate-400 ml-2" />
+                        <span className="text-xs font-black text-slate-700 truncate flex-grow select-all">{activeLink.url}</span>
+                        <button 
+                          onClick={handleCopy}
+                          className="p-3 bg-white hover:bg-slate-900 hover:text-white rounded-2xl transition-all shadow-sm text-slate-600 active:scale-90"
+                        >
+                          {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <Button 
+                        onClick={handleCopy}
+                        className={cn(
+                          "flex-grow h-16 rounded-[24px] text-xs font-black uppercase tracking-widest shadow-xl transition-all",
+                          activeTab === 'business' ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"
+                        )}
+                      >
+                        {copied ? 'Copied to Clipboard' : 'Copy Referral Link'}
+                      </Button>
+                      <Button 
+                        onClick={handleShare}
+                        variant="outline" 
+                        className="h-16 px-8 rounded-[24px] border-slate-200 hover:bg-slate-50 transition-all flex items-center gap-3"
+                      >
+                        <Share2 className="w-5 h-5 text-slate-400" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Share Now</span>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Background Decoration */}
+                <div className={cn(
+                  "absolute -right-20 -bottom-20 w-64 h-64 opacity-5 transition-transform group-hover:scale-110",
+                  activeTab === 'business' ? "text-blue-900" : "text-emerald-900"
+                )}>
+                  <activeLink.icon className="w-full h-full" />
+                </div>
+              </div>
+
+              {/* Tips Section */}
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="bg-slate-900 p-6 rounded-[32px] text-white">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-400 mb-2">Pro Tip</h4>
+                  <p className="text-xs font-medium text-slate-300">
+                    Post your {activeTab} link on WhatsApp status for 5x more visibility from local business owners.
+                  </p>
+                </div>
+                <div 
+                  onClick={handleDownloadBanners}
+                  className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center justify-between group cursor-pointer active:scale-95 transition-all"
+                >
+                  <div>
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Marketing Kits</h4>
+                    <p className="text-xs font-black text-slate-900">Download Banners</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-blue-600 transition-all">
+                    <Download className="w-5 h-5" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* QR Code Section */}
+            <div className="lg:col-span-2">
+              <div className="bg-white p-8 rounded-[48px] border border-slate-100 shadow-2xl shadow-slate-100 flex flex-col items-center text-center sticky top-24">
+                <div className="w-16 h-16 bg-slate-50 rounded-3xl flex items-center justify-center mb-6">
+                  <QrIcon className="w-8 h-8 text-slate-900" />
+                </div>
+                <h3 className="text-xl font-black text-slate-900 mb-2">Instant QR Code</h3>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-8">Print or show to scan</p>
+
+                <div className="bg-white p-6 rounded-[40px] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border-8 border-slate-50 relative group">
+                  <QRCodeSVG 
+                    id="referral-qr"
+                    value={activeLink.url} 
+                    size={220}
+                    level="H"
+                    includeMargin={false}
+                    imageSettings={{
+                      src: activeTab === 'business' 
+                        ? "/assets/logo-icon.png" 
+                        : (user?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${user?.fullName || 'Agent'}`),
+                      x: undefined,
+                      y: undefined,
+                      height: 50,
+                      width: 50,
+                      excavate: true,
+                    }}
+                  />
+                  
+                  {/* QR Overlay for Agent - showing we have center logo */}
+                  {activeTab === 'agent' && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-12 h-12 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white">
+                        <img 
+                          src={user?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${user?.fullName || 'Agent'}`} 
+                          className="w-full h-full object-cover" 
+                          alt="Agent" 
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-10 w-full">
+                  <Button 
+                    variant="outline" 
+                    className="w-full h-14 rounded-2xl border-slate-200 text-slate-600 text-xs font-black uppercase tracking-widest hover:bg-slate-50 flex items-center justify-center gap-3" 
+                    onClick={handleDownloadQR}
+                  >
+                    <Download className="w-5 h-5" />
+                    Download Kit (.PNG)
+                  </Button>
+                </div>
+                
+                <p className="mt-4 text-[10px] text-slate-400 font-bold flex items-center gap-2">
+                  <ShieldCheck className="w-3 h-3 text-emerald-500" /> Verified Secure QR
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
       </div>
     </DashboardLayout>
   );
