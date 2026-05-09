@@ -17,7 +17,6 @@ import {
 } from "@nestjs/swagger";
 import { CommissionsService } from "./commissions.service";
 import {
-  CommissionResponseDto,
   PaginatedCommissionResponseDto,
 } from "./dto/commission-response.dto";
 import { PaginationDto } from "../common/dto/pagination.dto";

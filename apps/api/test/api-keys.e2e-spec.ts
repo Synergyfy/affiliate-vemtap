@@ -36,7 +36,7 @@ describe("ApiKeys (e2e)", () => {
     const password = await bcrypt.hash("password123", 10);
 
     // Create Admin
-    const admin = await prismaService.user.create({
+    const _admin = await prismaService.user.create({
       data: {
         email: "admin@vemtap.com",
         fullName: "Admin User",

@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { UserStatus } from "@prisma/client";
-import { IsEnum, IsString, IsNotEmpty } from "class-validator";
+import { IsEnum, IsNotEmpty } from "class-validator";
 
 export class NetworkRecruitResponseDto {
   @ApiProperty({ description: "Recruit user identifier", example: "user-uuid" })

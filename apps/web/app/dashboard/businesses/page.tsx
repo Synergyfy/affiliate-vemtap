@@ -14,7 +14,7 @@ import {
   Plus, 
   Eye, 
   Bell, 
-  Edit2, 
+  Edit2,
   X, 
   Building2, 
   MapPin, 
@@ -23,9 +23,11 @@ import {
   Calendar, 
   TrendingUp as TrendingUpIcon, 
   Activity,
-  Loader2
+  Loader2,
+  ArrowRight
 } from 'lucide-react';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import BusinessModal from '@/components/dashboard/BusinessModal';
@@ -58,6 +60,7 @@ const paymentColors = {
 
 export default function BusinessesPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [businesses, setBusinesses] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -145,6 +148,11 @@ export default function BusinessesPage() {
     setActiveDropdown(null);
   };
 
+  const handleAddLeadRedirect = () => {
+    showToast('Redirecting to Lead Capture...', 'info');
+    router.push('/dashboard/leads');
+  };
+
   const viewBusinessDetails = (business: any) => {
     setSelectedBusiness(business);
     setIsSidePanelOpen(true);
@@ -165,23 +173,16 @@ export default function BusinessesPage() {
       <div className="space-y-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h2 className="text-3xl font-bold text-slate-900">Referred Businesses</h2>
-            <p className="text-slate-500">Manage and track all businesses you have referred to Vemtap.</p>
+            <h2 className="text-3xl font-black text-slate-900">My Portfolio</h2>
+            <p className="text-slate-500 font-medium">Manage and track all businesses that have successfully onboarded via your referral.</p>
           </div>
           <div className="flex gap-3 w-full md:w-auto">
             <Button 
               variant="outline" 
-              className="flex-1 md:flex-none border-slate-200"
+              className="flex-1 md:flex-none border-slate-200 h-12 rounded-2xl font-bold"
             >
               <Download className="w-4 h-4 mr-2" />
-              Export CSV
-            </Button>
-            <Button 
-              onClick={openAddModal}
-              className="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-100"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Business
+              Export
             </Button>
           </div>
         </div>
@@ -232,7 +233,8 @@ export default function BusinessesPage() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.05 }}
-                    className="hover:bg-slate-50 transition-colors group"
+                    onClick={() => viewBusinessDetails(business)}
+                    className="hover:bg-slate-50 transition-colors group cursor-pointer"
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -334,7 +336,8 @@ export default function BusinessesPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.05 }}
-                className="p-4 space-y-4"
+                onClick={() => viewBusinessDetails(business)}
+                className="p-4 space-y-4 cursor-pointer active:bg-slate-50"
               >
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-3">
@@ -489,20 +492,43 @@ export default function BusinessesPage() {
                 </div>
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-center">
-                    <div className="flex items-center justify-center gap-2 text-emerald-600 mb-1">
-                      <TrendingUpIcon className="w-4 h-4" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest">Commission</span>
-                    </div>
-                    <p className="text-xl font-black text-slate-900">{selectedBusiness.commission}</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-blue-500 mb-1">Subscribed</p>
+                    <p className="text-lg font-black text-slate-900">12x</p>
                   </div>
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-center">
-                    <div className="flex items-center justify-center gap-2 text-blue-600 mb-1">
-                      <Calendar className="w-4 h-4" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest">Referred On</span>
-                    </div>
-                    <p className="text-xl font-black text-slate-900">{selectedBusiness.date}</p>
+                  <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-100 text-center">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600 mb-1">Total Earned</p>
+                    <p className="text-lg font-black text-emerald-700">{selectedBusiness.commission || '₦0'}</p>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Started</p>
+                    <p className="text-lg font-black text-slate-900">{selectedBusiness.date.split('-')[1]}/{selectedBusiness.date.split('-')[0].slice(2)}</p>
+                  </div>
+                </div>
+
+                {/* Earnings Breakdown */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h5 className="text-xs font-black text-slate-900 uppercase tracking-widest">Earnings History</h5>
+                    <span className="text-[10px] font-bold text-slate-400 italic">Last 6 Months</span>
+                  </div>
+                  <div className="space-y-2">
+                    {[
+                      { month: 'May 2024', amount: '₦5,200', status: 'Received' },
+                      { month: 'April 2024', amount: '₦4,800', status: 'Received' },
+                      { month: 'March 2024', amount: '₦5,100', status: 'Received' },
+                    ].map((item, i) => (
+                      <div key={i} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-slate-400">
+                            <Clock className="w-4 h-4" />
+                          </div>
+                          <span className="text-sm font-bold text-slate-700">{item.month}</span>
+                        </div>
+                        <span className="text-sm font-black text-emerald-600">{item.amount}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
