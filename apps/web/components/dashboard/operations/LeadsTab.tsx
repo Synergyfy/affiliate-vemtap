@@ -36,7 +36,11 @@ const mockLeads = [
   { id: 5, name: 'Stellar Tech Corp', contact: 'Michael Ross', stage: 'interested', score: 65, value: '₦2.5M', lastActivity: '1h ago' },
 ];
 
-export default function LeadsTab() {
+interface LeadsTabProps {
+  isAdmin?: boolean;
+}
+
+export default function LeadsTab({ isAdmin = false }: LeadsTabProps) {
   const { showToast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -74,7 +78,11 @@ export default function LeadsTab() {
         </div>
       </div>
 
-      <LeadCreationModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <LeadCreationModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        isAdmin={isAdmin}
+      />
 
       {/* Kanban Board */}
       <div className="flex gap-6 overflow-x-auto pb-6 scrollbar-hide min-h-[600px]">
@@ -83,9 +91,8 @@ export default function LeadsTab() {
             <div className="flex items-center justify-between mb-4 px-2">
               <div className="flex items-center gap-2">
                 <div className={cn("w-2 h-2 rounded-full", stage.color)} />
-                <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">{stage.name}</h4>
                 <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md">
-                  {mockLeads.filter(l => l.stage === stage.id).length}
+                  {mockLeads.length}
                 </span>
               </div>
               <button 
@@ -120,7 +127,14 @@ export default function LeadsTab() {
                   </div>
                   
                   <h5 className="text-sm font-bold text-slate-900 mb-1 group-hover:text-blue-600 transition-colors">{lead.name}</h5>
-                  <p className="text-xs text-slate-500 mb-4">{lead.contact}</p>
+                  <p className="text-xs text-slate-500 mb-2">{lead.contact}</p>
+                  
+                  {isAdmin && (
+                    <div className="mb-4 flex items-center gap-2 px-2 py-1 bg-slate-50 rounded-lg border border-slate-100">
+                      <div className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center text-[8px] font-black text-blue-600">A</div>
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Agent: <span className="text-slate-600">John Doe</span></span>
+                    </div>
+                  )}
                   
                   <div className="flex items-center justify-between pt-4 border-t border-slate-50">
                     <div className="flex items-center gap-2">

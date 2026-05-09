@@ -22,7 +22,7 @@ export default function AdminOperationsPage() {
       case 'overview':
         return <OverviewTab />;
       case 'leads':
-        return <LeadsTab />;
+        return <LeadsTab isAdmin={true} />;
       case 'follow-ups':
         return <FollowUpsTab />;
       case 'demos':
