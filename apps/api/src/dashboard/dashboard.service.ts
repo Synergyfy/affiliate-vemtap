@@ -381,6 +381,162 @@ export class DashboardService {
     });
   }
 
+  async getAffiliateActions(userId: string) {
+    const [pendingBusinesses, user, inactiveReferrals] = await Promise.all([
+      this.prisma.business.count({
+        where: { affiliateId: userId, status: "TRIAL" },
+      }),
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { referralCount: true, role: true, isManagerMode: true },
+      }),
+      this.prisma.user.count({
+        where: { 
+          referrerId: userId, 
+          status: "ACTIVE",
+          businesses: { none: {} } // Users who haven't referred any business yet
+        },
+      }),
+    ]);
+
+    const actions = [];
+    const referralCount = user?.referralCount || 0;
+
+    // 1. Recruit Action
+    if (referralCount < 5) {
+      actions.push({
+        title: "Recruit Affiliates",
+        desc: "Share your link to reach your first 5 referrals",
+        icon: "UserPlus",
+        color: "text-blue-600",
+        bg: "bg-blue-50",
+        link: "/dashboard/tools",
+      });
+    } else {
+      actions.push({
+        title: "Grow Network",
+        desc: "Find 5 new potential affiliates this week",
+        icon: "TrendingUp",
+        color: "text-blue-600",
+        bg: "bg-blue-50",
+        link: "/dashboard/tools",
+      });
+    }
+
+    // 2. Follow-up Action
+    if (pendingBusinesses > 0) {
+      actions.push({
+        title: "Follow up Businesses",
+        desc: `Check in on ${pendingBusinesses} pending deals`,
+        icon: "Briefcase",
+        color: "text-orange-600",
+        bg: "bg-orange-50",
+        link: "/dashboard/businesses",
+      });
+    } else {
+      actions.push({
+        title: "Pitch New Business",
+        desc: "Reach out to a new business today",
+        icon: "Briefcase",
+        color: "text-orange-600",
+        bg: "bg-orange-50",
+        link: "/dashboard/tools",
+      });
+    }
+
+    // 3. Activation Action
+    if (user?.isManagerMode || user?.role === "ADMIN" || user?.role === "SUPER_ADMIN") {
+      if (inactiveReferrals > 0) {
+        actions.push({
+          title: "Activate Affiliates",
+          desc: `Nudge ${inactiveReferrals} inactive team members`,
+          icon: "Zap",
+          color: "text-emerald-600",
+          bg: "bg-emerald-50",
+          link: "/dashboard/network",
+        });
+      } else {
+        actions.push({
+          title: "Team Mentoring",
+          desc: "Host a quick sync with your top earners",
+          icon: "Users",
+          color: "text-emerald-600",
+          bg: "bg-emerald-50",
+          link: "/dashboard/network",
+        });
+      }
+    } else {
+      actions.push({
+        title: "Sales Academy",
+        desc: "Watch a new training module",
+        icon: "BookOpen",
+        color: "text-emerald-600",
+        bg: "bg-emerald-50",
+        link: "/dashboard/training",
+      });
+    }
+
+    return actions;
+  }
+
+  async getAffiliateAlerts(userId: string) {
+    const [user, stats] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { referralCount: true },
+      }),
+      this.getAffiliateStats(userId),
+    ]);
+
+    const alerts = [];
+
+    // 1. Milestone proximity alert
+    const target = 20;
+    if (user && user.referralCount < target && target - user.referralCount <= 5) {
+      alerts.push({
+        title: "Milestone Alert",
+        desc: `You are only ${target - user.referralCount} businesses away from "Active Earner"!`,
+        type: "info",
+        icon: "Target",
+        color: "text-blue-600",
+        bg: "bg-blue-50",
+      });
+    }
+
+    // 2. Earnings alert
+    if (stats.pendingEarnings > 0) {
+      alerts.push({
+        title: "Earnings Available",
+        desc: `You have ₦${(stats.pendingEarnings / 100).toLocaleString()} pending in your wallet.`,
+        type: "success",
+        icon: "Wallet",
+        color: "text-emerald-600",
+        bg: "bg-emerald-50",
+      });
+    }
+
+    // 3. Inactivity reminder (if no clicks in 3 days)
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+    const recentClicks = await this.prisma.linkClick.count({
+      where: { userId, createdAt: { gte: threeDaysAgo } },
+    });
+
+    if (recentClicks === 0) {
+      alerts.push({
+        title: "Link Inactivity",
+        desc: "Your affiliate links haven't received clicks in 3 days.",
+        type: "warning",
+        icon: "AlertTriangle",
+        color: "text-orange-600",
+        bg: "bg-orange-50",
+      });
+    }
+
+    return alerts;
+  }
+
+
   private groupDataByDate(
     data: Array<Record<string, any>>,
     valueField?: string,

@@ -28,7 +28,7 @@ import { useState, useRef, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import ConfirmationModal from '@/components/admin/ConfirmationModal';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/toast';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api-client';
 

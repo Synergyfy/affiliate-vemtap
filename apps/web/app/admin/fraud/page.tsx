@@ -16,40 +16,28 @@ import {
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/toast';
+
+import { useFraudAlerts, useUpdateFraudStatus } from '@/services/useFraudHooks';
+import { useAdminStats } from '@/services/useAdminHooks';
+import { Loader2 } from 'lucide-react';
+import { FraudAlert, FraudStatus } from '@/types/api';
 
 export default function FraudMonitor() {
   const { showToast } = useToast();
-  const [fraudAlertsList, setFraudAlertsList] = useState<any[]>([]);
-  const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      const [fraudResponse, statsData] = await Promise.all([
-        api.get('/fraud?limit=50'),
-        api.get('/admin/dashboard/stats')
-      ]);
-      setFraudAlertsList(fraudResponse?.data || []);
-      setStats(statsData);
-    } catch (error) {
-      console.error('Failed to fetch fraud data:', error);
-      showToast('Failed to load security alerts', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  const { data: fraudResponse, isLoading: isFraudLoading } = useFraudAlerts({ limit: 50 });
+  const { data: stats, isLoading: isStatsLoading } = useAdminStats();
+  const updateStatus = useUpdateFraudStatus();
 
   const handleStatusChange = async (alertId: string, name: string, isResolving: boolean) => {
     try {
-      const status = isResolving ? 'RESOLVED' : 'CONFIRMED';
+      const status: FraudStatus = isResolving ? 'RESOLVED' : 'CONFIRMED';
       const resolution = isResolving ? 'Marked as safe by admin' : 'Confirmed fraudulent activity';
       
-      await api.patch(`/fraud/${alertId}/status`, { 
+      await updateStatus.mutateAsync({ 
+        id: alertId,
         status,
         resolution
       });
@@ -58,17 +46,31 @@ export default function FraudMonitor() {
         isResolving ? `${name}'s alert resolved.` : `${name} has been flagged for review.`, 
         isResolving ? 'success' : 'error'
       );
-      fetchData();
-    } catch (error) {
-      showToast('Failed to update alert status.', 'error');
+    } catch (error: any) {
+      showToast(error.message || 'Failed to update alert status.', 'error');
     }
   };
 
+  const filteredAlerts = (fraudResponse?.data || []).filter(alert => 
+    alert.user?.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    alert.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const fraudStats = [
-    { label: 'High Risk Alerts', value: fraudAlertsList.length.toString(), icon: ShieldAlert, color: 'text-red-600', bg: 'bg-red-50' },
+    { label: 'High Risk Alerts', value: filteredAlerts.filter(a => a.severity === 'HIGH' && a.status === 'OPEN').length.toString(), icon: ShieldAlert, color: 'text-red-600', bg: 'bg-red-50' },
     { label: 'Pending Review', value: stats?.fraudAlerts?.toString() || '0', icon: Activity, color: 'text-orange-600', bg: 'bg-orange-50' },
     { label: 'Global Guard', value: 'Active', icon: ShieldCheck, color: 'text-slate-600', bg: 'bg-slate-50' },
   ];
+
+  if (isFraudLoading || isStatsLoading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
@@ -119,7 +121,7 @@ export default function FraudMonitor() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {fraudAlertsList.length > 0 ? fraudAlertsList.map((alert, idx) => (
+                  {filteredAlerts.length > 0 ? filteredAlerts.map((alert, idx) => (
                     <motion.tr 
                       key={alert.id}
                       initial={{ opacity: 0 }}
@@ -169,14 +171,14 @@ export default function FraudMonitor() {
                                 className="p-2 hover:bg-blue-50 rounded-lg text-slate-400 hover:text-blue-600 transition-all"
                                 title="Resolve / Whitelist"
                               >
-                                <ShieldCheck className="w-4 h-4" />
+                                {updateStatus.isPending && updateStatus.variables?.id === alert.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
                               </button>
                               <button 
                                 onClick={() => handleStatusChange(alert.id, alert.user?.fullName || 'User', false)}
                                 className="p-2 hover:bg-red-50 rounded-lg text-red-600 transition-all"
                                 title="Confirm Fraud"
                               >
-                                <UserX className="w-4 h-4" />
+                                {updateStatus.isPending && updateStatus.variables?.id === alert.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserX className="w-4 h-4" />}
                               </button>
                             </>
                           )}
@@ -185,7 +187,7 @@ export default function FraudMonitor() {
                     </motion.tr>
                   )) : (
                     <tr>
-                      <td colSpan={5} className="p-8 text-center text-slate-400">No active fraud alerts.</td>
+                      <td colSpan={5} className="p-8 text-center text-slate-400">No active fraud alerts matching search.</td>
                     </tr>
                   )}
                 </tbody>

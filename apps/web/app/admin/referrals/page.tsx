@@ -22,7 +22,7 @@ import {
 import { AnimatePresence } from 'framer-motion';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/toast';
 
 export default function ReferralsManagement() {
   const { showToast } = useToast();

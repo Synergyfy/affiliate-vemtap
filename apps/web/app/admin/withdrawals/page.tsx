@@ -18,24 +18,22 @@ import {
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/toast';
+
+import { useAdminStats } from '@/services/useAdminHooks';
 
 export default function WithdrawalsManagement() {
   const { showToast } = useToast();
   const [withdrawalsList, setWithdrawalsList] = useState<any[]>([]);
-  const [stats, setStats] = useState<any>(null);
+  const { data: stats, isLoading: isStatsLoading } = useAdminStats();
   const [loading, setLoading] = useState(true);
   const [processingBulk, setProcessingBulk] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [wthResponse, statsData] = await Promise.all([
-          api.get('/withdrawals?limit=50'),
-          api.get('/stats/admin') // Assuming an admin stats endpoint exists or fallback to users
-        ]);
-        setWithdrawalsList(wthResponse?.data || []);
-        setStats(statsData);
+        const response = await api.get('/withdrawals?limit=50');
+        setWithdrawalsList(response?.data || []);
       } catch (error) {
         console.error('Failed to fetch withdrawals data:', error);
       } finally {

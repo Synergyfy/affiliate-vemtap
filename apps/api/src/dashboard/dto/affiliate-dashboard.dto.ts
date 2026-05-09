@@ -124,3 +124,46 @@ export class LeaderboardResponseDto {
   })
   trend?: string;
 }
+
+export class AffiliateActionResponseDto {
+  @ApiProperty({ example: "Recruit Affiliates" })
+  title: string;
+
+  @ApiProperty({ example: "Find 5 new potential affiliates" })
+  desc: string;
+
+  @ApiProperty({ example: "UserPlus" })
+  icon: string;
+
+  @ApiProperty({ example: "text-blue-600" })
+  color: string;
+
+  @ApiProperty({ example: "bg-blue-50" })
+  bg: string;
+
+  @ApiProperty({ example: "/dashboard/tools" })
+  link?: string;
+}
+
+export class AffiliateAlertResponseDto {
+  @ApiProperty({ example: "Milestone Alert" })
+  title: string;
+
+  @ApiProperty({ example: "You are 10 businesses away" })
+  desc: string;
+
+  @ApiProperty({
+    example: "info",
+    enum: ["info", "warning", "success", "error"],
+  })
+  type: string;
+
+  @ApiProperty({ example: "Target" })
+  icon: string;
+
+  @ApiProperty({ example: "text-blue-600" })
+  color: string;
+
+  @ApiProperty({ example: "bg-blue-50" })
+  bg: string;
+}

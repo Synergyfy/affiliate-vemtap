@@ -9,7 +9,7 @@ import AuthLayout from '@/components/auth/AuthLayout';
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/toast';
 
 const signupSchema = z.object({
   fullName: z.string().min(2, 'Full name is required'),

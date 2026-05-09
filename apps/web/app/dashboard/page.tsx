@@ -25,12 +25,13 @@ import {
   BarChart3,
   TrendingDown,
   ShieldCheck,
-  LayoutDashboard
+  LayoutDashboard,
+  BookOpen
 } from 'lucide-react';
 import DashboardLayout, { useDashboard } from '@/components/dashboard/DashboardLayout';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/toast';
 import { useEffect, useState } from 'react';
 import { 
   AreaChart, 
@@ -45,16 +46,15 @@ import AffiliateAgreementModal from '@/components/dashboard/AffiliateAgreementMo
 import OnboardingModal from '@/components/dashboard/OnboardingModal';
 import WhatsAppGroupModal from '@/components/dashboard/WhatsAppGroupModal';
 import { api } from '@/lib/api-client';
-
-const data = [
-  { name: 'Jan', earnings: 4000 },
-  { name: 'Feb', earnings: 3000 },
-  { name: 'Mar', earnings: 2000 },
-  { name: 'Apr', earnings: 2780 },
-  { name: 'May', earnings: 1890 },
-  { name: 'Jun', earnings: 2390 },
-  { name: 'Jul', earnings: 3490 },
-];
+import { 
+  useAffiliateCharts, 
+  useLeaderboard,
+  useAffiliateForecast,
+  useAffiliateActions,
+  useAffiliateAlerts,
+  useNetworkStats
+} from '@/services/useDashboardHooks';
+import { Loader2 } from 'lucide-react';
 
 const stats = [
   { name: 'Monthly Earnings', value: '₦12,500', icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+12.5%', trendUp: true },
@@ -63,25 +63,9 @@ const stats = [
   { name: 'Active Affiliates', value: '8', icon: Users, color: 'text-purple-600', bg: 'bg-purple-50', trend: 'Manager Only', trendUp: true, isManagerOnly: true },
 ];
 
-const chartData = [
-  { name: 'Jan', earnings: 4000 },
-  { name: 'Feb', earnings: 3000 },
-  { name: 'Mar', earnings: 2000 },
-  { name: 'Apr', earnings: 2780 },
-  { name: 'May', earnings: 1890 },
-  { name: 'Jun', earnings: 2390 },
-  { name: 'Jul', earnings: 3490 },
-];
-
-const recentActivity = [
+const recentActivityFallback = [
   { title: 'New Business', desc: 'Tech Solutions signed up', type: 'referral', time: new Date().toISOString() },
   { title: 'Commission Paid', desc: '₦5,000 for April referrals', type: 'commission', time: new Date().toISOString() },
-];
-
-const topAffiliates = [
-  { name: 'Alex Johnson', earnings: 45000, rank: 1, avatar: '' },
-  { name: 'Sarah Smith', earnings: 38000, rank: 2, avatar: '' },
-  { name: 'David Lee', earnings: 32000, rank: 3, avatar: '' },
 ];
 
 function DashboardOverviewContent() {
@@ -90,6 +74,14 @@ function DashboardOverviewContent() {
   const { setIsNotificationsOpen } = useDashboard();
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(true);
+
+  // Hooks
+  const { data: chartsData, isLoading: isChartsLoading } = useAffiliateCharts();
+  const { data: leaderboardData, isLoading: isLeaderboardLoading } = useLeaderboard({ limit: 5 });
+  const { data: forecastData } = useAffiliateForecast();
+  const { data: actionsData } = useAffiliateActions();
+  const { data: alertsData } = useAffiliateAlerts();
+  const { data: networkStatsData } = useNetworkStats();
   
   const [dashboardData, setDashboardData] = useState<{
     stats: any[];
@@ -99,8 +91,8 @@ function DashboardOverviewContent() {
   }>({
     stats: stats,
     milestone: { current: 12, target: 20 },
-    recentActivity: recentActivity,
-    chartData: chartData
+    recentActivity: recentActivityFallback,
+    chartData: []
   });
 
   useEffect(() => {
@@ -143,8 +135,8 @@ function DashboardOverviewContent() {
             current: networkStats.totalNetworkBusinesses,
             target: networkStats.milestones?.businesses?.target || 20
           },
-          recentActivity: activity.length > 0 ? activity : recentActivity,
-          chartData: chartData // Backend chart endpoint returns empty for now
+          recentActivity: activity.length > 0 ? activity : recentActivityFallback,
+          chartData: chartsData?.earningsHistory || []
         });
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
@@ -154,7 +146,7 @@ function DashboardOverviewContent() {
     };
 
     fetchDashboard();
-  }, []);
+  }, [chartsData]);
 
   // Milestone logic
   const currentProgress = dashboardData.milestone.current;
@@ -265,47 +257,53 @@ function DashboardOverviewContent() {
                   <option>Last 12 months</option>
                 </select>
               </div>
-              <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData}>
-                    <defs>
-                      <linearGradient id="colorEarnings" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1}/>
-                        <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis 
-                      dataKey="name" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fill: '#64748b', fontSize: 12 }}
-                      dy={10}
-                    />
-                    <YAxis 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fill: '#64748b', fontSize: 12 }}
-                      tickFormatter={(value) => `₦${value}`}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: '#fff', 
-                        borderRadius: '12px', 
-                        border: '1px solid #e2e8f0',
-                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                      }}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="earnings" 
-                      stroke="#2563eb" 
-                      strokeWidth={3}
-                      fillOpacity={1} 
-                      fill="url(#colorEarnings)" 
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+              <div className="h-[300px] w-full flex items-center justify-center">
+                {isChartsLoading ? (
+                  <Loader2 className="w-8 h-8 animate-spin text-slate-200" />
+                ) : (chartsData?.earningsHistory || []).length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartsData!.earningsHistory.map(d => ({ name: d.date, earnings: Number(d.value) }))}>
+                      <defs>
+                        <linearGradient id="colorEarnings" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1}/>
+                          <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis 
+                        dataKey="name" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fill: '#64748b', fontSize: 12 }}
+                        dy={10}
+                      />
+                      <YAxis 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fill: '#64748b', fontSize: 12 }}
+                        tickFormatter={(value) => `₦${value}`}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: '#fff', 
+                          borderRadius: '12px', 
+                          border: '1px solid #e2e8f0',
+                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                        }}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="earnings" 
+                        stroke="#2563eb" 
+                        strokeWidth={3}
+                        fillOpacity={1} 
+                        fill="url(#colorEarnings)" 
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="text-sm text-slate-400">No chart data available yet.</div>
+                )}
               </div>
             </div>
 
@@ -317,7 +315,7 @@ function DashboardOverviewContent() {
               <div className="flex items-center justify-between mb-8 relative z-10">
                 <div>
                   <h3 className="text-lg font-bold text-slate-900">Earnings Forecast</h3>
-                  <p className="text-xs text-slate-500 mt-1">Projected income based on 12 active businesses</p>
+                  <p className="text-xs text-slate-500 mt-1">Projected income based on {forecastData?.activeBusinessCount || 0} active businesses</p>
                 </div>
                 <div className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border border-blue-100">
                   Estimated
@@ -332,13 +330,13 @@ function DashboardOverviewContent() {
                     </div>
                     <div>
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Expected Next Month</p>
-                      <h4 className="text-2xl font-black text-slate-900">₦28,400</h4>
+                      <h4 className="text-2xl font-black text-slate-900">₦{Number(forecastData?.monthlyRecurringRevenue || 0).toLocaleString()}</h4>
                     </div>
                   </div>
                   <div className="p-4 bg-blue-600 rounded-2xl shadow-xl shadow-blue-100 text-white">
                     <p className="text-[10px] font-black opacity-80 uppercase tracking-widest mb-1">Potential Total (12 Months)</p>
-                    <h4 className="text-2xl font-black">₦340,800</h4>
-                    <p className="text-[10px] opacity-70 mt-2 font-medium italic">*Projected earnings if you reach Manager status</p>
+                    <h4 className="text-2xl font-black">₦{Number((forecastData?.monthlyRecurringRevenue || 0) * 12).toLocaleString()}</h4>
+                    <p className="text-[10px] opacity-70 mt-2 font-medium italic">*Projected earnings based on current performance</p>
                   </div>
                 </div>
 
@@ -349,27 +347,27 @@ function DashboardOverviewContent() {
                       Manager Potential
                     </h5>
                     <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
-                      Reach targets <span className="text-blue-600 font-bold underline">within 90 days</span> to unlock these indirect earnings from your team.
+                      Reach targets <span className="text-blue-600 font-bold underline">to unlock</span> higher commission tiers and indirect earnings.
                     </p>
                   </div>
                   <div className="space-y-3 px-1">
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-slate-500 font-medium">Network Size</span>
-                      <span className="text-slate-900 font-bold">12 Affiliates</span>
+                      <span className="text-slate-900 font-bold">{networkStatsData?.networkSize || 0} Affiliates</span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-500 font-medium">Avg. Manager Share</span>
-                      <span className="text-slate-900 font-bold">₦2,366</span>
+                      <span className="text-slate-500 font-medium">Active Agents</span>
+                      <span className="text-slate-900 font-bold">{networkStatsData?.activeAgentsCount || 0}</span>
                     </div>
                     <div className="h-[1px] bg-slate-200 my-1" />
                     <div className="flex justify-between items-center">
-                      <span className="text-xs text-slate-900 font-black uppercase tracking-widest">Monthly Projection</span>
-                      <span className="text-sm text-blue-600 font-black">₦28,400</span>
+                      <span className="text-xs text-slate-900 font-black uppercase tracking-widest">Target Next Level</span>
+                      <span className="text-sm text-blue-600 font-black">{networkStatsData?.targetBusinesses || 100} Biz</span>
                     </div>
                   </div>
                   <Link href="/dashboard/network">
                     <Button className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest h-10 shadow-lg shadow-blue-100">
-                      Become a Manager
+                      View My Network
                     </Button>
                   </Link>
                 </div>
@@ -385,19 +383,30 @@ function DashboardOverviewContent() {
                 <h3 className="text-lg font-bold text-slate-900">Daily Action Panel</h3>
               </div>
               <div className="grid sm:grid-cols-3 gap-4">
-                {[
-                  { title: 'Recruit Affiliates', desc: 'Find 5 new potential affiliates', icon: UserPlus, color: 'text-blue-600', bg: 'bg-blue-50' },
-                  { title: 'Follow up Businesses', desc: 'Check in on 3 pending deals', icon: Briefcase, color: 'text-orange-600', bg: 'bg-orange-50' },
-                  { title: 'Activate Affiliates', desc: 'Nudge 2 inactive team members', icon: Zap, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                ].map((item, idx) => (
-                  <div key={idx} className="p-4 rounded-xl border border-slate-100 hover:border-blue-200 transition-colors group cursor-pointer">
-                    <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center mb-3", item.bg)}>
-                      <item.icon className={cn("w-5 h-5", item.color)} />
-                    </div>
-                    <p className="text-sm font-bold text-slate-900 mb-1">{item.title}</p>
-                    <p className="text-xs text-slate-500">{item.desc}</p>
-                  </div>
-                ))}
+                {(actionsData && actionsData.length > 0 ? actionsData : [
+                  { title: 'Recruit Affiliates', desc: 'Find 5 new potential affiliates', icon: UserPlus, color: 'text-blue-600', bg: 'bg-blue-50', link: '/dashboard/tools' },
+                  { title: 'Follow up Businesses', desc: 'Check in on 3 pending deals', icon: Briefcase, color: 'text-orange-600', bg: 'bg-orange-50', link: '/dashboard/businesses' },
+                  { title: 'Activate Affiliates', desc: 'Nudge 2 inactive team members', icon: Zap, color: 'text-emerald-600', bg: 'bg-emerald-50', link: '/dashboard/network' },
+                ]).map((item: any, idx: number) => {
+                  const IconComponent = item.icon === 'UserPlus' ? UserPlus : 
+                                      item.icon === 'Briefcase' ? Briefcase : 
+                                      item.icon === 'Zap' ? Zap : 
+                                      item.icon === 'TrendingUp' ? TrendingUp :
+                                      item.icon === 'Users' ? Users :
+                                      item.icon === 'BookOpen' ? BookOpen : Target;
+                  
+                  return (
+                    <Link key={idx} href={item.link || '#'}>
+                      <div className="p-4 rounded-xl border border-slate-100 hover:border-blue-200 transition-colors group cursor-pointer h-full">
+                        <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center mb-3", item.bg)}>
+                          <IconComponent className={cn("w-5 h-5", item.color)} />
+                        </div>
+                        <p className="text-sm font-bold text-slate-900 mb-1">{item.title}</p>
+                        <p className="text-xs text-slate-500">{item.desc}</p>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -421,25 +430,25 @@ function DashboardOverviewContent() {
                     </div>
                     <span className="text-xs font-bold text-slate-600">Total Active</span>
                   </div>
-                  <span className="text-lg font-black text-slate-900">42</span>
+                  <span className="text-lg font-black text-slate-900">{networkStatsData?.newNetworkBusinessesCount || 0}</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50">
                     <div className="flex items-center gap-2 mb-1">
                       <TrendingUp className="w-3 h-3 text-emerald-600" />
-                      <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">New</span>
+                      <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Network</span>
                     </div>
-                    <p className="text-xl font-black text-emerald-600">+8</p>
-                    <p className="text-[10px] text-emerald-600/70 font-bold">This Week</p>
+                    <p className="text-xl font-black text-emerald-600">+{networkStatsData?.networkSize || 0}</p>
+                    <p className="text-[10px] text-emerald-600/70 font-bold">Total Size</p>
                   </div>
-                  <div className="p-4 bg-red-50/50 rounded-2xl border border-red-100/50">
+                  <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50">
                     <div className="flex items-center gap-2 mb-1">
-                      <TrendingDown className="w-3 h-3 text-red-600" />
-                      <span className="text-[10px] font-black text-red-700 uppercase tracking-widest">Lost</span>
+                      <Users className="w-3 h-3 text-blue-600" />
+                      <span className="text-[10px] font-black text-blue-700 uppercase tracking-widest">Agents</span>
                     </div>
-                    <p className="text-xl font-black text-red-600">3</p>
-                    <p className="text-[10px] text-red-600/70 font-bold">Inactive</p>
+                    <p className="text-xl font-black text-blue-600">{networkStatsData?.activeAgentsCount || 0}</p>
+                    <p className="text-[10px] text-blue-600/70 font-bold">Active Now</p>
                   </div>
                 </div>
               </div>
@@ -454,24 +463,38 @@ function DashboardOverviewContent() {
                   className="p-2 rounded-full hover:bg-slate-50 text-slate-400 hover:text-blue-600 transition-all group relative"
                 >
                   <Bell className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white animate-pulse" />
+                  {(alertsData && alertsData.length > 0) && (
+                    <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white animate-pulse" />
+                  )}
                 </button>
               </div>
               <div className="space-y-4">
-                {[
-                  { title: 'Milestone Alert', desc: 'You are 10 businesses away (90-day limit)', type: 'info', icon: Target, color: 'text-blue-600', bg: 'bg-blue-50' },
-                  { title: 'Inactivity Alert', desc: '15 businesses inactive this week', type: 'warning', icon: AlertTriangle, color: 'text-orange-600', bg: 'bg-orange-50' },
-                ].map((item, idx) => (
-                  <div key={idx} className={cn("p-4 rounded-xl border flex gap-4 items-start", item.bg, item.type === 'info' ? 'border-blue-100' : 'border-orange-100')}>
-                    <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5", item.bg)}>
-                      <item.icon className={cn("w-4 h-4", item.color)} />
+                {(alertsData && alertsData.length > 0 ? alertsData : [
+                  { title: 'No New Alerts', desc: 'Your account is in good standing', type: 'info', icon: ShieldCheck, color: 'text-blue-600', bg: 'bg-blue-50' },
+                ]).map((item, idx) => {
+                  const IconComponent = item.icon === 'Target' ? Target : 
+                                      item.icon === 'AlertTriangle' ? AlertTriangle : 
+                                      item.icon === 'Wallet' ? Wallet : 
+                                      item.icon === 'ShieldCheck' ? ShieldCheck : Bell;
+                  
+                  return (
+                    <div key={idx} className={cn(
+                      "p-4 rounded-xl border flex gap-4 items-start", 
+                      item.bg, 
+                      item.type === 'info' ? 'border-blue-100' : 
+                      item.type === 'warning' ? 'border-orange-100' : 
+                      item.type === 'success' ? 'border-emerald-100' : 'border-red-100'
+                    )}>
+                      <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5", item.bg)}>
+                        <IconComponent className={cn("w-4 h-4", item.color)} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">{item.title}</p>
+                        <p className="text-xs text-slate-600">{item.desc}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-slate-900">{item.title}</p>
-                      <p className="text-xs text-slate-600">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -506,30 +529,32 @@ function DashboardOverviewContent() {
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-slate-900">Top Affiliates</h3>
-                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">This Week</span>
+                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Global</span>
               </div>
               <div className="space-y-4">
-                {topAffiliates.length > 0 ? topAffiliates.map((item: any, idx: number) => (
+                {isLeaderboardLoading ? (
+                  <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-slate-200" /></div>
+                ) : (leaderboardData || []).length > 0 ? (leaderboardData || []).map((item: any, idx: number) => (
                   <div key={idx} className="flex items-center gap-3">
                     <div className="relative">
                       <Image 
-                        src={item.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${item.name}`} 
+                        src={item.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${item.fullName}`} 
                         width={40}
                         height={40}
                         className="w-10 h-10 rounded-full object-cover" 
-                        alt={item.name} 
+                        alt={item.fullName} 
                         referrerPolicy="no-referrer"
                       />
                       <div className={cn(
                         "absolute -top-1 -right-1 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold text-white",
                         idx === 0 ? "bg-yellow-500" : idx === 1 ? "bg-slate-400" : "bg-orange-500"
                       )}>
-                        {item.rank}
+                        {idx + 1}
                       </div>
                     </div>
                     <div className="flex-grow">
-                      <p className="text-sm font-bold text-slate-900">{item.name}</p>
-                      <p className="text-xs text-slate-500">₦{item.earnings?.toLocaleString()} earned</p>
+                      <p className="text-sm font-bold text-slate-900">{item.fullName}</p>
+                      <p className="text-xs text-slate-500">₦{Number(item.totalEarnings || 0).toLocaleString()} earned</p>
                     </div>
                   </div>
                 )) : (

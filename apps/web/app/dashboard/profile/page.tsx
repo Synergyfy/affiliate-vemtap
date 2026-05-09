@@ -19,7 +19,7 @@ import {
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/toast';
 import { api } from '@/lib/api-client';
 import { useAuth } from '@/hooks/use-auth';
 import { Loader2 } from 'lucide-react';

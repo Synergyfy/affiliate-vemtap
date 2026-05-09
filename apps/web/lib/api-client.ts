@@ -24,12 +24,16 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
       onUnauthorized();
     }
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || 'Unauthorized');
+    const error = new Error(errorData.message || 'Unauthorized');
+    (error as any).status = 401;
+    throw error;
   }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || 'API request failed');
+    const error = new Error(errorData.message || 'API request failed');
+    (error as any).status = response.status;
+    throw error;
   }
 
   // Handle 204 No Content or empty responses

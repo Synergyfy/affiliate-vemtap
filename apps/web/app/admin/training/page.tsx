@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api } from '@/lib/api-client';
 import { 
   BookOpen, 
   Plus, 
@@ -16,175 +15,123 @@ import {
   X,
   Type,
   Link as LinkIcon,
-  ChevronDown,
-  Layout
+  Layout,
+  Layers,
+  ChevronRight
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/toast';
+
+import { 
+  useAdminTrainingModules, 
+  useCreateTrainingModule, 
+  useUpdateTrainingModule, 
+  useDeleteTrainingModule 
+} from '@/services/useTrainingHooks';
+import { Loader2 } from 'lucide-react';
+import { TrainingModule, Quiz, Scenario } from '@/types/api';
 
 export default function TrainingManagement() {
   const { showToast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
-  const [contentType, setContentType] = useState<'article' | 'video' | 'both'>('article');
-  const [modulesList, setModulesList] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [newModule, setNewModule] = useState({
+  const [selectedCourse, setSelectedCourse] = useState<TrainingModule | null>(null);
+  
+  const { data: trainingResponse, isLoading: isTrainingLoading } = useAdminTrainingModules();
+  const createModule = useCreateTrainingModule();
+  const updateModule = useUpdateTrainingModule();
+  const deleteModule = useDeleteTrainingModule();
+
+  const [newModule, setNewModule] = useState<Partial<TrainingModule>>({
     title: '',
     description: '',
-    duration: '15 mins',
-    difficulty: 'Beginner',
-    type: 'article',
-    level: 'Beginner',
-    scenarios: '[]',
-    quiz: '[]'
-  });
-
-  const [lessonForm, setLessonForm] = useState({
-    title: '',
+    category: 'Sales',
     content: '',
     videoUrl: '',
-    duration: '10 mins',
+    pdfUrl: '',
     order: 1,
-    summary: ''
+    isPublished: true,
+    scenarios: [],
+    quizzes: []
   });
-  const [showLessonForm, setShowLessonForm] = useState(false);
-  const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
 
-  const fetchModules = async () => {
-    setLoading(true);
-    try {
-      const response = await api.get('/training/admin/modules');
-      setModulesList(response?.data || []);
-    } catch (error) {
-      console.error('Failed to fetch training modules:', error);
-      showToast('Failed to load modules.', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchModuleDetails = async (id: string) => {
-    try {
-      const data = await api.get(`/training/admin/modules/${id}`);
-      setSelectedCourse(data);
-    } catch (error) {
-      showToast('Failed to load lessons.', 'error');
-    }
-  };
-
-  useEffect(() => {
-    fetchModules();
-  }, []);
+  const [scenariosText, setScenariosText] = useState('[]');
+  const [quizzesText, setQuizzesText] = useState('[]');
 
   const handleSaveCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const payload = {
+      const payload: Partial<TrainingModule> = {
         ...newModule,
-        type: contentType,
-        scenarios: JSON.parse(newModule.scenarios || '[]'),
-        quiz: JSON.parse(newModule.quiz || '[]'),
-        order: modulesList.length + 1
+        scenarios: JSON.parse(scenariosText),
+        quizzes: JSON.parse(quizzesText),
+        order: Number(newModule.order) || (trainingResponse?.data?.length || 0) + 1
       };
 
       if (isEditing && selectedCourse) {
-        await api.patch(`/training/admin/modules/${selectedCourse.id}`, payload);
+        await updateModule.mutateAsync({ id: selectedCourse.id, ...payload });
         showToast('Course updated successfully!', 'success');
       } else {
-        await api.post('/training/admin/modules', payload);
+        await createModule.mutateAsync(payload);
         showToast('Training course published successfully!', 'success');
       }
       
       setIsCreating(false);
       setIsEditing(false);
-      setNewModule({ title: '', description: '', duration: '15 mins', difficulty: 'Beginner', type: 'article', level: 'Beginner', scenarios: '[]', quiz: '[]' });
-      fetchModules();
-    } catch (error) {
-      showToast('Failed to save course. Check JSON format.', 'error');
+      setSelectedCourse(null);
+      resetForm();
+    } catch (error: any) {
+      showToast(error.message || 'Failed to save course. Check JSON format.', 'error');
     }
+  };
+
+  const resetForm = () => {
+    setNewModule({ title: '', description: '', category: 'Sales', content: '', videoUrl: '', pdfUrl: '', order: 1, isPublished: true, scenarios: [], quizzes: [] });
+    setScenariosText('[]');
+    setQuizzesText('[]');
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this module?')) return;
     try {
-      await api.delete(`/training/admin/modules/${id}`);
+      await deleteModule.mutateAsync(id);
       showToast('Module deleted successfully.', 'info');
       if (selectedCourse?.id === id) setSelectedCourse(null);
-      fetchModules();
-    } catch (error) {
-      showToast('Failed to delete module.', 'error');
+    } catch (error: any) {
+      showToast(error.message || 'Failed to delete module.', 'error');
     }
   };
 
-  const handleEditCourse = (course: any) => {
+  const handleEditCourse = (course: TrainingModule) => {
     setSelectedCourse(course);
     setNewModule({
       title: course.title,
       description: course.description,
-      duration: course.duration,
-      difficulty: course.difficulty,
-      type: course.type,
-      level: course.level,
-      scenarios: JSON.stringify(course.scenarios || [], null, 2),
-      quiz: JSON.stringify(course.quiz || [], null, 2)
+      category: course.category,
+      content: course.content,
+      videoUrl: course.videoUrl || '',
+      pdfUrl: course.pdfUrl || '',
+      order: course.order,
+      isPublished: course.isPublished
     });
-    setLoading(false);
+    setScenariosText(JSON.stringify(course.scenarios || [], null, 2));
+    setQuizzesText(JSON.stringify(course.quizzes || [], null, 2));
     setIsEditing(true);
     setIsCreating(true);
   };
 
-  const handleSaveLesson = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedCourse) return;
-    try {
-      const payload = {
-        ...lessonForm,
-        summary: lessonForm.summary.split('\n').filter(s => s.trim())
-      };
+  const modulesList = trainingResponse?.data || [];
 
-      if (editingLessonId) {
-        await api.patch(`/training/lessons/${editingLessonId}`, payload);
-        showToast('Lesson updated!', 'success');
-      } else {
-        await api.post(`/training/${selectedCourse.id}/lessons`, payload);
-        showToast('Lesson added!', 'success');
-      }
-      
-      setShowLessonForm(false);
-      setEditingLessonId(null);
-      setLessonForm({ title: '', content: '', videoUrl: '', duration: '10 mins', order: 1, summary: '' });
-      fetchModules();
-    } catch (error) {
-      showToast('Failed to save lesson.', 'error');
-    }
-  };
-
-  const handleDeleteLesson = async (id: string) => {
-    if (!confirm('Delete this lesson?')) return;
-    try {
-      await api.delete(`/training/lessons/${id}`);
-      showToast('Lesson deleted.', 'info');
-      fetchModules();
-    } catch (error) {
-      showToast('Failed to delete lesson.', 'error');
-    }
-  };
-
-  const handleEditLesson = (lesson: any) => {
-    setEditingLessonId(lesson.id);
-    setLessonForm({
-      title: lesson.title,
-      content: lesson.content,
-      videoUrl: lesson.videoUrl || '',
-      duration: lesson.duration,
-      order: lesson.order,
-      summary: (lesson.summary || []).join('\n')
-    });
-    setShowLessonForm(true);
-  };
+  if (isTrainingLoading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
@@ -195,7 +142,7 @@ export default function TrainingManagement() {
             <p className="text-sm text-slate-500 font-medium">Create and manage learning resources for your affiliates</p>
           </div>
           <button 
-            onClick={() => setIsCreating(true)}
+            onClick={() => { resetForm(); setIsEditing(false); setIsCreating(true); }}
             className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20"
           >
             <Plus className="w-5 h-5" />
@@ -217,7 +164,7 @@ export default function TrainingManagement() {
                     <div className="p-3 bg-blue-50 rounded-2xl">
                       <Layout className="w-6 h-6 text-blue-600" />
                     </div>
-                    <h3 className="text-xl font-bold text-slate-900">Create New Module</h3>
+                    <h3 className="text-xl font-bold text-slate-900">{isEditing ? 'Edit Module' : 'Create New Module'}</h3>
                   </div>
                   <button 
                     onClick={() => setIsCreating(false)}
@@ -235,67 +182,75 @@ export default function TrainingManagement() {
                          type="text" 
                          value={newModule.title}
                          onChange={(e) => setNewModule({...newModule, title: e.target.value})}
-                         className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
+                         className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                          required
                        />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">Course Type</label>
-                      <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200">
-                        {(['article', 'video', 'both'] as const).map((t) => (
-                          <button
-                            key={t}
-                            type="button"
-                            onClick={() => setContentType(t)}
-                            className={cn(
-                              "flex-grow py-2 rounded-lg text-xs font-bold transition-all capitalize",
-                              contentType === t ? "bg-white text-blue-600 shadow-sm" : "text-slate-400"
-                            )}
-                          >
-                            {t}
-                          </button>
-                        ))}
-                      </div>
+                      <label className="text-sm font-bold text-slate-700">Category</label>
+                      <input 
+                        type="text" 
+                        value={newModule.category}
+                        onChange={(e) => setNewModule({...newModule, category: e.target.value})}
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        placeholder="e.g. Sales, Marketing, Technical"
+                        required
+                      />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">Difficulty</label>
+                      <label className="text-sm font-bold text-slate-700">Video URL (Optional)</label>
                       <input 
-                        type="text" 
-                        value={newModule.difficulty}
-                        onChange={(e) => setNewModule({...newModule, difficulty: e.target.value})}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
+                        type="url" 
+                        value={newModule.videoUrl}
+                        onChange={(e) => setNewModule({...newModule, videoUrl: e.target.value})}
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        placeholder="https://youtube.com/..."
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">Duration</label>
+                      <label className="text-sm font-bold text-slate-700">PDF URL (Optional)</label>
                       <input 
-                        type="text" 
-                        value={newModule.duration}
-                        onChange={(e) => setNewModule({...newModule, duration: e.target.value})}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
+                        type="url" 
+                        value={newModule.pdfUrl}
+                        onChange={(e) => setNewModule({...newModule, pdfUrl: e.target.value})}
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        placeholder="https://drive.google.com/..."
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">Level</label>
+                      <label className="text-sm font-bold text-slate-700">Display Order</label>
                       <input 
-                        type="text" 
-                        value={newModule.level}
-                        onChange={(e) => setNewModule({...newModule, level: e.target.value})}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
+                        type="number" 
+                        value={newModule.order}
+                        onChange={(e) => setNewModule({...newModule, order: Number(e.target.value)})}
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Description</label>
+                    <label className="text-sm font-bold text-slate-700">Short Description</label>
                     <textarea 
                       value={newModule.description}
                       onChange={(e) => setNewModule({...newModule, description: e.target.value})}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                       rows={2}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Course Content (HTML/Markdown)</label>
+                    <textarea 
+                      value={newModule.content}
+                      onChange={(e) => setNewModule({...newModule, content: e.target.value})}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      rows={10}
+                      placeholder="Enter the full lesson content here..."
+                      required
                     />
                   </div>
 
@@ -303,21 +258,21 @@ export default function TrainingManagement() {
                     <div className="space-y-2">
                       <label className="text-sm font-bold text-slate-700">Interactive Scenarios (JSON Array)</label>
                       <textarea 
-                        value={newModule.scenarios}
-                        onChange={(e) => setNewModule({...newModule, scenarios: e.target.value})}
+                        value={scenariosText}
+                        onChange={(e) => setScenariosText(e.target.value)}
                         className="w-full px-4 py-3 bg-slate-900 text-emerald-400 font-mono text-xs rounded-xl"
-                        rows={10}
-                        placeholder='[{"question": "...", "options": ["...", "..."], "correct": 0, "feedback": "..."}]'
+                        rows={8}
+                        placeholder='[{"title": "...", "situation": "...", "objection": "...", "idealResponse": "...", "order": 1}]'
                       />
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-bold text-slate-700">Final Quiz Questions (JSON Array)</label>
                       <textarea 
-                        value={newModule.quiz}
-                        onChange={(e) => setNewModule({...newModule, quiz: e.target.value})}
+                        value={quizzesText}
+                        onChange={(e) => setQuizzesText(e.target.value)}
                         className="w-full px-4 py-3 bg-slate-900 text-blue-400 font-mono text-xs rounded-xl"
-                        rows={10}
-                        placeholder='[{"question": "...", "options": ["...", "..."], "correct": 0}]'
+                        rows={8}
+                        placeholder='[{"question": "...", "options": ["A", "B"], "correctAnswer": 0, "order": 1}]'
                       />
                     </div>
                   </div>
@@ -326,15 +281,16 @@ export default function TrainingManagement() {
                     <button 
                       type="button" 
                       onClick={() => { setIsCreating(false); setIsEditing(false); }}
-                      className="px-6 py-3 text-slate-600 font-bold hover:bg-slate-50 rounded-xl"
+                      className="px-6 py-3 text-slate-600 font-bold hover:bg-slate-50 rounded-xl transition-all"
                     >
                       Cancel
                     </button>
                     <button 
                       type="submit"
-                      className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700"
+                      disabled={createModule.isPending || updateModule.isPending}
+                      className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg"
                     >
-                      <Save className="w-4 h-4" />
+                      {createModule.isPending || updateModule.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                       {isEditing ? 'Update Course' : 'Publish Course'}
                     </button>
                   </div>
@@ -345,44 +301,55 @@ export default function TrainingManagement() {
         </AnimatePresence>
 
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+          <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
             <h3 className="font-bold text-slate-900">Existing Modules</h3>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{modulesList.length} Total</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50/50 border-b border-slate-200">
                   <th className="p-4 font-bold text-slate-600 text-sm">Module Name</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm">Type</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm">Est. Time</th>
+                  <th className="p-4 font-bold text-slate-600 text-sm">Category</th>
+                  <th className="p-4 font-bold text-slate-600 text-sm">Order</th>
                   <th className="p-4 font-bold text-slate-600 text-sm">Status</th>
                   <th className="p-4 font-bold text-slate-600 text-sm text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {modulesList.length > 0 ? modulesList.map((module, idx) => (
+                {modulesList.length > 0 ? modulesList.sort((a, b) => a.order - b.order).map((module, idx) => (
                   <tr key={module.id} className="hover:bg-slate-50/50 group transition-all">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500">
-                          <Video className="w-5 h-5" />
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                          {module.videoUrl ? <Video className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
                         </div>
-                        <p className="font-bold text-slate-900">{module.title}</p>
+                        <div>
+                          <p className="font-bold text-slate-900">{module.title}</p>
+                          <p className="text-xs text-slate-400 line-clamp-1">{module.description}</p>
+                        </div>
                       </div>
                     </td>
-                    <td className="p-4 text-sm text-slate-600 font-medium">{module.level || 'All'}</td>
-                    <td className="p-4 text-sm text-slate-600 font-medium">{module.duration || 'N/A'}</td>
+                    <td className="p-4">
+                      <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg">
+                        {module.category}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <span className="text-sm font-bold text-slate-700">#{module.order}</span>
+                    </td>
                     <td className="p-4">
                       <span className={cn(
-                        "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider bg-green-100 text-green-600"
+                        "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
+                        module.isPublished ? "bg-green-100 text-green-600" : "bg-slate-100 text-slate-400"
                       )}>
-                        Published
+                        {module.isPublished ? 'Published' : 'Draft'}
                       </span>
                     </td>
                     <td className="p-4 text-right">
-                      <div className="flex items-center justify-end gap-2 transition-opacity">
+                      <div className="flex items-center justify-end gap-2">
                         <button 
-                          onClick={() => showToast(`Previewing: ${module.title}`, "info")}
+                          onClick={() => showToast(`Preview coming soon...`, "info")}
                           className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-900 transition-all"
                           title="Preview"
                         >
@@ -394,19 +361,6 @@ export default function TrainingManagement() {
                           title="Edit"
                         >
                           <Edit3 className="w-4 h-4" />
-                        </button>
-                         <button 
-                          onClick={() => {
-                            fetchModuleDetails(module.id);
-                            showToast("Now managing lessons", "info");
-                          }}
-                          className={cn(
-                            "p-2 rounded-lg transition-all",
-                            selectedCourse?.id === module.id ? "bg-blue-600 text-white" : "hover:bg-slate-100 text-slate-400 hover:text-slate-900"
-                          )}
-                          title="Manage Lessons"
-                        >
-                          <BookOpen className="w-4 h-4" />
                         </button>
                         <button 
                           onClick={() => handleDelete(module.id)}
@@ -420,145 +374,16 @@ export default function TrainingManagement() {
                   </tr>
                 )) : (
                   <tr>
-                    <td colSpan={5} className="p-12 text-center text-slate-400">No training modules found. Creating one isn't supported yet.</td>
+                    <td colSpan={5} className="p-12 text-center text-slate-400">
+                      <Layers className="w-12 h-12 text-slate-100 mx-auto mb-4" />
+                      <p>No training modules found. Start by creating your first one!</p>
+                    </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
         </div>
-
-        {selectedCourse && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-12 space-y-8"
-          >
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="text-xl font-bold text-slate-900">
-                  Lessons for: <span className="text-blue-600">{selectedCourse.title}</span>
-                </h3>
-                <p className="text-sm text-slate-500">Add and manage chapters for this course</p>
-              </div>
-              <button 
-                onClick={() => { setShowLessonForm(true); setEditingLessonId(null); }}
-                className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all"
-              >
-                <Plus className="w-4 h-4" />
-                Add Lesson
-              </button>
-            </div>
-
-            {showLessonForm && (
-              <div className="bg-white p-8 rounded-[32px] border-2 border-slate-200 shadow-xl">
-                <form onSubmit={handleSaveLesson} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                       <label className="text-sm font-bold text-slate-700">Lesson Title</label>
-                       <input 
-                         type="text" 
-                         value={lessonForm.title}
-                         onChange={(e) => setLessonForm({...lessonForm, title: e.target.value})}
-                         className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
-                         required
-                       />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">Estimated Duration</label>
-                      <input 
-                        type="text" 
-                        value={lessonForm.duration}
-                        onChange={(e) => setLessonForm({...lessonForm, duration: e.target.value})}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Video URL (Optional)</label>
-                    <input 
-                      type="url" 
-                      value={lessonForm.videoUrl}
-                      onChange={(e) => setLessonForm({...lessonForm, videoUrl: e.target.value})}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
-                      placeholder="https://youtube.com/..."
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Article Content (Markdown)</label>
-                    <textarea 
-                      value={lessonForm.content}
-                      onChange={(e) => setLessonForm({...lessonForm, content: e.target.value})}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm"
-                      rows={6}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Key Takeaways (One per line)</label>
-                    <textarea 
-                      value={lessonForm.summary}
-                      onChange={(e) => setLessonForm({...lessonForm, summary: e.target.value})}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm"
-                      rows={4}
-                      placeholder="Enter each take-away on a new line"
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-3 pt-4">
-                    <button 
-                      type="button" 
-                      onClick={() => setShowLessonForm(false)}
-                      className="px-6 py-3 text-slate-600 font-bold hover:bg-slate-50 rounded-xl"
-                    >
-                      Cancel
-                    </button>
-                    <button 
-                      type="submit"
-                      className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-xl font-bold"
-                    >
-                      <Save className="w-4 h-4" />
-                      {editingLessonId ? 'Update Lesson' : 'Add Lesson'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {(selectedCourse.lessons || []).map((lesson: any, i: number) => (
-                <div key={lesson.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center group">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center font-black text-slate-400">
-                      {i + 1}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900">{lesson.title}</h4>
-                      <p className="text-xs text-slate-500">{lesson.duration}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button 
-                      onClick={() => handleEditLesson(lesson)}
-                      className="p-2 hover:bg-blue-50 rounded-lg text-blue-600"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteLesson(lesson.id)}
-                      className="p-2 hover:bg-red-50 rounded-lg text-red-600"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
       </div>
     </AdminLayout>
   );

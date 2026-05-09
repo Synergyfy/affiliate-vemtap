@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import ManagerGuideModal from '@/components/dashboard/ManagerGuideModal';
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/toast';
 import { Loader2 } from 'lucide-react';
 
 export default function NetworkPage() {

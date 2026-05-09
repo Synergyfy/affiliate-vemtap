@@ -20,6 +20,9 @@ interface User {
   isKycVerified?: boolean;
   totalEarnings?: number;
   kycStatus?: string;
+  bankName?: string;
+  accountNumber?: string;
+  accountName?: string;
 }
 
 interface AuthContextType {

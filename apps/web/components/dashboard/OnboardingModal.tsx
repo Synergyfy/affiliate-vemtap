@@ -45,19 +45,30 @@ const steps = [
 ];
 
 export default function OnboardingModal() {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+
+  React.useEffect(() => {
+    const completed = localStorage.getItem('vemtap_onboarding_completed');
+    if (!completed) {
+      setIsOpen(true);
+    }
+  }, []);
 
   if (!isOpen) return null;
 
   const step = steps[currentStep];
 
+  const handleClose = () => {
+    setIsOpen(false);
+    localStorage.setItem('vemtap_onboarding_completed', 'true');
+  };
+
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      setIsOpen(false);
-      localStorage.setItem('vemtap_onboarding_completed', 'true');
+      handleClose();
     }
   };
 
@@ -83,7 +94,7 @@ export default function OnboardingModal() {
                 ))}
               </div>
               <button 
-                onClick={() => setIsOpen(false)}
+                onClick={handleClose}
                 className="text-xs font-bold text-slate-400 hover:text-slate-600 uppercase tracking-widest"
               >
                 Skip

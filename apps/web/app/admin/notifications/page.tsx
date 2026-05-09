@@ -15,64 +15,61 @@ import {
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/toast';
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api-client';
+
+import { useNotifications, useBroadcastNotification } from '@/services/useNotificationHooks';
+import { Loader2 } from 'lucide-react';
+import { Notification, NotificationType } from '@/types/api';
 
 export default function NotificationsManagement() {
   const { showToast } = useToast();
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
-  const [isSending, setIsSending] = useState(false);
-  const [history, setHistory] = useState<any[]>([]);
+  const [type, setType] = useState<NotificationType>('SYSTEM');
 
-  const fetchHistory = async () => {
-    try {
-      const response = await api.get('/notifications?limit=20');
-      // Format backend data to frontend expectations
-      const formattedData = (response?.data || []).map((notif: any) => ({
-        id: notif.id,
-        title: notif.title,
-        message: notif.message,
-        type: notif.type,
-        date: new Date(notif.createdAt).toLocaleString(),
-        status: 'Sent', // Standard status for history
-        recipients: notif.user?.fullName || 'Broadcast'
-      }));
-      setHistory(formattedData);
-    } catch (error) {
-      console.error('Failed to fetch notification history:', error);
-      showToast('Failed to load history', 'error');
-    }
-  };
-
-  useEffect(() => {
-    fetchHistory();
-  }, []);
+  const { data: notificationsResponse, isLoading: isHistoryLoading } = useNotifications({ limit: 20 });
+  const broadcast = useBroadcastNotification();
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSending) return;
+    if (!title || !message) return;
 
-    setIsSending(true);
     try {
-      await api.post('/notifications/broadcast', { 
-        type: 'SYSTEM', // Default to SYSTEM for admin broadcasts
+      await broadcast.mutateAsync({ 
+        type,
         title, 
         message 
       });
       showToast("Notification has been broadcasted successfully.", "success");
       setTitle('');
       setMessage('');
-      fetchHistory();
-    } catch (error) {
-      console.error('Broadcast failed:', error);
-      showToast("Failed to broadcast notification.", "error");
-    } finally {
-      setIsSending(false);
+    } catch (error: any) {
+      showToast(error.message || "Failed to broadcast notification.", "error");
     }
   };
+
+  const history = (notificationsResponse?.data || []).map(notif => ({
+    id: notif.id,
+    title: notif.title,
+    message: notif.message,
+    type: notif.type,
+    date: new Date(notif.createdAt).toLocaleString(),
+    status: 'Sent',
+    recipients: notif.user?.fullName || 'Broadcast'
+  }));
+
+  if (isHistoryLoading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
+        </div>
+      </AdminLayout>
+    );
+  }
 
   const handleDelete = (title: string) => {
     showToast(`Notification "${title}" has been deleted.`, "info");
@@ -105,18 +102,19 @@ export default function NotificationsManagement() {
                   <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <select className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none text-sm font-medium">
                     <option>All Affiliates</option>
-                    <option>Active Affiliates</option>
-                    <option>Suspended Affiliates</option>
-                    <option>Top Earners</option>
                   </select>
                 </div>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-bold text-slate-700">Notification Type</label>
-                <select className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none text-sm font-medium">
-                  <option>Announcement (In-App)</option>
-                  <option>Email Broadcast</option>
-                  <option>Push Notification</option>
+                <select 
+                  value={type}
+                  onChange={(e) => setType(e.target.value as NotificationType)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none text-sm font-medium"
+                >
+                  <option value="SYSTEM">Announcement (In-App)</option>
+                  <option value="SECURITY">Security Alert</option>
+                  <option value="COMMISSION">Commission Update</option>
                 </select>
               </div>
             </div>
@@ -148,7 +146,7 @@ export default function NotificationsManagement() {
              <div className="flex justify-end gap-3">
                <button 
                  type="button" 
-                 disabled={isSending}
+                 disabled={broadcast.isPending}
                  onClick={() => showToast("Draft saved successfully.", "success")}
                  className="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-all disabled:opacity-50"
                >
@@ -156,15 +154,15 @@ export default function NotificationsManagement() {
                </button>
                <button 
                  type="submit" 
-                 disabled={isSending || !title || !message}
+                 disabled={broadcast.isPending || !title || !message}
                  className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50"
                >
-                 {isSending ? (
-                   <RefreshCcw className="w-4 h-4 animate-spin" />
+                 {broadcast.isPending ? (
+                   <Loader2 className="w-4 h-4 animate-spin" />
                  ) : (
                    <Send className="w-4 h-4" />
                  )}
-                 {isSending ? 'Sending...' : 'Send Now'}
+                 {broadcast.isPending ? 'Sending...' : 'Send Now'}
                </button>
              </div>
           </form>

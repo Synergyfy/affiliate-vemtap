@@ -40,7 +40,7 @@ export const useDashboard = () => {
 };
 
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/toast';
 import OnboardingModal from './OnboardingModal';
 
 const sidebarItems = [

@@ -18,60 +18,69 @@ import {
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/toast';
+
+import { useCommissions, useUpdateCommissionStatus } from '@/services/useCommissionsHooks';
+import { useSettings, useUpdateSettings } from '@/services/useAdminHooks';
+import { Loader2 } from 'lucide-react';
+import { Commission, CommissionStatus } from '@/types/api';
 
 export default function CommissionsManagement() {
   const { showToast } = useToast();
-  const [commissionsList, setCommissionsList] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  const { data: commissionsResponse, isLoading: isCommissionsLoading } = useCommissions({ limit: 50 });
+  const { data: settings, isLoading: isSettingsLoading } = useSettings();
+  const updateStatus = useUpdateCommissionStatus();
+  const updateSettings = useUpdateSettings();
+
   const [directRate, setDirectRate] = useState(20);
   const [indirectRate, setIndirectRate] = useState(5);
-  const [earningDuration, setEarningDuration] = useState('3months');
+  const [earningDuration, setEarningDuration] = useState(12);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [commResponse, settingsData] = await Promise.all([
-          api.get('/commissions?limit=50'),
-          api.get('/settings')
-        ]);
-        setCommissionsList(commResponse?.data || []);
-        
-        if (settingsData) {
-          setDirectRate(Math.round(settingsData.directCommissionRate * 100));
-          setIndirectRate(Math.round(settingsData.indirectCommissionRate * 100));
-          // Earning duration mapping if present in backend, default to 3months
-          setEarningDuration(settingsData.earningDuration || '3months');
-        }
-      } catch (error) {
-        console.error('Failed to fetch commissions data:', error);
-        showToast("Failed to load commissions data.", "error");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+    if (settings) {
+      setDirectRate(Math.round(settings.directCommissionRate * 100));
+      setIndirectRate(Math.round(settings.indirectCommissionRate * 100));
+      setEarningDuration(settings.earningDurationMonths);
+    }
+  }, [settings]);
 
   const handleUpdateRules = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.patch('/settings', { 
+      await updateSettings.mutateAsync({ 
         directCommissionRate: Number(directRate) / 100, 
         indirectCommissionRate: Number(indirectRate) / 100,
-        // earningDuration is a UI-only feature for now unless added to schema
+        earningDurationMonths: Number(earningDuration)
       });
       showToast("Global commission rules updated successfully.", "success");
-    } catch (error) {
-      showToast("Failed to update commission rules.", "error");
+    } catch (error: any) {
+      showToast(error.message || "Failed to update commission rules.", "error");
     }
   };
+
+  const commissionsList = commissionsResponse?.data || [];
+  const filteredCommissions = commissionsList.filter(c => 
+    c.user?.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const commissionsStats = [
     { label: 'Total Commissions', value: `₦${commissionsList.reduce((acc, curr) => acc + Number(curr.amount), 0).toLocaleString()}`, icon: Percent, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+12%', trendUp: true },
     { label: 'Paid Commissions', value: `₦${commissionsList.filter(c => c.status === 'PAID').reduce((acc, curr) => acc + Number(curr.amount), 0).toLocaleString()}`, icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50', trend: '+8%', trendUp: true },
     { label: 'Pending Approval', value: `₦${commissionsList.filter(c => c.status === 'PENDING').reduce((acc, curr) => acc + Number(curr.amount), 0).toLocaleString()}`, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50', trend: '-2%', trendUp: false },
   ];
+
+  if (isCommissionsLoading || isSettingsLoading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
@@ -153,13 +162,13 @@ export default function CommissionsManagement() {
                 <div className="relative w-40">
                   <select 
                     value={earningDuration}
-                    onChange={(e) => setEarningDuration(e.target.value)}
+                    onChange={(e) => setEarningDuration(Number(e.target.value))}
                     className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none cursor-pointer"
                   >
-                    <option value="3months">3 Months</option>
-                    <option value="6months">6 Months</option>
-                    <option value="1year">1 Year</option>
-                    <option value="forever">Forever</option>
+                    <option value={3}>3 Months</option>
+                    <option value={6}>6 Months</option>
+                    <option value={12}>1 Year</option>
+                    <option value={999}>Forever</option>
                   </select>
                   <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
                 </div>
@@ -221,7 +230,7 @@ export default function CommissionsManagement() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {commissionsList.map((comm, idx) => (
+                  {filteredCommissions.map((comm, idx) => (
                     <motion.tr 
                       key={comm.id}
                       initial={{ opacity: 0, x: -10 }}
@@ -233,7 +242,7 @@ export default function CommissionsManagement() {
                         <span className="font-bold text-slate-900">{comm.user?.fullName || 'Unknown'}</span>
                       </td>
                       <td className="p-4">
-                        <span className="text-sm text-slate-600">{comm.business?.name || 'Vemtap Subscription'}</span>
+                        <span className="text-sm text-slate-600">{comm.business?.businessName || 'Vemtap Subscription'}</span>
                       </td>
                       <td className="p-4 text-sm text-slate-900 font-bold">₦{Number(comm.amount).toLocaleString()}</td>
                       <td className="p-4">
