@@ -9,6 +9,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UpdateFraudStatusDto } from './dto/update-fraud.dto';
 import { FraudAlertResponseDto, PaginatedFraudAlertResponseDto } from './dto/fraud-response.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
+import { FraudFilterDto } from './dto/fraud-filter.dto';
 
 @ApiTags('fraud')
 @ApiBearerAuth()
@@ -21,19 +22,23 @@ export class FraudController {
   @Get()
   @ApiOperation({ summary: 'List all fraud alerts' })
   @ApiOkResponse({ type: PaginatedFraudAlertResponseDto })
-  async findAll(@Query() paginationDto: PaginationDto) {
+  async findAll(@Query() filterDto: FraudFilterDto) {
     const { data, total } = await this.fraudService.findAll({
-      skip: paginationDto.skip,
-      take: paginationDto.take,
+      skip: filterDto.skip,
+      take: filterDto.take,
+      status: filterDto.status,
+      severity: filterDto.severity,
+      userId: filterDto.userId,
+      search: filterDto.search,
     });
 
     return {
       data,
       meta: {
         total,
-        page: paginationDto.page,
-        limit: paginationDto.limit,
-        totalPages: Math.ceil(total / (paginationDto.limit || 10)),
+        page: filterDto.page,
+        limit: filterDto.limit,
+        totalPages: Math.ceil(total / (filterDto.limit || 10)),
       },
     };
   }

@@ -2,7 +2,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from './api';
 import { Commission, PaginatedResponse, CommissionStatus } from '@/types/api';
 
-export const useCommissions = (params?: { limit?: number; status?: CommissionStatus; userId?: string }) => {
+export const useCommissions = (params?: { 
+  limit?: number; 
+  status?: CommissionStatus; 
+  userId?: string;
+  search?: string;
+}) => {
   return useQuery<PaginatedResponse<Commission>>({
     queryKey: ['commissions', params],
     queryFn: async () => {

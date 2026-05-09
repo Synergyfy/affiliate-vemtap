@@ -6,8 +6,10 @@ import {
   Withdrawal, 
   User, 
   PlatformSettings,
-  ChartDataPoint
+  ChartDataPoint,
+  Business
 } from '@/types/api';
+import { WithdrawalStatus, Role } from '@/types/api';
 
 export const useAdminStats = () => {
   return useQuery<AdminStats>({
@@ -29,11 +31,19 @@ export const useAdminCharts = () => {
   });
 };
 
-export const useWithdrawals = (limit = 50) => {
+export const useWithdrawals = (params?: { 
+  status?: WithdrawalStatus; 
+  userId?: string; 
+  search?: string; 
+  startDate?: string; 
+  endDate?: string; 
+  limit?: number; 
+  page?: number; 
+}) => {
   return useQuery<PaginatedResponse<Withdrawal>>({
-    queryKey: ['admin', 'withdrawals', { limit }],
+    queryKey: ['admin', 'withdrawals', params],
     queryFn: async () => {
-      const { data } = await api.get(`/withdrawals?limit=${limit}`);
+      const { data } = await api.get('/withdrawals', { params });
       return data;
     },
   });
@@ -53,7 +63,13 @@ export const useUpdateWithdrawalStatus = () => {
   });
 };
 
-export const useUsers = (params?: { role?: string; status?: string; limit?: number }) => {
+export const useUsers = (params?: { 
+  role?: Role; 
+  status?: string; 
+  search?: string; 
+  limit?: number; 
+  page?: number; 
+}) => {
   return useQuery<PaginatedResponse<User>>({
     queryKey: ['admin', 'users', params],
     queryFn: async () => {
@@ -95,6 +111,21 @@ export const useUpdateSettings = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'settings'] });
+    },
+  });
+};
+
+export const useBusinesses = (params?: { 
+  status?: string; 
+  search?: string; 
+  limit?: number; 
+  page?: number; 
+}) => {
+  return useQuery<PaginatedResponse<Business>>({
+    queryKey: ['admin', 'businesses', params],
+    queryFn: async () => {
+      const { data } = await api.get('/businesses', { params });
+      return data;
     },
   });
 };

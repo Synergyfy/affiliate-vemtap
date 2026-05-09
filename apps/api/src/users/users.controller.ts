@@ -34,6 +34,7 @@ import { PaginationDto } from "../common/dto/pagination.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
+import { UserFilterDto } from "./dto/user-filter.dto";
 import { Role } from "@prisma/client";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 
@@ -208,19 +209,16 @@ export class UsersController {
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "List all users (Admin only)" })
   @ApiOkResponse({ type: PaginatedUserResponseDto })
-  async findAllAdmin(@Query() paginationDto: PaginationDto) {
-    const { data, total } = await this.usersService.findAllAdmin({
-      skip: paginationDto.skip,
-      take: paginationDto.take,
-    });
+  async findAllAdmin(@Query() filterDto: UserFilterDto) {
+    const { data, total } = await this.usersService.findAllAdmin(filterDto);
 
     return {
       data,
       meta: {
         total,
-        page: paginationDto.page,
-        limit: paginationDto.limit,
-        totalPages: Math.ceil(total / (paginationDto.limit || 10)),
+        page: filterDto.page,
+        limit: filterDto.limit,
+        totalPages: Math.ceil(total / (filterDto.limit || 10)),
       },
     };
   }

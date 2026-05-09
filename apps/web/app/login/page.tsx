@@ -36,9 +36,14 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
     try {
-      await login(data.email, data.password);
+      const user = await login(data.email, data.password);
       showToast('Logged in successfully!', 'success');
-      router.push('/dashboard');
+      
+      if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
+        router.push('/admin');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (error: any) {
       if (error.status === 401) {
         setError('email', { 

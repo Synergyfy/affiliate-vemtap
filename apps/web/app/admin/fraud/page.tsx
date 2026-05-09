@@ -15,8 +15,10 @@ import {
   Eye
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
+import FilterBar from '@/components/admin/FilterBar';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/toast';
+import { useDebounce } from '@/hooks/use-debounce';
 
 import { useFraudAlerts, useUpdateFraudStatus } from '@/services/useFraudHooks';
 import { useAdminStats } from '@/services/useAdminHooks';
@@ -25,9 +27,15 @@ import { FraudAlert, FraudStatus } from '@/types/api';
 
 export default function FraudMonitor() {
   const { showToast } = useToast();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('All');
+  const debouncedSearch = useDebounce(searchTerm, 500);
   
-  const { data: fraudResponse, isLoading: isFraudLoading } = useFraudAlerts({ limit: 50 });
+  const { data: fraudResponse, isLoading: isFraudLoading } = useFraudAlerts({ 
+    limit: 50,
+    search: debouncedSearch || undefined,
+    status: statusFilter === 'All' ? undefined : statusFilter as any
+  });
   const { data: stats, isLoading: isStatsLoading } = useAdminStats();
   const updateStatus = useUpdateFraudStatus();
 
@@ -51,13 +59,10 @@ export default function FraudMonitor() {
     }
   };
 
-  const filteredAlerts = (fraudResponse?.data || []).filter(alert => 
-    alert.user?.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    alert.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const alertsList = fraudResponse?.data || [];
 
   const fraudStats = [
-    { label: 'High Risk Alerts', value: filteredAlerts.filter(a => a.severity === 'HIGH' && a.status === 'OPEN').length.toString(), icon: ShieldAlert, color: 'text-red-600', bg: 'bg-red-50' },
+    { label: 'High Risk Alerts', value: alertsList.filter(a => a.severity === 'HIGH' && a.status === 'OPEN').length.toString(), icon: ShieldAlert, color: 'text-red-600', bg: 'bg-red-50' },
     { label: 'Pending Review', value: stats?.fraudAlerts?.toString() || '0', icon: Activity, color: 'text-orange-600', bg: 'bg-orange-50' },
     { label: 'Global Guard', value: 'Active', icon: ShieldCheck, color: 'text-slate-600', bg: 'bg-slate-50' },
   ];
@@ -94,34 +99,40 @@ export default function FraudMonitor() {
           ))}
         </div>
 
-        {/* Alerts Table */}
-        <div className="space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h2 className="text-xl font-bold text-slate-900">Security Alerts</h2>
-            <div className="relative max-w-sm w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input 
-                type="text" 
-                placeholder="Search alerts..." 
-                className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
-            </div>
-          </div>
+        <FilterBar 
+          searchQuery={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search alerts by user or reason..."
+          activeFilter={statusFilter}
+          onFilterChange={setStatusFilter}
+          filterLabel="Status"
+          filterOptions={[
+            { label: 'All Alerts', value: 'All' },
+            { label: 'Open', value: 'OPEN' },
+            { label: 'Confirmed', value: 'CONFIRMED' },
+            { label: 'Resolved', value: 'RESOLVED' }
+          ]}
+        />
 
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="p-4 font-bold text-slate-600 text-sm">Affiliate</th>
-                    <th className="p-4 font-bold text-slate-600 text-sm">Alert Reason</th>
-                    <th className="p-4 font-bold text-slate-600 text-sm">Risk Level</th>
-                    <th className="p-4 font-bold text-slate-600 text-sm">Detected</th>
-                    <th className="p-4 font-bold text-slate-600 text-sm text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredAlerts.length > 0 ? filteredAlerts.map((alert, idx) => (
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto relative min-h-[400px]">
+            {isFraudLoading && (
+              <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              </div>
+            )}
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="p-4 font-bold text-slate-600 text-sm">Affiliate</th>
+                  <th className="p-4 font-bold text-slate-600 text-sm">Alert Reason</th>
+                  <th className="p-4 font-bold text-slate-600 text-sm">Risk Level</th>
+                  <th className="p-4 font-bold text-slate-600 text-sm">Detected</th>
+                  <th className="p-4 font-bold text-slate-600 text-sm text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                  {alertsList.length > 0 ? alertsList.map((alert, idx) => (
                     <motion.tr 
                       key={alert.id}
                       initial={{ opacity: 0 }}
@@ -192,7 +203,6 @@ export default function FraudMonitor() {
                   )}
                 </tbody>
               </table>
-            </div>
           </div>
         </div>
       </div>

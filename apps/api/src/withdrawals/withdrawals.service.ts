@@ -5,6 +5,7 @@ import { TransactionsService } from '../transactions/transactions.service';
 import { AuditService } from '../prisma/audit.service';
 import { PaystackService } from '../payments/paystack.service';
 import { SettingsService } from '../settings/settings.service';
+import { WithdrawalFilterDto } from './dto/withdrawal-filter.dto';
 
 type UserWithPaystack = User & { paystackRecipientCode?: string | null };
 
@@ -84,11 +85,35 @@ export class WithdrawalsService {
     return { data, total };
   }
 
-  async findAllAdmin(pagination: { skip?: number; take?: number }) {
+  async findAllAdmin(filter: WithdrawalFilterDto) {
+    const where: Prisma.WithdrawalWhereInput = {};
+
+    if (filter.status) {
+      where.status = filter.status;
+    }
+
+    if (filter.userId) {
+      where.userId = filter.userId;
+    }
+
+    if (filter.startDate || filter.endDate) {
+      where.createdAt = {};
+      if (filter.startDate) where.createdAt.gte = new Date(filter.startDate);
+      if (filter.endDate) where.createdAt.lte = new Date(filter.endDate);
+    }
+
+    if (filter.search) {
+      where.OR = [
+        { accountNumber: { contains: filter.search, mode: 'insensitive' } },
+        { user: { fullName: { contains: filter.search, mode: 'insensitive' } } },
+      ];
+    }
+
     const [data, total] = await Promise.all([
       this.prisma.withdrawal.findMany({
-        skip: pagination.skip,
-        take: pagination.take,
+        where,
+        skip: filter.skip,
+        take: filter.take,
         include: {
           user: {
             select: { id: true, fullName: true, bankName: true, accountNumber: true },
@@ -96,7 +121,7 @@ export class WithdrawalsService {
         },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.withdrawal.count(),
+      this.prisma.withdrawal.count({ where }),
     ]);
     return { data, total };
   }

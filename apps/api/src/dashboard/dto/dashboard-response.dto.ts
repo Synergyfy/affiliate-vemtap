@@ -51,6 +51,18 @@ export class AdminStatsResponseDto {
     description: "Percentage change in paid commissions vs previous 30 days",
   })
   commissionsTrendPercentage: number;
+
+  @ApiProperty({
+    example: 10,
+    description: "Percentage change in total revenue vs previous month",
+  })
+  totalRevenueGrowth: number;
+
+  @ApiProperty({
+    example: 5,
+    description: "Percentage change in total affiliates vs previous month",
+  })
+  totalAffiliatesGrowth: number;
 }
 
 export class ChartDataPointDto {

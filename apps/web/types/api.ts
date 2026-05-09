@@ -65,6 +65,7 @@ export interface Business {
   createdAt: string;
   paidAt?: string;
   affiliateId: string;
+  affiliate?: User;
 }
 
 export interface Commission {
@@ -166,6 +167,8 @@ export interface AdminStats {
   completedPayouts: number;
   fraudAlerts: number;
   commissionsTrendPercentage: number;
+  totalRevenueGrowth: number;
+  totalAffiliatesGrowth: number;
 }
 
 export interface ChartDataPoint {

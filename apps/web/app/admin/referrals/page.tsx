@@ -17,72 +17,50 @@ import {
   User as UserIcon,
   X,
   MapPin,
-  Briefcase
+  Briefcase,
+  Loader2
 } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import AdminLayout from '@/components/admin/AdminLayout';
+import FilterBar from '@/components/admin/FilterBar';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/toast';
+import { useDebounce } from '@/hooks/use-debounce';
+import { useBusinesses } from '@/services/useAdminHooks';
+import { Business } from '@/types/api';
 
 export default function ReferralsManagement() {
   const { showToast } = useToast();
-  const [referralsList, setReferralsList] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedReferral, setSelectedReferral] = useState<any | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const debouncedSearch = useDebounce(searchTerm, 500);
 
-  useEffect(() => {
-    const fetchReferrals = async () => {
-      try {
-        const response = await api.get('/businesses?limit=50');
-        setReferralsList(response?.data || []);
-      } catch (error) {
-        console.error('Failed to fetch referrals:', error);
-        showToast("Failed to load referrals data.", "error");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchReferrals();
-  }, []);
+  const { data: businessesResponse, isLoading } = useBusinesses({
+    limit: 50,
+    search: debouncedSearch || undefined,
+    status: statusFilter === 'All' ? undefined : statusFilter
+  });
+
+  const [selectedReferral, setSelectedReferral] = useState<Business | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
     <AdminLayout>
       <div className="space-y-6">
-        {/* Header Actions */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="relative flex-grow max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Search by business or affiliate..." 
-              className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-            />
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex bg-white border border-slate-200 rounded-xl p-1">
-              <button 
-                onClick={() => showToast("Showing all referrals", "info")}
-                className="px-3 py-1.5 text-xs font-bold bg-slate-100 text-slate-900 rounded-lg"
-              >All</button>
-              <button 
-                onClick={() => showToast("Showing paid referrals", "info")}
-                className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 rounded-lg"
-              >Paid</button>
-              <button 
-                onClick={() => showToast("Showing pending referrals", "info")}
-                className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 rounded-lg"
-              >Pending</button>
-            </div>
-            <button 
-              onClick={() => showToast("Calendar picker would open here", "info")}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-600 font-medium hover:bg-slate-50 transition-all"
-            >
-              <Calendar className="w-4 h-4" />
-              Date Range
-            </button>
-          </div>
-        </div>
+        <FilterBar 
+          searchQuery={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search by business or affiliate..."
+          activeFilter={statusFilter}
+          onFilterChange={setStatusFilter}
+          filterLabel="Status"
+          filterOptions={[
+            { label: 'All Status', value: 'All' },
+            { label: 'Active', value: 'ACTIVE' },
+            { label: 'Trial', value: 'TRIAL' },
+            { label: 'Expired', value: 'EXPIRED' }
+          ]}
+        />
 
         {/* Referrals Table */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
@@ -99,8 +77,13 @@ export default function ReferralsManagement() {
                   <th className="p-4 font-bold text-slate-600 text-sm text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
-                {referralsList.map((ref, idx) => (
+              <tbody className="divide-y divide-slate-100 relative min-h-[400px]">
+                {isLoading && (
+                  <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                  </div>
+                )}
+                {businessesResponse?.data.map((ref, idx) => (
                   <motion.tr 
                     key={ref.id}
                     initial={{ opacity: 0, y: 10 }}

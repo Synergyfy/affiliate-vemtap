@@ -6,10 +6,21 @@ import { CommissionStatus } from '@prisma/client';
 export class CommissionsService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(userId: string, pagination: { skip?: number; take?: number }) {
+  async findAll(userId: string, pagination: { skip?: number; take?: number; status?: CommissionStatus; search?: string }) {
+    const where: any = { userId };
+    if (pagination.status) {
+      where.status = pagination.status;
+    }
+    if (pagination.search) {
+      where.OR = [
+        { business: { businessName: { contains: pagination.search, mode: 'insensitive' } } },
+        { description: { contains: pagination.search, mode: 'insensitive' } }
+      ];
+    }
+
     const [commissions, total] = await Promise.all([
       this.prisma.commission.findMany({
-        where: { userId },
+        where,
         skip: pagination.skip,
         take: pagination.take,
         include: {
@@ -28,7 +39,7 @@ export class CommissionsService {
         },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.commission.count({ where: { userId } }),
+      this.prisma.commission.count({ where }),
     ]);
 
     const data = commissions.map(c => {
@@ -68,9 +79,21 @@ export class CommissionsService {
     };
   }
 
-  async findAllAdmin(pagination: { skip?: number; take?: number }) {
+  async findAllAdmin(pagination: { skip?: number; take?: number; status?: CommissionStatus; userId?: string; search?: string }) {
+    const where: any = {};
+    if (pagination.status) where.status = pagination.status;
+    if (pagination.userId) where.userId = pagination.userId;
+    if (pagination.search) {
+      where.OR = [
+        { user: { fullName: { contains: pagination.search, mode: 'insensitive' } } },
+        { user: { email: { contains: pagination.search, mode: 'insensitive' } } },
+        { business: { businessName: { contains: pagination.search, mode: 'insensitive' } } }
+      ];
+    }
+
     const [data, total] = await Promise.all([
       this.prisma.commission.findMany({
+        where,
         skip: pagination.skip,
         take: pagination.take,
         include: {
@@ -83,7 +106,7 @@ export class CommissionsService {
         },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.commission.count(),
+      this.prisma.commission.count({ where }),
     ]);
     return { data, total };
   }

@@ -2,7 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from './api';
 import { FraudAlert, PaginatedResponse, FraudStatus } from '@/types/api';
 
-export const useFraudAlerts = (params?: { limit?: number; status?: FraudStatus }) => {
+export const useFraudAlerts = (params?: { 
+  limit?: number; 
+  status?: FraudStatus;
+  search?: string;
+}) => {
   return useQuery<PaginatedResponse<FraudAlert>>({
     queryKey: ['fraud', params],
     queryFn: async () => {

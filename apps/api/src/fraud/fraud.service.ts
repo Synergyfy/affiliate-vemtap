@@ -14,14 +14,39 @@ export class FraudService {
     });
   }
 
-  async findAll(pagination: { skip?: number; take?: number }) {
+  async findAll(pagination: { 
+    skip?: number; 
+    take?: number; 
+    status?: FraudStatus; 
+    severity?: Severity; 
+    userId?: string; 
+    search?: string; 
+  }) {
+    const where: any = {};
+    if (pagination.status) where.status = pagination.status;
+    if (pagination.severity) where.severity = pagination.severity;
+    if (pagination.userId) where.userId = pagination.userId;
+    if (pagination.search) {
+      where.OR = [
+        { description: { contains: pagination.search, mode: 'insensitive' } },
+        { user: { fullName: { contains: pagination.search, mode: 'insensitive' } } },
+        { user: { email: { contains: pagination.search, mode: 'insensitive' } } }
+      ];
+    }
+
     const [data, total] = await Promise.all([
       this.prisma.fraudAlert.findMany({
+        where,
         skip: pagination.skip,
         take: pagination.take,
+        include: {
+          user: {
+            select: { id: true, fullName: true, email: true }
+          }
+        },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.fraudAlert.count(),
+      this.prisma.fraudAlert.count({ where }),
     ]);
     return { data, total };
   }

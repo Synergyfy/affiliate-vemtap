@@ -29,17 +29,56 @@ export default function AdminOverview() {
   const router = useRouter();
   
   const { data: stats, isLoading: isStatsLoading } = useAdminStats();
-  const { data: withdrawalsResponse, isLoading: isWithdrawalsLoading } = useWithdrawals(5);
+  const { data: withdrawalsResponse, isLoading: isWithdrawalsLoading } = useWithdrawals({ limit: 5 });
   const { data: fraudResponse, isLoading: isFraudLoading } = useFraudAlerts({ limit: 5 });
   const updateWithdrawal = useUpdateWithdrawalStatus();
 
   const adminStats = [
-    { name: 'Total Affiliates', value: stats?.activeAffiliates?.toString() || '0', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { name: 'Active Subscriptions', value: (stats as any)?.totalReferrals?.toString() || '0', icon: ShieldCheck, color: 'text-green-600', bg: 'bg-green-50' },
-    { name: 'Total Revenue', value: `₦${Number(stats?.totalRevenue || 0).toLocaleString()}`, icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' },
-    { name: 'Commissions Paid', value: `₦${Number(stats?.commissionsPaid || 0).toLocaleString()}`, icon: Wallet, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { name: 'Pending Payouts', value: `₦${Number(stats?.pendingPayouts || 0).toLocaleString()}`, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
-    { name: 'Fraud Alerts', value: stats?.fraudAlerts?.toString() || '0', icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50' },
+    { 
+      name: 'Total Affiliates', 
+      value: stats?.totalAffiliates?.toString() || '0', 
+      growth: stats?.totalAffiliatesGrowth || 0,
+      icon: Users, 
+      color: 'text-blue-600', 
+      bg: 'bg-blue-50' 
+    },
+    { 
+      name: 'Active Affiliates', 
+      value: stats?.activeAffiliates?.toString() || '0', 
+      icon: ShieldCheck, 
+      color: 'text-green-600', 
+      bg: 'bg-green-50' 
+    },
+    { 
+      name: 'Total Revenue', 
+      value: `₦${Number(stats?.totalRevenue || 0).toLocaleString()}`, 
+      growth: stats?.totalRevenueGrowth || 0,
+      icon: TrendingUp, 
+      color: 'text-purple-600', 
+      bg: 'bg-purple-50' 
+    },
+    { 
+      name: 'Commissions Paid', 
+      value: `₦${Number(stats?.commissionsPaid || 0).toLocaleString()}`, 
+      growth: stats?.commissionsTrendPercentage || 0,
+      icon: Wallet, 
+      color: 'text-blue-600', 
+      bg: 'bg-blue-50' 
+    },
+    { 
+      name: 'Pending Payouts', 
+      value: `₦${Number(stats?.pendingPayouts || 0).toLocaleString()}`, 
+      icon: Clock, 
+      color: 'text-orange-600', 
+      bg: 'bg-orange-50' 
+    },
+    { 
+      name: 'Fraud Alerts', 
+      value: stats?.fraudAlerts?.toString() || '0', 
+      icon: AlertTriangle, 
+      color: 'text-red-600', 
+      bg: 'bg-red-50' 
+    },
   ];
 
   const handleApprove = async (id: string, name: string) => {
@@ -78,10 +117,15 @@ export default function AdminOverview() {
                 <div className={cn("p-3 rounded-xl", stat.bg)}>
                   <stat.icon className={cn("w-6 h-6", stat.color)} />
                 </div>
-                <div className="flex items-center text-xs font-bold px-2 py-1 rounded-full text-blue-600 bg-blue-50">
-                  <TrendingUp className="w-3 h-3 mr-1" />
-                  Live
-                </div>
+                {stat.growth !== undefined && (
+                  <div className={cn(
+                    "flex items-center text-xs font-bold px-2 py-1 rounded-full",
+                    stat.growth >= 0 ? "text-green-600 bg-green-50" : "text-red-600 bg-red-50"
+                  )}>
+                    {stat.growth >= 0 ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <TrendingUp className="w-3 h-3 mr-1 rotate-180" />}
+                    {Math.abs(stat.growth)}%
+                  </div>
+                )}
               </div>
               <p className="text-sm font-medium text-slate-500 mb-1">{stat.name}</p>
               <h3 className="text-2xl font-bold text-slate-900">{stat.value}</h3>

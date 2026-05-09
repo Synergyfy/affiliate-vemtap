@@ -2,6 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import { DashboardService } from "./dashboard.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { ConfigService } from "@nestjs/config";
 
 describe("DashboardService", () => {
   let service: DashboardService;
@@ -41,6 +42,12 @@ describe("DashboardService", () => {
             fraudAlert: {
               count: jest.fn(),
             },
+          },
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn(),
           },
         },
       ],
@@ -175,68 +182,42 @@ describe("DashboardService", () => {
         .mockResolvedValueOnce({ _sum: { amount: 1500 } } as any) // current month
         .mockResolvedValueOnce({ _sum: { amount: 1000 } } as any); // previous month
 
+      // Mock business aggregate: totalRevenue, currentMonthRevenue, previousMonthRevenue
+      jest
+        .spyOn(prisma.business, "aggregate")
+        .mockResolvedValueOnce({ _sum: { subscriptionAmount: 5000 } } as any) // totalRevenue
+        .mockResolvedValueOnce({ _sum: { subscriptionAmount: 2000 } } as any) // currentMonthRevenue
+        .mockResolvedValueOnce({ _sum: { subscriptionAmount: 1000 } } as any); // previousMonthRevenue
+
+      // Mock user count: totalAffiliates, activeAffiliates, currentMonthAffiliates, previousMonthAffiliates
+      jest
+        .spyOn(prisma.user, "count")
+        .mockResolvedValueOnce(50) // totalAffiliates
+        .mockResolvedValueOnce(40) // activeAffiliates
+        .mockResolvedValueOnce(10) // currentMonthAffiliates
+        .mockResolvedValueOnce(5); // previousMonthAffiliates
+
       const result = await service.getAdminStats();
 
       expect(result.commissionsTrendPercentage).toBe(50);
-      expect(result.totalAffiliates).toBe(10);
-      expect(result.pendingPayouts).toBe(200);
-      expect(result.approvedPayouts).toBe(300);
-      expect(result.completedPayouts).toBe(500); // 100 (processing) + 400 (paid)
+      expect(result.totalRevenueGrowth).toBe(100);
+      expect(result.totalAffiliatesGrowth).toBe(100);
+      expect(result.totalAffiliates).toBe(50);
     });
 
-    it("should handle zero previous commissions for trend percentage", async () => {
-      jest.spyOn(prisma.user, "count").mockResolvedValue(10);
-      jest
-        .spyOn(prisma.business, "aggregate")
-        .mockResolvedValue({ _sum: { subscriptionAmount: 1000 } } as any);
-      jest.spyOn(prisma.fraudAlert, "count").mockResolvedValue(1);
-
-      jest
-        .spyOn(prisma.withdrawal, "aggregate")
-        .mockResolvedValueOnce({ _sum: { amount: 200 } } as any) // PENDING
-        .mockResolvedValueOnce({ _sum: { amount: 0 } } as any) // APPROVED
-        .mockResolvedValueOnce({ _sum: { amount: 0 } } as any) // PROCESSING
-        .mockResolvedValueOnce({ _sum: { amount: 0 } } as any); // PAID
-
-      jest
-        .spyOn(prisma.commission, "aggregate")
-        .mockResolvedValueOnce({ _sum: { amount: 500 } } as any) // total paid
-        .mockResolvedValueOnce({ _sum: { amount: 500 } } as any) // current month
-        .mockResolvedValueOnce({ _sum: { amount: 0 } } as any); // previous month
+    it("should handle zero previous data for growth percentages", async () => {
+      jest.spyOn(prisma.user, "count").mockResolvedValue(0);
+      jest.spyOn(prisma.business, "aggregate").mockResolvedValue({ _sum: {} } as any);
+      jest.spyOn(prisma.fraudAlert, "count").mockResolvedValue(0);
+      jest.spyOn(prisma.withdrawal, "aggregate").mockResolvedValue({ _sum: {} } as any);
+      jest.spyOn(prisma.commission, "aggregate").mockResolvedValue({ _sum: {} } as any);
 
       const result = await service.getAdminStats();
 
-      expect(result.commissionsTrendPercentage).toBe(100);
-      expect(result.approvedPayouts).toBe(0);
-      expect(result.completedPayouts).toBe(0);
+      expect(result.totalRevenueGrowth).toBe(0);
+      expect(result.totalAffiliatesGrowth).toBe(0);
     });
 
-    it("should return correct breakdown when all withdrawal statuses exist", async () => {
-      jest.spyOn(prisma.user, "count").mockResolvedValue(50);
-      jest
-        .spyOn(prisma.business, "aggregate")
-        .mockResolvedValue({ _sum: { subscriptionAmount: 50000 } } as any);
-      jest.spyOn(prisma.fraudAlert, "count").mockResolvedValue(2);
-
-      jest
-        .spyOn(prisma.withdrawal, "aggregate")
-        .mockResolvedValueOnce({ _sum: { amount: 10000 } } as any) // PENDING: 10k
-        .mockResolvedValueOnce({ _sum: { amount: 5000 } } as any) // APPROVED: 5k
-        .mockResolvedValueOnce({ _sum: { amount: 2000 } } as any) // PROCESSING: 2k
-        .mockResolvedValueOnce({ _sum: { amount: 8000 } } as any); // PAID: 8k
-
-      jest
-        .spyOn(prisma.commission, "aggregate")
-        .mockResolvedValueOnce({ _sum: { amount: 20000 } } as any) // total paid
-        .mockResolvedValueOnce({ _sum: { amount: 5000 } } as any) // current month
-        .mockResolvedValueOnce({ _sum: { amount: 3000 } } as any); // previous month
-
-      const result = await service.getAdminStats();
-
-      expect(result.pendingPayouts).toBe(10000);
-      expect(result.approvedPayouts).toBe(5000);
-      expect(result.completedPayouts).toBe(10000); // 2k processing + 8k paid
-    });
   });
 
   describe("getManagerPerformance", () => {

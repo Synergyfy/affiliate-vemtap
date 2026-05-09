@@ -7,6 +7,7 @@ import { User, Tier, Role, UserStatus, KycStatus, Prisma } from "@prisma/client"
 import { PaystackService } from "../payments/paystack.service";
 import { OtpService } from "../otp/otp.service";
 import { ResendService } from "../otp/resend.service";
+import { UserFilterDto } from "./dto/user-filter.dto";
 
 @Injectable()
 export class UsersService {
@@ -236,11 +237,33 @@ export class UsersService {
     });
   }
 
-  async findAllAdmin(pagination: { skip?: number; take?: number }) {
+  async findAllAdmin(filter: UserFilterDto) {
+    const where: Prisma.UserWhereInput = {};
+
+    if (filter.role) {
+      where.role = filter.role;
+    } else {
+      where.role = Role.AFFILIATE;
+    }
+
+    if (filter.status) {
+      where.status = filter.status;
+    }
+
+    if (filter.search) {
+      where.OR = [
+        { fullName: { contains: filter.search, mode: "insensitive" } },
+        { email: { contains: filter.search, mode: "insensitive" } },
+        { phone: { contains: filter.search, mode: "insensitive" } },
+        { referralCode: { contains: filter.search, mode: "insensitive" } },
+      ];
+    }
+
     const [data, total] = await Promise.all([
       this.prisma.user.findMany({
-        skip: pagination.skip,
-        take: pagination.take,
+        where,
+        skip: filter.skip,
+        take: filter.take,
         orderBy: { createdAt: "desc" },
         select: {
           id: true,
@@ -256,7 +279,7 @@ export class UsersService {
           totalEarnings: true,
         },
       }),
-      this.prisma.user.count(),
+      this.prisma.user.count({ where }),
     ]);
     return { data, total };
   }

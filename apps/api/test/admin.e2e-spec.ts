@@ -227,6 +227,19 @@ describe("Admin Backend (e2e)", () => {
       });
       await prismaService.user.delete({ where: { id: testUser.id } });
     });
+
+    it("/admin/dashboard/stats (GET) - should return growth metrics", async () => {
+      await cacheManager.del("admin_stats");
+      const res = await request(app.getHttpServer())
+        .get("/admin/dashboard/stats")
+        .set("Cookie", adminCookies)
+        .expect(200);
+
+      expect(res.body).toHaveProperty("totalRevenueGrowth");
+      expect(res.body).toHaveProperty("totalAffiliatesGrowth");
+      expect(typeof res.body.totalRevenueGrowth).toBe("number");
+      expect(typeof res.body.totalAffiliatesGrowth).toBe("number");
+    });
   });
 
   describe("FraudController", () => {
@@ -332,6 +345,29 @@ describe("Admin Backend (e2e)", () => {
         "ID,Email,Full Name,Phone,Role,Status,KYC Status,Tier,Total Earnings,Created At",
       );
     });
+
+    it("/users (GET) - should support filtering and search for admin", async () => {
+      // Create a specific user to search for
+      const uniqueName = `FilterTest-${Date.now()}`;
+      await prismaService.user.create({
+        data: {
+          email: `${uniqueName}@test.com`,
+          fullName: uniqueName,
+          phone: `phone-${Date.now()}`,
+          password: "password123",
+          role: Role.AFFILIATE,
+          referralCode: `REF-${uniqueName}`,
+        },
+      });
+
+      const res = await request(app.getHttpServer())
+        .get(`/users?search=${uniqueName}&role=AFFILIATE`)
+        .set("Cookie", adminCookies)
+        .expect(200);
+
+      expect(res.body.data.length).toBe(1);
+      expect(res.body.data[0].fullName).toBe(uniqueName);
+    });
   });
 
   describe("NotificationsController", () => {
@@ -422,6 +458,29 @@ describe("Admin Backend (e2e)", () => {
         .expect(200);
 
       expect(res.body.data.some((m: any) => m.id === moduleId)).toBeTruthy();
+    });
+  });
+
+  describe("Auth & Audit (e2e)", () => {
+    it("should log LOGIN event in AuditLog upon successful login", async () => {
+      const loginRes = await request(app.getHttpServer())
+        .post("/auth/login")
+        .send({ email: "admin@test.com", password: "password123" });
+
+      expect(loginRes.status).toBe(200);
+      const userId = loginRes.body.user.id;
+
+      // Check for audit log entry
+      const auditLog = await prismaService.auditLog.findFirst({
+        where: {
+          userId,
+          action: "LOGIN",
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      expect(auditLog).toBeDefined();
+      expect(auditLog?.userId).toBe(userId);
     });
   });
 });

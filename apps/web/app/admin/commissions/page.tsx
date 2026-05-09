@@ -17,8 +17,10 @@ import {
   RotateCcw
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
+import FilterBar from '@/components/admin/FilterBar';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/toast';
+import { useDebounce } from '@/hooks/use-debounce';
 
 import { useCommissions, useUpdateCommissionStatus } from '@/services/useCommissionsHooks';
 import { useSettings, useUpdateSettings } from '@/services/useAdminHooks';
@@ -27,9 +29,15 @@ import { Commission, CommissionStatus } from '@/types/api';
 
 export default function CommissionsManagement() {
   const { showToast } = useToast();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('All');
+  const debouncedSearch = useDebounce(searchTerm, 500);
   
-  const { data: commissionsResponse, isLoading: isCommissionsLoading } = useCommissions({ limit: 50 });
+  const { data: commissionsResponse, isLoading: isCommissionsLoading } = useCommissions({ 
+    limit: 50,
+    search: debouncedSearch || undefined,
+    status: statusFilter === 'All' ? undefined : statusFilter as any
+  });
   const { data: settings, isLoading: isSettingsLoading } = useSettings();
   const updateStatus = useUpdateCommissionStatus();
   const updateSettings = useUpdateSettings();
@@ -61,10 +69,6 @@ export default function CommissionsManagement() {
   };
 
   const commissionsList = commissionsResponse?.data || [];
-  const filteredCommissions = commissionsList.filter(c => 
-    c.user?.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   const commissionsStats = [
     { label: 'Total Commissions', value: `₦${commissionsList.reduce((acc, curr) => acc + Number(curr.amount), 0).toLocaleString()}`, icon: Percent, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+12%', trendUp: true },
@@ -197,27 +201,37 @@ export default function CommissionsManagement() {
 
         {/* Table Section */}
         <div className="space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h2 className="text-xl font-bold text-slate-900">Commission History</h2>
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={() => showToast("Filters updated", "info")}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-600 font-medium hover:bg-slate-50 transition-all"
-              >
-                <Filter className="w-4 h-4" />
-                Filter
-              </button>
+          <FilterBar 
+            searchQuery={searchTerm}
+            onSearchChange={setSearchTerm}
+            searchPlaceholder="Search by affiliate or business..."
+            activeFilter={statusFilter}
+            onFilterChange={setStatusFilter}
+            filterLabel="Status"
+            filterOptions={[
+              { label: 'All Status', value: 'All' },
+              { label: 'Pending', value: 'PENDING' },
+              { label: 'Active', value: 'ACTIVE' },
+              { label: 'Paid', value: 'PAID' }
+            ]}
+            extraActions={
               <button 
                 onClick={() => showToast("Exporting commissions to CSV...", "info")}
                 className="px-4 py-2 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all"
               >
                 Export CSV
               </button>
-            </div>
-          </div>
+            }
+          />
+        </div>
 
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto relative min-h-[400px]">
+              {isCommissionsLoading && (
+                <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                </div>
+              )}
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
@@ -230,7 +244,7 @@ export default function CommissionsManagement() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredCommissions.map((comm, idx) => (
+                  {commissionsList.map((comm, idx) => (
                     <motion.tr 
                       key={comm.id}
                       initial={{ opacity: 0, x: -10 }}
@@ -273,7 +287,6 @@ export default function CommissionsManagement() {
                   ))}
                 </tbody>
               </table>
-            </div>
           </div>
         </div>
       </div>

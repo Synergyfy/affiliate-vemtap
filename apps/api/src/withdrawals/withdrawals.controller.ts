@@ -21,6 +21,7 @@ import {
   WithdrawalResponseDto,
   PaginatedWithdrawalResponseDto,
 } from "./dto/withdrawal-response.dto";
+import { WithdrawalFilterDto } from "./dto/withdrawal-filter.dto";
 import { PaginationDto } from "../common/dto/pagination.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
@@ -89,19 +90,16 @@ export class WithdrawalsController {
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "List all withdrawals (Admin only)" })
   @ApiOkResponse({ type: PaginatedWithdrawalResponseDto })
-  async findAllAdmin(@Query() paginationDto: PaginationDto) {
-    const { data, total } = await this.withdrawalsService.findAllAdmin({
-      skip: paginationDto.skip,
-      take: paginationDto.take,
-    });
+  async findAllAdmin(@Query() filterDto: WithdrawalFilterDto) {
+    const { data, total } = await this.withdrawalsService.findAllAdmin(filterDto);
 
     return {
       data,
       meta: {
         total,
-        page: paginationDto.page,
-        limit: paginationDto.limit,
-        totalPages: Math.ceil(total / (paginationDto.limit || 10)),
+        page: filterDto.page,
+        limit: filterDto.limit,
+        totalPages: Math.ceil(total / (filterDto.limit || 10)),
       },
     };
   }

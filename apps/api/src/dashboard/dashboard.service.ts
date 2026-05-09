@@ -41,6 +41,10 @@ export class DashboardService {
       fraudAlerts,
       currentCommissions,
       previousCommissions,
+      currentMonthRevenue,
+      previousMonthRevenue,
+      currentMonthAffiliates,
+      previousMonthAffiliates,
     ] = await Promise.all([
       this.prisma.user.count({ where: { role: "AFFILIATE" } }),
       this.prisma.user.count({
@@ -82,16 +86,42 @@ export class DashboardService {
         },
         _sum: { amount: true },
       }),
+      this.prisma.business.aggregate({
+        where: { status: "ACTIVE", createdAt: { gte: thirtyDaysAgo } },
+        _sum: { subscriptionAmount: true },
+      }),
+      this.prisma.business.aggregate({
+        where: {
+          status: "ACTIVE",
+          createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo },
+        },
+        _sum: { subscriptionAmount: true },
+      }),
+      this.prisma.user.count({
+        where: { role: "AFFILIATE", createdAt: { gte: thirtyDaysAgo } },
+      }),
+      this.prisma.user.count({
+        where: {
+          role: "AFFILIATE",
+          createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo },
+        },
+      }),
     ]);
 
-    const currentVal = Number(currentCommissions._sum.amount || 0);
-    const previousVal = Number(previousCommissions._sum.amount || 0);
-    const trend =
-      previousVal === 0
-        ? currentVal > 0
-          ? 100
-          : 0
-        : Math.round(((currentVal - previousVal) / previousVal) * 100);
+    const calculateGrowth = (current: number, previous: number) => {
+      if (previous === 0) return current > 0 ? 100 : 0;
+      return Math.round(((current - previous) / previous) * 100);
+    };
+
+    const commissionsCurrentVal = Number(currentCommissions._sum.amount || 0);
+    const commissionsPreviousVal = Number(previousCommissions._sum.amount || 0);
+    const commissionsTrend = calculateGrowth(commissionsCurrentVal, commissionsPreviousVal);
+
+    const revenueCurrentVal = Number(currentMonthRevenue._sum.subscriptionAmount || 0);
+    const revenuePreviousVal = Number(previousMonthRevenue._sum.subscriptionAmount || 0);
+    const revenueTrend = calculateGrowth(revenueCurrentVal, revenuePreviousVal);
+
+    const affiliatesTrend = calculateGrowth(currentMonthAffiliates, previousMonthAffiliates);
 
     const stats = {
       totalAffiliates,
@@ -104,7 +134,9 @@ export class DashboardService {
         Number(processingPayouts._sum.amount || 0) +
         Number(completedPayouts._sum.amount || 0),
       fraudAlerts,
-      commissionsTrendPercentage: trend,
+      commissionsTrendPercentage: commissionsTrend,
+      totalRevenueGrowth: revenueTrend,
+      totalAffiliatesGrowth: affiliatesTrend,
     };
 
     await this.cacheManager.set(cacheKey, stats, 300 * 1000); // 5 minutes in ms

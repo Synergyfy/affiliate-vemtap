@@ -48,6 +48,8 @@ model User {
   trainingProgress TrainingProgress[]
   shortLinks      ShortLink[]
   linkClicks      LinkClick[]
+  fraudAlerts     FraudAlert[] @relation("UserAlerts")
+  resolvedAlerts  FraudAlert[] @relation("ResolvedAlerts")
   
   tokenVersion    Int       @default(0)
   paystackSubaccountId String?
@@ -409,6 +411,7 @@ model FraudAlert {
   id              String    @id @default(uuid())
   
   userId          String
+  user            User      @relation("UserAlerts", fields: [userId], references: [id], onDelete: Cascade)
   
   type            FraudType
   severity        Severity
@@ -419,6 +422,7 @@ model FraudAlert {
   status          FraudStatus @default(OPEN)
   resolvedAt      DateTime?
   resolvedBy      String?
+  resolver        User?     @relation("ResolvedAlerts", fields: [resolvedBy], references: [id])
   resolution      String?
   
   createdAt       DateTime  @default(now())

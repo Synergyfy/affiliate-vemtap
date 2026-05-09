@@ -215,4 +215,43 @@ describe('WithdrawalsService Bulk', () => {
       }));
     });
   });
+
+  describe('findAllAdmin', () => {
+    it('should call prisma.withdrawal.findMany and count with filters', async () => {
+      const mockWithdrawals = [{ id: '1', amount: 5000 }];
+      mockPrisma.withdrawal.findMany.mockResolvedValue(mockWithdrawals);
+      mockPrisma.withdrawal.count.mockResolvedValue(1);
+
+      const filter = { status: 'PENDING' as any, search: '123', skip: 0, take: 10 };
+      const result = await service.findAllAdmin(filter);
+
+      expect(result.data).toEqual(mockWithdrawals);
+      expect(result.total).toBe(1);
+      expect(mockPrisma.withdrawal.findMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({
+          status: 'PENDING',
+          OR: expect.arrayContaining([
+            { accountNumber: { contains: '123', mode: 'insensitive' } }
+          ])
+        })
+      }));
+    });
+
+    it('should filter by date range', async () => {
+      mockPrisma.withdrawal.findMany.mockResolvedValue([]);
+      mockPrisma.withdrawal.count.mockResolvedValue(0);
+
+      const filter = { startDate: '2026-05-01', endDate: '2026-05-31', skip: 0, take: 10 };
+      await service.findAllAdmin(filter);
+
+      expect(mockPrisma.withdrawal.findMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({
+          createdAt: {
+            gte: new Date('2026-05-01'),
+            lte: new Date('2026-05-31'),
+          }
+        })
+      }));
+    });
+  });
 });
