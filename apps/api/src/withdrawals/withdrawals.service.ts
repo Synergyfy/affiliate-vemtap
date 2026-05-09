@@ -289,7 +289,7 @@ export class WithdrawalsService {
     };
   }
 
-  private async processApproval(withdrawal: any, adminId?: string) {
+  private async processApproval(withdrawal: any, _adminId?: string) {
     // 1. Initiate Paystack transfer if recipient exists
     if ((withdrawal.user as UserWithPaystack).paystackRecipientCode) {
       await this.paystackService.initiateTransfer(

@@ -2,11 +2,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NetworkService } from './network.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { BonusType } from './dto/network-response.dto';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 
 describe('NetworkService', () => {
   let service: NetworkService;
-  let prisma: PrismaService;
 
   const mockUser = {
     findUnique: jest.fn(),
@@ -42,7 +41,6 @@ describe('NetworkService', () => {
     }).compile();
 
     service = module.get<NetworkService>(NetworkService);
-    prisma = module.get<PrismaService>(PrismaService);
   });
 
   afterEach(() => {

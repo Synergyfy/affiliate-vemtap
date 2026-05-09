@@ -1,7 +1,6 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api-client';
 
 interface User {
@@ -15,21 +14,19 @@ interface User {
   hasAcceptedTerms?: boolean;
   hasSignedAgreement?: boolean;
   createdAt?: string;
-  role?: 'AFFILIATE' | 'ADMIN' | 'SUPER_ADMIN' | 'affiliate' | 'manager';
+  role?: 'affiliate' | 'manager';
   location?: string;
   address?: string;
   isKycVerified?: boolean;
   totalEarnings?: number;
   kycStatus?: string;
-  bankName?: string;
-  accountNumber?: string;
-  accountName?: string;
+  avatar?: string;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password?: string) => Promise<User>;
-  signup: (userData: any) => Promise<User>;
+  login: (email: string, password?: string) => Promise<void>;
+  signup: (userData: any) => Promise<void>;
   updateUser: (data: Partial<User>) => void;
   logout: () => void;
   isAuthenticated: boolean;
@@ -40,44 +37,30 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('vemtap_user');
+      return saved ? JSON.parse(saved) : null;
+    }
+    return null;
+  });
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Set up unauthorized callback once
   useEffect(() => {
-    api.setUnauthorizedCallback(() => {
-      logout();
-      router.push('/login');
-    });
-  }, [router]);
-
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        // Try to fetch current user profile to verify session
-        const response = await api.get('/auth/me');
-        if (response?.user) {
-          setUser(response.user);
+    const checkAuth = async () => {
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('vemtap_user');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setUser(parsed);
           setIsAuthenticated(true);
-          localStorage.setItem('vemtap_user', JSON.stringify(response.user));
-        } else {
-          // If no user profile returned, clear state
-          localStorage.removeItem('vemtap_user');
-          setIsAuthenticated(false);
         }
-      } catch (err) {
-        // Silent fail on init - might just be unauthenticated
-        console.log('Session verification failed or no active session');
-        localStorage.removeItem('vemtap_user');
-      } finally {
-        setIsLoading(false);
       }
+      setIsLoading(false);
     };
-    
-    initAuth();
+    checkAuth();
   }, []);
 
   const login = async (email: string, password?: string) => {
@@ -90,7 +73,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(user);
       setIsAuthenticated(true);
       localStorage.setItem('vemtap_user', JSON.stringify(user));
-      return user;
     } catch (err: any) {
       setError(err.message || 'Login failed');
       throw err;
@@ -109,7 +91,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(user);
       setIsAuthenticated(true);
       localStorage.setItem('vemtap_user', JSON.stringify(user));
-      return user;
     } catch (err: any) {
       setError(err.message || 'Signup failed');
       throw err;
@@ -125,17 +106,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('vemtap_user', JSON.stringify(updatedUser));
   };
 
-  const logout = async () => {
-    try {
-      await api.post('/auth/logout');
-    } catch (err) {
-      console.error('Logout request failed', err);
-    } finally {
-      setUser(null);
-      setIsAuthenticated(false);
-      localStorage.removeItem('vemtap_user');
-      router.push('/login');
-    }
+  const logout = () => {
+    setUser(null);
+    setIsAuthenticated(false);
+    localStorage.removeItem('vemtap_user');
   };
 
   return (

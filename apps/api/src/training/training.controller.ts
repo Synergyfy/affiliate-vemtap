@@ -29,7 +29,6 @@ import {
   UpdateTrainingProgressDto,
 } from "./dto/training.dto";
 import {
-  TrainingModuleResponseDto,
   PaginatedTrainingModuleResponseDto,
 } from "./dto/training-response.dto";
 import { PaginationDto } from "../common/dto/pagination.dto";

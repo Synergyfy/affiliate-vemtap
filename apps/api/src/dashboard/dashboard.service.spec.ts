@@ -1,5 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
+import { ConfigService } from "@nestjs/config";
 import { DashboardService } from "./dashboard.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { ConfigService } from "@nestjs/config";
@@ -12,6 +13,12 @@ describe("DashboardService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DashboardService,
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn(),
+          },
+        },
         {
           provide: CACHE_MANAGER,
           useValue: {

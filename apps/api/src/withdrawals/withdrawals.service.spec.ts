@@ -9,10 +9,6 @@ import { KycStatus, Prisma } from '@prisma/client';
 
 describe('WithdrawalsService Bulk', () => {
   let service: WithdrawalsService;
-  // @ts-ignore
-  let prisma: PrismaService;
-  // @ts-ignore
-  let settingsService: SettingsService;
 
   const mockPrisma: any = {
     user: {
@@ -65,8 +61,6 @@ describe('WithdrawalsService Bulk', () => {
     }).compile();
 
     service = module.get<WithdrawalsService>(WithdrawalsService);
-    prisma = module.get<PrismaService>(PrismaService);
-    settingsService = module.get<SettingsService>(SettingsService);
   });
 
   afterEach(() => {
