@@ -41,6 +41,7 @@ const leadSchema = z.object({
   status: z.enum(['Potential', 'Contacted', 'Interested', 'Not Interested', 'Completed']).default('Potential'),
   followUpDate: z.string().optional(),
   comments: z.string().optional(),
+  assignedAgentId: z.string().optional(),
 });
 
 type LeadFormValues = z.infer<typeof leadSchema>;
@@ -48,10 +49,11 @@ type LeadFormValues = z.infer<typeof leadSchema>;
 interface LeadCaptureFormProps {
   agentId?: string;
   isPublic?: boolean;
+  isAdmin?: boolean;
   onSuccess?: () => void;
 }
 
-export default function LeadCaptureForm({ agentId, isPublic = false, onSuccess }: LeadCaptureFormProps) {
+export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = false, onSuccess }: LeadCaptureFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
@@ -128,13 +130,32 @@ export default function LeadCaptureForm({ agentId, isPublic = false, onSuccess }
           </div>
         )}
 
-        <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl flex items-start gap-3">
-          <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-xs font-bold text-blue-900">Partial Info Allowed</p>
-            <p className="text-[10px] text-blue-700 leading-relaxed">Submit what you have now; you can add more details later in your dashboard.</p>
-          </div>
-        </div>
+
+
+        {isAdmin && (
+          <section className="bg-slate-900 p-8 rounded-[32px] text-white space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-500/20 rounded-xl text-blue-400">
+                <User className="w-5 h-5" />
+              </div>
+              <h3 className="text-sm font-black uppercase tracking-widest">Assign to Agent</h3>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Select Agent *</label>
+              <select 
+                {...register('assignedAgentId')}
+                className="w-full px-4 py-4 bg-white/10 border border-white/20 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 transition-all text-white appearance-none"
+              >
+                <option value="" className="text-slate-900">Select an active agent</option>
+                <option value="agent-1" className="text-slate-900">John Doe (VEM-001)</option>
+                <option value="agent-2" className="text-slate-900">Sarah Smith (VEM-002)</option>
+                <option value="agent-3" className="text-slate-900">Michael Bolan (VEM-003)</option>
+                <option value="agent-4" className="text-slate-900">David King (VEM-004)</option>
+              </select>
+              <p className="text-[10px] text-slate-400 px-1 mt-1 italic">This lead will appear instantly in the selected agent's dashboard.</p>
+            </div>
+          </section>
+        )}
 
         {/* Section 1: Business */}
         <section className="space-y-6">

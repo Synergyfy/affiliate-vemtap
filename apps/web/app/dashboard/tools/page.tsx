@@ -36,7 +36,8 @@ export default function ReferralTools() {
       url: `https://vemtap.com/register?ref=${referralCode}`,
       icon: Building2,
       color: 'blue',
-      badge: 'Revenue Source'
+      badge: 'Revenue Source',
+      shareMessage: "📈 Scale your business with Vemtap! Manage payments, customers, and operations seamlessly. Join thousands of merchants growing with us. Sign up today:",
     },
     agent: {
       title: 'Agent Recruitment',
@@ -44,7 +45,8 @@ export default function ReferralTools() {
       url: `https://affiliates.vemtap.com/signup?ref=${referralCode}`,
       icon: UserPlus,
       color: 'emerald',
-      badge: 'Team Growth'
+      badge: 'Team Growth',
+      shareMessage: "🚀 Join the Vemtap Affiliate Network! Earn high commissions, build your own team, and grow with Africa's fastest-growing business platform. Start your journey here:",
     }
   };
 
@@ -53,16 +55,17 @@ export default function ReferralTools() {
   const { showToast } = useToast();
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(activeLink.url);
+    const fullMessage = `${activeLink.shareMessage}\n${activeLink.url}`;
+    navigator.clipboard.writeText(fullMessage);
     setCopied(true);
-    showToast('Link copied to clipboard!', 'success');
+    showToast('Marketing message & link copied!', 'success');
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleShare = async () => {
     const shareData = {
       title: activeLink.title,
-      text: activeLink.desc,
+      text: activeLink.shareMessage,
       url: activeLink.url,
     };
 
@@ -252,6 +255,23 @@ export default function ReferralTools() {
                   activeTab === 'business' ? "text-blue-900" : "text-emerald-900"
                 )}>
                   <activeLink.icon className="w-full h-full" />
+                </div>
+              </div>
+
+              {/* Share Preview Section */}
+              <div className="bg-slate-50 p-8 rounded-[40px] border border-slate-200 border-dashed">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Share Write-up Preview</h4>
+                </div>
+                <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                  <p className="text-sm font-medium text-slate-600 italic leading-relaxed">
+                    "{activeLink.shareMessage}"
+                  </p>
+                  <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-blue-600 truncate max-w-[200px]">{activeLink.url}</span>
+                    <span className="text-[9px] font-black text-slate-300 uppercase">Marketing Content</span>
+                  </div>
                 </div>
               </div>
 
