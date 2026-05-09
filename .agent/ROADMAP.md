@@ -27,8 +27,8 @@ This file tracks what is built, what is in progress, and what is planned. Update
 | Get current user | ✅ | `GET /api/auth/me` |
 | Password hashing (bcrypt) | ✅ | Cost factor 10 |
 | Password never returned in responses | ✅ | Enforced in UsersService |
-| Role-based access guard (RolesGuard) | 📋 | Decorator + guard in `src/auth/` |
-| User status enforcement in JwtStrategy | ⚠️ | DEACTIVATED/SUSPENDED not yet blocked at JWT level |
+| Role-based access guard (RolesGuard) | ✅ | Decorator + guard in `src/auth/guards/roles.guard.ts` |
+| User status enforcement in JwtStrategy | ✅ | Blocked in `src/auth/strategies/jwt.strategy.ts` |
 
 ---
 
@@ -89,8 +89,8 @@ This file tracks what is built, what is in progress, and what is planned. Update
 | Admin: list all commissions | ✅ | `GET /api/commissions` |
 | Admin: approve commission | ✅ | `PATCH /api/commissions/:id/status` |
 | Admin: reject commission | ✅ | `PATCH /api/commissions/:id/status` |
-| Super admin: issue manual bonus | 📋 | `POST /api/commissions/manual` |
-| Commission calculation (direct + indirect) | ✅ | Service logic |
+| Super admin: issue manual bonus | 📋 | Planned in `CommissionsService` |
+| Commission calculation (direct + indirect) | ✅ | Service logic in `BusinessesService` |
 
 ---
 
@@ -103,7 +103,7 @@ This file tracks what is built, what is in progress, and what is planned. Update
 | Admin: list all withdrawals | ✅ | `GET /api/withdrawals` |
 | Admin: approve/reject withdrawal | ✅ | `PATCH /api/withdrawals/:id/status` |
 | Minimum withdrawal amount enforcement | ✅ | Business rule in service |
-| Withdrawal fee calculation | 📋 | `netAmount = amount - fee` |
+| Withdrawal fee calculation | ✅ | `netAmount = amount - fee` in `WithdrawalsService` |
 
 ---
 
@@ -111,9 +111,9 @@ This file tracks what is built, what is in progress, and what is planned. Update
 
 | Feature | Status | Notes |
 |---|---|---|
-| List training modules | 📋 | `GET /api/training/modules` |
+| List training modules | ✅ | `GET /api/training/modules` |
 | Mark module complete | 📋 | `POST /api/training/modules/:id/complete` |
-| View training progress | 📋 | `GET /api/training/progress` |
+| View training progress | ✅ | `GET /api/training/progress` |
 
 ---
 
@@ -121,10 +121,10 @@ This file tracks what is built, what is in progress, and what is planned. Update
 
 | Feature | Status | Notes |
 |---|---|---|
-| Get notifications | 📋 | `GET /api/notifications` |
-| Mark as read | 📋 | `PATCH /api/notifications/:id/read` |
+| Get notifications | ✅ | `GET /api/notifications/me` |
+| Mark as read | ✅ | `PATCH /api/notifications/:id/read` |
 | Mark all as read | 📋 | `PATCH /api/notifications/read-all` |
-| Trigger notification on commission approval | 📋 | Service event |
+| Trigger notification on commission approval | 📋 | Planned in `CommissionsService` |
 
 ---
 

@@ -46,7 +46,7 @@ describe("Fraud Detection (e2e)", () => {
     const testIp = "1.2.3.4";
 
     // 1. Create and login User A from Test IP
-    const userA = await prismaService.user.create({
+    const _userA = await prismaService.user.create({
       data: {
         email: "usera@test.com",
         fullName: "User A",

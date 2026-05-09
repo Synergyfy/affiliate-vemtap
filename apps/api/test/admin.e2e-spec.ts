@@ -51,7 +51,7 @@ describe("Admin Backend (e2e)", () => {
     const password = await bcrypt.hash("password123", 10);
 
     // Admin User
-    const admin = await prismaService.user.upsert({
+    const _admin = await prismaService.user.upsert({
       where: { email: "admin@test.com" },
       update: {},
       create: {
@@ -65,7 +65,7 @@ describe("Admin Backend (e2e)", () => {
     });
 
     // Affiliate User
-    const affiliate = await prismaService.user.upsert({
+    const _affiliate = await prismaService.user.upsert({
       where: { email: "affiliate@test.com" },
       update: {},
       create: {

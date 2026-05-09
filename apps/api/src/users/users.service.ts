@@ -66,7 +66,7 @@ export class UsersService {
       },
     });
 
-    const { password: _, ...result } = user;
+    const { password: _password, ...result } = user;
     return result;
   }
 
@@ -81,7 +81,7 @@ export class UsersService {
   async findById(id: string): Promise<Omit<User, "password"> | null> {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) return null;
-    const { password: _, ...result } = user;
+    const { password: _password, ...result } = user;
     return result;
   }
 
@@ -146,7 +146,7 @@ export class UsersService {
       data,
     });
 
-    const { password: _, ...result } = user;
+    const { password: _password, ...result } = user;
     return result;
   }
 
@@ -201,7 +201,7 @@ export class UsersService {
       },
     });
 
-    const { password: _, ...result } = updatedUser;
+    const { password: _password, ...result } = updatedUser;
     return result;
   }
 
@@ -274,7 +274,7 @@ export class UsersService {
       },
     });
     if (!user) return null;
-    const { password: _, ...result } = user;
+    const { password: _password, ...result } = user;
     return result;
   }
 
@@ -376,7 +376,7 @@ export class UsersService {
       },
     });
 
-    const { password: _, ...result } = user;
+    const { password: _password, ...result } = user;
     return result;
   }
 

@@ -5,13 +5,10 @@ import { PaystackService } from '../payments/paystack.service';
 import { OtpService } from '../otp/otp.service';
 import { ResendService } from '../otp/resend.service';
 import { Tier } from '@prisma/client';
-import { ConflictException, BadRequestException } from '@nestjs/common';
+import { ConflictException } from '@nestjs/common';
 
 describe('UsersService', () => {
   let service: UsersService;
-  let prisma: PrismaService;
-  let otpService: OtpService;
-  let resendService: ResendService;
 
   const mockPrisma = {
     user: {
@@ -43,9 +40,6 @@ describe('UsersService', () => {
     }).compile();
 
     service = module.get<UsersService>(UsersService);
-    prisma = module.get<PrismaService>(PrismaService);
-    otpService = module.get<OtpService>(OtpService);
-    resendService = module.get<ResendService>(ResendService);
   });
 
   it('should be defined', () => {
