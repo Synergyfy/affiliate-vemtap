@@ -25,6 +25,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useCreateLead } from '@/services/useLeadsHooks';
 
 const leadSchema = z.object({
   businessName: z.string().min(1, 'Business name is required'),
@@ -37,8 +38,8 @@ const leadSchema = z.object({
   email: z.string().email('Invalid email').optional().or(z.literal('')),
   source: z.string().min(1, 'Lead source is required'),
   otherSource: z.string().optional(),
-  priority: z.enum(['Low', 'Medium', 'High']).default('Medium'),
-  status: z.enum(['Potential', 'Contacted', 'Interested', 'Not Interested', 'Completed']).default('Potential'),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH']).default('MEDIUM'),
+  status: z.enum(['POTENTIAL', 'CONTACTED', 'INTERESTED', 'NOT_INTERESTED', 'COMPLETED']).default('POTENTIAL'),
   followUpDate: z.string().optional(),
   comments: z.string().optional(),
   assignedAgentId: z.string().optional(),
@@ -54,10 +55,10 @@ interface LeadCaptureFormProps {
 }
 
 export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = false, onSuccess }: LeadCaptureFormProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const { showToast } = useToast();
+  const createLead = useCreateLead();
 
   const {
     register,
@@ -69,9 +70,9 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
   } = useForm<LeadFormValues>({
     resolver: zodResolver(leadSchema),
     defaultValues: {
-      priority: 'Medium',
+      priority: 'MEDIUM',
       source: 'Social Media',
-      status: 'Potential'
+      status: 'POTENTIAL'
     }
   });
 
@@ -90,34 +91,36 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
   }, []);
 
   const onSubmit = async (data: LeadFormValues) => {
-    setIsSubmitting(true);
-    
     const leadData = {
       ...data,
-      agentId,
-      capturedAt: new Date().toISOString(),
-      isPublic
+      assignedAgentId: isAdmin ? data.assignedAgentId : undefined,
     };
 
     if (!navigator.onLine) {
       const queue = JSON.parse(localStorage.getItem('vemtap_pending_leads') || '[]');
-      queue.push(leadData);
+      queue.push({ ...leadData, agentId, capturedAt: new Date().toISOString(), isPublic });
       localStorage.setItem('vemtap_pending_leads', JSON.stringify(queue));
       showToast('Offline: Lead saved to device.', 'warning');
-      setIsSubmitting(false);
       setShowSuccess(true);
+      
+      setTimeout(() => {
+        setShowSuccess(false);
+        reset();
+        onSuccess?.();
+      }, 2500);
     } else {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      console.log('Submitting Lead:', leadData);
-      setIsSubmitting(false);
-      setShowSuccess(true);
+      try {
+        await createLead.mutateAsync(leadData);
+        setShowSuccess(true);
+        setTimeout(() => {
+          setShowSuccess(false);
+          reset();
+          onSuccess?.();
+        }, 2500);
+      } catch (error) {
+        showToast('Failed to save lead. Please try again.', 'error');
+      }
     }
-
-    setTimeout(() => {
-      setShowSuccess(false);
-      reset();
-      onSuccess?.();
-    }, 2500);
   };
 
   return (
@@ -260,17 +263,17 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Current Status *</label>
               <select {...register('status')} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none">
-                <option value="Potential">Potential</option>
-                <option value="Contacted">Contacted</option>
-                <option value="Interested">Interested</option>
-                <option value="Not Interested">Not Interested</option>
-                <option value="Completed">Completed</option>
+                <option value="POTENTIAL">Potential</option>
+                <option value="CONTACTED">Contacted</option>
+                <option value="INTERESTED">Interested</option>
+                <option value="NOT_INTERESTED">Not Interested</option>
+                <option value="COMPLETED">Completed</option>
               </select>
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Priority</label>
               <div className="flex gap-2">
-                {['Low', 'Medium', 'High'].map((p) => (
+                {['LOW', 'MEDIUM', 'HIGH'].map((p) => (
                   <button 
                     key={p} 
                     type="button"
@@ -307,10 +310,10 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
         <div className="flex flex-col sm:flex-row gap-4">
           <Button 
             type="submit" 
-            disabled={isSubmitting}
+            disabled={createLead.isPending}
             className="flex-grow bg-slate-900 hover:bg-blue-600 text-white h-16 rounded-2xl text-sm font-black shadow-xl transition-all flex items-center justify-center gap-3"
           >
-            {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Save className="w-5 h-5" /> {isPublic ? 'Submit Lead' : 'Save Business'}</>}
+            {createLead.isPending ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Save className="w-5 h-5" /> {isPublic ? 'Submit Lead' : 'Save Business'}</>}
           </Button>
           {!isPublic && (
             <Button 

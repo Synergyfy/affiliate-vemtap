@@ -76,10 +76,11 @@ export class AuthService {
       });
     }
 
-    const payload = { sub: user.id, email: user.email };
+    const payload = { sub: user.id, email: user.email, role: user.role };
     const refreshPayload = {
       sub: user.id,
       email: user.email,
+      role: user.role,
       tokenVersion: user.tokenVersion || 0,
     };
 

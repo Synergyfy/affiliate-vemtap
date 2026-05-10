@@ -16,12 +16,15 @@ import {
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import { useLeadStats, useLeads } from '@/services/useLeadsHooks';
 
 export default function OverviewTab() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const isManager = user?.role === 'manager';
+  
+  const { data: stats, isLoading: isLoadingStats } = useLeadStats();
+  const { data: recentLeads = [], isLoading: isLoadingLeads } = useLeads({ limit: 3 });
 
   const handleAction = (action: string) => {
     showToast(`${action} action triggered`, 'info');
@@ -74,12 +77,14 @@ export default function OverviewTab() {
                   <Target className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest">Lead Pipeline</h4>
-                  <p className="text-2xl font-black text-slate-900">12 High Value</p>
+                  <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest">Interested Leads</h4>
+                  <p className="text-2xl font-black text-slate-900">
+                    {isLoadingStats ? '...' : stats?.interested ?? 0} Warm
+                  </p>
                 </div>
               </div>
               <p className="text-xs text-slate-500 leading-relaxed mb-6">
-                You have 12 leads in the &quot;Negotiation&quot; stage with a projected volume of ₦2.4M monthly.
+                You have {stats?.interested ?? 0} leads in the &quot;Interested&quot; stage. Follow up to convert them into active businesses.
               </p>
               <Button 
                 onClick={() => handleAction('View Pipeline')}
@@ -96,12 +101,14 @@ export default function OverviewTab() {
                   <TrendingUp className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest">Conversion Rate</h4>
-                  <p className="text-2xl font-black text-slate-900">18.4%</p>
+                  <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest">Potential Pipeline</h4>
+                  <p className="text-2xl font-black text-slate-900">
+                    {isLoadingStats ? '...' : stats?.potential ?? 0} New
+                  </p>
                 </div>
               </div>
               <p className="text-xs text-slate-500 leading-relaxed mb-6">
-                Your demo-to-close conversion rate is up 4% this month. Great performance on product demos!
+                Your initial discovery pipeline has {stats?.potential ?? 0} businesses. Initiate first contact to move them forward.
               </p>
               <Button 
                 onClick={() => handleAction('Performance Insights')}
@@ -116,7 +123,7 @@ export default function OverviewTab() {
           {/* Recent Activities Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-bold text-slate-900">Recent Operational Activity</h3>
+              <h3 className="text-lg font-bold text-slate-900">Recent Lead Activity</h3>
               <Button 
                 onClick={() => handleAction('View All Activity')}
                 variant="ghost" 
@@ -126,27 +133,33 @@ export default function OverviewTab() {
               </Button>
             </div>
             <div className="space-y-3">
-              {[
-                { title: 'Demo Completed', business: 'Nexus Retail Group', time: '2 hours ago', icon: Calendar, color: 'text-purple-600', bg: 'bg-purple-50' },
-                { title: 'New Lead Captured', business: 'Blue Diamond Hotels', time: '5 hours ago', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-                { title: 'Follow-up Successful', business: 'Z-Global Logistics', time: 'Yesterday', icon: MessageSquare, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-              ].map((activity, idx) => (
+              {isLoadingLeads ? (
+                [...Array(3)].map((_, i) => (
+                  <div key={i} className="h-20 bg-slate-50 animate-pulse rounded-2xl border border-slate-100" />
+                ))
+              ) : recentLeads.length === 0 ? (
+                <div className="p-10 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No recent activity</p>
+                </div>
+              ) : recentLeads.map((lead, idx) => (
                 <div 
-                  key={idx} 
-                  onClick={() => handleAction(`View ${activity.title}`)}
+                  key={lead.id} 
+                  onClick={() => handleAction(`View ${lead.businessName}`)}
                   className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 hover:border-blue-100 transition-all group cursor-pointer"
                 >
                   <div className="flex items-center gap-4">
-                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", activity.bg)}>
-                      <activity.icon className={cn("w-5 h-5", activity.color)} />
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-blue-50">
+                      <Users className="w-5 h-5 text-blue-600" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-900">{activity.title}</p>
-                      <p className="text-xs text-slate-500">{activity.business}</p>
+                      <p className="text-sm font-bold text-slate-900">{lead.businessName}</p>
+                      <p className="text-xs text-slate-500">{lead.contactName} • {lead.industry}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{activity.time}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      {new Date(lead.createdAt).toLocaleDateString()}
+                    </p>
                     <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-1 transition-all inline-block mt-1" />
                   </div>
                 </div>

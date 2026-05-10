@@ -18,22 +18,15 @@ import { Button } from '@/components/ui/Button';
 import LeadCreationModal from './LeadCreationModal';
 import { useToast } from '@/hooks/use-toast';
 
-const stages = [
-  { id: 'new', name: 'New Lead', color: 'bg-blue-500' },
-  { id: 'contacted', name: 'Contacted', color: 'bg-orange-500' },
-  { id: 'interested', name: 'Interested', color: 'bg-purple-500' },
-  { id: 'demo', name: 'Demo Scheduled', color: 'bg-indigo-500' },
-  { id: 'proposal', name: 'Proposal Sent', color: 'bg-pink-500' },
-  { id: 'negotiation', name: 'Negotiation', color: 'bg-yellow-500' },
-  { id: 'won', name: 'Won', color: 'bg-emerald-500' },
-];
+import { useLeads, useUpdateLead } from '@/services/useLeadsHooks';
+import { LeadStatus } from '@/types/api';
 
-const mockLeads = [
-  { id: 1, name: 'Nexus Retail Group', contact: 'David Chen', stage: 'negotiation', score: 85, value: '₦450k', lastActivity: '2h ago' },
-  { id: 2, name: 'Blue Diamond Hotels', contact: 'Sarah Miller', stage: 'new', score: 60, value: '₦1.2M', lastActivity: '5h ago' },
-  { id: 3, name: 'Z-Global Logistics', contact: 'James Wilson', stage: 'contacted', score: 72, value: '₦800k', lastActivity: '1d ago' },
-  { id: 4, name: 'Green Valley Farms', contact: 'Emma Thompson', stage: 'demo', score: 90, value: '₦350k', lastActivity: '3h ago' },
-  { id: 5, name: 'Stellar Tech Corp', contact: 'Michael Ross', stage: 'interested', score: 65, value: '₦2.5M', lastActivity: '1h ago' },
+const stages = [
+  { id: 'POTENTIAL', name: 'Potential', color: 'bg-blue-500' },
+  { id: 'CONTACTED', name: 'Contacted', color: 'bg-purple-500' },
+  { id: 'INTERESTED', name: 'Interested', color: 'bg-emerald-500' },
+  { id: 'NOT_INTERESTED', name: 'Not Interested', color: 'bg-red-500' },
+  { id: 'COMPLETED', name: 'Completed', color: 'bg-slate-500' },
 ];
 
 interface LeadsTabProps {
@@ -44,6 +37,18 @@ export default function LeadsTab({ isAdmin = false }: LeadsTabProps) {
   const { showToast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const { data: leads = [], isLoading } = useLeads({ search: searchQuery });
+  const updateLead = useUpdateLead();
+
+  const handleMoveLead = async (id: string, newStatus: LeadStatus) => {
+    try {
+      await updateLead.mutateAsync({ id, data: { status: newStatus } });
+      showToast(`Lead moved to ${newStatus.toLowerCase()}`, 'success');
+    } catch (error) {
+      showToast('Failed to update lead status', 'error');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -91,8 +96,9 @@ export default function LeadsTab({ isAdmin = false }: LeadsTabProps) {
             <div className="flex items-center justify-between mb-4 px-2">
               <div className="flex items-center gap-2">
                 <div className={cn("w-2 h-2 rounded-full", stage.color)} />
+                <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">{stage.name}</h4>
                 <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md">
-                  {mockLeads.length}
+                  {leads.filter(l => l.status === stage.id).length}
                 </span>
               </div>
               <button 
@@ -104,7 +110,13 @@ export default function LeadsTab({ isAdmin = false }: LeadsTabProps) {
             </div>
 
             <div className="flex-grow space-y-4 bg-slate-50/50 p-2 rounded-2xl border border-dashed border-slate-200 min-h-[500px]">
-              {mockLeads.filter(l => l.stage === stage.id).map((lead) => (
+              {isLoading ? (
+                <div className="space-y-4">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="bg-white/50 p-4 rounded-xl border border-slate-100 h-32 animate-pulse" />
+                  ))}
+                </div>
+              ) : leads.filter(l => l.status === stage.id).map((lead) => (
                 <motion.div
                   key={lead.id}
                   whileHover={{ y: -2, shadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
@@ -112,46 +124,37 @@ export default function LeadsTab({ isAdmin = false }: LeadsTabProps) {
                 >
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex items-center gap-1">
-                      {[...Array(3)].map((_, i) => (
-                        <div 
-                          key={i} 
-                          className={cn(
-                            "w-1 h-3 rounded-full", 
-                            i < (lead.score / 33) ? "bg-emerald-500" : "bg-slate-200"
-                          )} 
-                        />
-                      ))}
-                      <span className="text-[10px] font-bold text-slate-400 ml-1">Score: {lead.score}</span>
+                      <span className="text-[10px] font-bold text-slate-400">Priority: {lead.priority}</span>
                     </div>
-                    <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">{lead.value}</span>
+                    <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">{lead.industry}</span>
                   </div>
                   
-                  <h5 className="text-sm font-bold text-slate-900 mb-1 group-hover:text-blue-600 transition-colors">{lead.name}</h5>
-                  <p className="text-xs text-slate-500 mb-2">{lead.contact}</p>
+                  <h5 className="text-sm font-bold text-slate-900 mb-1 group-hover:text-blue-600 transition-colors">{lead.businessName}</h5>
+                  <p className="text-xs text-slate-500 mb-2">{lead.contactName}</p>
                   
-                  {isAdmin && (
+                  {isAdmin && lead.assignedAgentId && (
                     <div className="mb-4 flex items-center gap-2 px-2 py-1 bg-slate-50 rounded-lg border border-slate-100">
                       <div className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center text-[8px] font-black text-blue-600">A</div>
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Agent: <span className="text-slate-600">John Doe</span></span>
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Agent ID: <span className="text-slate-600">{lead.assignedAgentId.slice(0, 8)}...</span></span>
                     </div>
                   )}
                   
                   <div className="flex items-center justify-between pt-4 border-t border-slate-50">
                     <div className="flex items-center gap-2">
                       <button 
-                        onClick={(e) => { e.stopPropagation(); showToast(`Calling ${lead.contact}...`, 'info'); }}
+                        onClick={(e) => { e.stopPropagation(); showToast(`Calling ${lead.contactName}...`, 'info'); }}
                         className="p-1.5 rounded-lg bg-slate-50 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
                       >
                         <Phone className="w-3 h-3" />
                       </button>
                       <button 
-                        onClick={(e) => { e.stopPropagation(); showToast(`Opening WhatsApp for ${lead.contact}...`, 'info'); }}
+                        onClick={(e) => { e.stopPropagation(); showToast(`Opening WhatsApp for ${lead.contactName}...`, 'info'); }}
                         className="p-1.5 rounded-lg bg-slate-50 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all"
                       >
                         <MessageCircle className="w-3 h-3" />
                       </button>
                       <button 
-                        onClick={(e) => { e.stopPropagation(); showToast(`Drafting email to ${lead.contact}...`, 'info'); }}
+                        onClick={(e) => { e.stopPropagation(); showToast(`Drafting email to ${lead.contactName}...`, 'info'); }}
                         className="p-1.5 rounded-lg bg-slate-50 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
                       >
                         <Mail className="w-3 h-3" />
@@ -159,7 +162,7 @@ export default function LeadsTab({ isAdmin = false }: LeadsTabProps) {
                     </div>
                     <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
                       <Clock className="w-3 h-3" />
-                      {lead.lastActivity}
+                      {new Date(lead.createdAt).toLocaleDateString()}
                     </div>
                   </div>
                 </motion.div>

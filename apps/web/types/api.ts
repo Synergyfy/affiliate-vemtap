@@ -7,6 +7,37 @@ export type WithdrawalStatus = 'PENDING' | 'APPROVED' | 'PAID' | 'REJECTED';
 export type FraudStatus = 'OPEN' | 'CONFIRMED' | 'RESOLVED';
 export type NotificationType = 'SYSTEM' | 'COMMISSION' | 'REFERRAL' | 'SECURITY';
 export type ProgressStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+export type LeadPriority = 'LOW' | 'MEDIUM' | 'HIGH';
+export type LeadStatus = 'POTENTIAL' | 'CONTACTED' | 'INTERESTED' | 'NOT_INTERESTED' | 'COMPLETED';
+
+export interface Lead {
+  id: string;
+  businessName: string;
+  industry: string;
+  location?: string;
+  website?: string;
+  contactName: string;
+  contactRole?: string;
+  phone: string;
+  email?: string;
+  source: string;
+  otherSource?: string;
+  priority: LeadPriority;
+  status: LeadStatus;
+  followUpDate?: string;
+  comments?: string;
+  affiliateId: string;
+  assignedAgentId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LeadStats {
+  total: number;
+  contacted: number;
+  interested: number;
+  potential: number;
+}
 
 export interface Meta {
   total: number;

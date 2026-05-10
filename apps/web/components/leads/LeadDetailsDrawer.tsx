@@ -97,8 +97,8 @@ export default function LeadDetailsDrawer({ isOpen, onClose, lead, onEdit }: Lea
                         <User className="w-5 h-5" />
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-slate-900">{lead.contact}</p>
-                        <p className="text-[10px] text-slate-400 font-medium">{lead.role || 'Primary Contact'}</p>
+                        <p className="text-sm font-bold text-slate-900">{lead.contactName}</p>
+                        <p className="text-[10px] text-slate-400 font-medium">{lead.contactRole || 'Primary Contact'}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
@@ -154,7 +154,9 @@ export default function LeadDetailsDrawer({ isOpen, onClose, lead, onEdit }: Lea
                       </div>
                       <div>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Added On</p>
-                        <p className="text-sm font-bold text-slate-900">{lead.date} at {lead.time || '10:00 AM'}</p>
+                        <p className="text-sm font-bold text-slate-900">
+                          {new Date(lead.createdAt).toLocaleDateString()} at {new Date(lead.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
                       </div>
                     </div>
                   </div>

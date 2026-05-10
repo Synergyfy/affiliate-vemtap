@@ -48,6 +48,7 @@ model User {
   trainingProgress TrainingProgress[]
   shortLinks      ShortLink[]
   linkClicks      LinkClick[]
+  leads           Lead[]
   fraudAlerts     FraudAlert[] @relation("UserAlerts")
   resolvedAlerts  FraudAlert[] @relation("ResolvedAlerts")
   
@@ -559,4 +560,48 @@ model LinkClick {
   @@index([shortLinkCode])
   @@index([userId])
   @@index([createdAt])
+}
+
+model Lead {
+  id              String      @id @default(uuid())
+  businessName    String
+  industry        String
+  location        String?
+  website         String?
+  contactName     String
+  contactRole     String?
+  phone           String
+  email           String?
+  source          String
+  otherSource     String?
+  priority        Priority    @default(MEDIUM)
+  status          LeadStatus  @default(POTENTIAL)
+  followUpDate    DateTime?
+  comments        String?
+  
+  affiliateId     String
+  affiliate       User        @relation(fields: [affiliateId], references: [id])
+  
+  assignedAgentId String?     // For Admin use
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([affiliateId])
+  @@index([status])
+  @@index([priority])
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum LeadStatus {
+  POTENTIAL
+  CONTACTED
+  INTERESTED
+  NOT_INTERESTED
+  COMPLETED
 }

@@ -103,11 +103,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setHasCompletedTour(localStorage.getItem('hasCompletedTour') === 'true');
   }, []);
 
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isLoading, router]);
+
   const handleLogout = () => {
     logout();
     showToast('Logged out successfully', 'info');
     router.push('/login');
   };
+
+  // Show loading state or nothing while checking auth
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Verifying Session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <DashboardContext.Provider value={{ isNotificationsOpen, setIsNotificationsOpen, isProfileOpen, setIsProfileOpen }}>

@@ -13,20 +13,26 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const kpis = [
-  { label: 'New Leads', value: '24', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+12%' },
-  { label: 'Follow-ups Due', value: '8', icon: PhoneCall, color: 'text-orange-600', bg: 'bg-orange-50', trend: '3 High' },
-  { label: 'Scheduled Demos', value: '5', icon: PlayCircle, color: 'text-purple-600', bg: 'bg-purple-50', trend: 'Today' },
-  { label: 'Businesses Won', value: '12', icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: '₦1.2M' },
-  { label: 'Active Onboarding', value: '7', icon: Rocket, color: 'text-blue-600', bg: 'bg-blue-50', trend: '2 Near Go-Live' },
-  { label: 'Support Alerts', value: '3', icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', trend: 'Critical' },
-  { label: 'Renewals Due', value: '15', icon: RefreshCw, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: '30 Days' },
-];
+import { useLeadStats } from '@/services/useLeadsHooks';
+import { useMyBusinesses } from '@/services/useBusinessHooks';
 
 export default function KPIStrip() {
+  const { data: leadStats, isLoading: isLoadingLeads } = useLeadStats();
+  const { data: businessData, isLoading: isLoadingBusinesses } = useMyBusinesses({ limit: 1 });
+
+  const stats = [
+    { label: 'Total Leads', value: leadStats?.total ?? 0, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', trend: 'Total' },
+    { label: 'Follow-ups', value: leadStats?.potential ?? 0, icon: PhoneCall, color: 'text-orange-600', bg: 'bg-orange-50', trend: 'Potential' },
+    { label: 'Interested', value: leadStats?.interested ?? 0, icon: PlayCircle, color: 'text-purple-600', bg: 'bg-purple-50', trend: 'Warm' },
+    { label: 'Businesses Won', value: businessData?.meta.total ?? 0, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: 'Total' },
+    { label: 'Contacted', value: leadStats?.contacted ?? 0, icon: Rocket, color: 'text-blue-600', bg: 'bg-blue-50', trend: 'Active' },
+    { label: 'Support Alerts', value: '0', icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', trend: 'None' },
+    { label: 'Renewals Due', value: '0', icon: RefreshCw, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: '30 Days' },
+  ];
+
   return (
     <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-      {kpis.map((kpi, idx) => (
+      {stats.map((kpi, idx) => (
         <motion.div
           key={kpi.label}
           initial={{ opacity: 0, scale: 0.9 }}
@@ -41,7 +47,11 @@ export default function KPIStrip() {
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{kpi.trend}</span>
           </div>
           <div>
-            <h4 className="text-2xl font-black text-slate-900">{kpi.value}</h4>
+            {isLoadingLeads || isLoadingBusinesses ? (
+              <div className="h-8 w-12 bg-slate-100 animate-pulse rounded-lg mb-1" />
+            ) : (
+              <h4 className="text-2xl font-black text-slate-900">{kpi.value}</h4>
+            )}
             <p className="text-xs font-medium text-slate-500">{kpi.label}</p>
           </div>
         </motion.div>
