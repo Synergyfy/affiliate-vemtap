@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { useAuth } from '@/hooks/use-auth';
+import { useAffiliateStats } from '@/services/useDashboardHooks';
+import { Loader2 } from 'lucide-react';
 
 const gridItems = [
   { name: 'Leads Pipeline', icon: Target, color: 'from-blue-500 to-blue-700', href: '/dashboard/leads' },
@@ -34,6 +36,7 @@ const gridItems = [
 
 export default function MobileFirstDashboard() {
   const { user } = useAuth();
+  const { data: stats, isLoading } = useAffiliateStats();
 
   return (
     <DashboardLayout>
@@ -44,7 +47,11 @@ export default function MobileFirstDashboard() {
           <div className="relative z-10 space-y-4">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10">
               <Trophy className="w-3.5 h-3.5 text-yellow-400" />
-              Active Earner Level
+              {isLoading ? (
+                <div className="w-20 h-3 bg-white/20 animate-pulse rounded" />
+              ) : (
+                stats?.currentLevel || 'Novice Affiliate'
+              )}
             </div>
             <h1 className="text-3xl font-black leading-tight">Welcome Back,<br />{user?.firstName || 'Affiliate'}!</h1>
             <p className="text-sm text-blue-100/80 font-medium max-w-[240px]">Record a new business lead or manage your existing network.</p>
@@ -102,7 +109,13 @@ export default function MobileFirstDashboard() {
             </div>
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Today&apos;s Profit</p>
-              <h4 className="text-xl font-black text-slate-900">₦24,500.00</h4>
+              {isLoading ? (
+                <div className="w-24 h-6 bg-slate-100 animate-pulse rounded-lg mt-1" />
+              ) : (
+                <h4 className="text-xl font-black text-slate-900">
+                  ₦{Number(stats?.todayEarnings || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </h4>
+              )}
             </div>
           </div>
           <button className="p-3 bg-slate-50 rounded-2xl text-slate-400 hover:text-blue-600 transition-all">

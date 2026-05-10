@@ -14,6 +14,7 @@ model User {
   phone           String    @unique
   password        String
   fullName        String
+  avatar          String?
   
   referralCode    String    @unique
   referredBy      String?
@@ -553,6 +554,7 @@ model LinkClick {
   ip            String?
   userAgent     String?
   referer       String?
+  isQrScan      Boolean   @default(false)
   
   createdAt     DateTime  @default(now())
 

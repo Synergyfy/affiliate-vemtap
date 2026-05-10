@@ -210,6 +210,9 @@ export interface ChartDataPoint {
 export interface AffiliateStats {
   totalEarnings: number;
   pendingEarnings: number;
+  todayEarnings: number;
+  todayClicks: number;
+  currentLevel: string;
   activeReferrals: number;
   referralCount: number;
   totalClicks: number;

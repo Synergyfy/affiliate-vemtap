@@ -5,6 +5,8 @@ import { Lead, LeadStats, LeadStatus, LeadPriority } from '../types/api';
 export interface LeadFilters {
   status?: LeadStatus;
   search?: string;
+  limit?: number;
+  offset?: number;
 }
 
 export const useLeads = (filters: LeadFilters = {}) => {

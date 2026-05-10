@@ -14,19 +14,23 @@ interface User {
   hasAcceptedTerms?: boolean;
   hasSignedAgreement?: boolean;
   createdAt?: string;
-  role?: 'affiliate' | 'manager';
+  role?: 'AFFILIATE' | 'ADMIN' | 'SUPER_ADMIN';
   location?: string;
   address?: string;
   isKycVerified?: boolean;
   totalEarnings?: number;
   kycStatus?: string;
   avatar?: string;
+  bankName?: string;
+  accountNumber?: string;
+  accountName?: string;
+  isManagerMode?: boolean;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password?: string) => Promise<void>;
-  signup: (userData: any) => Promise<void>;
+  login: (email: string, password?: string) => Promise<User>;
+  signup: (userData: any) => Promise<User>;
   updateUser: (data: Partial<User>) => void;
   logout: () => void;
   isAuthenticated: boolean;
@@ -63,7 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkAuth();
   }, []);
 
-  const login = async (email: string, password?: string) => {
+  const login = async (email: string, password?: string): Promise<User> => {
     setIsLoading(true);
     setError(null);
     try {
@@ -73,6 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(user);
       setIsAuthenticated(true);
       localStorage.setItem('vemtap_user', JSON.stringify(user));
+      return user;
     } catch (err: any) {
       setError(err.message || 'Login failed');
       throw err;
@@ -81,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signup = async (userData: any) => {
+  const signup = async (userData: any): Promise<User> => {
     setIsLoading(true);
     setError(null);
     try {
@@ -91,6 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(user);
       setIsAuthenticated(true);
       localStorage.setItem('vemtap_user', JSON.stringify(user));
+      return user;
     } catch (err: any) {
       setError(err.message || 'Signup failed');
       throw err;
@@ -106,10 +112,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('vemtap_user', JSON.stringify(updatedUser));
   };
 
-  const logout = () => {
-    setUser(null);
-    setIsAuthenticated(false);
-    localStorage.removeItem('vemtap_user');
+  const logout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      setUser(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem('vemtap_user');
+    }
   };
 
   return (

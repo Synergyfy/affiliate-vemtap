@@ -87,7 +87,9 @@ export class UsersService {
   }
 
   async update(userId: string, dto: UpdateProfileDto): Promise<Omit<User, "password">> {
-    const data: Prisma.UserUpdateInput = { ...dto };
+    const { kycDocumentUrl, password, ...rest } = dto;
+    const data: Prisma.UserUpdateInput = { ...rest };
+    
     const currentUser = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -114,8 +116,13 @@ export class UsersService {
       }
     }
 
-    if (dto.password) {
-      data.password = await bcrypt.hash(dto.password, 10);
+    if (password) {
+      data.password = await bcrypt.hash(password, 10);
+    }
+
+    if (kycDocumentUrl) {
+      data.kycDocuments = { url: kycDocumentUrl };
+      data.kycStatus = KycStatus.PENDING;
     }
 
     // Handle Paystack Recipient Creation

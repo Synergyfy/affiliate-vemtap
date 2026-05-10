@@ -10,6 +10,15 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsString()
   fullName?: string;
+  
+  @ApiProperty({
+    required: false,
+    example: "https://example.com/avatar.jpg",
+    description: "Profile picture URL",
+  })
+  @IsOptional()
+  @IsString()
+  avatar?: string;
 
   @ApiProperty({
     required: false,
@@ -64,6 +73,15 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsString()
   accountName?: string;
+
+  @ApiProperty({
+    required: false,
+    example: "https://example.com/id-card.jpg",
+    description: "URL of the uploaded KYC document",
+  })
+  @IsOptional()
+  @IsString()
+  kycDocumentUrl?: string;
 
   @ApiProperty({
     required: false,

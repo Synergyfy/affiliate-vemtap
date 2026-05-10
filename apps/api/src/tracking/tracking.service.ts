@@ -49,7 +49,24 @@ export class TrackingService {
         ip: dto.ip,
         userAgent: dto.userAgent,
         referer: dto.referer,
+        isQrScan: dto.isQrScan || false,
       },
     });
+  }
+
+  async getStats(userId: string) {
+    const [clicks, scans] = await Promise.all([
+      this.prisma.linkClick.count({
+        where: { userId, isQrScan: false },
+      }),
+      this.prisma.linkClick.count({
+        where: { userId, isQrScan: true },
+      }),
+    ]);
+
+    return {
+      linkClicks: clicks,
+      qrScans: scans,
+    };
   }
 }

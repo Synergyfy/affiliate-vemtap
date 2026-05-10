@@ -72,7 +72,7 @@ const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
   const { showToast } = useToast();
   const pathname = usePathname();
   const router = useRouter();
@@ -103,15 +103,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setHasCompletedTour(localStorage.getItem('hasCompletedTour') === 'true');
   }, []);
 
-  // Redirect if not authenticated
-  useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, isLoading, router]);
+  // Middleware handles server-side redirection, but we keep the loading state
+  // and user check for UI consistency while client-side state is hydrating.
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     showToast('Logged out successfully', 'info');
     router.push('/login');
   };

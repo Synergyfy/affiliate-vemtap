@@ -3,7 +3,6 @@ import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import { ConfigService } from "@nestjs/config";
 import { DashboardService } from "./dashboard.service";
 import { PrismaService } from "../prisma/prisma.service";
-import { ConfigService } from "@nestjs/config";
 
 describe("DashboardService", () => {
   let service: DashboardService;
@@ -32,6 +31,7 @@ describe("DashboardService", () => {
           useValue: {
             user: {
               findMany: jest.fn(),
+              findUnique: jest.fn(),
               count: jest.fn(),
             },
             business: {
@@ -47,6 +47,9 @@ describe("DashboardService", () => {
               aggregate: jest.fn(),
             },
             fraudAlert: {
+              count: jest.fn(),
+            },
+            linkClick: {
               count: jest.fn(),
             },
           },
@@ -246,6 +249,64 @@ describe("DashboardService", () => {
 
       expect(result.networkSize).toBe(120);
       expect(result.activeAgentsCount).toBe(1);
+    });
+  });
+
+  describe("getAffiliateStats", () => {
+    it("should return affiliate stats including today's earnings and level", async () => {
+      const userId = "user123";
+      const mockUser = {
+        totalEarnings: 100000,
+        pendingEarnings: 20000,
+        referralCount: 25, // Should be "Active Earner"
+      };
+
+      jest.spyOn(prisma.user, "findUnique").mockResolvedValue(mockUser as any);
+      jest.spyOn(prisma.business, "count").mockResolvedValue(5);
+      jest.spyOn(prisma.linkClick, "count")
+        .mockResolvedValueOnce(100) // Total clicks
+        .mockResolvedValueOnce(15); // Today clicks
+      jest.spyOn(prisma.commission, "aggregate").mockResolvedValue({
+        _sum: { amount: 24500 }
+      } as any);
+
+      const result = await service.getAffiliateStats(userId);
+
+      expect(result.totalEarnings).toBe(100000);
+      expect(result.todayEarnings).toBe(24500);
+      expect(result.todayClicks).toBe(15);
+      expect(result.currentLevel).toBe("Active Earner");
+      expect(result.referralCount).toBe(25);
+    });
+
+    it("should correctly identify 'Rising Star' level", async () => {
+      jest.spyOn(prisma.user, "findUnique").mockResolvedValue({ referralCount: 15 } as any);
+      jest.spyOn(prisma.business, "count").mockResolvedValue(0);
+      jest.spyOn(prisma.linkClick, "count").mockResolvedValue(0);
+      jest.spyOn(prisma.commission, "aggregate").mockResolvedValue({ _sum: { amount: 0 } } as any);
+
+      const result = await service.getAffiliateStats("user");
+      expect(result.currentLevel).toBe("Rising Star");
+    });
+
+    it("should correctly identify 'Elite Partner' level", async () => {
+      jest.spyOn(prisma.user, "findUnique").mockResolvedValue({ referralCount: 60 } as any);
+      jest.spyOn(prisma.business, "count").mockResolvedValue(0);
+      jest.spyOn(prisma.linkClick, "count").mockResolvedValue(0);
+      jest.spyOn(prisma.commission, "aggregate").mockResolvedValue({ _sum: { amount: 0 } } as any);
+
+      const result = await service.getAffiliateStats("user");
+      expect(result.currentLevel).toBe("Elite Partner");
+    });
+
+    it("should correctly identify 'Master Affiliate' level", async () => {
+      jest.spyOn(prisma.user, "findUnique").mockResolvedValue({ referralCount: 120 } as any);
+      jest.spyOn(prisma.business, "count").mockResolvedValue(0);
+      jest.spyOn(prisma.linkClick, "count").mockResolvedValue(0);
+      jest.spyOn(prisma.commission, "aggregate").mockResolvedValue({ _sum: { amount: 0 } } as any);
+
+      const result = await service.getAffiliateStats("user");
+      expect(result.currentLevel).toBe("Master Affiliate");
     });
   });
 });

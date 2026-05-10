@@ -31,4 +31,8 @@ export class NotifyClickDto {
   @IsString()
   @IsOptional()
   referer?: string;
+
+  @ApiProperty({ description: 'Whether the click came from a QR code' })
+  @IsOptional()
+  isQrScan?: boolean;
 }

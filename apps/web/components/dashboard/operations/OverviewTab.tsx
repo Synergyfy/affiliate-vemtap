@@ -15,13 +15,14 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useLeadStats, useLeads } from '@/services/useLeadsHooks';
 
 export default function OverviewTab() {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const isManager = user?.role === 'manager';
+  const isManager = !!user?.isManagerMode;
   
   const { data: stats, isLoading: isLoadingStats } = useLeadStats();
   const { data: recentLeads = [], isLoading: isLoadingLeads } = useLeads({ limit: 3 });

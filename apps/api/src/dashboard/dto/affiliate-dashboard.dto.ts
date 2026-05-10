@@ -33,6 +33,24 @@ export class AffiliateStatsResponseDto {
   totalClicks: number;
 
   @ApiProperty({
+    example: 24500.0,
+    description: "Earnings for the current day in kobo",
+  })
+  todayEarnings: number;
+
+  @ApiProperty({
+    example: 15,
+    description: "Number of clicks on affiliate links today",
+  })
+  todayClicks: number;
+
+  @ApiProperty({
+    example: "Active Earner",
+    description: "Current affiliate level based on referrals",
+  })
+  currentLevel: string;
+
+  @ApiProperty({
     example: "https://vemtap.com/signup",
     description: "The base URL for affiliate referral signups",
   })

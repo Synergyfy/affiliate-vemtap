@@ -283,7 +283,7 @@ export default function AgentLeadsPage() {
                                 <Building2 className="w-5 h-5" />
                               </div>
                               <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                                <button onClick={(e) => { e.stopPropagation(); showToast(`Calling ${lead.contact}...`, 'info'); }} className="p-2 rounded-lg bg-slate-50 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"><Phone className="w-3.5 h-3.5" /></button>
+                                <button onClick={(e) => { e.stopPropagation(); showToast(`Calling ${lead.contactName}...`, 'info'); }} className="p-2 rounded-lg bg-slate-50 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"><Phone className="w-3.5 h-3.5" /></button>
                                 <button onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === lead.id ? null : lead.id); }} className="p-2 rounded-lg bg-slate-50 text-slate-400 hover:text-slate-600 transition-all"><MoreHorizontal className="w-3.5 h-3.5" /></button>
                               </div>
                             </div>

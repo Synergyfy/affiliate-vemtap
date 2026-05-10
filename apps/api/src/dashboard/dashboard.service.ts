@@ -215,7 +215,10 @@ export class DashboardService {
   }
 
   async getAffiliateStats(userId: string) {
-    const [user, activeReferrals, totalClicks] = await Promise.all([
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const [user, activeReferrals, totalClicks, todayCommissions, todayClicks] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
         select: {
@@ -230,13 +233,34 @@ export class DashboardService {
       this.prisma.linkClick.count({
         where: { userId },
       }),
+      this.prisma.commission.aggregate({
+        where: { 
+          userId, 
+          createdAt: { gte: today }, 
+          status: { in: ['PENDING', 'APPROVED', 'PAID'] } 
+        },
+        _sum: { amount: true }
+      }),
+      this.prisma.linkClick.count({
+        where: { userId, createdAt: { gte: today } },
+      }),
     ]);
+
+    const referralCount = user?.referralCount || 0;
+    let currentLevel = "Novice Affiliate";
+    if (referralCount >= 100) currentLevel = "Master Affiliate";
+    else if (referralCount >= 50) currentLevel = "Elite Partner";
+    else if (referralCount >= 20) currentLevel = "Active Earner";
+    else if (referralCount >= 10) currentLevel = "Rising Star";
 
     return {
       totalEarnings: Number(user?.totalEarnings || 0),
       pendingEarnings: Number(user?.pendingEarnings || 0),
+      todayEarnings: Number(todayCommissions._sum.amount || 0),
+      todayClicks,
+      currentLevel,
       activeReferrals,
-      referralCount: user?.referralCount || 0,
+      referralCount,
       totalClicks,
       referralSignupUrl: this.configService.get<string>('VEMTAP_SIGNUP_URL') || 'https://vemtap.com/signup',
     };
@@ -348,7 +372,7 @@ export class DashboardService {
         by: ["userId"],
         where: {
           createdAt: { gte: startDate },
-          status: { in: ["APPROVED", "PAID"] },
+          status: { in: ["PENDING", "APPROVED", "PAID"] },
         },
         _sum: { amount: true },
         orderBy: { _sum: { amount: "desc" } },
@@ -381,7 +405,7 @@ export class DashboardService {
         by: ["userId"],
         where: {
           createdAt: { gte: prevStartDate, lt: prevEndDate },
-          status: { in: ["APPROVED", "PAID"] },
+          status: { in: ["PENDING", "APPROVED", "PAID"] },
         },
         _sum: { amount: true },
         orderBy: { _sum: { amount: "desc" } },

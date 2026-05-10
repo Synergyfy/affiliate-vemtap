@@ -104,6 +104,7 @@ export default function LeaderboardPage() {
                   className="w-20 h-20 rounded-full border-4 border-slate-100 object-cover" 
                   alt="" 
                   referrerPolicy="no-referrer"
+                  unoptimized
                 />
                 <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-slate-400 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold border-2 border-white">
                   2
@@ -135,6 +136,7 @@ export default function LeaderboardPage() {
                   className="w-24 h-24 rounded-full border-4 border-blue-400 object-cover" 
                   alt="" 
                   referrerPolicy="no-referrer"
+                  unoptimized
                 />
                 <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-yellow-400 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold border-2 border-blue-600">
                   <Trophy className="w-5 h-5" />
@@ -167,6 +169,7 @@ export default function LeaderboardPage() {
                   className="w-20 h-20 rounded-full border-4 border-orange-100 object-cover" 
                   alt="" 
                   referrerPolicy="no-referrer"
+                  unoptimized
                 />
                 <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-orange-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold border-2 border-white">
                   3
@@ -234,6 +237,7 @@ export default function LeaderboardPage() {
                           className="w-10 h-10 rounded-full object-cover" 
                           alt="" 
                           referrerPolicy="no-referrer"
+                          unoptimized
                         />
                         <div>
                           <p className="text-sm font-bold text-slate-900">{item.fullName}</p>

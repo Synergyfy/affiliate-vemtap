@@ -10,10 +10,15 @@ let isRefreshing = false;
 let refreshPromise: Promise<any> | null = null;
 
 async function fetchWithAuth(endpoint: string, options: RequestInit = {}): Promise<any> {
+  const isFormData = options.body instanceof FormData;
+  
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> || {}),
   };
+
+  if (!isFormData) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   const executeRequest = () => fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
@@ -72,8 +77,14 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}): Promi
 
 export const api = {
   get: (endpoint: string) => fetchWithAuth(endpoint, { method: 'GET' }),
-  post: (endpoint: string, body?: any) => fetchWithAuth(endpoint, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
-  patch: (endpoint: string, body: any) => fetchWithAuth(endpoint, { method: 'PATCH', body: JSON.stringify(body) }),
+  post: (endpoint: string, body?: any) => fetchWithAuth(endpoint, { 
+    method: 'POST', 
+    body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined) 
+  }),
+  patch: (endpoint: string, body: any) => fetchWithAuth(endpoint, { 
+    method: 'PATCH', 
+    body: body instanceof FormData ? body : JSON.stringify(body) 
+  }),
   delete: (endpoint: string) => fetchWithAuth(endpoint, { method: 'DELETE' }),
   setUnauthorizedCallback: (callback: () => void) => {
     onUnauthorized = callback;
