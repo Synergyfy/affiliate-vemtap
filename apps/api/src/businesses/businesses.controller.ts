@@ -98,6 +98,13 @@ export class BusinessesController {
     };
   }
 
+  @Get("stats")
+  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Get portfolio side-panel stats" })
+  async getPortfolioStats(@CurrentUser() user: { id: string }) {
+    return this.businessesService.getPortfolioStats(user.id);
+  }
+
   @Post()
   @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Register a new business referral" })

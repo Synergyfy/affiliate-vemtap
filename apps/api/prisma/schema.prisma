@@ -53,6 +53,10 @@ model User {
   fraudAlerts     FraudAlert[] @relation("UserAlerts")
   resolvedAlerts  FraudAlert[] @relation("ResolvedAlerts")
   
+  assignedTasks   Task[]       @relation("AssignedTasks")
+  agentDemos      Demo[]       @relation("AgentDemos")
+  activities      Activity[]
+  
   tokenVersion    Int       @default(0)
   paystackSubaccountId String?
   paystackRecipientCode String?
@@ -130,6 +134,7 @@ model Business {
   updatedAt       DateTime  @updatedAt
   
   commissions     Commission[]
+  onboarding      Onboarding?
   
   @@index([affiliateId])
   @@index([referralCode])
@@ -586,6 +591,8 @@ model Lead {
   
   assignedAgentId String?     // For Admin use
 
+  demos           Demo[]
+
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
@@ -606,4 +613,104 @@ enum LeadStatus {
   INTERESTED
   NOT_INTERESTED
   COMPLETED
+}
+
+model Task {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  priority    Priority @default(MEDIUM)
+  status      TaskStatus @default(PENDING)
+  dueDate     DateTime?
+  
+  assignedToId String
+  assignedTo   User     @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([assignedToId])
+  @@index([status])
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model Demo {
+  id           String   @id @default(uuid())
+  businessName String
+  leadId       String?
+  lead         Lead?    @relation(fields: [leadId], references: [id])
+  
+  date         DateTime
+  status       DemoStatus @default(SCHEDULED)
+  
+  agentId      String
+  agent        User     @relation("AgentDemos", fields: [agentId], references: [id])
+  
+  meetingUrl   String?
+  notes        String?
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([agentId])
+  @@index([status])
+}
+
+enum DemoStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model Onboarding {
+  id           String   @id @default(uuid())
+  businessId   String   @unique
+  business     Business @relation(fields: [businessId], references: [id])
+  
+  stage        OnboardingStage @default(QR_DESIGN)
+  status       OnboardingStatus @default(PENDING)
+  
+  notes        String?
+  
+  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
+
+  @@index([businessId])
+}
+
+enum OnboardingStage {
+  QR_DESIGN
+  SHIPMENT
+  SETUP
+  ACTIVATION
+}
+
+enum OnboardingStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  DELAYED
+}
+
+model Activity {
+  id          String   @id @default(uuid())
+  type        String   // e.g. "demo", "lead", "onboarding", "call", "business"
+  title       String
+  description String?
+  businessName String?
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([type])
 }

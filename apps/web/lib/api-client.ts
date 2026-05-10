@@ -76,16 +76,16 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}): Promi
 }
 
 export const api = {
-  get: (endpoint: string) => fetchWithAuth(endpoint, { method: 'GET' }),
-  post: (endpoint: string, body?: any) => fetchWithAuth(endpoint, { 
+  get: <T = any>(endpoint: string): Promise<T> => fetchWithAuth(endpoint, { method: 'GET' }),
+  post: <T = any>(endpoint: string, body?: any): Promise<T> => fetchWithAuth(endpoint, { 
     method: 'POST', 
     body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined) 
   }),
-  patch: (endpoint: string, body: any) => fetchWithAuth(endpoint, { 
+  patch: <T = any>(endpoint: string, body: any): Promise<T> => fetchWithAuth(endpoint, { 
     method: 'PATCH', 
     body: body instanceof FormData ? body : JSON.stringify(body) 
   }),
-  delete: (endpoint: string) => fetchWithAuth(endpoint, { method: 'DELETE' }),
+  delete: <T = any>(endpoint: string): Promise<T> => fetchWithAuth(endpoint, { method: 'DELETE' }),
   setUnauthorizedCallback: (callback: () => void) => {
     onUnauthorized = callback;
   },

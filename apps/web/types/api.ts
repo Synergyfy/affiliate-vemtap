@@ -94,7 +94,9 @@ export interface Business {
   commissionRate: number;
   commissionAmount: number;
   createdAt: string;
+  updatedAt: string;
   paidAt?: string;
+  category?: string;
   affiliateId: string;
   affiliate?: User;
 }

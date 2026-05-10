@@ -77,3 +77,13 @@ export const useNetworkStats = () => {
     },
   });
 };
+
+export const usePortfolioStats = () => {
+  return useQuery<{ activeSubscriberCount: number; totalPortfolioEarnings: number; earningsHistory: any[] }>({
+    queryKey: ['affiliate', 'portfolio-stats'],
+    queryFn: async () => {
+      const { data } = await api.get('/businesses/stats');
+      return data;
+    },
+  });
+};
