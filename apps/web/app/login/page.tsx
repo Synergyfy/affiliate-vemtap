@@ -7,9 +7,9 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import AuthLayout from '@/components/auth/AuthLayout';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/toast';
+import { useToast } from '@/hooks/use-toast';
 
 const loginSchema = z.object({
   email: z.string().min(1, 'Email is required').regex(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, 'Invalid email format'),
@@ -33,17 +33,23 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get('callbackUrl');
+
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
     try {
       const user = await login(data.email, data.password);
       showToast('Logged in successfully!', 'success');
       
-      if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
-        router.push('/admin');
-      } else {
-        router.push('/dashboard');
+      // Determine destination: callbackUrl > role-based default
+      let destination = callbackUrl;
+      
+      if (!destination) {
+        destination = (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') ? '/admin' : '/dashboard';
       }
+      
+      router.push(destination);
     } catch (error: any) {
       if (error.status === 401) {
         setError('email', { 
