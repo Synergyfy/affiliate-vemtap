@@ -230,8 +230,20 @@ export class AuthController {
     example: { message: "Logged out successfully" },
   })
   async logout(@Res({ passthrough: true }) res: Response) {
-    res.clearCookie(ACCESS_TOKEN_KEY);
-    res.clearCookie(REFRESH_TOKEN_KEY);
+    const isProduction = process.env.NODE_ENV === "production";
+    const cookieDomain = process.env.COOKIE_DOMAIN;
+    const cookieOptions: any = {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "lax",
+    };
+
+    if (isProduction && cookieDomain) {
+      cookieOptions.domain = cookieDomain;
+    }
+
+    res.clearCookie(ACCESS_TOKEN_KEY, cookieOptions);
+    res.clearCookie(REFRESH_TOKEN_KEY, cookieOptions);
     return { message: "Logged out successfully" };
   }
 
@@ -258,8 +270,21 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     await this.authService.invalidateAllTokens(user.id);
-    res.clearCookie(ACCESS_TOKEN_KEY);
-    res.clearCookie(REFRESH_TOKEN_KEY);
+    
+    const isProduction = process.env.NODE_ENV === "production";
+    const cookieDomain = process.env.COOKIE_DOMAIN;
+    const cookieOptions: any = {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "lax",
+    };
+
+    if (isProduction && cookieDomain) {
+      cookieOptions.domain = cookieDomain;
+    }
+
+    res.clearCookie(ACCESS_TOKEN_KEY, cookieOptions);
+    res.clearCookie(REFRESH_TOKEN_KEY, cookieOptions);
     return { message: "All sessions invalidated successfully" };
   }
 
