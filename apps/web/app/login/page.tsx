@@ -7,9 +7,11 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import AuthLayout from '@/components/auth/AuthLayout';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/toast';
+import { useToast } from '@/hooks/use-toast';
+
+import { Suspense } from 'react';
 
 const loginSchema = z.object({
   email: z.string().min(1, 'Email is required').regex(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, 'Invalid email format'),
@@ -18,9 +20,10 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export default function LoginPage() {
+function LoginContent() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login } = useAuth();
   const { showToast } = useToast();
 
@@ -33,17 +36,22 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
+  const callbackUrl = searchParams.get('callbackUrl');
+
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
     try {
       const user = await login(data.email, data.password);
       showToast('Logged in successfully!', 'success');
       
-      if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
-        router.push('/admin');
-      } else {
-        router.push('/dashboard');
+      // Determine destination: callbackUrl > role-based default
+      let destination = callbackUrl;
+      
+      if (!destination) {
+        destination = (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') ? '/admin' : '/dashboard';
       }
+      
+      router.push(destination);
     } catch (error: any) {
       if (error.status === 401) {
         setError('email', { 
@@ -91,5 +99,22 @@ export default function LoginPage() {
         </Button>
       </form>
     </AuthLayout>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <AuthLayout
+        title="Welcome Back"
+        subtitle="Loading..."
+      >
+        <div className="flex items-center justify-center py-12">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      </AuthLayout>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }
