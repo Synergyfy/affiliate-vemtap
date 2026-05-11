@@ -11,6 +11,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 
+import { Suspense } from 'react';
+
 const loginSchema = z.object({
   email: z.string().min(1, 'Email is required').regex(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, 'Invalid email format'),
   password: z.string().min(1, 'Password is required'),
@@ -18,9 +20,10 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export default function LoginPage() {
+function LoginContent() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login } = useAuth();
   const { showToast } = useToast();
 
@@ -33,7 +36,6 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
-  const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl');
 
   const onSubmit = async (data: LoginFormValues) => {
@@ -97,5 +99,22 @@ export default function LoginPage() {
         </Button>
       </form>
     </AuthLayout>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <AuthLayout
+        title="Welcome Back"
+        subtitle="Loading..."
+      >
+        <div className="flex items-center justify-center py-12">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      </AuthLayout>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }
