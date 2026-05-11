@@ -38,7 +38,9 @@ export default function LeadsTab({ isAdmin = false }: LeadsTabProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const { data: leads = [], isLoading } = useLeads({ search: searchQuery });
+  const { data: response, isLoading } = useLeads({ search: searchQuery });
+  const leads = response?.data || [];
+
   const updateLead = useUpdateLead();
 
   const handleMoveLead = async (id: string, newStatus: LeadStatus) => {

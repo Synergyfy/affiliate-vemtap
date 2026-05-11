@@ -76,7 +76,9 @@ export class CreateLeadDto {
 
 export class UpdateLeadDto extends CreateLeadDto {}
 
-export class LeadFilterDto {
+import { PaginationDto } from '../../common/dto/pagination.dto';
+
+export class LeadFilterDto extends PaginationDto {
   @IsOptional()
   @IsEnum(LeadStatus)
   status?: LeadStatus;
@@ -85,3 +87,4 @@ export class LeadFilterDto {
   @IsString()
   search?: string;
 }
+

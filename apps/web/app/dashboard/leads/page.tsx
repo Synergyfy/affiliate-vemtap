@@ -64,7 +64,9 @@ export default function AgentLeadsPage() {
   const { showToast } = useToast();
   const { user } = useAuth();
 
-  const { data: leads = [], isLoading } = useLeads({ search: searchQuery });
+  const { data: response, isLoading } = useLeads({ search: searchQuery });
+  const leads = response?.data || [];
+
   const updateLead = useUpdateLead();
   const deleteLead = useDeleteLead();
 

@@ -19,7 +19,9 @@ import { useLeads } from '@/services/useLeadsHooks';
 
 export default function FollowUpsTab() {
   const { showToast } = useToast();
-  const { data: leads = [], isLoading } = useLeads({ status: 'CONTACTED' });
+  const { data: response, isLoading } = useLeads({ status: 'CONTACTED' });
+  const leads = response?.data || [];
+
 
   // Filter leads that have follow-up dates and are not completed
   const followUps = leads.filter(lead => lead.followUpDate).map(lead => ({

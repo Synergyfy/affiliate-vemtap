@@ -27,7 +27,9 @@ export default function OverviewTab() {
   
   const { data: leadStats, isLoading: isLoadingLeadStats } = useLeadStats();
   const { data: opStats, isLoading: isLoadingOpStats } = useOperationsStats();
-  const { data: recentLeads = [], isLoading: isLoadingLeads } = useLeads({ limit: 3 });
+  const { data: leadsResponse, isLoading: isLoadingLeads } = useLeads({ limit: 3 });
+  const recentLeads = leadsResponse?.data || [];
+
   const { data: tasks = [] } = useTasks();
   const { data: onboarding = [] } = useOnboarding();
 

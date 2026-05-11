@@ -7,8 +7,9 @@ import { LeadStatus, Priority } from '@prisma/client';
 export class LeadsService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(userId: string, filters: LeadFilterDto) {
-    const where: any = { affiliateId: userId };
+  async findAll(user: any, filters: LeadFilterDto) {
+    const isPrivileged = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
+    const where: any = isPrivileged ? {} : { affiliateId: user.id };
 
     if (filters.status) {
       where.status = filters.status;
@@ -22,11 +23,28 @@ export class LeadsService {
       ];
     }
 
-    return this.prisma.lead.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-    });
+    const [data, total] = await Promise.all([
+      this.prisma.lead.findMany({
+        where,
+        take: filters.take,
+        skip: filters.skip,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.lead.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page: filters.page,
+        limit: filters.limit || 10,
+        totalPages: Math.ceil(total / (filters.limit || 10)),
+      },
+
+    };
   }
+
 
   async findOne(id: string, userId: string) {
     const lead = await this.prisma.lead.findUnique({
@@ -73,12 +91,15 @@ export class LeadsService {
     });
   }
 
-  async getStats(userId: string) {
+  async getStats(user: any) {
+    const isPrivileged = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
+    const where: any = isPrivileged ? {} : { affiliateId: user.id };
+
     const [total, contacted, interested, potential] = await Promise.all([
-      this.prisma.lead.count({ where: { affiliateId: userId } }),
-      this.prisma.lead.count({ where: { affiliateId: userId, status: LeadStatus.CONTACTED } }),
-      this.prisma.lead.count({ where: { affiliateId: userId, status: LeadStatus.INTERESTED } }),
-      this.prisma.lead.count({ where: { affiliateId: userId, status: LeadStatus.POTENTIAL } }),
+      this.prisma.lead.count({ where }),
+      this.prisma.lead.count({ where: { ...where, status: LeadStatus.CONTACTED } }),
+      this.prisma.lead.count({ where: { ...where, status: LeadStatus.INTERESTED } }),
+      this.prisma.lead.count({ where: { ...where, status: LeadStatus.POTENTIAL } }),
     ]);
 
     return {
@@ -88,4 +109,5 @@ export class LeadsService {
       potential,
     };
   }
+
 }

@@ -1,11 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from './api';
-import { Lead, LeadStats, LeadStatus, LeadPriority } from '../types/api';
+import { Lead, LeadStats, LeadStatus, LeadPriority, PaginatedResponse } from '../types/api';
 
 export interface LeadFilters {
   status?: LeadStatus;
   search?: string;
   limit?: number;
+  page?: number;
   offset?: number;
 }
 
@@ -13,11 +14,12 @@ export const useLeads = (filters: LeadFilters = {}) => {
   return useQuery({
     queryKey: ['leads', filters],
     queryFn: async () => {
-      const response = await api.get<Lead[]>('/leads/me', { params: filters });
+      const response = await api.get<PaginatedResponse<Lead>>('/leads/me', { params: filters });
       return response.data;
     },
   });
 };
+
 
 export const useLeadStats = () => {
   return useQuery({

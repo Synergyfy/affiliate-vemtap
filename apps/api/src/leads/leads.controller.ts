@@ -31,14 +31,16 @@ export class LeadsController {
   @Get('me')
   @ApiOperation({ summary: 'Get all leads for the current user' })
   findAll(@CurrentUser() user: any, @Query() filters: LeadFilterDto) {
-    return this.leadsService.findAll(user.id, filters);
+    return this.leadsService.findAll(user, filters);
   }
+
 
   @Get('stats')
   @ApiOperation({ summary: 'Get lead statistics for the current user' })
   getStats(@CurrentUser() user: any) {
-    return this.leadsService.getStats(user.id);
+    return this.leadsService.getStats(user);
   }
+
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a specific lead' })
