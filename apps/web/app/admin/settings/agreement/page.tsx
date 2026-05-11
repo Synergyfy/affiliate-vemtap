@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/Button';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/toast';
 import Link from 'next/link';
 import { api } from '@/lib/api-client';
 

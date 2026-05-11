@@ -15,16 +15,24 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/hooks/use-toast';
-
-const followUps = [
-  { id: 1, business: 'Nexus Retail Group', contact: 'David Chen', type: 'Call', dueDate: 'Today, 2:00 PM', priority: 'High', status: 'Pending' },
-  { id: 2, business: 'Blue Diamond Hotels', contact: 'Sarah Miller', type: 'Email', dueDate: 'Today, 4:30 PM', priority: 'Medium', status: 'Pending' },
-  { id: 3, business: 'Z-Global Logistics', contact: 'James Wilson', type: 'WhatsApp', dueDate: 'Tomorrow, 10:00 AM', priority: 'High', status: 'Upcoming' },
-  { id: 4, business: 'Green Valley Farms', contact: 'Emma Thompson', type: 'Meeting', dueDate: 'May 12, 11:00 AM', priority: 'Low', status: 'Upcoming' },
-];
+import { useLeads } from '@/services/useLeadsHooks';
 
 export default function FollowUpsTab() {
   const { showToast } = useToast();
+  const { data: response, isLoading } = useLeads({ status: 'CONTACTED' });
+  const leads = response?.data || [];
+
+
+  // Filter leads that have follow-up dates and are not completed
+  const followUps = leads.filter(lead => lead.followUpDate).map(lead => ({
+    id: lead.id,
+    business: lead.businessName,
+    contact: lead.contactName,
+    type: 'Call', // Defaulting to Call for now
+    dueDate: lead.followUpDate ? new Date(lead.followUpDate).toLocaleString() : 'N/A',
+    priority: lead.priority.charAt(0) + lead.priority.slice(1).toLowerCase(),
+    status: 'Pending'
+  }));
 
   const handleAction = (action: string) => {
     showToast(`${action} action triggered`, 'info');
@@ -64,7 +72,19 @@ export default function FollowUpsTab() {
 
       {/* Follow-ups List */}
       <div className="grid gap-4">
-        {followUps.map((item) => (
+        {isLoading ? (
+          [...Array(3)].map((_, i) => (
+            <div key={i} className="h-32 bg-slate-50 animate-pulse rounded-[24px] border border-slate-100" />
+          ))
+        ) : followUps.length === 0 ? (
+          <div className="text-center p-12 bg-slate-50 rounded-[32px] border border-dashed border-slate-200">
+            <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+            <h4 className="text-lg font-bold text-slate-900 mb-2">No More High Priority Follow-ups</h4>
+            <p className="text-sm text-slate-500 max-w-sm mx-auto mb-6">
+              You&apos;ve cleared your most urgent follow-ups for today. Great job staying on top of your deals!
+            </p>
+          </div>
+        ) : followUps.map((item) => (
           <div key={item.id} className="bg-white p-6 rounded-[24px] border border-slate-100 hover:border-blue-100 shadow-sm transition-all group">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
               <div className="flex items-start gap-4">
@@ -137,22 +157,6 @@ export default function FollowUpsTab() {
             </div>
           </div>
         ))}
-      </div>
-
-      {/* Empty State / Bottom Info */}
-      <div className="text-center p-12 bg-slate-50 rounded-[32px] border border-dashed border-slate-200">
-        <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-        <h4 className="text-lg font-bold text-slate-900 mb-2">No More High Priority Follow-ups</h4>
-        <p className="text-sm text-slate-500 max-w-sm mx-auto mb-6">
-          You&apos;ve cleared your most urgent follow-ups for today. Great job staying on top of your deals!
-        </p>
-        <Button 
-          onClick={() => handleAction('View History')}
-          variant="outline" 
-          className="border-slate-200 text-xs font-bold h-11 rounded-xl px-8"
-        >
-          View All Completed Activities
-        </Button>
       </div>
     </div>
   );

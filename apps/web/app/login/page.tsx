@@ -9,10 +9,10 @@ import AuthLayout from '@/components/auth/AuthLayout';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/toast';
 
 const loginSchema = z.object({
-  email: z.string().min(1, 'Email or phone is required'),
+  email: z.string().min(1, 'Email is required').regex(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, 'Invalid email format'),
   password: z.string().min(1, 'Password is required'),
 });
 
@@ -27,6 +27,7 @@ export default function LoginPage() {
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -35,11 +36,23 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
     try {
-      await login(data.email, data.password);
+      const user = await login(data.email, data.password);
       showToast('Logged in successfully!', 'success');
-      router.push('/dashboard');
+      
+      if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
+        router.push('/admin');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (error: any) {
-      showToast(error.message || 'Invalid credentials.', 'error');
+      if (error.status === 401) {
+        setError('email', { 
+          type: 'manual', 
+          message: "Your email or password isn't correct" 
+        });
+      } else {
+        showToast(error.message || 'Invalid credentials.', 'error');
+      }
       console.error('Login error:', error);
     } finally {
       setIsLoading(false);
@@ -56,7 +69,7 @@ export default function LoginPage() {
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <Input
-          label="Email or Phone Number"
+          label="Email Address"
           placeholder="john@example.com"
           {...register('email')}
           error={errors.email?.message}

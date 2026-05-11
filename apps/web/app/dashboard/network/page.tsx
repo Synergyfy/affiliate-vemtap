@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import ManagerGuideModal from '@/components/dashboard/ManagerGuideModal';
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/toast';
 import { Loader2 } from 'lucide-react';
 
 export default function NetworkPage() {
@@ -104,6 +104,7 @@ export default function NetworkPage() {
   // Real targets from networkStats or defaults
   const affiliateCount = networkStats?.activeAgentsCount || 0;
   const businessesCount = networkStats?.totalNetworkBusinesses || 0;
+  const totalRecruits = networkStats?.totalRecruitsCount || 0;
   
   const targetAffiliates = networkStats?.milestones?.agents?.target || 30;
   const targetBusinesses = networkStats?.milestones?.businesses?.target || 100;
@@ -126,7 +127,7 @@ export default function NetworkPage() {
     id: r.id,
     name: r.fullName,
     referrals: r.businessCount,
-    earnings: `₦${Number(r.totalEarnings * 0.1).toLocaleString()}`, // Showing 10% share
+    earnings: `₦${Number(r.managerShare || 0).toLocaleString()}`,
     status: r.status === 'ACTIVE' ? 'Active' : 'Inactive'
   }));
 
@@ -185,13 +186,12 @@ export default function NetworkPage() {
             )}
 
             <div className="max-w-2xl mx-auto space-y-8">
-              {/* Progress 1: Affiliates */}
-              {/* Progress 1: Affiliates */}
               <div className="space-y-3">
                 <div className="flex justify-between items-end">
                   <div className="text-left">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">Affiliate Target</span>
-                    <span className="text-sm font-bold text-slate-900">{affiliateCount} / {targetAffiliates} Affiliates</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">Active Agent Target</span>
+                    <span className="text-sm font-bold text-slate-900">{affiliateCount} / {targetAffiliates} Active Agents</span>
+                    <p className="text-[9px] text-slate-400 font-medium">Recruits who have closed at least 1 business</p>
                   </div>
                   <span className="text-sm font-bold text-blue-600">{Math.round(affiliateProgress)}%</span>
                 </div>
@@ -204,7 +204,6 @@ export default function NetworkPage() {
                 </div>
               </div>
 
-              {/* Progress 2: Businesses */}
               <div className="space-y-3">
                 <div className="flex justify-between items-end">
                   <div className="text-left">
@@ -221,12 +220,22 @@ export default function NetworkPage() {
                   />
                 </div>
               </div>
-              
+
+              <div className="flex flex-wrap justify-center gap-4 text-xs font-bold text-slate-500">
+                <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-xl border border-slate-100">
+                  <Users className="w-4 h-4 text-blue-600" />
+                  <span>{totalRecruits} Total Recruits</span>
+                </div>
+                <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 rounded-xl border border-emerald-100">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>{affiliateCount} Active Agents</span>
+                </div>
+              </div>
+
               <Button className="w-full mt-10 text-sm sm:text-base h-14 bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-100 font-black uppercase tracking-widest" onClick={() => router.push('/dashboard/tools')}>
                 Start Recruiting Now
               </Button>
 
-              {/* High Visibility Benefit Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
                 <div className="bg-emerald-50/50 p-6 rounded-[24px] border-2 border-emerald-100 text-center group hover:bg-emerald-50 transition-colors">
                   <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm group-hover:scale-110 transition-transform">
@@ -279,7 +288,6 @@ export default function NetworkPage() {
               </div>
             </div>
 
-            {/* Section E: Milestone & Bonus Tracker */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-8 opacity-5 -rotate-12 transition-transform group-hover:scale-110">
@@ -352,42 +360,48 @@ export default function NetworkPage() {
                 </div>
               </div>
             </div>
-
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between items-center">
-                <h3 className="text-base sm:text-lg font-bold text-slate-900">Your Affiliate Team</h3>
-                <Button variant="outline" size="sm" className="text-xs sm:text-sm">View All</Button>
-              </div>
-              <div className="divide-y divide-slate-100">
-                {managers.map((affiliate) => (
-                  <div key={affiliate.id} className="p-4 sm:p-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                    <div className="flex items-center gap-3 sm:gap-4">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm sm:text-base uppercase">
-                        {(affiliate.name || 'A').charAt(0)}
-                      </div>
-                      <div>
-                        <h4 className="text-sm sm:text-base font-bold text-slate-900">
-                          {affiliate.name}
-                        </h4>
-                        <p className="text-xs sm:text-sm text-slate-500">Sub-affiliate</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm sm:text-base font-bold text-emerald-600">{affiliate.earnings}</p>
-                      <p className="text-[10px] sm:text-xs text-slate-400">10% team share</p>
-                    </div>
-                  </div>
-                ))}
-                {managers.length === 0 && !isLoading && (
-                  <div className="p-12 text-center text-slate-400">
-                    <Users className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                    <p className="text-sm font-bold">No affiliates in your network yet.</p>
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
         )}
+
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between items-center">
+            <h3 className="text-base sm:text-lg font-bold text-slate-900">Your Affiliate Team</h3>
+            <Button variant="outline" size="sm" className="text-xs sm:text-sm">View All</Button>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {managers.map((affiliate) => (
+              <div key={affiliate.id} className="p-4 sm:p-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm sm:text-base uppercase">
+                    {(affiliate.name || 'A').charAt(0)}
+                  </div>
+                  <div>
+                    <h4 className="text-sm sm:text-base font-bold text-slate-900">
+                      {affiliate.name}
+                    </h4>
+                    <p className="text-xs sm:text-sm text-slate-500">Sub-affiliate</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm sm:text-base font-bold text-emerald-600">{affiliate.earnings}</p>
+                  <p className="text-[10px] sm:text-xs text-slate-400">Your 10% share</p>
+                </div>
+              </div>
+            ))}
+            {managers.length === 0 && !isLoading && (
+              <div className="p-12 text-center text-slate-400">
+                <Users className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                <p className="text-sm font-bold">No affiliates in your network yet.</p>
+              </div>
+            )}
+            {isLoading && managers.length === 0 && (
+              <div className="p-12 text-center text-slate-400">
+                <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin text-blue-600" />
+                <p className="text-sm font-bold">Loading your team...</p>
+              </div>
+            )}
+          </div>
+        </div>
         
         <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 sm:p-6 flex gap-3 sm:gap-4">
           <Info className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 shrink-0" />

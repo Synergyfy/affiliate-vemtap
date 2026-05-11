@@ -20,6 +20,7 @@ import {
   PaginatedCommissionResponseDto,
 } from "./dto/commission-response.dto";
 import { PaginationDto } from "../common/dto/pagination.dto";
+import { CommissionFilterDto } from "./dto/commission-filter.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
@@ -40,20 +41,22 @@ export class CommissionsController {
   @ApiResponse({ status: 401, description: "Unauthorized" })
   async findAll(
     @CurrentUser() user: { id: string },
-    @Query() paginationDto: PaginationDto,
+    @Query() filterDto: CommissionFilterDto,
   ) {
     const { data, total } = await this.commissionsService.findAll(user.id, {
-      skip: paginationDto.skip,
-      take: paginationDto.take,
+      skip: filterDto.skip,
+      take: filterDto.take,
+      status: filterDto.status,
+      search: filterDto.search,
     });
 
     return {
       data,
       meta: {
         total,
-        page: paginationDto.page,
-        limit: paginationDto.limit,
-        totalPages: Math.ceil(total / (paginationDto.limit || 10)),
+        page: filterDto.page,
+        limit: filterDto.limit,
+        totalPages: Math.ceil(total / (filterDto.limit || 10)),
       },
     };
   }
@@ -81,19 +84,22 @@ export class CommissionsController {
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "List all commissions (Admin only)" })
   @ApiOkResponse({ type: PaginatedCommissionResponseDto })
-  async findAllAdmin(@Query() paginationDto: PaginationDto) {
+  async findAllAdmin(@Query() filterDto: CommissionFilterDto) {
     const { data, total } = await this.commissionsService.findAllAdmin({
-      skip: paginationDto.skip,
-      take: paginationDto.take,
+      skip: filterDto.skip,
+      take: filterDto.take,
+      status: filterDto.status,
+      userId: filterDto.userId,
+      search: filterDto.search,
     });
 
     return {
       data,
       meta: {
         total,
-        page: paginationDto.page,
-        limit: paginationDto.limit,
-        totalPages: Math.ceil(total / (paginationDto.limit || 10)),
+        page: filterDto.page,
+        limit: filterDto.limit,
+        totalPages: Math.ceil(total / (filterDto.limit || 10)),
       },
     };
   }

@@ -25,6 +25,8 @@ import { StorageModule } from './storage/storage.module';
 import { OtpModule } from './otp/otp.module';
 import { TrackingModule } from './tracking/tracking.module';
 import { ShortLinksModule } from './tools/short-links/short-links.module';
+import { LeadsModule } from './leads/leads.module';
+import { OperationsModule } from './operations/operations.module';
 
 @Module({
   imports: [
@@ -37,6 +39,8 @@ import { ShortLinksModule } from './tools/short-links/short-links.module';
     UsersModule,
     AuthModule,
     ShortLinksModule,
+    LeadsModule,
+    OperationsModule,
     ToolsModule,
     BusinessesModule,
     NetworkModule,

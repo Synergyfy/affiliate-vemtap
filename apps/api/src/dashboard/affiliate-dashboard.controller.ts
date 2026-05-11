@@ -11,7 +11,9 @@ import {
   AffiliateForecastResponseDto, 
   AffiliateChartsResponseDto,
   LeaderboardResponseDto,
-  GetLeaderboardQueryDto
+  GetLeaderboardQueryDto,
+  AffiliateActionResponseDto,
+  AffiliateAlertResponseDto
 } from './dto/affiliate-dashboard.dto';
 
 @ApiTags('affiliate-dashboard')
@@ -51,5 +53,19 @@ export class AffiliateDashboardController {
       query.limit ? Number(query.limit) : 10,
       query.timeframe || 'all',
     );
+  }
+
+  @Get('actions')
+  @ApiOperation({ summary: 'Get daily recommended actions for affiliate' })
+  @ApiOkResponse({ type: [AffiliateActionResponseDto] })
+  getActions(@CurrentUser() user: { id: string }) {
+    return this.dashboardService.getAffiliateActions(user.id);
+  }
+
+  @Get('alerts')
+  @ApiOperation({ summary: 'Get system alerts for affiliate' })
+  @ApiOkResponse({ type: [AffiliateAlertResponseDto] })
+  getAlerts(@CurrentUser() user: { id: string }) {
+    return this.dashboardService.getAffiliateAlerts(user.id);
   }
 }

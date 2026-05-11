@@ -15,7 +15,10 @@ import {
   User as UserIcon,
   AlertCircle,
   ShieldCheck,
-  Lock
+  Lock,
+  Calendar,
+  TrendingUp,
+  Loader2
 } from 'lucide-react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
@@ -23,82 +26,26 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/use-toast';
-import { api } from '@/lib/api-client';
+import { useToast } from '@/hooks/toast';
 
-const earningsData = [
-  { id: 1, name: 'Tech Solutions Ltd', plan: 'Silver', status: 'Active', month: '2/3', affiliateEarning: '₦1,000', managerEarning: '₦100', date: '2024-03-20' },
-  { id: 2, name: 'Global Corp', plan: 'Platinum', status: 'Active', month: '5/12', affiliateEarning: '₦3,600', managerEarning: '₦360', date: '2024-03-18' },
-  { id: 3, name: 'Small Biz Inc', plan: 'Gold', status: 'Inactive', month: '1/3', affiliateEarning: '₦0', managerEarning: '₦0', date: '2024-03-15' },
-  { id: 4, name: 'Future Tech', plan: 'Gold', status: 'Active', month: '3/3', affiliateEarning: '₦1,900', managerEarning: '₦190', date: '2024-03-10' },
-];
-
-const transactions = [
-  { id: 1, type: 'Commission', amount: '₦10,000', status: 'Completed', date: '2024-03-20', desc: 'Direct referral - Global Corp' },
-  { id: 2, type: 'Withdrawal', amount: '-₦25,000', status: 'Pending', date: '2024-03-18', desc: 'Transfer to GTBank' },
-  { id: 3, type: 'Commission', amount: '₦5,000', status: 'Completed', date: '2024-03-15', desc: 'Direct referral - Tech Solutions' },
-];
+import { useAffiliateStats } from '@/services/useDashboardHooks';
+import { useMyCommissions } from '@/services/useCommissionsHooks';
+import { useMyWithdrawals, useRequestWithdrawal } from '@/services/useWithdrawalHooks';
+import { Commission, Withdrawal } from '@/types/api';
 
 export default function WalletPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [stats, setStats] = useState({ balance: 0, totalEarned: 0, pending: 0 });
-  const [profile, setProfile] = useState<any>(null);
-  const [transactions, setTransactions] = useState<any[]>([]);
   const [amount, setAmount] = useState('');
   
+  const { data: stats, isLoading: isStatsLoading } = useAffiliateStats();
+  const { data: commissionsResponse, isLoading: isCommissionsLoading } = useMyCommissions({ limit: 10 });
+  const { data: withdrawalsResponse, isLoading: isWithdrawalsLoading } = useMyWithdrawals({ limit: 10 });
+  const requestWithdrawal = useRequestWithdrawal();
+
   const kycStatus = user?.kycStatus === 'VERIFIED' ? 'verified' : 
                    user?.kycStatus === 'PENDING' ? 'pending' : 'unverified';
-
-  useEffect(() => {
-    const fetchWalletData = async () => {
-      try {
-        const [profileData, commissionResponse, withdrawalResponse] = await Promise.all([
-          api.get('/users/profile'),
-          api.get('/commissions/me?limit=10'),
-          api.get('/withdrawals/me?limit=10')
-        ]);
-        
-        if (profileData) {
-          setProfile(profileData);
-          setStats({
-            balance: Number(profileData.pendingEarnings || 0),
-            totalEarned: Number(profileData.totalEarnings || 0),
-            pending: 0 // Backend currently puts all unpaid in pendingEarnings
-          });
-        }
-        
-        // Combine commissions and withdrawals for transaction history
-        const combinedTransactions = [
-          ...(commissionResponse?.data || []).map((c: any) => ({
-            id: c.id,
-            type: 'commission',
-            title: 'Commission Earned',
-            desc: c.description || `Earnings from ${c.business?.businessName || 'referral'}`,
-            amount: Number(c.amount),
-            status: c.status === 'PAID' ? 'Completed' : 'Pending',
-            time: c.createdAt
-          })),
-          ...(withdrawalResponse?.data || []).map((w: any) => ({
-            id: w.id,
-            type: 'withdrawal',
-            title: 'Withdrawal',
-            desc: `Transfer to ${w.bankName}`,
-            amount: Number(w.amount),
-            status: w.status === 'PAID' ? 'Completed' : 'Pending',
-            time: w.createdAt
-          }))
-        ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
-        
-        setTransactions(combinedTransactions);
-      } catch (error) {
-        console.error('Failed to fetch wallet data:', error);
-      }
-    };
-    fetchWalletData();
-  }, [user]);
 
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,27 +55,54 @@ export default function WalletPage() {
       return;
     }
     
-    setIsWithdrawing(true);
     try {
-      await api.post('/withdrawals', { amount: Number(amount) });
-      showToast('Withdrawal successful! Processing will take 24-48 hours.', 'success');
+      await requestWithdrawal.mutateAsync({ 
+        amount: Number(amount),
+        bankName: user?.bankName || 'N/A',
+        accountNumber: user?.accountNumber || 'N/A',
+        accountName: user?.fullName || 'N/A'
+      });
+      showToast('Withdrawal request submitted! Processing will take 24-48 hours.', 'success');
       setShowForm(false);
       setAmount('');
-      
-      // Refresh balance
-      const updatedProfile = await api.get('/users/profile');
-      setStats({
-        balance: Number(updatedProfile.pendingEarnings || 0),
-        totalEarned: Number(updatedProfile.totalEarnings || 0),
-        pending: 0
-      });
     } catch (error: any) {
-      console.error('Withdrawal failed:', error);
-      showToast(error?.message || 'Failed to process withdrawal.', 'error');
-    } finally {
-      setIsWithdrawing(false);
+      showToast(error.message || 'Failed to process withdrawal.', 'error');
     }
   };
+
+  const commissions = commissionsResponse?.data || [];
+  const withdrawals = withdrawalsResponse?.data || [];
+
+  const combinedTransactions = [
+    ...commissions.map((c) => ({
+      id: c.id,
+      type: 'commission' as const,
+      title: 'Commission Earned',
+      desc: c.description || `Earnings from referral`,
+      amount: Number(c.amount),
+      status: c.status === 'PAID' ? 'Completed' : 'Pending',
+      time: c.createdAt
+    })),
+    ...withdrawals.map((w) => ({
+      id: w.id,
+      type: 'withdrawal' as const,
+      title: 'Withdrawal',
+      desc: `Transfer to ${w.bankName}`,
+      amount: Number(w.amount),
+      status: w.status === 'PAID' ? 'Completed' : w.status === 'PENDING' ? 'Pending' : 'Failed',
+      time: w.createdAt
+    }))
+  ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
+  if (isStatsLoading || isCommissionsLoading || isWithdrawalsLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -148,13 +122,13 @@ export default function WalletPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-blue-100 text-xs sm:text-sm font-medium mb-1">Available Balance</p>
-                  <h2 className="text-3xl sm:text-4xl font-black">₦{stats.balance.toLocaleString()}</h2>
+                  <h2 className="text-3xl sm:text-4xl font-black">₦{Number(stats?.pendingEarnings || 0).toLocaleString()}</h2>
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 sm:gap-0">
                 <div>
-                  <p className="text-blue-100 text-[10px] sm:text-xs font-bold mb-1 uppercase tracking-wider">Pending Earnings</p>
-                  <p className="text-lg sm:text-xl font-bold">₦{stats.pending.toLocaleString()}</p>
+                  <p className="text-blue-100 text-[10px] sm:text-xs font-bold mb-1 uppercase tracking-wider">Total Earnings</p>
+                  <p className="text-lg sm:text-xl font-bold">₦{Number(stats?.totalEarnings || 0).toLocaleString()}</p>
                 </div>
                 <Button 
                   className={cn(
@@ -210,10 +184,10 @@ export default function WalletPage() {
                     <h4 className="text-sm font-bold">Payout Destination</h4>
                   </div>
                   
-                  {profile?.bankName ? (
+                  {user?.bankName ? (
                     <div className="space-y-1">
-                      <p className="text-sm font-bold text-slate-800">{profile.accountName}</p>
-                      <p className="text-xs text-slate-500">{profile.bankName} • {profile.accountNumber}</p>
+                      <p className="text-sm font-bold text-slate-800">{user.accountName}</p>
+                      <p className="text-xs text-slate-500">{user.bankName} • {user.accountNumber}</p>
                     </div>
                   ) : (
                     <div className="bg-red-50 p-4 rounded-xl border border-red-100">
@@ -248,7 +222,8 @@ export default function WalletPage() {
                   ) : (
                     <>
                       <p className="text-[10px] sm:text-xs text-slate-500 mb-4">Minimum withdrawal amount is ₦5,000. Processing takes 24-48 hours.</p>
-                      <Button type="submit" className="w-full text-sm sm:text-base font-bold" isLoading={isWithdrawing}>
+                      <Button type="submit" className="w-full text-sm sm:text-base font-bold" disabled={requestWithdrawal.isPending}>
+                        {requestWithdrawal.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                         Confirm Withdrawal
                       </Button>
                     </>
@@ -288,91 +263,14 @@ export default function WalletPage() {
           )}
         </div>
 
-        {/* Section B: Earnings Breakdown Table */}
-        <div className="bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h3 className="text-lg font-bold text-slate-900">Earnings Breakdown</h3>
-              <p className="text-xs text-slate-500 mt-1">Detailed monthly share from your referrals</p>
-            </div>
-            <div className="flex gap-2">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg border border-slate-100 text-[10px] font-bold text-slate-600">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" /> Affiliate (20%)
-              </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg border border-slate-100 text-[10px] font-bold text-slate-600">
-                <span className="w-2 h-2 rounded-full bg-blue-500" /> Manager (10%)
-              </div>
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/50">
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Business</th>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Plan</th>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Month</th>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Affiliate (20%)</th>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Manager (10%)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {transactions.filter(t => t.type === 'commission').slice(0, 5).map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <p className="text-sm font-bold text-slate-900">{item.desc.replace('Earnings from ', '')}</p>
-                      <p className="text-[10px] text-slate-400 font-medium uppercase tracking-tighter">
-                        {new Date(item.time).toLocaleDateString()}
-                      </p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-xs font-bold text-slate-600 px-2 py-1 bg-slate-100 rounded-md">Direct</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={cn(
-                        "text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full border",
-                        item.status === 'Completed' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-orange-50 text-orange-600 border-orange-100"
-                      )}>
-                        {item.status === 'Completed' ? 'Paid' : 'Pending'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-xs font-bold text-slate-900">Current</span>
-                        <div className="w-12 h-1 bg-slate-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-blue-600 w-full" />
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-black text-emerald-600">₦{item.amount.toLocaleString()}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-black text-blue-600">₦0</span>
-                    </td>
-                  </tr>
-                ))}
-                {transactions.filter(t => t.type === 'commission').length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-slate-400 text-sm font-medium">
-                      No commission data yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
         {/* Transaction History */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="p-5 sm:p-6 border-b border-slate-100 flex justify-between items-center">
             <h3 className="text-base sm:text-lg font-bold text-slate-900">Transaction History</h3>
-            <Button variant="ghost" size="sm" className="text-xs sm:text-sm">View All</Button>
           </div>
           <div className="divide-y divide-slate-100">
-            {transactions.map((tx) => (
-              <div key={tx.id || tx.time} className="p-4 sm:p-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
+            {combinedTransactions.length > 0 ? combinedTransactions.map((tx) => (
+              <div key={tx.id} className="p-4 sm:p-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
                 <div className="flex items-center gap-3 sm:gap-4">
                   <div className={cn(
                     "w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0",
@@ -411,7 +309,11 @@ export default function WalletPage() {
                   </div>
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="p-12 text-center text-slate-400">
+                No transactions yet.
+              </div>
+            )}
           </div>
         </div>
       </div>

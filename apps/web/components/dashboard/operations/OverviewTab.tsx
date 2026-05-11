@@ -15,17 +15,29 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/hooks/use-auth';
-import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+import { useLeadStats, useLeads } from '@/services/useLeadsHooks';
+import { useOperationsStats, useTasks, useOnboarding } from '@/services/useOperationsHooks';
 
 export default function OverviewTab() {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const isManager = user?.role === 'manager';
+  const isManager = !!user?.isManagerMode;
+  
+  const { data: leadStats, isLoading: isLoadingLeadStats } = useLeadStats();
+  const { data: opStats, isLoading: isLoadingOpStats } = useOperationsStats();
+  const { data: leadsResponse, isLoading: isLoadingLeads } = useLeads({ limit: 3 });
+  const recentLeads = leadsResponse?.data || [];
+
+  const { data: tasks = [] } = useTasks();
+  const { data: onboarding = [] } = useOnboarding();
 
   const handleAction = (action: string) => {
     showToast(`${action} action triggered`, 'info');
   };
+
+  const pendingOnboardingCount = onboarding.filter(o => o.status !== 'COMPLETED').length;
 
   return (
     <div className="space-y-8">
@@ -33,29 +45,29 @@ export default function OverviewTab() {
         <div className="grid lg:grid-cols-4 gap-6">
           <div className="bg-slate-900 p-6 rounded-[32px] text-white shadow-xl shadow-slate-200">
             <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-1">Team Revenue</p>
-            <h4 className="text-2xl font-black mb-2">₦4.2M</h4>
+            <h4 className="text-2xl font-black mb-2">₦{isLoadingOpStats ? '...' : (opStats?.teamRevenue || 0).toLocaleString()}</h4>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-emerald-400">+12% vs last month</span>
+              <span className="text-[10px] font-bold text-emerald-400">Total Revenue Generated</span>
             </div>
           </div>
           <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Active Agents</p>
-            <h4 className="text-2xl font-black text-slate-900 mb-2">12 / 15</h4>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Active Onboarding</p>
+            <h4 className="text-2xl font-black text-slate-900 mb-2">{isLoadingOpStats ? '...' : opStats?.activeOnboarding ?? 0}</h4>
             <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-600 w-[80%]" />
+              <div className="h-full bg-blue-600" style={{ width: `${Math.min((opStats?.activeOnboarding ?? 0) * 10, 100)}%` }} />
             </div>
           </div>
           <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Lead Conversion</p>
-            <h4 className="text-2xl font-black text-slate-900 mb-2">24.5%</h4>
+            <h4 className="text-2xl font-black text-slate-900 mb-2">{isLoadingOpStats ? '...' : `${opStats?.leadConversion ?? 0}%`}</h4>
             <div className="flex items-center gap-2">
               <TrendingUp className="w-3 h-3 text-emerald-500" />
-              <span className="text-[10px] font-bold text-emerald-600">+3.2% improvement</span>
+              <span className="text-[10px] font-bold text-emerald-600">Total Pipeline Yield</span>
             </div>
           </div>
           <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">SLA Performance</p>
-            <h4 className="text-2xl font-black text-slate-900 mb-2">98.2%</h4>
+            <h4 className="text-2xl font-black text-slate-900 mb-2">{isLoadingOpStats ? '...' : `${opStats?.slaPerformance ?? 98}%`}</h4>
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-3 h-3 text-emerald-500" />
               <span className="text-[10px] font-bold text-emerald-600">Within Target</span>
@@ -74,12 +86,14 @@ export default function OverviewTab() {
                   <Target className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest">Lead Pipeline</h4>
-                  <p className="text-2xl font-black text-slate-900">12 High Value</p>
+                  <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest">Interested Leads</h4>
+                  <p className="text-2xl font-black text-slate-900">
+                    {isLoadingLeadStats ? '...' : leadStats?.interested ?? 0} Warm
+                  </p>
                 </div>
               </div>
               <p className="text-xs text-slate-500 leading-relaxed mb-6">
-                You have 12 leads in the &quot;Negotiation&quot; stage with a projected volume of ₦2.4M monthly.
+                You have {leadStats?.interested ?? 0} leads in the &quot;Interested&quot; stage. Follow up to convert them into active businesses.
               </p>
               <Button 
                 onClick={() => handleAction('View Pipeline')}
@@ -96,12 +110,14 @@ export default function OverviewTab() {
                   <TrendingUp className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest">Conversion Rate</h4>
-                  <p className="text-2xl font-black text-slate-900">18.4%</p>
+                  <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest">Potential Pipeline</h4>
+                  <p className="text-2xl font-black text-slate-900">
+                    {isLoadingLeadStats ? '...' : leadStats?.potential ?? 0} New
+                  </p>
                 </div>
               </div>
               <p className="text-xs text-slate-500 leading-relaxed mb-6">
-                Your demo-to-close conversion rate is up 4% this month. Great performance on product demos!
+                Your initial discovery pipeline has {leadStats?.potential ?? 0} businesses. Initiate first contact to move them forward.
               </p>
               <Button 
                 onClick={() => handleAction('Performance Insights')}
@@ -116,7 +132,7 @@ export default function OverviewTab() {
           {/* Recent Activities Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-bold text-slate-900">Recent Operational Activity</h3>
+              <h3 className="text-lg font-bold text-slate-900">Recent Lead Activity</h3>
               <Button 
                 onClick={() => handleAction('View All Activity')}
                 variant="ghost" 
@@ -126,27 +142,33 @@ export default function OverviewTab() {
               </Button>
             </div>
             <div className="space-y-3">
-              {[
-                { title: 'Demo Completed', business: 'Nexus Retail Group', time: '2 hours ago', icon: Calendar, color: 'text-purple-600', bg: 'bg-purple-50' },
-                { title: 'New Lead Captured', business: 'Blue Diamond Hotels', time: '5 hours ago', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-                { title: 'Follow-up Successful', business: 'Z-Global Logistics', time: 'Yesterday', icon: MessageSquare, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-              ].map((activity, idx) => (
+              {isLoadingLeads ? (
+                [...Array(3)].map((_, i) => (
+                  <div key={i} className="h-20 bg-slate-50 animate-pulse rounded-2xl border border-slate-100" />
+                ))
+              ) : recentLeads.length === 0 ? (
+                <div className="p-10 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No recent activity</p>
+                </div>
+              ) : recentLeads.map((lead, idx) => (
                 <div 
-                  key={idx} 
-                  onClick={() => handleAction(`View ${activity.title}`)}
+                  key={lead.id} 
+                  onClick={() => handleAction(`View ${lead.businessName}`)}
                   className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 hover:border-blue-100 transition-all group cursor-pointer"
                 >
                   <div className="flex items-center gap-4">
-                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", activity.bg)}>
-                      <activity.icon className={cn("w-5 h-5", activity.color)} />
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-blue-50">
+                      <Users className="w-5 h-5 text-blue-600" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-900">{activity.title}</p>
-                      <p className="text-xs text-slate-500">{activity.business}</p>
+                      <p className="text-sm font-bold text-slate-900">{lead.businessName}</p>
+                      <p className="text-xs text-slate-500">{lead.contactName} • {lead.industry}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{activity.time}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      {new Date(lead.createdAt).toLocaleDateString()}
+                    </p>
                     <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-1 transition-all inline-block mt-1" />
                   </div>
                 </div>
@@ -161,24 +183,35 @@ export default function OverviewTab() {
             <div className="relative z-10">
               <h4 className="text-xs font-black text-blue-400 uppercase tracking-widest mb-4">Immediate Actions</h4>
               <div className="space-y-4">
-                <div className="flex gap-4">
-                  <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
-                    <Clock className="w-4 h-4" />
+                {tasks.filter(t => t.status === 'PENDING').slice(0, 1).map(task => (
+                  <div key={task.id} className="flex gap-4">
+                    <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold leading-relaxed">{task.title}</p>
+                      <span className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">
+                        {task.dueDate ? `Due ${new Date(task.dueDate).toLocaleDateString()}` : 'No due date'}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-bold leading-relaxed">Follow up with Nexus Retail Group regarding the demo outcome.</p>
-                    <span className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Due in 2 hours</span>
+                ))}
+                
+                {onboarding.some(o => o.status === 'PENDING') && (
+                  <div className="flex gap-4">
+                    <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-400 shrink-0">
+                      <AlertCircle className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold leading-relaxed">{onboarding.filter(o => o.status === 'PENDING').length} Onboarding businesses are waiting for QR deployment setup.</p>
+                      <span className="text-[10px] text-orange-400 font-bold uppercase tracking-widest">Critical Alert</span>
+                    </div>
                   </div>
-                </div>
-                <div className="flex gap-4">
-                  <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-400 shrink-0">
-                    <AlertCircle className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold leading-relaxed">3 Onboarding businesses are waiting for QR deployment setup.</p>
-                    <span className="text-[10px] text-orange-400 font-bold uppercase tracking-widest">Critical Alert</span>
-                  </div>
-                </div>
+                )}
+
+                {tasks.length === 0 && !onboarding.some(o => o.status === 'PENDING') && (
+                  <p className="text-[10px] font-bold text-slate-500 italic">No immediate actions required.</p>
+                )}
               </div>
               <Button 
                 onClick={() => handleAction('Go to Tasks')}

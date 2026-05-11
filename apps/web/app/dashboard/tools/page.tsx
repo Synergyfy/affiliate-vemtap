@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Copy, 
@@ -14,26 +14,42 @@ import {
   Rocket,
   ShieldCheck,
   ChevronRight,
-  Target
+  Target,
+  Loader2
 } from 'lucide-react';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { QRCodeSVG } from 'qrcode.react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/toast';
+import { useReferralStats } from '@/hooks/use-referral-stats';
+import { useMarketingTools } from '@/hooks/use-marketing-tools';
 
 export default function ReferralTools() {
   const { user } = useAuth();
+  const { stats, isLoading: isLoadingStats } = useReferralStats();
+  const { tools, isLoading: isLoadingTools } = useMarketingTools();
   const [activeTab, setActiveTab] = useState<'business' | 'agent'>('business');
   const [copied, setCopied] = useState(false);
+  const [origin, setOrigin] = useState('');
   const referralCode = user?.referralCode || 'SYSTEM';
+
+  // Resolve origin client-side to avoid SSR mismatch
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setOrigin(window.location.origin);
+    }
+  }, []);
+
+  const VEMTAP_BASE_URL = process.env.NEXT_PUBLIC_VEMTAP_URL || 'https://vemtap.com';
+  const affiliateBaseUrl = origin || 'https://affiliates.vemtap.com';
 
   const links = {
     business: {
       title: 'Business Onboarding',
       desc: 'Use this link to register new businesses. They will be added to your direct portfolio once they complete setup on vemtap.com.',
-      url: `https://vemtap.com/register?ref=${referralCode}`,
+      url: `${VEMTAP_BASE_URL}/get-started?ref=${referralCode}`,
       icon: Building2,
       color: 'blue',
       badge: 'Revenue Source',
@@ -42,7 +58,7 @@ export default function ReferralTools() {
     agent: {
       title: 'Agent Recruitment',
       desc: 'Use this link to refer other affiliate agents. Build your team and earn indirect commissions from their performance.',
-      url: `https://affiliates.vemtap.com/signup?ref=${referralCode}`,
+      url: `${affiliateBaseUrl}/signup?ref=${referralCode}`,
       icon: UserPlus,
       color: 'emerald',
       badge: 'Team Growth',
@@ -81,16 +97,6 @@ export default function ReferralTools() {
     }
   };
 
-  const handleDownloadBanners = () => {
-    showToast('Preparing your marketing banners...', 'info');
-    setTimeout(() => {
-      // Simulate a download of a PDF/ZIP kit
-      const link = document.createElement('a');
-      link.href = '#';
-      link.download = `Vemtap_${activeTab}_Marketing_Kit.zip`;
-      showToast('Marketing Kit download started!', 'success');
-    }, 1500);
-  };
 
   const handleDownloadQR = () => {
     const svg = document.getElementById('referral-qr');
@@ -199,7 +205,9 @@ export default function ReferralTools() {
                         </div>
                         <div>
                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Link Clicks</p>
-                          <h4 className="text-lg font-black text-slate-900">128</h4>
+                          <h4 className="text-lg font-black text-slate-900">
+                            {isLoadingStats ? <Loader2 className="w-4 h-4 animate-spin" /> : (stats?.linkClicks || 0)}
+                          </h4>
                         </div>
                       </div>
                       <div className="bg-slate-50 p-4 rounded-3xl border border-slate-100 flex items-center gap-3">
@@ -208,7 +216,9 @@ export default function ReferralTools() {
                         </div>
                         <div>
                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">QR Scans</p>
-                          <h4 className="text-lg font-black text-slate-900">42</h4>
+                          <h4 className="text-lg font-black text-slate-900">
+                            {isLoadingStats ? <Loader2 className="w-4 h-4 animate-spin" /> : (stats?.qrScans || 0)}
+                          </h4>
                         </div>
                       </div>
                     </div>
@@ -283,18 +293,38 @@ export default function ReferralTools() {
                     Post your {activeTab} link on WhatsApp status for 5x more visibility from local business owners.
                   </p>
                 </div>
-                <div 
-                  onClick={handleDownloadBanners}
-                  className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center justify-between group cursor-pointer active:scale-95 transition-all"
-                >
-                  <div>
-                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Marketing Kits</h4>
-                    <p className="text-xs font-black text-slate-900">Download Banners</p>
+                
+                {isLoadingTools ? (
+                  <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center justify-center">
+                    <Loader2 className="w-5 h-5 animate-spin text-slate-300" />
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-blue-600 transition-all">
-                    <Download className="w-5 h-5" />
+                ) : tools.length > 0 ? (
+                  <div 
+                    onClick={() => {
+                      const tool = tools[0];
+                      window.open(tool.content, '_blank');
+                    }}
+                    className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center justify-between group cursor-pointer active:scale-95 transition-all"
+                  >
+                    <div>
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Marketing Kit</h4>
+                      <p className="text-xs font-black text-slate-900 truncate max-w-[150px]">{tools[0].title}</p>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-blue-600 transition-all">
+                      <Download className="w-5 h-5" />
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center justify-between opacity-60">
+                    <div>
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Marketing Kits</h4>
+                      <p className="text-xs font-black text-slate-900">No assets available yet</p>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-200">
+                      <Download className="w-5 h-5" />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

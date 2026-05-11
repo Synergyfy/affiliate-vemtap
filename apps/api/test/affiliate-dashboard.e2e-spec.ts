@@ -88,6 +88,13 @@ describe("AffiliateDashboard (e2e)", () => {
 
       expect(res.body).toHaveProperty("activeReferrals");
       expect(res.body.activeReferrals).toBe(1);
+      expect(res.body).toHaveProperty("todayEarnings");
+      expect(res.body).toHaveProperty("todayClicks");
+      expect(res.body).toHaveProperty("currentLevel");
+      expect(typeof res.body.todayEarnings).toBe("number");
+      expect(typeof res.body.todayClicks).toBe("number");
+      expect(typeof res.body.currentLevel).toBe("string");
+      expect(res.body.currentLevel).toBe("Novice Affiliate"); // 0 referrals
     });
 
     it("/affiliate/dashboard/forecast (GET)", async () => {

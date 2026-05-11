@@ -6,6 +6,7 @@ import { UnauthorizedException } from "@nestjs/common";
 import * as bcrypt from "bcryptjs";
 import { PrismaService } from "../prisma/prisma.service";
 import { FraudService } from "../fraud/fraud.service";
+import { AuditService } from "../prisma/audit.service";
 
 jest.mock("bcryptjs");
 
@@ -15,6 +16,7 @@ describe("AuthService", () => {
   let _jwtService: JwtService;
   let prisma: PrismaService;
   let fraudService: FraudService;
+  let auditService: AuditService;
 
   const mockUsersService = {
     findByEmail: jest.fn(),
@@ -43,6 +45,10 @@ describe("AuthService", () => {
     createAlert: jest.fn(),
   };
 
+  const mockAuditService = {
+    log: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -51,6 +57,7 @@ describe("AuthService", () => {
         { provide: JwtService, useValue: mockJwtService },
         { provide: PrismaService, useValue: mockPrisma },
         { provide: FraudService, useValue: mockFraudService },
+        { provide: AuditService, useValue: mockAuditService },
       ],
     }).compile();
 
@@ -59,6 +66,8 @@ describe("AuthService", () => {
     _jwtService = module.get<JwtService>(JwtService);
     prisma = module.get<PrismaService>(PrismaService);
     fraudService = module.get<FraudService>(FraudService);
+    auditService = module.get<AuditService>(AuditService);
+    (service as any).auditService = mockAuditService;
   });
 
   afterEach(() => {
@@ -112,6 +121,10 @@ describe("AuthService", () => {
         data: expect.objectContaining({ lastLoginIp: ip })
       }));
       expect(fraudService.createAlert).toHaveBeenCalled();
+      expect(mockAuditService.log).toHaveBeenCalledWith(expect.objectContaining({
+        userId: "1",
+        action: 'LOGIN',
+      }));
       expect(result.accessToken).toBe("access-token");
     });
   });

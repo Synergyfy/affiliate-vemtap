@@ -70,12 +70,18 @@ export class NetworkService {
       },
     });
 
-    // 2. Total businesses closed by direct recruits
+    // 1b. Total recruits (anyone referred, regardless of activity)
+    const totalRecruitsCount = await this.prisma.user.count({
+      where: { referrerId: userId },
+    });
+
+    // 2. Total businesses closed in the network (direct + indirect)
     const totalNetworkBusinesses = await this.prisma.business.count({
       where: {
-        affiliate: {
-          referrerId: userId,
-        },
+        OR: [
+          { affiliateId: userId }, // Direct businesses closed by user
+          { affiliate: { referrerId: userId } } // Indirect businesses closed by recruits
+        ]
       },
     });
 
@@ -85,6 +91,7 @@ export class NetworkService {
 
     return {
       activeAgentsCount,
+      totalRecruitsCount,
       totalNetworkBusinesses,
       milestones: {
         agents: {

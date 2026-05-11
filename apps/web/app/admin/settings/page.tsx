@@ -10,72 +10,76 @@ import {
   Clock,
   Coins,
   Users,
-  Briefcase
+  Briefcase,
+  Loader2
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/toast';
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api-client';
 import Link from 'next/link';
 
+import { useSettings, useUpdateSettings } from '@/services/useAdminHooks';
+import { PlatformSettings } from '@/types/api';
+
 export default function SettingsManagement() {
   const { showToast } = useToast();
-  const [directRate, setDirectRate] = useState(20);
-  const [indirectRate, setIndirectRate] = useState(5);
-  const [earningDuration, setEarningDuration] = useState('3months');
-  const [timeLimitDays, setTimeLimitDays] = useState(90);
-  const [managerAffiliateTarget, setManagerAffiliateTarget] = useState(30);
-  const [managerBusinessTarget, setManagerBusinessTarget] = useState(100);
-  const [rewardDuration, setRewardDuration] = useState('1year');
-  const [loading, setLoading] = useState(false);
+  const { data: settings, isLoading } = useSettings();
+  const updateSettings = useUpdateSettings();
+  
+  const [formData, setFormData] = useState<Partial<PlatformSettings>>({
+    directCommissionRate: 0.20,
+    indirectCommissionRate: 0.05,
+    earningDurationMonths: 3,
+    subAffiliateUnlockCount: 30,
+    fraudThresholdScore: 80,
+    minWithdrawal: 5000
+  });
 
   useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const data = await api.get('/settings');
-        if (data) {
-          setDirectRate(Math.round(data.directCommissionRate * 100));
-          setIndirectRate(Math.round(data.indirectCommissionRate * 100));
-          setManagerAffiliateTarget(data.subAffiliateUnlockCount || 30);
-          setFraudThreshold(data.fraudThresholdScore || 80);
-          setMinWithdrawal(Number(data.minWithdrawal));
-        }
-      } catch (error) {
-        console.error('Failed to fetch settings:', error);
-      }
-    };
-    fetchSettings();
-  }, []);
-
-  const [fraudThreshold, setFraudThreshold] = useState(80);
-  const [minWithdrawal, setMinWithdrawal] = useState(5000);
+    if (settings) {
+      setFormData({
+        directCommissionRate: settings.directCommissionRate,
+        indirectCommissionRate: settings.indirectCommissionRate,
+        earningDurationMonths: settings.earningDurationMonths,
+        subAffiliateUnlockCount: settings.subAffiliateUnlockCount,
+        fraudThresholdScore: settings.fraudThresholdScore,
+        minWithdrawal: settings.minWithdrawal
+      });
+    }
+  }, [settings]);
 
   const handleSave = async () => {
-    setLoading(true);
     try {
-      await api.patch('/settings', { 
-        directCommissionRate: Number(directRate) / 100, 
-        indirectCommissionRate: Number(indirectRate) / 100,
-        subAffiliateUnlockCount: Number(managerAffiliateTarget),
-        fraudThresholdScore: Number(fraudThreshold),
-        minWithdrawal: Number(minWithdrawal)
-      });
+      await updateSettings.mutateAsync(formData);
       showToast("System configuration saved successfully.", "success");
-    } catch (error) {
-      showToast("Failed to save configuration.", "error");
-    } finally {
-      setLoading(false);
+    } catch (error: any) {
+      showToast(error.message || "Failed to save configuration.", "error");
     }
   };
 
   const handleDiscard = () => {
+    if (settings) {
+      setFormData(settings);
+    }
     showToast("Changes discarded.", "info");
   };
+
+  if (isLoading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
       <div className="max-w-4xl mx-auto space-y-8">
+        {/* Header omitted for brevity in replace context, but keep it in full file */}
         <div className="flex items-center gap-3">
           <div className="p-3 bg-slate-900 rounded-2xl">
             <Settings className="w-6 h-6 text-white" />
@@ -111,8 +115,8 @@ export default function SettingsManagement() {
                 <div className="relative">
                   <input 
                     type="number" 
-                    value={directRate}
-                    onChange={(e) => setDirectRate(Number(e.target.value))}
+                    value={Math.round((formData.directCommissionRate || 0) * 100)}
+                    onChange={(e) => setFormData(prev => ({ ...prev, directCommissionRate: Number(e.target.value) / 100 }))}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
                   />
                   <Percent className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -128,8 +132,8 @@ export default function SettingsManagement() {
                 <div className="relative">
                   <input 
                     type="number" 
-                    value={indirectRate}
-                    onChange={(e) => setIndirectRate(Number(e.target.value))}
+                    value={Math.round((formData.indirectCommissionRate || 0) * 100)}
+                    onChange={(e) => setFormData(prev => ({ ...prev, indirectCommissionRate: Number(e.target.value) / 100 }))}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
                   />
                   <Percent className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -139,20 +143,16 @@ export default function SettingsManagement() {
 
               <div className="space-y-2 md:col-span-2">
                 <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                  Subscription Earning Duration
-                  <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-500">Default 3 Months</span>
+                  Subscription Earning Duration (Months)
+                  <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-500">Default 12</span>
                 </label>
                 <div className="relative">
-                  <select 
-                    value={earningDuration}
-                    onChange={(e) => setEarningDuration(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold appearance-none cursor-pointer"
-                  >
-                    <option value="3months">3 Months</option>
-                    <option value="6months">6 Months</option>
-                    <option value="1year">1 Year</option>
-                    <option value="forever">Forever (Lifetime)</option>
-                  </select>
+                  <input 
+                    type="number" 
+                    value={formData.earningDurationMonths}
+                    onChange={(e) => setFormData(prev => ({ ...prev, earningDurationMonths: Number(e.target.value) }))}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
+                  />
                   <Clock className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 </div>
                 <p className="text-xs text-slate-400">How long an affiliate continues to earn commissions from a business&apos;s recurring subscriptions.</p>
@@ -180,20 +180,12 @@ export default function SettingsManagement() {
                 <div className="relative">
                   <input 
                     type="number" 
-                    value={minWithdrawal}
-                    onChange={(e) => setMinWithdrawal(Number(e.target.value))}
+                    value={formData.minWithdrawal}
+                    onChange={(e) => setFormData(prev => ({ ...prev, minWithdrawal: Number(e.target.value) }))}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
                   />
                   <Coins className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 </div>
-                <p className="text-xs text-slate-400">Fixed for this release.</p>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700">Payout Frequency</label>
-                <select disabled className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold text-sm appearance-none opacity-70">
-                  <option>Weekly (Mondays)</option>
-                </select>
               </div>
             </div>
           </motion.div>
@@ -212,55 +204,14 @@ export default function SettingsManagement() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Risk Score Threshold</label>
                 <input 
                   type="number" 
-                  value={fraudThreshold}
-                  onChange={(e) => setFraudThreshold(Number(e.target.value))}
+                  value={formData.fraudThresholdScore}
+                  onChange={(e) => setFormData(prev => ({ ...prev, fraudThresholdScore: Number(e.target.value) }))}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
                 />
                 <p className="text-xs text-slate-400">Flag accounts with a risk score above this threshold.</p>
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                <div>
-                  <p className="text-sm font-bold text-slate-900">Automatic Fraud Flagging</p>
-                  <p className="text-xs text-slate-500">Enable AI-based detection</p>
-                </div>
-                <div className="w-12 h-6 bg-blue-600 rounded-full relative cursor-pointer" onClick={() => showToast("Automatic flagging toggled", "info")}>
-                  <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Platform Timing Settings */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-            className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm"
-          >
-            <div className="flex items-center gap-3 mb-8">
-              <Clock className="w-5 h-5 text-orange-600" />
-              <h3 className="text-lg font-bold text-slate-900">Platform Timing & Limits</h3>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                  Affiliate Time Limit (Days)
-                  <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-500">Default 90</span>
-                </label>
-                <div className="relative">
-                  <input 
-                    type="number" 
-                    value={timeLimitDays}
-                    onChange={(e) => setTimeLimitDays(Number(e.target.value))}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
-                  />
-                  <Clock className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                </div>
-                <p className="text-xs text-slate-400">The window an affiliate has to reach manager status before their link expires.</p>
               </div>
             </div>
           </motion.div>
@@ -286,62 +237,13 @@ export default function SettingsManagement() {
                 <div className="relative">
                   <input 
                     type="number" 
-                    value={managerAffiliateTarget}
-                    onChange={(e) => setManagerAffiliateTarget(Number(e.target.value))}
+                    value={formData.subAffiliateUnlockCount}
+                    onChange={(e) => setFormData(prev => ({ ...prev, subAffiliateUnlockCount: Number(e.target.value) }))}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
                   />
                   <Users className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 </div>
                 <p className="text-xs text-slate-400">Sub-affiliates needed for Manager upgrade.</p>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                  Required Closed Businesses
-                  <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-500">Default 100</span>
-                </label>
-                <div className="relative">
-                  <input 
-                    type="number" 
-                    value={managerBusinessTarget}
-                    onChange={(e) => setManagerBusinessTarget(Number(e.target.value))}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
-                  />
-                  <Briefcase className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                </div>
-                <p className="text-xs text-slate-400">Direct business deals needed for Manager upgrade.</p>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                  Reward Duration
-                  <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-500">Default 1 Year</span>
-                </label>
-                <div className="relative">
-                  <select 
-                    value={rewardDuration}
-                    onChange={(e) => setRewardDuration(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold appearance-none cursor-pointer"
-                  >
-                    <option value="3months">3 Months</option>
-                    <option value="6months">6 Months</option>
-                    <option value="1year">1 Year</option>
-                    <option value="2years">2 Years</option>
-                    <option value="forever">Forever (Lifetime)</option>
-                  </select>
-                  <Coins className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                </div>
-                <p className="text-xs text-slate-400">The length of the &quot;Extended Earnings Mode&quot; reward for Managers.</p>
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                <div>
-                  <p className="text-sm font-bold text-slate-900">Enable Manager Network</p>
-                  <p className="text-xs text-slate-500">Allow sub-affiliate recruiting</p>
-                </div>
-                <div className="w-12 h-6 bg-blue-600 rounded-full relative cursor-pointer" onClick={() => showToast("Manager network toggled", "info")}>
-                  <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
-                </div>
               </div>
             </div>
           </motion.div>
@@ -355,11 +257,11 @@ export default function SettingsManagement() {
             </button>
             <button 
               onClick={handleSave}
-              disabled={loading}
+              disabled={updateSettings.isPending}
               className="flex items-center gap-2 px-8 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg disabled:opacity-50"
             >
-              <Save className="w-4 h-4" />
-              {loading ? 'Saving...' : 'Save Configuration'}
+              {updateSettings.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {updateSettings.isPending ? 'Saving...' : 'Save Configuration'}
             </button>
           </div>
         </div>
