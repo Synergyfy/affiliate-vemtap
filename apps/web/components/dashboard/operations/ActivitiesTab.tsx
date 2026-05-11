@@ -10,21 +10,25 @@ import {
   CheckCircle2, 
   MessageSquare,
   Search,
-  Filter
+  Filter,
+  CheckSquare
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { useActivities } from '@/services/useOperationsHooks';
 
-const activities = [
-  { id: 1, type: 'demo', title: 'Demo Completed', business: 'Nexus Retail Group', time: '10:45 AM', date: 'Today', icon: PlayCircle, color: 'text-purple-600', bg: 'bg-purple-50' },
-  { id: 2, type: 'lead', title: 'New Lead Created', business: 'Stellar Tech Corp', time: '09:30 AM', date: 'Today', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-  { id: 3, type: 'onboarding', title: 'QR Setup Completed', business: 'Blue Diamond Hotels', time: '04:15 PM', date: 'Yesterday', icon: Rocket, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  { id: 4, type: 'call', title: 'Follow-up Call Logged', business: 'Green Valley Farms', time: '11:20 AM', date: 'Yesterday', icon: PhoneCall, color: 'text-orange-600', bg: 'bg-orange-50' },
-  { id: 5, type: 'business', title: 'Subscription Renewed', business: 'Z-Global Logistics', time: '02:00 PM', date: 'May 10', icon: Briefcase, color: 'text-blue-600', bg: 'bg-blue-50' },
-];
+const activityIconMap: Record<string, any> = {
+  LEAD_CREATED: { icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
+  DEMO_SCHEDULED: { icon: PlayCircle, color: 'text-purple-600', bg: 'bg-purple-50' },
+  DEMO_COMPLETED: { icon: PlayCircle, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  ONBOARDING_STAGE_CHANGED: { icon: Rocket, color: 'text-orange-600', bg: 'bg-orange-50' },
+  TASK_COMPLETED: { icon: CheckSquare, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  BUSINESS_REFERRED: { icon: Briefcase, color: 'text-blue-600', bg: 'bg-blue-50' },
+};
 
 export default function ActivitiesTab() {
   const { showToast } = useToast();
+  const { data: activities = [], isLoading } = useActivities();
 
   const handleAction = (action: string) => {
     showToast(`${action} action triggered`, 'info');
@@ -54,35 +58,51 @@ export default function ActivitiesTab() {
       </div>
 
       <div className="relative space-y-8 before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
-        {activities.map((activity) => (
-          <div key={activity.id} className="relative pl-12">
-            <div className={cn(
-              "absolute left-0 top-0 w-10 h-10 rounded-xl flex items-center justify-center z-10 shadow-sm border border-white",
-              activity.bg
-            )}>
-              <activity.icon className={cn("w-5 h-5", activity.color)} />
+        {isLoading ? (
+          [...Array(5)].map((_, i) => (
+            <div key={i} className="relative pl-12">
+              <div className="absolute left-0 top-0 w-10 h-10 rounded-xl bg-slate-100 animate-pulse" />
+              <div className="h-24 bg-slate-50 animate-pulse rounded-3xl border border-slate-100" />
             </div>
-            
-            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow group">
-              <div className="flex flex-col sm:flex-row justify-between gap-2 mb-2">
-                <h5 className="text-sm font-black text-slate-900 group-hover:text-blue-600 transition-colors">{activity.title}</h5>
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{activity.date}, {activity.time}</span>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-600">{activity.business}</span>
-                </div>
-                <div className="w-1 h-1 rounded-full bg-slate-300" />
-                <button 
-                  onClick={() => handleAction(`Viewing ${activity.title} Log`)}
-                  className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline"
-                >
-                  View Full Log
-                </button>
-              </div>
-            </div>
+          ))
+        ) : activities.length === 0 ? (
+          <div className="pl-12 text-slate-400 font-bold uppercase tracking-widest text-xs italic">
+            No activity history yet.
           </div>
-        ))}
+        ) : activities.map((activity) => {
+          const config = activityIconMap[activity.type] || { icon: History, color: 'text-slate-600', bg: 'bg-slate-50' };
+          const Icon = config.icon;
+
+          return (
+            <div key={activity.id} className="relative pl-12">
+              <div className={cn(
+                "absolute left-0 top-0 w-10 h-10 rounded-xl flex items-center justify-center z-10 shadow-sm border border-white",
+                config.bg
+              )}>
+                <Icon className={cn("w-5 h-5", config.color)} />
+              </div>
+              
+              <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow group">
+                <div className="flex flex-col sm:flex-row justify-between gap-2 mb-2">
+                  <h5 className="text-sm font-black text-slate-900 group-hover:text-blue-600 transition-colors">{activity.title}</h5>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{new Date(activity.createdAt).toLocaleString()}</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-600">{activity.businessName || 'System'}</span>
+                  </div>
+                  <div className="w-1 h-1 rounded-full bg-slate-300" />
+                  <button 
+                    onClick={() => handleAction(`Viewing ${activity.title} Log`)}
+                    className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline"
+                  >
+                    View Details
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <div className="text-center pt-8">

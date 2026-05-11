@@ -147,5 +147,37 @@ describe('UsersService', () => {
       const status = await service.getAgreementStatus('1');
       expect(status.isUpToDate).toBe(false);
     });
+  describe('findAllAdmin', () => {
+    it('should call prisma.user.findMany and count with filters', async () => {
+      const mockUsers = [{ id: '1', fullName: 'John Doe' }];
+      (mockPrisma.user as any).findMany = jest.fn().mockResolvedValue(mockUsers);
+      (mockPrisma.user as any).count = jest.fn().mockResolvedValue(1);
+
+      const filter = { search: 'John', role: 'AFFILIATE' as any, status: 'ACTIVE' as any, skip: 0, take: 10 };
+      const result = await service.findAllAdmin(filter);
+
+      expect(result.data).toEqual(mockUsers);
+      expect(result.total).toBe(1);
+      expect(mockPrisma.user.findMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({
+          role: 'AFFILIATE',
+          status: 'ACTIVE',
+          OR: expect.arrayContaining([
+            { fullName: { contains: 'John', mode: 'insensitive' } }
+          ])
+        })
+      }));
+    });
+
+    it('should handle empty search/filters', async () => {
+      (mockPrisma.user as any).findMany = jest.fn().mockResolvedValue([]);
+      (mockPrisma.user as any).count = jest.fn().mockResolvedValue(0);
+
+      await service.findAllAdmin({ skip: 0, take: 10 });
+
+      expect(mockPrisma.user.findMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: {}
+      }));
+    });
   });
 });

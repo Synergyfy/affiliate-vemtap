@@ -16,58 +16,53 @@ import {
 import Image from 'next/image';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { cn } from '@/lib/utils';
-import { api } from '@/lib/api-client';
 import { useAuth } from '@/hooks/use-auth';
+import { useLeaderboard } from '@/services/useDashboardHooks';
+import { Loader2 } from 'lucide-react';
+import { LeaderboardEntry } from '@/types/api';
 
 export default function LeaderboardPage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('This Week');
-  const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchLeaderboard = async () => {
-      try {
-        const response = await api.get('/users/leaderboard');
-        const formattedData = (response || []).map((item: any, index: number) => ({
-          id: item.id,
-          rank: index + 1,
-          name: item.fullName,
-          avatar: item.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(item.fullName)}&background=random`,
-          earnings: item.totalEarnings || 0,
-          referrals: item.referrals || item._count?.referrals || 0,
-          trend: 'stable'
-        }));
-        setLeaderboardData(formattedData);
-      } catch (error) {
-        console.error('Failed to fetch leaderboard:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchLeaderboard();
-  }, [activeTab]);
-
-  const tabs = ['This Week', 'This Month', 'All Time'];
-
+  const [activeTab, setActiveTab] = useState<'week' | 'month' | 'all'>('week');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const displayData = leaderboardData.filter(item => 
-    item.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  const topThree = leaderboardData.slice(0, 3);
-  
-  // Create safe fallbacks for podium to prevent crashes and keep UI pretty
-  const podium = [
-    topThree[0] ? { ...topThree[0], earnings: `₦${Number(topThree[0].earnings).toLocaleString()}` } : null,
-    topThree[1] ? { ...topThree[1], earnings: `₦${Number(topThree[1].earnings).toLocaleString()}` } : null,
-    topThree[2] ? { ...topThree[2], earnings: `₦${Number(topThree[2].earnings).toLocaleString()}` } : null,
+  const { data: leaderboardData, isLoading } = useLeaderboard({ 
+    limit: 50, 
+    timeframe: activeTab 
+  });
+
+  const tabs: { label: string; value: 'week' | 'month' | 'all' }[] = [
+    { label: 'This Week', value: 'week' },
+    { label: 'This Month', value: 'month' },
+    { label: 'All Time', value: 'all' },
   ];
+
+  const displayData = (leaderboardData || []).filter(item => 
+    item.fullName.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  const topThree = displayData.slice(0, 3);
+  
+  const podium = [
+    topThree[0] ? { ...topThree[0], displayEarnings: `₦${Number(topThree[0].totalEarnings).toLocaleString()}` } : null,
+    topThree[1] ? { ...topThree[1], displayEarnings: `₦${Number(topThree[1].totalEarnings).toLocaleString()}` } : null,
+    topThree[2] ? { ...topThree[2], displayEarnings: `₦${Number(topThree[2].totalEarnings).toLocaleString()}` } : null,
+  ];
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
       <div className="max-w-5xl mx-auto space-y-8">
-        {/* Header */}
+        {/* Header omitted for brevity */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
             <h2 className="text-3xl font-bold text-slate-900">Affiliate Leaderboard</h2>
@@ -76,16 +71,16 @@ export default function LeaderboardPage() {
           <div className="flex bg-slate-100 p-1 rounded-2xl w-full md:w-auto">
             {tabs.map((tab) => (
               <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
+                key={tab.value}
+                onClick={() => setActiveTab(tab.value)}
                 className={cn(
                   "flex-grow md:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition-all",
-                  activeTab === tab 
+                  activeTab === tab.value 
                     ? "bg-white text-blue-600 shadow-sm" 
                     : "text-slate-500 hover:text-slate-700"
                 )}
               >
-                {tab}
+                {tab.label}
               </button>
             ))}
           </div>
@@ -103,12 +98,13 @@ export default function LeaderboardPage() {
             <div className="absolute -top-10 left-1/2 -translate-x-1/2">
               <div className="relative">
                 <Image 
-                  src={podium[1]?.avatar || ""} 
+                  src={podium[1]?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${podium[1]?.fullName || '2'}`} 
                   width={80} 
                   height={80} 
                   className="w-20 h-20 rounded-full border-4 border-slate-100 object-cover" 
                   alt="" 
                   referrerPolicy="no-referrer"
+                  unoptimized
                 />
                 <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-slate-400 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold border-2 border-white">
                   2
@@ -116,11 +112,11 @@ export default function LeaderboardPage() {
               </div>
             </div>
             <div className="mt-10">
-              <h3 className="text-lg font-bold text-slate-900">{podium[1]?.name || '---'}</h3>
-              <p className="text-2xl font-black text-blue-600 mt-2">{podium[1]?.earnings || '₦0'}</p>
+              <h3 className="text-lg font-bold text-slate-900">{podium[1]?.fullName || '---'}</h3>
+              <p className="text-2xl font-black text-blue-600 mt-2">{podium[1]?.displayEarnings || '₦0'}</p>
               <div className="flex items-center justify-center gap-2 mt-4 text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full w-fit mx-auto">
                 <TrendingUp className="w-3 h-3" />
-                {podium[1]?.trend || '0%'}
+                {podium[1]?.trend || 'stable'}
               </div>
             </div>
           </motion.div>
@@ -134,12 +130,13 @@ export default function LeaderboardPage() {
             <div className="absolute -top-12 left-1/2 -translate-x-1/2">
               <div className="relative">
                 <Image 
-                  src={podium[0]?.avatar || ""} 
+                  src={podium[0]?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${podium[0]?.fullName || '1'}`} 
                   width={100} 
                   height={100} 
                   className="w-24 h-24 rounded-full border-4 border-blue-400 object-cover" 
                   alt="" 
                   referrerPolicy="no-referrer"
+                  unoptimized
                 />
                 <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-yellow-400 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold border-2 border-blue-600">
                   <Trophy className="w-5 h-5" />
@@ -147,8 +144,8 @@ export default function LeaderboardPage() {
               </div>
             </div>
             <div className="mt-12 text-white">
-              <h3 className="text-xl font-bold">{podium[0]?.name || '---'}</h3>
-              <p className="text-3xl font-black mt-2">{podium[0]?.earnings || '₦0'}</p>
+              <h3 className="text-xl font-bold">{podium[0]?.fullName || '---'}</h3>
+              <p className="text-3xl font-black mt-2">{podium[0]?.displayEarnings || '₦0'}</p>
               <div className="flex items-center justify-center gap-2 mt-4 text-xs font-bold text-blue-100 bg-white/10 px-3 py-1 rounded-full w-fit mx-auto">
                 <Star className="w-3 h-3 fill-current" />
                 Top Performer
@@ -166,12 +163,13 @@ export default function LeaderboardPage() {
             <div className="absolute -top-10 left-1/2 -translate-x-1/2">
               <div className="relative">
                 <Image 
-                  src={podium[2]?.avatar || ""} 
+                  src={podium[2]?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${podium[2]?.fullName || '3'}`} 
                   width={80} 
                   height={80} 
                   className="w-20 h-20 rounded-full border-4 border-orange-100 object-cover" 
                   alt="" 
                   referrerPolicy="no-referrer"
+                  unoptimized
                 />
                 <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-orange-500 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold border-2 border-white">
                   3
@@ -179,11 +177,11 @@ export default function LeaderboardPage() {
               </div>
             </div>
             <div className="mt-10">
-              <h3 className="text-lg font-bold text-slate-900">{podium[2]?.name || '---'}</h3>
-              <p className="text-2xl font-black text-blue-600 mt-2">{podium[2]?.earnings || '₦0'}</p>
+              <h3 className="text-lg font-bold text-slate-900">{podium[2]?.fullName || '---'}</h3>
+              <p className="text-2xl font-black text-blue-600 mt-2">{podium[2]?.displayEarnings || '₦0'}</p>
               <div className="flex items-center justify-center gap-2 mt-4 text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full w-fit mx-auto">
                 <TrendingUp className="w-3 h-3" />
-                {podium[2]?.trend || '0%'}
+                {podium[2]?.trend || 'stable'}
               </div>
             </div>
           </motion.div>
@@ -218,7 +216,7 @@ export default function LeaderboardPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {displayData.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
+                  <tr key={item.fullName} className="hover:bg-slate-50/50 transition-colors group">
                     <td className="px-6 py-6">
                       <span className={cn(
                         "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm",
@@ -233,15 +231,16 @@ export default function LeaderboardPage() {
                     <td className="px-6 py-6">
                       <div className="flex items-center gap-3">
                         <Image 
-                          src={item.avatar} 
+                          src={item.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${item.fullName}`} 
                           width={40} 
                           height={40} 
                           className="w-10 h-10 rounded-full object-cover" 
                           alt="" 
                           referrerPolicy="no-referrer"
+                          unoptimized
                         />
                         <div>
-                          <p className="text-sm font-bold text-slate-900">{item.name}</p>
+                          <p className="text-sm font-bold text-slate-900">{item.fullName}</p>
                           <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Level {item.rank < 5 ? '2' : '1'}</p>
                         </div>
                       </div>
@@ -249,15 +248,15 @@ export default function LeaderboardPage() {
                     <td className="px-6 py-6">
                       <div className="flex items-center gap-2">
                         <Users className="w-4 h-4 text-slate-400" />
-                        <span className="text-sm font-bold text-slate-700">{item.referrals || 0}</span>
+                        <span className="text-sm font-bold text-slate-700">{item.referralCount || 0}</span>
                       </div>
                     </td>
                     <td className="px-6 py-6">
-                      <span className="text-sm font-black text-slate-900">₦{Number(item.earnings || 0).toLocaleString()}</span>
+                      <span className="text-sm font-black text-slate-900">₦{Number(item.totalEarnings || 0).toLocaleString()}</span>
                     </td>
                     <td className="px-6 py-6">
-                      <div className="flex items-center gap-1 text-xs font-bold text-slate-400">
-                        N/A
+                      <div className="flex items-center gap-1 text-xs font-bold text-slate-400 uppercase">
+                        {item.trend || 'stable'}
                       </div>
                     </td>
                     <td className="px-6 py-6 text-right">
@@ -277,12 +276,12 @@ export default function LeaderboardPage() {
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600 rounded-full blur-[100px] opacity-20 -mr-32 -mt-32" />
           <div className="flex items-center gap-6 relative z-10 text-center md:text-left flex-col md:flex-row">
             <div className="w-20 h-20 rounded-full border-4 border-white/10 flex items-center justify-center text-3xl font-black bg-white/5">
-              {leaderboardData.findIndex(item => item.id === user?.id) + 1 || '--'}
+              {(leaderboardData || []).findIndex(item => item.fullName === user?.fullName) + 1 || '--'}
             </div>
             <div>
               <h3 className="text-xl font-bold">Your Current Rank</h3>
               <p className="text-slate-400">
-                {leaderboardData.findIndex(item => item.id === user?.id) !== -1 
+                {(leaderboardData || []).findIndex(item => item.fullName === user?.fullName) !== -1 
                   ? "You are doing great! Keep it up." 
                   : "Start referring more businesses to climb the board!"}
               </p>

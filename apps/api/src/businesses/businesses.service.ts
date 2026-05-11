@@ -288,5 +288,50 @@ export class BusinessesService {
       }
     });
   }
+
+  async getPortfolioStats(userId: string) {
+    const today = new Date();
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(today.getMonth() - 6);
+
+    const [activeCount, totalCommissions, history] = await Promise.all([
+      this.prisma.business.count({
+        where: { affiliateId: userId, status: 'ACTIVE' },
+      }),
+      this.prisma.commission.aggregate({
+        where: { userId, status: 'PAID' },
+        _sum: { amount: true },
+      }),
+      this.prisma.commission.findMany({
+        where: { 
+          userId, 
+          status: 'PAID',
+          createdAt: { gte: sixMonthsAgo }
+        },
+        select: { createdAt: true, amount: true },
+        orderBy: { createdAt: 'desc' },
+      })
+    ]);
+
+    // Group history by month
+    const groupedHistory = history.reduce((acc, curr) => {
+      const month = curr.createdAt.toLocaleString('default', { month: 'long', year: 'numeric' });
+      if (!acc[month]) acc[month] = 0;
+      acc[month] += Number(curr.amount);
+      return acc;
+    }, {} as Record<string, number>);
+
+    const formattedHistory = Object.entries(groupedHistory).map(([month, amount]) => ({
+      month,
+      amount: `₦${amount.toLocaleString()}`,
+      status: 'Received'
+    })).slice(0, 5);
+
+    return {
+      activeSubscriberCount: activeCount,
+      totalPortfolioEarnings: Number(totalCommissions._sum.amount || 0),
+      earningsHistory: formattedHistory
+    };
+  }
 }
 

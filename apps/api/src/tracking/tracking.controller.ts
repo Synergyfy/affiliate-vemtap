@@ -1,18 +1,32 @@
-import { Controller, Post, Body, Ip, Headers } from "@nestjs/common";
+import { Controller, Post, Get, Body, Ip, Headers, UseGuards, Req } from "@nestjs/common";
 import {
   ApiTags,
   ApiOperation,
   ApiOkResponse,
   ApiResponse,
   ApiBody,
+  ApiBearerAuth,
 } from "@nestjs/swagger";
 import { TrackingService } from "./tracking.service";
 import { NotifyClickDto } from "./dto/notify-click.dto";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 
 @ApiTags("tracking")
 @Controller("tracking")
 export class TrackingController {
   constructor(private readonly trackingService: TrackingService) {}
+
+  @Get("stats")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Get tracking stats for the authenticated user" })
+  @ApiOkResponse({
+    description: "Stats retrieved successfully",
+    example: { linkClicks: 120, qrScans: 45 },
+  })
+  async getStats(@Req() req: any) {
+    return this.trackingService.getStats(req.user.id);
+  }
 
   @Post("notify-click")
   @ApiOperation({

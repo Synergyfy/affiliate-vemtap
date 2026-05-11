@@ -35,6 +35,7 @@ import { useToast } from '@/hooks/use-toast';
 import { api } from '@/lib/api-client';
 import { useAuth } from '@/hooks/use-auth';
 import { AnimatePresence } from 'framer-motion';
+import { usePortfolioStats } from '@/services/useDashboardHooks';
 
 const initialBusinesses = [
   { id: 1, name: 'Tech Solutions Ltd', plan: 'Premium', status: 'Active', payment: 'Paid', commission: '₦15,000', date: '2024-03-15' },
@@ -60,6 +61,7 @@ const paymentColors = {
 
 export default function BusinessesPage() {
   const { user } = useAuth();
+  const { data: portfolioStats } = usePortfolioStats();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [businesses, setBusinesses] = useState<any[]>([]);
@@ -494,8 +496,8 @@ export default function BusinessesPage() {
                 {/* Stats Cards */}
                 <div className="grid grid-cols-3 gap-3">
                   <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-center">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-blue-500 mb-1">Subscribed</p>
-                    <p className="text-lg font-black text-slate-900">12x</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-blue-500 mb-1">Status</p>
+                    <p className="text-sm font-black text-slate-900">{selectedBusiness.status}</p>
                   </div>
                   <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-100 text-center">
                     <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600 mb-1">Total Earned</p>
@@ -503,7 +505,7 @@ export default function BusinessesPage() {
                   </div>
                   <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-center">
                     <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Started</p>
-                    <p className="text-lg font-black text-slate-900">{selectedBusiness.date.split('-')[1]}/{selectedBusiness.date.split('-')[0].slice(2)}</p>
+                    <p className="text-sm font-black text-slate-900">{new Date(selectedBusiness.createdAt).toLocaleDateString()}</p>
                   </div>
                 </div>
 
@@ -511,24 +513,26 @@ export default function BusinessesPage() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h5 className="text-xs font-black text-slate-900 uppercase tracking-widest">Earnings History</h5>
-                    <span className="text-[10px] font-bold text-slate-400 italic">Last 6 Months</span>
+                    <span className="text-[10px] font-bold text-slate-400 italic">Recent Commissions</span>
                   </div>
                   <div className="space-y-2">
-                    {[
-                      { month: 'May 2024', amount: '₦5,200', status: 'Received' },
-                      { month: 'April 2024', amount: '₦4,800', status: 'Received' },
-                      { month: 'March 2024', amount: '₦5,100', status: 'Received' },
-                    ].map((item, i) => (
-                      <div key={i} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-slate-400">
-                            <Clock className="w-4 h-4" />
+                    {selectedBusiness.commissions?.length > 0 ? (
+                      selectedBusiness.commissions.map((item: any, i: number) => (
+                        <div key={i} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-slate-400">
+                              <Clock className="w-4 h-4" />
+                            </div>
+                            <span className="text-sm font-bold text-slate-700">{new Date(item.createdAt).toLocaleDateString()}</span>
                           </div>
-                          <span className="text-sm font-bold text-slate-700">{item.month}</span>
+                          <span className="text-sm font-black text-emerald-600">₦{Number(item.amount).toLocaleString()}</span>
                         </div>
-                        <span className="text-sm font-black text-emerald-600">{item.amount}</span>
+                      ))
+                    ) : (
+                      <div className="p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                        No commission history yet
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
 

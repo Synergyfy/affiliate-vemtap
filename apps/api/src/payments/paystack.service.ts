@@ -27,7 +27,7 @@ export class PaystackService {
       return null;
     }
     try {
-      const response = await this.paystack.subaccount.create(data);
+      const response = await this.paystack.subaccounts.create(data);
       return response.data;
     } catch (error) {
       this.logger.error('Failed to create subaccount', error);
@@ -41,7 +41,7 @@ export class PaystackService {
       return [];
     }
     try {
-      const response = await this.paystack.misc.listBanks({ country: 'nigeria' });
+      const response = await this.paystack.misc.banks({ country: 'nigeria' });
       return response.data;
     } catch (error) {
       this.logger.error('Failed to list banks', error);
@@ -88,6 +88,23 @@ export class PaystackService {
       return response.data;
     } catch (error) {
       this.logger.error('Failed to initiate transfer', error);
+      throw error;
+    }
+  }
+
+  async resolveAccount(accountNumber: string, bankCode: string) {
+    if (!this.paystack) {
+      this.logger.error('Paystack client not initialized.');
+      return null;
+    }
+    try {
+      const response = await this.paystack.verification.resolveAccount({
+        account_number: accountNumber,
+        bank_code: bankCode,
+      });
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Failed to resolve account: ${error.message}`);
       throw error;
     }
   }

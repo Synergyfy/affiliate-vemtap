@@ -14,6 +14,7 @@ model User {
   phone           String    @unique
   password        String
   fullName        String
+  avatar          String?
   
   referralCode    String    @unique
   referredBy      String?
@@ -48,6 +49,13 @@ model User {
   trainingProgress TrainingProgress[]
   shortLinks      ShortLink[]
   linkClicks      LinkClick[]
+  leads           Lead[]
+  fraudAlerts     FraudAlert[] @relation("UserAlerts")
+  resolvedAlerts  FraudAlert[] @relation("ResolvedAlerts")
+  
+  assignedTasks   Task[]       @relation("AssignedTasks")
+  agentDemos      Demo[]       @relation("AgentDemos")
+  activities      Activity[]
   
   tokenVersion    Int       @default(0)
   paystackSubaccountId String?
@@ -126,6 +134,7 @@ model Business {
   updatedAt       DateTime  @updatedAt
   
   commissions     Commission[]
+  onboarding      Onboarding?
   
   @@index([affiliateId])
   @@index([referralCode])
@@ -409,6 +418,7 @@ model FraudAlert {
   id              String    @id @default(uuid())
   
   userId          String
+  user            User      @relation("UserAlerts", fields: [userId], references: [id], onDelete: Cascade)
   
   type            FraudType
   severity        Severity
@@ -419,6 +429,7 @@ model FraudAlert {
   status          FraudStatus @default(OPEN)
   resolvedAt      DateTime?
   resolvedBy      String?
+  resolver        User?     @relation("ResolvedAlerts", fields: [resolvedBy], references: [id])
   resolution      String?
   
   createdAt       DateTime  @default(now())
@@ -548,6 +559,7 @@ model LinkClick {
   ip            String?
   userAgent     String?
   referer       String?
+  isQrScan      Boolean   @default(false)
   
   createdAt     DateTime  @default(now())
 
@@ -555,4 +567,150 @@ model LinkClick {
   @@index([shortLinkCode])
   @@index([userId])
   @@index([createdAt])
+}
+
+model Lead {
+  id              String      @id @default(uuid())
+  businessName    String
+  industry        String
+  location        String?
+  website         String?
+  contactName     String
+  contactRole     String?
+  phone           String
+  email           String?
+  source          String
+  otherSource     String?
+  priority        Priority    @default(MEDIUM)
+  status          LeadStatus  @default(POTENTIAL)
+  followUpDate    DateTime?
+  comments        String?
+  
+  affiliateId     String
+  affiliate       User        @relation(fields: [affiliateId], references: [id])
+  
+  assignedAgentId String?     // For Admin use
+
+  demos           Demo[]
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([affiliateId])
+  @@index([status])
+  @@index([priority])
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum LeadStatus {
+  POTENTIAL
+  CONTACTED
+  INTERESTED
+  NOT_INTERESTED
+  COMPLETED
+}
+
+model Task {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  priority    Priority @default(MEDIUM)
+  status      TaskStatus @default(PENDING)
+  dueDate     DateTime?
+  
+  assignedToId String
+  assignedTo   User     @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([assignedToId])
+  @@index([status])
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model Demo {
+  id           String   @id @default(uuid())
+  businessName String
+  leadId       String?
+  lead         Lead?    @relation(fields: [leadId], references: [id])
+  
+  date         DateTime
+  status       DemoStatus @default(SCHEDULED)
+  
+  agentId      String
+  agent        User     @relation("AgentDemos", fields: [agentId], references: [id])
+  
+  meetingUrl   String?
+  notes        String?
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([agentId])
+  @@index([status])
+}
+
+enum DemoStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model Onboarding {
+  id           String   @id @default(uuid())
+  businessId   String   @unique
+  business     Business @relation(fields: [businessId], references: [id])
+  
+  stage        OnboardingStage @default(QR_DESIGN)
+  status       OnboardingStatus @default(PENDING)
+  
+  notes        String?
+  
+  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
+
+  @@index([businessId])
+}
+
+enum OnboardingStage {
+  QR_DESIGN
+  SHIPMENT
+  SETUP
+  ACTIVATION
+}
+
+enum OnboardingStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  DELAYED
+}
+
+model Activity {
+  id          String   @id @default(uuid())
+  type        String   // e.g. "demo", "lead", "onboarding", "call", "business"
+  title       String
+  description String?
+  businessName String?
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([type])
 }

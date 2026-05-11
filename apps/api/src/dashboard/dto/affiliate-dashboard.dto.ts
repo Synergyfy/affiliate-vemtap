@@ -33,6 +33,24 @@ export class AffiliateStatsResponseDto {
   totalClicks: number;
 
   @ApiProperty({
+    example: 24500.0,
+    description: "Earnings for the current day in kobo",
+  })
+  todayEarnings: number;
+
+  @ApiProperty({
+    example: 15,
+    description: "Number of clicks on affiliate links today",
+  })
+  todayClicks: number;
+
+  @ApiProperty({
+    example: "Active Earner",
+    description: "Current affiliate level based on referrals",
+  })
+  currentLevel: string;
+
+  @ApiProperty({
     example: "https://vemtap.com/signup",
     description: "The base URL for affiliate referral signups",
   })
@@ -123,4 +141,47 @@ export class LeaderboardResponseDto {
     description: "Ranking trend compared to previous period",
   })
   trend?: string;
+}
+
+export class AffiliateActionResponseDto {
+  @ApiProperty({ example: "Recruit Affiliates" })
+  title: string;
+
+  @ApiProperty({ example: "Find 5 new potential affiliates" })
+  desc: string;
+
+  @ApiProperty({ example: "UserPlus" })
+  icon: string;
+
+  @ApiProperty({ example: "text-blue-600" })
+  color: string;
+
+  @ApiProperty({ example: "bg-blue-50" })
+  bg: string;
+
+  @ApiProperty({ example: "/dashboard/tools" })
+  link?: string;
+}
+
+export class AffiliateAlertResponseDto {
+  @ApiProperty({ example: "Milestone Alert" })
+  title: string;
+
+  @ApiProperty({ example: "You are 10 businesses away" })
+  desc: string;
+
+  @ApiProperty({
+    example: "info",
+    enum: ["info", "warning", "success", "error"],
+  })
+  type: string;
+
+  @ApiProperty({ example: "Target" })
+  icon: string;
+
+  @ApiProperty({ example: "text-blue-600" })
+  color: string;
+
+  @ApiProperty({ example: "bg-blue-50" })
+  bg: string;
 }

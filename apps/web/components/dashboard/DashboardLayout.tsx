@@ -72,7 +72,7 @@ const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
   const { showToast } = useToast();
   const pathname = usePathname();
   const router = useRouter();
@@ -103,11 +103,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setHasCompletedTour(localStorage.getItem('hasCompletedTour') === 'true');
   }, []);
 
-  const handleLogout = () => {
-    logout();
+  // Middleware handles server-side redirection, but we keep the loading state
+  // and user check for UI consistency while client-side state is hydrating.
+
+  const handleLogout = async () => {
+    await logout();
     showToast('Logged out successfully', 'info');
     router.push('/login');
   };
+
+  // Show loading state or nothing while checking auth
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Verifying Session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <DashboardContext.Provider value={{ isNotificationsOpen, setIsNotificationsOpen, isProfileOpen, setIsProfileOpen }}>

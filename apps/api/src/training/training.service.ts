@@ -74,6 +74,8 @@ export class TrainingService {
         orderBy: { order: 'asc' },
         include: {
           progress: { where: { userId } },
+          quizzes: { orderBy: { order: 'asc' } },
+          scenarios: { orderBy: { order: 'asc' } },
         },
       }),
       this.prisma.trainingModule.count({ where: { isPublished: true } }),

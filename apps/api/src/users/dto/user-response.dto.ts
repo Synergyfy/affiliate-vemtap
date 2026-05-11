@@ -19,6 +19,13 @@ export class UserResponseDto {
 
   @ApiProperty({ description: "Full name", example: "John Doe" })
   fullName: string;
+  
+  @ApiProperty({
+    description: "Profile picture URL",
+    example: "https://example.com/avatar.jpg",
+    required: false
+  })
+  avatar?: string;
 
   @ApiProperty({
     enum: Role,

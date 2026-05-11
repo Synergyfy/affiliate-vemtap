@@ -6,6 +6,7 @@ import { CreateUserDto } from "../users/dto/create-user.dto";
 import { User, Severity, FraudType } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { FraudService } from "../fraud/fraud.service";
+import { AuditService } from "../prisma/audit.service";
 
 @Injectable()
 export class AuthService {
@@ -14,6 +15,7 @@ export class AuthService {
     public jwtService: JwtService,
     private prisma: PrismaService,
     private fraudService: FraudService,
+    private auditService: AuditService,
   ) {}
 
   async validateUser(emailOrPhone: string, pass: string): Promise<User> {
@@ -63,12 +65,22 @@ export class AuthService {
           });
         }
       }
+
+      // 3. Log the login event
+      await this.auditService.log({
+        userId: user.id,
+        action: 'LOGIN',
+        entity: 'USER',
+        entityId: user.id,
+        ipAddress: ip,
+      });
     }
 
-    const payload = { sub: user.id, email: user.email };
+    const payload = { sub: user.id, email: user.email, role: user.role };
     const refreshPayload = {
       sub: user.id,
       email: user.email,
+      role: user.role,
       tokenVersion: user.tokenVersion || 0,
     };
 
