@@ -31,26 +31,9 @@ export function proxy(request: NextRequest) {
   const role = accessToken ? getRoleFromToken(accessToken) : (refreshToken ? getRoleFromToken(refreshToken) : null);
 
   // Define route patterns
-  const publicPaths = [
-    '/',
-    '/login',
-    '/signup',
-    '/capture',
-    '/support',
-    '/terms',
-    '/privacy',
-    '/cookies',
-    '/forgot-password',
-    '/reset-password',
-    '/verify-email'
-  ];
-
-  const isPublicRoute = 
-    publicPaths.some(path => pathname === path || pathname.startsWith(path + '/')) || 
-    pathname.startsWith('/_next') || 
-    pathname.includes('/api/');
-    
   const isAuthRoute = pathname === '/login' || pathname === '/signup';
+  const isCaptureRoute = pathname.startsWith('/capture');
+  const isPublicRoute = isAuthRoute || isCaptureRoute || pathname.startsWith('/_next') || pathname.includes('/api/');
   const isProtectedRoute = !isPublicRoute;
 
   // 1. Redirect unauthenticated users from protected routes to login
