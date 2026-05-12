@@ -2,43 +2,43 @@ import { ApiProperty } from '@nestjs/swagger';
 import { PlanType, BusinessStatus } from '@prisma/client';
 
 export class BusinessResponseDto {
-  @ApiProperty()
+  @ApiProperty({ example: 'uuid-string' })
   id: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'Vemtap Solutions' })
   businessName: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'John Owner' })
   ownerName: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'owner@example.com' })
   email: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: '08012345678' })
   phone: string;
 
-  @ApiProperty({ enum: PlanType })
+  @ApiProperty({ enum: PlanType, example: PlanType.BASIC })
   planType: PlanType;
 
-  @ApiProperty({ enum: BusinessStatus })
+  @ApiProperty({ enum: BusinessStatus, example: BusinessStatus.TRIAL })
   status: BusinessStatus;
 
-  @ApiProperty()
+  @ApiProperty({ example: 3000 })
   subscriptionAmount: number;
 
-  @ApiProperty()
+  @ApiProperty({ example: 0.15 })
   commissionRate: number;
 
-  @ApiProperty()
+  @ApiProperty({ example: 450 })
   commissionAmount: number;
 
-  @ApiProperty()
+  @ApiProperty({ example: '2026-05-01T10:00:00Z' })
   createdAt: Date;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ required: false, example: '2026-05-01T12:00:00Z' })
   paidAt?: Date;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'affiliate-uuid' })
   affiliateId: string;
 }
 

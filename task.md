@@ -1,0 +1,12 @@
+- [x] Fix build errors in backend controllers (DTO naming, enum imports)
+- [x] Correct syntax errors in Admin Dashboard pages (Commissions, Fraud, Affiliates)
+- [x] Resolve HTML nesting issues (div inside tbody) causing build failures
+- [x] Align hook calls with new signatures (useWithdrawals)
+- [x] Fix missing and unused imports in Admin pages
+- [x] Extend API type definitions for better relations coverage
+- [x] Ensure strict type safety in all UI event handlers
+- [x] Verify successful production build via `pnpm build`
+- [x] Implement global Next.js middleware for route protection
+- [x] Implement silent refresh logic in API client
+- [x] Add session verification on frontend mount
+- [x] Ensure correct role-based filtering in backend (Affiliates vs Managers)

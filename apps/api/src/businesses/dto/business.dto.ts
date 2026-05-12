@@ -3,37 +3,37 @@ import { PlanType } from '@prisma/client';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateBusinessDto {
-  @ApiProperty()
+  @ApiProperty({ example: 'Vemtap Solutions' })
   @IsString()
   businessName: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'John Owner' })
   @IsString()
   ownerName: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'owner@example.com' })
   @IsEmail()
   email: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: '08012345678' })
   @IsString()
   phone: string;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ required: false, example: '123 Business Way, Lagos' })
   @IsOptional()
   @IsString()
   address?: string;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ required: false, example: 'Retail' })
   @IsOptional()
   @IsString()
   businessType?: string;
 
-  @ApiProperty({ enum: PlanType })
+  @ApiProperty({ enum: PlanType, example: PlanType.BASIC })
   @IsEnum(PlanType)
   planType: PlanType;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'AGENT001' })
   @IsString()
   referralCode: string;
 }

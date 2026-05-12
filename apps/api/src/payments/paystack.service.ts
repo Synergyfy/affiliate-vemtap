@@ -8,7 +8,12 @@ export class PaystackService {
   private readonly logger = new Logger(PaystackService.name);
 
   constructor(private configService: ConfigService) {
-    this.paystack = new Paystack(this.configService.get('PAYSTACK_SECRET_KEY') || '');
+    const secretKey = this.configService.get<string>('PAYSTACK_SECRET_KEY');
+    if (!secretKey) {
+      this.logger.warn('PAYSTACK_SECRET_KEY not found in environment variables. Payment features will be disabled.');
+    } else {
+      this.paystack = new Paystack(secretKey);
+    }
   }
 
   async createSubaccount(data: {
@@ -17,8 +22,12 @@ export class PaystackService {
     account_number: string;
     percentage_charge: number;
   }) {
+    if (!this.paystack) {
+      this.logger.error('Paystack client not initialized.');
+      return null;
+    }
     try {
-      const response = await this.paystack.subaccount.create(data);
+      const response = await this.paystack.subaccounts.create(data);
       return response.data;
     } catch (error) {
       this.logger.error('Failed to create subaccount', error);
@@ -27,8 +36,12 @@ export class PaystackService {
   }
 
   async listBanks() {
+    if (!this.paystack) {
+      this.logger.error('Paystack client not initialized.');
+      return [];
+    }
     try {
-      const response = await this.paystack.misc.listBanks({ country: 'nigeria' });
+      const response = await this.paystack.misc.banks({ country: 'nigeria' });
       return response.data;
     } catch (error) {
       this.logger.error('Failed to list banks', error);
@@ -41,6 +54,10 @@ export class PaystackService {
     account_number: string;
     bank_code: string;
   }) {
+    if (!this.paystack) {
+      this.logger.error('Paystack client not initialized.');
+      return null;
+    }
     try {
       const response = await this.paystack.recipient.create({
         type: 'nuban',
@@ -57,6 +74,10 @@ export class PaystackService {
   }
 
   async initiateTransfer(amount: number, recipient: string, reference: string) {
+    if (!this.paystack) {
+      this.logger.error('Paystack client not initialized.');
+      return null;
+    }
     try {
       const response = await this.paystack.transfer.initiate({
         source: 'balance',
@@ -67,6 +88,23 @@ export class PaystackService {
       return response.data;
     } catch (error) {
       this.logger.error('Failed to initiate transfer', error);
+      throw error;
+    }
+  }
+
+  async resolveAccount(accountNumber: string, bankCode: string) {
+    if (!this.paystack) {
+      this.logger.error('Paystack client not initialized.');
+      return null;
+    }
+    try {
+      const response = await this.paystack.verification.resolveAccount({
+        account_number: accountNumber,
+        bank_code: bankCode,
+      });
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Failed to resolve account: ${error.message}`);
       throw error;
     }
   }

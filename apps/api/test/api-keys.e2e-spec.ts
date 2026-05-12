@@ -30,12 +30,13 @@ describe("ApiKeys (e2e)", () => {
 
     // Cleanup
     await prismaService.apiKey.deleteMany({});
+    await prismaService.business.deleteMany({});
     await prismaService.user.deleteMany({});
 
     const password = await bcrypt.hash("password123", 10);
 
     // Create Admin
-    const admin = await prismaService.user.create({
+    const _admin = await prismaService.user.create({
       data: {
         email: "admin@vemtap.com",
         fullName: "Admin User",
@@ -70,6 +71,7 @@ describe("ApiKeys (e2e)", () => {
 
   afterAll(async () => {
     await prismaService.apiKey.deleteMany({});
+    await prismaService.business.deleteMany({});
     await prismaService.user.deleteMany({});
     await app.close();
   });

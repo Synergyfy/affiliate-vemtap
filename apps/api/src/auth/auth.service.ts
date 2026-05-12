@@ -3,14 +3,19 @@ import { UsersService } from "../users/users.service";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcryptjs";
 import { CreateUserDto } from "../users/dto/create-user.dto";
-import { LoginDto } from "./dto/login.dto";
-import { User } from "@prisma/client";
+import { User, Severity, FraudType } from "@prisma/client";
+import { PrismaService } from "../prisma/prisma.service";
+import { FraudService } from "../fraud/fraud.service";
+import { AuditService } from "../prisma/audit.service";
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UsersService,
     public jwtService: JwtService,
+    private prisma: PrismaService,
+    private fraudService: FraudService,
+    private auditService: AuditService,
   ) {}
 
   async validateUser(emailOrPhone: string, pass: string): Promise<User> {
@@ -25,17 +30,57 @@ export class AuthService {
     throw new UnauthorizedException("Invalid credentials");
   }
 
-  async signup(createUserDto: CreateUserDto) {
+  async signup(createUserDto: CreateUserDto, ip?: string) {
     const user = await this.usersService.create(createUserDto);
     // Auto-login after signup
-    return this.login(user as User); // Casting to User because password is omitted, but login only needs id/email/tokenVersion
+    return this.login(user as User, ip);
   }
 
-  async login(user: Partial<User>) {
-    const payload = { sub: user.id, email: user.email };
+  async login(user: Partial<User>, ip?: string) {
+    if (user.id && ip) {
+      // 1. Update last login IP
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { lastLoginIp: ip, lastLoginAt: new Date() },
+      });
+
+      // 2. IP Limit Enforcement
+      const settings = await this.prisma.platformSettings.findFirst();
+      if (settings && settings.maxIpUsage > 0) {
+        const usersOnSameIp = await this.prisma.user.count({
+          where: {
+            lastLoginIp: ip,
+            status: "ACTIVE",
+            id: { not: user.id },
+          },
+        });
+
+        if (usersOnSameIp >= settings.maxIpUsage) {
+          await this.fraudService.createAlert({
+            userId: user.id,
+            type: FraudType.MULTIPLE_ACCOUNTS,
+            severity: Severity.MEDIUM,
+            description: `IP Address ${ip} is shared by ${usersOnSameIp + 1} active accounts. Limit is ${settings.maxIpUsage}.`,
+            evidence: { ip, count: usersOnSameIp + 1 },
+          });
+        }
+      }
+
+      // 3. Log the login event
+      await this.auditService.log({
+        userId: user.id,
+        action: 'LOGIN',
+        entity: 'USER',
+        entityId: user.id,
+        ipAddress: ip,
+      });
+    }
+
+    const payload = { sub: user.id, email: user.email, role: user.role };
     const refreshPayload = {
       sub: user.id,
       email: user.email,
+      role: user.role,
       tokenVersion: user.tokenVersion || 0,
     };
 

@@ -17,12 +17,14 @@ import {
   Bell,
   Settings,
   BookOpen,
-  FileText
+  FileText,
+  Target
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const adminSidebarItems = [
   { name: 'Admin Overview', icon: Shield, href: '/admin' },
+  { name: 'Operations Command', icon: Target, href: '/admin/operations' },
   { name: 'Affiliates', icon: Users, href: '/admin/affiliates' },
   { name: 'Businesses & Referrals', icon: Briefcase, href: '/admin/referrals' },
   { name: 'Commissions', icon: Percent, href: '/admin/commissions' },
@@ -34,9 +36,19 @@ const adminSidebarItems = [
   { name: 'Settings', icon: Settings, href: '/admin/settings' },
 ];
 
+import { useAuth } from '@/hooks/use-auth';
+import { useRouter } from 'next/navigation';
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const pathname = usePathname();
+  const { logout } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -83,16 +95,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
 
         <div className="p-4 border-t border-slate-200">
-          <Link
-            href="/dashboard"
+          <button
+            onClick={handleLogout}
             className={cn(
-              "flex items-center gap-3 p-3 rounded-xl w-full text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all group",
+              "flex items-center gap-3 p-3 rounded-xl w-full text-slate-600 hover:bg-red-50 hover:text-red-600 transition-all group",
               !isSidebarOpen && "justify-center"
             )}
           >
-            <LogOut className="w-5 h-5 text-slate-400 group-hover:text-slate-900" />
-            {isSidebarOpen && <span className="font-medium">Exit Admin</span>}
-          </Link>
+            <LogOut className="w-5 h-5 text-slate-400 group-hover:text-red-600" />
+            {isSidebarOpen && <span className="font-medium">Logout</span>}
+          </button>
         </div>
       </aside>
 

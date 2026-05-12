@@ -27,71 +27,36 @@ import {
 import { useState, useRef, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import ConfirmationModal from '@/components/admin/ConfirmationModal';
+import FilterBar from '@/components/admin/FilterBar';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/toast';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api-client';
-
-const initialAffiliates = [
-  { 
-    id: 'AFF-001', 
-    name: 'John Doe', 
-    email: 'john@example.com', 
-    phone: '+234 801 234 5678', 
-    joined: 'Oct 24, 2025', 
-    referrals: 12, 
-    earnings: '₦125,000', 
-    status: 'Active',
-    role: 'Affiliate' 
-  },
-  { 
-    id: 'AFF-002', 
-    name: 'Sarah Smith', 
-    email: 'sarah@example.com', 
-    phone: '+234 802 345 6789', 
-    joined: 'Nov 12, 2025', 
-    referrals: 8, 
-    earnings: '₦85,000', 
-    status: 'Active',
-    role: 'Manager' 
-  },
-  { 
-    id: 'AFF-003', 
-    name: 'Michael Chen', 
-    email: 'mike@example.com', 
-    phone: '+234 803 456 7890', 
-    joined: 'Dec 05, 2025', 
-    referrals: 24, 
-    earnings: '₦245,000', 
-    status: 'Suspended',
-    role: 'Manager' 
-  },
-  { 
-    id: 'AFF-004', 
-    name: 'Alice Brown', 
-    email: 'alice@example.com', 
-    phone: '+234 804 567 8901', 
-    joined: 'Jan 15, 2026', 
-    referrals: 5, 
-    earnings: '₦45,000', 
-    status: 'Active',
-    role: 'Affiliate' 
-  },
-];
+import { useDebounce } from '@/hooks/use-debounce';
+import { useUsers, useUpdateUserStatus } from '@/services/useAdminHooks';
+import { Role, User as UserType } from '@/types/api';
+import { Loader2 } from 'lucide-react';
 
 export default function AffiliatesManagement() {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'All' | 'Managers'>('All');
-  const [affiliates, setAffiliates] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedAffiliate, setSelectedAffiliate] = useState<any | null>(null);
+  const [selectedAffiliate, setSelectedAffiliate] = useState<UserType | null>(null);
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'ACTIVE' | 'SUSPENDED'>('All');
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const debouncedSearch = useDebounce(searchQuery, 500);
+
+  const { data: usersResponse, isLoading } = useUsers({
+    role: activeTab === 'Managers' ? 'ADMIN' : undefined,
+    status: statusFilter === 'All' ? undefined : statusFilter,
+    search: debouncedSearch || undefined,
+    limit: 50
+  });
+
+  const updateStatus = useUpdateUserStatus();
+
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const filterRef = useRef<HTMLDivElement>(null);
   
   // Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState<{
@@ -108,47 +73,6 @@ export default function AffiliatesManagement() {
     currentRole: '',
     currentStatus: '',
     type: 'upgrade'
-  });
-
-  useEffect(() => {
-    fetchAffiliates();
-  }, [activeTab, statusFilter]);
-
-  const fetchAffiliates = async () => {
-    setLoading(true);
-    try {
-      const response = await api.get('/users');
-      // Format backend data to frontend expectations
-      const data = (response?.data || []).map((user: any) => ({
-        id: user.id,
-        name: user.fullName,
-        email: user.email,
-        phone: user.phone,
-        joined: new Date(user.createdAt).toLocaleDateString(),
-        referrals: user.referralCount || 0,
-        earnings: `₦${Number(user.totalEarnings || 0).toLocaleString()}`,
-        status: user.status, // ACTIVE, SUSPENDED
-        role: user.role // AFFILIATE, ADMIN, SUPER_ADMIN
-      }));
-      setAffiliates(data);
-    } catch (error) {
-      console.error('Failed to fetch affiliates:', error);
-      showToast('Failed to load affiliates list', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filteredAffiliates = affiliates.filter(affiliate => {
-    const isManager = affiliate.role === 'ADMIN' || affiliate.role === 'SUPER_ADMIN';
-    const matchesTab = activeTab === 'All' || isManager;
-    const matchesStatus = statusFilter === 'All' || affiliate.status === statusFilter;
-    const matchesSearch = 
-      affiliate.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      affiliate.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      affiliate.id.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    return matchesTab && matchesStatus && matchesSearch;
   });
 
   const handleStatusChange = (id: string, name: string, currentStatus: string) => {
@@ -181,9 +105,6 @@ export default function AffiliatesManagement() {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setActiveDropdown(null);
       }
-      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
-        setIsFilterOpen(false);
-      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -199,10 +120,9 @@ export default function AffiliatesManagement() {
         showToast(`Role updated to ${newRole} for user`, 'success');
       } else {
         const newStatus = currentStatus === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
-        await api.patch(`/users/${id}/status`, { status: newStatus });
+        await updateStatus.mutateAsync({ id, status: newStatus });
         showToast(`Status updated to ${newStatus} for user`, 'success');
       }
-      fetchAffiliates();
     } catch (error) {
       showToast('Failed to update user', 'error');
     }
@@ -210,13 +130,12 @@ export default function AffiliatesManagement() {
     setConfirmModal(prev => ({ ...prev, isOpen: false }));
   };
 
-  const handleViewProfile = async (affiliate: any) => {
+  const handleViewProfile = async (user: UserType) => {
     try {
-      const data = await api.get(`/users/${affiliate.id}`);
+      const data = await api.get(`/users/${user.id}`);
       setSelectedAffiliate({
-        ...affiliate,
-        ...data,
-        name: data.fullName // Sync backend naming
+        ...user,
+        ...data
       });
       setIsSidePanelOpen(true);
     } catch (error) {
@@ -224,80 +143,27 @@ export default function AffiliatesManagement() {
     }
   };
 
-  const handleApprove = async (id: string, name: string) => {
-    try {
-      await api.patch(`/users/${id}/kyc`, { status: 'VERIFIED' });
-      showToast(`${name}'s KYC has been verified.`, 'success');
-      fetchAffiliates();
-    } catch (error) {
-      showToast('Failed to verify KYC.', 'error');
-    }
-  };
-
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-3xl border border-slate-200 shadow-sm">
-          <div className="relative flex-grow max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Search by name, email or code..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-            />
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="relative" ref={filterRef}>
-              <button 
-                onClick={() => setIsFilterOpen(!isFilterOpen)}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2 bg-white border rounded-xl text-slate-600 font-medium transition-all hover:bg-slate-50",
-                  statusFilter !== 'All' ? "border-blue-600 text-blue-600 bg-blue-50/50" : "border-slate-200"
-                )}
-              >
-                <Filter className="w-4 h-4" />
-                {statusFilter === 'All' ? 'Filter' : statusFilter}
-              </button>
-
-              <AnimatePresence>
-                {isFilterOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute right-0 mt-2 w-48 bg-white rounded-2xl border border-slate-200 shadow-xl z-50 p-2 overflow-hidden"
-                  >
-                    <div className="p-2 border-b border-slate-100 mb-1">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status Filter</p>
-                    </div>
-                    {['All', 'Active', 'Suspended'].map((status) => (
-                      <button
-                        key={status}
-                        onClick={() => {
-                          setStatusFilter(status as any);
-                          setIsFilterOpen(false);
-                        }}
-                        className={cn(
-                          "w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all",
-                          statusFilter === status 
-                            ? "bg-blue-600 text-white" 
-                            : "text-slate-600 hover:bg-slate-50"
-                        )}
-                      >
-                        {status}
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+        <FilterBar 
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchPlaceholder="Search by name, email or code..."
+          activeFilter={statusFilter}
+          onFilterChange={(v) => setStatusFilter(v as any)}
+          filterLabel="Status"
+          filterOptions={[
+            { label: 'All Status', value: 'All' },
+            { label: 'Active', value: 'ACTIVE' },
+            { label: 'Suspended', value: 'SUSPENDED' }
+          ]}
+          extraActions={
             <button className="px-4 py-2 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all">
               Export CSV
             </button>
-          </div>
-        </div>
+          }
+        />
 
         {/* Tabs */}
         <div className="flex border-b border-slate-200">
@@ -324,7 +190,12 @@ export default function AffiliatesManagement() {
 
         {/* Header Actions */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto relative min-h-[400px]">
+            {isLoading && (
+              <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              </div>
+            )}
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
@@ -337,73 +208,72 @@ export default function AffiliatesManagement() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredAffiliates.map((affiliate: any, idx: number) => (
+                {usersResponse?.data.map((user: UserType, idx: number) => (
                   <motion.tr 
-                    key={affiliate.id}
+                    key={user.id}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.05 }}
                     className={cn(
-                      "hover:bg-slate-50/50 transition-all group",
-                      affiliate.isFlagged && "bg-red-50/30"
+                      "hover:bg-slate-50/50 transition-all group"
                     )}
                   >
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-700">
-                          {affiliate.name?.charAt(0) || 'A'}
+                          {user.fullName?.charAt(0) || 'A'}
                         </div>
                         <div>
-                          <p className="font-bold text-slate-900">{affiliate.name}</p>
-                          <p className="text-xs text-slate-400 font-medium">{affiliate.email}</p>
+                          <p className="font-bold text-slate-900">{user.fullName}</p>
+                          <p className="text-xs text-slate-400 font-medium">{user.email}</p>
                         </div>
                       </div>
                     </td>
                     <td className="p-4">
                       <span className={cn(
                         "text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest",
-                        affiliate.role === 'Manager' ? "bg-purple-100 text-purple-600 border border-purple-200" : "bg-slate-100 text-slate-500"
+                        user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' ? "bg-purple-100 text-purple-600 border border-purple-200" : "bg-slate-100 text-slate-500"
                       )}>
-                        {affiliate.role}
+                        {user.role}
                       </span>
                     </td>
                     <td className="p-4">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 text-xs text-slate-600">
                           <Mail className="w-3 h-3 text-slate-400" />
-                          {affiliate.email}
+                          {user.email}
                         </div>
                         <div className="flex items-center gap-2 text-xs text-slate-600">
                           <Phone className="w-3 h-3 text-slate-400" />
-                          {affiliate.phone}
+                          {user.phone}
                         </div>
                       </div>
                     </td>
-                    <td className="p-4 text-sm text-slate-600 text-center font-bold">{affiliate.referrals}</td>
+                    <td className="p-4 text-sm text-slate-600 text-center font-bold">{user.referralCount || 0}</td>
                     <td className="p-4">
                       <span className={cn(
                         "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
-                        affiliate.status === 'ACTIVE' ? "bg-green-100 text-green-600" : 
-                        affiliate.status === 'SUSPENDED' ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-400"
+                        user.status === 'ACTIVE' ? "bg-green-100 text-green-600" : 
+                        user.status === 'SUSPENDED' ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-400"
                       )}>
-                        {affiliate.status}
+                        {user.status}
                       </span>
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         {/* View Action */}
                         <button 
-                          onClick={() => handleViewProfile(affiliate)}
+                          onClick={() => handleViewProfile(user)}
                           className="p-2 hover:bg-blue-50 rounded-lg text-slate-400 hover:text-blue-600 transition-all" 
                           title='View Profile'
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-
+ 
                         {/* Upgrade/Downgrade Action */}
-                        {affiliate.role === 'ADMIN' || affiliate.role === 'SUPER_ADMIN' ? (
+                        {user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' ? (
                           <button 
-                            onClick={() => handleRoleToggle(affiliate.id, affiliate.name, affiliate.role)}
+                            onClick={() => handleRoleToggle(user.id, user.fullName, user.role)}
                             className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-all" 
                             title='Downgrade to Affiliate'
                           >
@@ -411,7 +281,7 @@ export default function AffiliatesManagement() {
                           </button>
                         ) : (
                           <button 
-                            onClick={() => handleRoleToggle(affiliate.id, affiliate.name, affiliate.role)}
+                            onClick={() => handleRoleToggle(user.id, user.fullName, user.role)}
                             className="p-2 hover:bg-purple-50 rounded-lg text-slate-400 hover:text-purple-600 transition-all" 
                             title='Upgrade to Manager'
                           >
@@ -420,26 +290,26 @@ export default function AffiliatesManagement() {
                         )}
                         
                         {/* More Actions Dropdown */}
-                        <div className="relative" ref={activeDropdown === affiliate.id ? dropdownRef : null}>
+                        <div className="relative" ref={activeDropdown === user.id ? dropdownRef : null}>
                           <button 
-                            onClick={() => setActiveDropdown(activeDropdown === affiliate.id ? null : affiliate.id)}
+                            onClick={() => setActiveDropdown(activeDropdown === user.id ? null : user.id)}
                             className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-900 transition-all"
                           >
                             <MoreHorizontal className="w-4 h-4" />
                           </button>
-
+ 
                           <AnimatePresence>
-                            {activeDropdown === affiliate.id && (
+                            {activeDropdown === user.id && (
                               <motion.div
                                 initial={{ opacity: 0, scale: 0.95, y: 10 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.95, y: 10 }}
                                 className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 overflow-hidden"
                               >
-                                {affiliate.status === 'ACTIVE' ? (
+                                {user.status === 'ACTIVE' ? (
                                   <button 
                                     onClick={() => {
-                                      handleStatusChange(affiliate.id, affiliate.name, affiliate.status);
+                                      handleStatusChange(user.id, user.fullName, user.status);
                                       setActiveDropdown(null);
                                     }}
                                     className="w-full px-4 py-2 text-left text-sm font-bold text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
@@ -450,7 +320,7 @@ export default function AffiliatesManagement() {
                                 ) : (
                                   <button 
                                     onClick={() => {
-                                      handleStatusChange(affiliate.id, affiliate.name, affiliate.status);
+                                      handleStatusChange(user.id, user.fullName, user.status);
                                       setActiveDropdown(null);
                                     }}
                                     className="w-full px-4 py-2 text-left text-sm font-bold text-emerald-600 hover:bg-emerald-50 flex items-center gap-2 transition-colors"
@@ -483,7 +353,7 @@ export default function AffiliatesManagement() {
           
           {/* Pagination */}
           <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-            <p className="text-xs text-slate-500 font-medium">Showing 1-4 of 1,245 affiliates</p>
+            <p className="text-xs text-slate-500 font-medium">Showing {usersResponse?.data.length || 0} of {usersResponse?.meta.total || 0} affiliates</p>
             <div className="flex items-center gap-2">
               <button className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-400 cursor-not-allowed">Previous</button>
               <button 
@@ -552,21 +422,21 @@ export default function AffiliatesManagement() {
                 {/* Profile Header */}
                 <div className="flex flex-col items-center text-center space-y-4">
                   <div className="w-24 h-24 rounded-[32px] bg-slate-100 flex items-center justify-center text-slate-700 text-3xl font-black">
-                    {selectedAffiliate.name.charAt(0)}
+                    {selectedAffiliate.fullName?.charAt(0) || 'A'}
                   </div>
                   <div>
-                    <h4 className="text-xl font-bold text-slate-900">{selectedAffiliate.name}</h4>
+                    <h4 className="text-xl font-bold text-slate-900">{selectedAffiliate.fullName}</h4>
                     <p className="text-sm font-mono text-slate-400">{selectedAffiliate.id}</p>
                     <div className="mt-2 flex items-center justify-center gap-2">
                       <span className={cn(
                         "text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest",
-                        selectedAffiliate.role === 'Manager' ? "bg-purple-100 text-purple-600 border border-purple-200" : "bg-slate-100 text-slate-500"
+                        selectedAffiliate.role === 'ADMIN' || selectedAffiliate.role === 'SUPER_ADMIN' ? "bg-purple-100 text-purple-600 border border-purple-200" : "bg-slate-100 text-slate-500"
                       )}>
                         {selectedAffiliate.role}
                       </span>
                       <span className={cn(
                         "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
-                        selectedAffiliate.status === 'Active' ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
+                        selectedAffiliate.status === 'ACTIVE' ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
                       )}>
                         {selectedAffiliate.status}
                       </span>
@@ -581,14 +451,14 @@ export default function AffiliatesManagement() {
                       <Briefcase className="w-4 h-4" />
                       <span className="text-[10px] font-bold uppercase tracking-widest">Referrals</span>
                     </div>
-                    <p className="text-xl font-black text-slate-900">{selectedAffiliate.referrals}</p>
+                    <p className="text-xl font-black text-slate-900">{selectedAffiliate.referralCount || 0}</p>
                   </div>
                   <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                     <div className="flex items-center gap-2 text-emerald-600 mb-1">
                       <Wallet className="w-4 h-4" />
                       <span className="text-[10px] font-bold uppercase tracking-widest">Earnings</span>
                     </div>
-                    <p className="text-xl font-black text-slate-900">{selectedAffiliate.earnings}</p>
+                    <p className="text-xl font-black text-slate-900">₦{Number(selectedAffiliate.totalEarnings || 0).toLocaleString()}</p>
                   </div>
                 </div>
 
@@ -621,7 +491,7 @@ export default function AffiliatesManagement() {
                         <Calendar className="w-5 h-5 text-slate-400" />
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Registration Date</p>
-                          <p className="text-sm font-bold text-slate-900">October 24, 2025</p>
+                          <p className="text-sm font-bold text-slate-900">{new Date(selectedAffiliate.createdAt).toLocaleDateString()}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
@@ -640,7 +510,7 @@ export default function AffiliatesManagement() {
                   <Button className="flex-1 rounded-2xl h-12 font-bold" onClick={() => showToast("Edit modal coming soon", "info")}>
                     Edit Profile
                   </Button>
-                  <Button variant="outline" className="flex-1 rounded-2xl h-12 font-bold text-red-600 border-red-100 hover:bg-red-50" onClick={() => handleStatusChange(selectedAffiliate.id, selectedAffiliate.name, selectedAffiliate.status)}>
+                  <Button variant="outline" className="flex-1 rounded-2xl h-12 font-bold text-red-600 border-red-100 hover:bg-red-50" onClick={() => handleStatusChange(selectedAffiliate.id, selectedAffiliate.fullName, selectedAffiliate.status)}>
                     {selectedAffiliate.status === 'ACTIVE' ? 'Suspend Account' : 'Reactivate Account'}
                   </Button>
                 </div>

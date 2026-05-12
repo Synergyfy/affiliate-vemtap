@@ -1,10 +1,17 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotificationType } from '@prisma/client';
+import { NotificationType, Prisma } from '@prisma/client';
+import { BroadcastRecipientType, NotificationChannel } from './dto/notification.dto';
+import { ResendService } from '../otp/resend.service';
+import { PushService } from './push.service';
 
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly resendService: ResendService,
+    private readonly pushService: PushService,
+  ) { }
 
   async findAllAdmin(pagination: { skip?: number; take?: number }) {
     const [data, total] = await Promise.all([
@@ -19,30 +26,70 @@ export class NotificationsService {
     return { data, total };
   }
 
-  async create(data: { userId?: string; type: NotificationType; title: string; message: string; data?: any }) {
+  async create(data: { userId?: string; type: NotificationType; title: string; message: string; data?: Record<string, any> }) {
     return this.prisma.notification.create({
       data,
     });
   }
 
-  async broadcast(type: NotificationType, title: string, message: string, data?: any) {
-    // Send to all active users
+  async broadcast(
+    type: NotificationType,
+    title: string,
+    message: string,
+    data?: Record<string, any>,
+    recipients: BroadcastRecipientType = BroadcastRecipientType.ALL,
+    channels: NotificationChannel[] = [NotificationChannel.IN_APP],
+  ) {
+    // 1. Filter Users
+    const where: Prisma.UserWhereInput = { status: 'ACTIVE' };
+
+    if (recipients === BroadcastRecipientType.TOP_EARNERS) {
+      where.totalEarnings = { gte: 10000 };
+    } else if (recipients === BroadcastRecipientType.MANAGERS) {
+      where.OR = [
+        { referralCount: { gte: 10 } },
+        { isManagerMode: true },
+      ];
+    } else if (recipients === BroadcastRecipientType.NEW_AFFILIATES) {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      where.createdAt = { gte: sevenDaysAgo };
+    }
+
     const users = await this.prisma.user.findMany({
-      where: { status: 'ACTIVE' },
-      select: { id: true },
+      where,
+      select: { id: true, email: true },
     });
 
-    const notifications = users.map(user => ({
-      userId: user.id,
-      type,
-      title,
-      message,
-      data,
-    }));
+    const userIds = users.map((u) => u.id);
+    const emails = users.map((u) => u.email);
 
-    return this.prisma.notification.createMany({
-      data: notifications,
-    });
+    const results: any = {};
+
+    // 2. Dispatch Channels
+    if (channels.includes(NotificationChannel.IN_APP)) {
+      const notifications = userIds.map((userId) => ({
+        userId,
+        type,
+        title,
+        message,
+        data,
+      }));
+      results.inApp = await this.prisma.notification.createMany({ data: notifications });
+    }
+
+    if (channels.includes(NotificationChannel.EMAIL)) {
+      results.email = await this.resendService.sendBroadcastEmail(emails, title, message);
+    }
+
+    if (channels.includes(NotificationChannel.PUSH)) {
+      results.push = await this.pushService.broadcastPush(userIds, title, message, data);
+    }
+
+    return {
+      recipientCount: users.length,
+      results,
+    };
   }
 
   async findUserNotifications(userId: string, pagination: { skip?: number; take?: number }) {

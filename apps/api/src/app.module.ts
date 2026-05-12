@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -21,6 +21,13 @@ import { TransactionsModule } from './transactions/transactions.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ApiKeysModule } from './api-keys/api-keys.module';
 import { ExternalModule } from './external/external.module';
+import { StorageModule } from './storage/storage.module';
+import { OtpModule } from './otp/otp.module';
+import { TrackingModule } from './tracking/tracking.module';
+import { ShortLinksModule } from './tools/short-links/short-links.module';
+import { LeadsModule } from './leads/leads.module';
+import { OperationsModule } from './operations/operations.module';
+import { LoggerMiddleware } from './common/middleware/logger.middleware';
 
 @Module({
   imports: [
@@ -32,6 +39,9 @@ import { ExternalModule } from './external/external.module';
     RedisModule,
     UsersModule,
     AuthModule,
+    ShortLinksModule,
+    LeadsModule,
+    OperationsModule,
     ToolsModule,
     BusinessesModule,
     NetworkModule,
@@ -47,8 +57,15 @@ import { ExternalModule } from './external/external.module';
     PaymentsModule,
     ApiKeysModule,
     ExternalModule,
+    StorageModule,
+    OtpModule,
+    TrackingModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(LoggerMiddleware).forRoutes('*');
+  }
+}

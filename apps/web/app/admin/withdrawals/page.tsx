@@ -8,60 +8,46 @@ import {
   CheckCircle2, 
   XCircle, 
   Clock,
-  Banknote,
+  Zap,
+  Loader2,
   MoreHorizontal,
   Check,
   X,
-  CreditCard,
-  Zap,
-  Loader2
+  Banknote,
+  CreditCard
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
+import FilterBar from '@/components/admin/FilterBar';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/toast';
+import { useDebounce } from '@/hooks/use-debounce';
+
+import { useAdminStats, useWithdrawals, useUpdateWithdrawalStatus } from '@/services/useAdminHooks';
+import { WithdrawalStatus } from '@/types/api';
 
 export default function WithdrawalsManagement() {
   const { showToast } = useToast();
-  const [withdrawalsList, setWithdrawalsList] = useState<any[]>([]);
-  const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<WithdrawalStatus | 'ALL'>('ALL');
+  const debouncedSearch = useDebounce(searchTerm, 500);
+
+  const { data: stats } = useAdminStats();
+  const { data: withdrawalsResponse, isLoading } = useWithdrawals({
+    limit: 50,
+    search: debouncedSearch || undefined,
+    status: statusFilter === 'ALL' ? undefined : statusFilter
+  });
+
+  const updateStatus = useUpdateWithdrawalStatus();
   const [processingBulk, setProcessingBulk] = useState(false);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [wthResponse, statsData] = await Promise.all([
-          api.get('/withdrawals?limit=50'),
-          api.get('/stats/admin') // Assuming an admin stats endpoint exists or fallback to users
-        ]);
-        setWithdrawalsList(wthResponse?.data || []);
-        setStats(statsData);
-      } catch (error) {
-        console.error('Failed to fetch withdrawals data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
-
-  const fetchWithdrawals = async () => {
-    try {
-      const response = await api.get('/withdrawals?limit=50');
-      setWithdrawalsList(response?.data || []);
-    } catch (error) {
-      console.error('Refresh failed:', error);
-    }
-  };
 
   const handleBulkTrigger = async () => {
     if (!confirm('Are you sure you want to trigger bulk payouts? This will process all eligible pending earnings for verified affiliates.')) return;
     
     setProcessingBulk(true);
     try {
-      const response = await api.post('/withdrawals/bulk-trigger');
-      showToast(`Bulk processing complete: ${response.successCount} successful payouts.`, 'success');
-      fetchWithdrawals();
+      await api.post('/withdrawals/bulk-trigger');
+      showToast('Bulk processing complete.', 'success');
     } catch (error) {
       showToast('Failed to trigger bulk payouts.', 'error');
     } finally {
@@ -69,11 +55,10 @@ export default function WithdrawalsManagement() {
     }
   };
 
-  const handleProcess = async (id: string, name: string, status: string) => {
+  const handleProcess = async (id: string, name: string, status: WithdrawalStatus) => {
     try {
-      await api.patch(`/withdrawals/${id}/status`, { status });
+      await updateStatus.mutateAsync({ id, status });
       showToast(`Withdrawal for ${name} has been ${status.toLowerCase()}.`, 'success');
-      fetchWithdrawals();
     } catch (error) {
       showToast(`Failed to ${status.toLowerCase()} withdrawal.`, 'error');
     }
@@ -109,35 +94,39 @@ export default function WithdrawalsManagement() {
         </div>
 
         {/* Withdrawals Table */}
+        <FilterBar 
+          searchQuery={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search by name, bank or account..."
+          activeFilter={statusFilter}
+          onFilterChange={(v) => setStatusFilter(v as any)}
+          filterLabel="Status"
+          filterOptions={[
+            { label: 'All Requests', value: 'ALL' },
+            { label: 'Pending', value: 'PENDING' },
+            { label: 'Approved', value: 'APPROVED' },
+            { label: 'Paid', value: 'PAID' },
+            { label: 'Rejected', value: 'REJECTED' }
+          ]}
+          extraActions={
+            <button 
+              onClick={handleBulkTrigger}
+              disabled={processingBulk}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all shadow-lg disabled:opacity-50"
+            >
+              {processingBulk ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+              Trigger Bulk Payouts
+            </button>
+          }
+        />
+
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h3 className="text-lg font-bold text-slate-900">Withdrawal Requests</h3>
-            <div className="flex items-center gap-3">
-              <div className="flex bg-slate-50 border border-slate-200 rounded-xl p-1">
-                <button 
-                  onClick={() => showToast("Showing all requests", "info")}
-                  className="px-3 py-1.5 text-xs font-bold bg-white text-slate-900 rounded-lg shadow-sm"
-                >All</button>
-                <button 
-                  onClick={() => showToast("Showing pending requests", "info")}
-                  className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 rounded-lg"
-                >Pending</button>
-                <button 
-                  onClick={() => showToast("Showing approved requests", "info")}
-                  className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 rounded-lg"
-                >Approved</button>
+          <div className="overflow-x-auto relative min-h-[400px]">
+            {isLoading && (
+              <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
               </div>
-              <button 
-                onClick={handleBulkTrigger}
-                disabled={processingBulk}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all shadow-lg disabled:opacity-50"
-              >
-                {processingBulk ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
-                Trigger Bulk Payouts
-              </button>
-            </div>
-          </div>
-          <div className="overflow-x-auto">
+            )}
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
@@ -150,7 +139,7 @@ export default function WithdrawalsManagement() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {withdrawalsList.map((wth, idx) => (
+                {withdrawalsResponse?.data.map((wth, idx) => (
                   <motion.tr 
                     key={wth.id}
                     initial={{ opacity: 0, y: 10 }}
@@ -183,14 +172,14 @@ export default function WithdrawalsManagement() {
                         {wth.status === 'PENDING' && (
                           <>
                             <button 
-                              onClick={() => handleProcess(wth.id, wth.user?.fullName, 'APPROVED')}
+                              onClick={() => handleProcess(wth.id, wth.user?.fullName || 'User', 'APPROVED')}
                               className="p-2 hover:bg-green-50 rounded-lg text-slate-400 hover:text-green-600 transition-all"
                               title="Approve"
                             >
                               <Check className="w-4 h-4" />
                             </button>
                             <button 
-                              onClick={() => handleProcess(wth.id, wth.user?.fullName, 'REJECTED')}
+                              onClick={() => handleProcess(wth.id, wth.user?.fullName || 'User', 'REJECTED')}
                               className="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-all"
                               title="Reject"
                             >
@@ -200,7 +189,7 @@ export default function WithdrawalsManagement() {
                         )}
                         {wth.status === 'APPROVED' && (
                           <button 
-                            onClick={() => handleProcess(wth.id, wth.user?.fullName, 'PAID')}
+                            onClick={() => handleProcess(wth.id, wth.user?.fullName || 'User', 'PAID')}
                             className="flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700 transition-all"
                           >
                             Mark as Paid

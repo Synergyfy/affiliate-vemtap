@@ -14,15 +14,18 @@ import {
   Info,
   Save,
   Lock,
-  Clock
+  Clock,
+  Loader2,
+  Search,
+  ChevronDown
 } from 'lucide-react';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/toast';
 import { api } from '@/lib/api-client';
 import { useAuth } from '@/hooks/use-auth';
-import { Loader2 } from 'lucide-react';
+import { useBanks, useResolveAccount } from '@/hooks/use-payments';
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuth();
@@ -30,6 +33,12 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [kycStatus, setKycStatus] = useState<'unverified' | 'pending' | 'verified'>('unverified');
+
+  const { banks, isLoading: isLoadingBanks } = useBanks();
+  const { resolveAccount, isVerifying } = useResolveAccount();
+  const [selectedBankCode, setSelectedBankCode] = useState('');
+  const [bankSearch, setBankSearch] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const [profileData, setProfileData] = useState({
     fullName: '',
@@ -41,10 +50,28 @@ export default function ProfilePage() {
     bankName: '',
     accountNumber: '',
     accountName: '',
+    avatar: '',
   });
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Auto-resolve account name when bank and account number are valid
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (profileData.accountNumber.length === 10 && selectedBankCode) {
+        const result = await resolveAccount(profileData.accountNumber, selectedBankCode);
+        if (result && result.account_name) {
+          setProfileData(prev => ({ ...prev, accountName: result.account_name }));
+          showToast(`Account verified: ${result.account_name}`, 'success');
+        } else if (result === null && profileData.accountNumber.length === 10) {
+           // We don't clear it, but we could show a warning
+        }
+      }
+    }, 500); // Debounce
+    return () => clearTimeout(timer);
+  }, [profileData.accountNumber, selectedBankCode]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -60,11 +87,12 @@ export default function ProfilePage() {
           bankName: data.bankName || '',
           accountNumber: data.accountNumber || '',
           accountName: data.accountName || '',
+          avatar: data.avatar || '',
         });
         
         // Map KycStatus enum to UI status
         const status = data.kycStatus === 'VERIFIED' ? 'verified' : 
-                      data.kycStatus === 'PENDING' ? (data.nin || data.bvn ? 'pending' : 'unverified') : 
+                      data.kycStatus === 'PENDING' ? (data.nin || data.bvn || data.kycDocuments ? 'pending' : 'unverified') : 
                       'unverified';
         setKycStatus(status as any);
       } catch (error) {
@@ -76,15 +104,34 @@ export default function ProfilePage() {
     fetchProfile();
   }, []);
 
+  // Match bank code if name exists on load
+  useEffect(() => {
+    if (profileData.bankName && banks.length > 0 && !selectedBankCode) {
+      const matched = banks.find(b => b.name === profileData.bankName);
+      if (matched) setSelectedBankCode(matched.code);
+    }
+  }, [profileData.bankName, banks]);
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
     try {
+      let kycDocumentUrl = undefined;
+      
       if (selectedFile) {
-        setUploadProgress(50);
-        // Simulate upload
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setUploadProgress(100);
+        setUploadProgress(20);
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('folder', 'kyc');
+        
+        try {
+          const uploadRes = await api.post<{ url: string }>('/storage/upload', formData);
+          kycDocumentUrl = uploadRes.url;
+          setUploadProgress(100);
+        } catch (uploadError) {
+          showToast('Failed to upload KYC document', 'error');
+          throw uploadError;
+        }
       }
 
       const updatedUser = await api.patch('/users/profile', {
@@ -94,7 +141,9 @@ export default function ProfilePage() {
         bvn: profileData.idType === 'BVN' ? profileData.nin : undefined,
         bankName: profileData.bankName,
         accountNumber: profileData.accountNumber,
-        accountName: profileData.accountName
+        accountName: profileData.accountName,
+        avatar: profileData.avatar,
+        kycDocumentUrl: kycDocumentUrl
       });
       
       // Update local auth context
@@ -102,7 +151,7 @@ export default function ProfilePage() {
       
       showToast('Profile updated successfully', 'success');
       
-      if (profileData.nin || profileData.bvn) {
+      if (profileData.nin || profileData.bvn || kycDocumentUrl) {
         setKycStatus('pending');
       }
     } catch (error: any) {
@@ -111,6 +160,40 @@ export default function ProfilePage() {
       setIsSaving(false);
       setTimeout(() => setUploadProgress(0), 1000);
     }
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (file.size > 2 * 1024 * 1024) {
+        showToast('Profile picture must be under 2MB', 'error');
+        return;
+      }
+      
+      showToast('Uploading profile picture...', 'info');
+      
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('folder', 'avatars');
+        
+        const { url } = await api.post<{ url: string }>('/storage/upload', formData);
+        
+        setProfileData(prev => ({ ...prev, avatar: url }));
+        if (user) {
+          updateUser({ ...user, avatar: url });
+        }
+        showToast('Profile picture updated!', 'success');
+      } catch (error) {
+        showToast('Failed to upload profile picture', 'error');
+      }
+    }
+  };
+
+  const startVerification = () => {
+    const kycSection = document.getElementById('kyc-section');
+    kycSection?.scrollIntoView({ behavior: 'smooth' });
+    showToast('Please fill in your ID details and upload a document.', 'info');
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -173,7 +256,10 @@ export default function ProfilePage() {
             </div>
           </div>
           {kycStatus === 'unverified' && (
-            <Button className="bg-amber-600 hover:bg-amber-700 text-white border-none shadow-lg shadow-amber-200">
+            <Button 
+              onClick={startVerification}
+              className="bg-amber-600 hover:bg-amber-700 text-white border-none shadow-lg shadow-amber-200"
+            >
               Verify Now
             </Button>
           )}
@@ -230,7 +316,10 @@ export default function ProfilePage() {
               )}
             </section>
 
-            <section className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+            <section 
+              id="kyc-section"
+              className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6"
+            >
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600">
                   <ShieldCheck className="w-4 h-4" />
@@ -316,38 +405,106 @@ export default function ProfilePage() {
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="space-y-2">
+                <div className="space-y-2 relative">
                   <label className="text-sm font-bold text-slate-700">Bank Name</label>
-                  <input 
-                    type="text" 
-                    value={profileData.bankName}
-                    onChange={(e) => setProfileData({...profileData, bankName: e.target.value})}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-600 outline-none transition-all"
-                    placeholder="e.g. GTBank, Zenith"
-                  />
+                  <div className="relative">
+                    <input 
+                      type="text" 
+                      value={profileData.bankName}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setProfileData({...profileData, bankName: val, accountName: ''});
+                        setBankSearch(val);
+                        setSelectedBankCode('');
+                      }}
+                      onFocus={() => {
+                        setIsDropdownOpen(true);
+                        setBankSearch(profileData.bankName);
+                      }}
+                      onBlur={() => {
+                        setTimeout(() => setIsDropdownOpen(false), 200);
+                      }}
+                      className="w-full px-4 py-3 pl-10 pr-10 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-600 outline-none transition-all"
+                      placeholder="Search for your bank..."
+                    />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <ChevronDown className={cn(
+                      "absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-transform duration-200 pointer-events-none",
+                      isDropdownOpen && "rotate-180"
+                    )} />
+                    
+                    {isDropdownOpen && (
+                      <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+                        {isLoadingBanks ? (
+                          <div className="px-4 py-3 text-sm text-slate-500 flex items-center gap-2">
+                            <Loader2 className="w-3 h-3 animate-spin" /> Loading banks...
+                          </div>
+                        ) : banks.filter(b => b.name.toLowerCase().includes(bankSearch.toLowerCase())).length > 0 ? (
+                          banks
+                            .filter(b => b.name.toLowerCase().includes(bankSearch.toLowerCase()))
+                            .map(bank => (
+                              <button
+                                key={bank.code}
+                                type="button"
+                                className={cn(
+                                  "w-full text-left px-4 py-2.5 transition-colors text-sm border-b border-slate-50 last:border-0",
+                                  selectedBankCode === bank.code ? "bg-blue-50 text-blue-700 font-bold" : "hover:bg-slate-50"
+                                )}
+                                onClick={() => {
+                                  setProfileData({...profileData, bankName: bank.name, accountName: ''});
+                                  setSelectedBankCode(bank.code);
+                                  setIsDropdownOpen(false);
+                                  setBankSearch('');
+                                }}
+                              >
+                                {bank.name}
+                              </button>
+                            ))
+                        ) : (
+                          <div className="px-4 py-3 text-sm text-slate-500">No banks found</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-slate-700">Account Number</label>
                   <input 
                     type="text" 
+                    maxLength={10}
                     value={profileData.accountNumber}
-                    onChange={(e) => setProfileData({...profileData, accountNumber: e.target.value})}
+                    onChange={(e) => setProfileData({...profileData, accountNumber: e.target.value.replace(/\D/g, '')})}
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-600 outline-none transition-all"
                     placeholder="10-digit account number"
                   />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <label className="text-sm font-bold text-slate-700">Account Name</label>
-                  <input 
-                    type="text" 
-                    value={profileData.accountName}
-                    onChange={(e) => setProfileData({...profileData, accountName: e.target.value})}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-600 outline-none transition-all"
-                    placeholder="Must match your profile name"
-                  />
-                  <p className="text-[10px] text-amber-600 flex items-center gap-1">
+                  <div className="relative">
+                    <input 
+                      type="text" 
+                      value={profileData.accountName}
+                      readOnly
+                      className={cn(
+                        "w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-600 outline-none transition-all bg-slate-50/50 cursor-not-allowed",
+                        isVerifying && "text-slate-400"
+                      )}
+                      placeholder={isVerifying ? "Resolving account..." : "Will be automatically verified"}
+                    />
+                    {isVerifying && (
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                        <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                      </div>
+                    )}
+                    {!isVerifying && profileData.accountName && selectedBankCode && profileData.accountNumber.length === 10 && (
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-500 flex items-center gap-1">
                     <Info className="w-3 h-3" />
-                    Withdrawals will fail if account name doesn&apos;t match your ID.
+                    Verified via Paystack. Must match your government ID.
                   </p>
                 </div>
               </div>
@@ -360,12 +517,17 @@ export default function ProfilePage() {
               <div className="h-24 bg-gradient-to-r from-blue-600 to-blue-400" />
               <div className="px-6 pb-8 text-center">
                 <div className="relative -mt-12 mb-4 inline-block">
-                  <div className="w-24 h-24 rounded-full border-4 border-white bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden">
-                    <User className="w-12 h-12" />
+                  <div className="w-24 h-24 rounded-full border-4 border-white bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden shadow-xl">
+                    {profileData.avatar ? (
+                      <img src={profileData.avatar} className="w-full h-full object-cover" alt="Profile" />
+                    ) : (
+                      <User className="w-12 h-12" />
+                    )}
                   </div>
-                  <button className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full border-2 border-white hover:bg-blue-700 transition-colors">
+                  <label className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full border-2 border-white hover:bg-blue-700 transition-colors cursor-pointer shadow-lg active:scale-90">
                     <Camera className="w-4 h-4" />
-                  </button>
+                    <input type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} />
+                  </label>
                 </div>
                 <h4 className="text-xl font-bold text-slate-900">{profileData.fullName || 'New Affiliate'}</h4>
                 <p className="text-sm text-slate-500">{profileData.email}</p>
@@ -379,7 +541,7 @@ export default function ProfilePage() {
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Level</p>
                     <p className="text-sm font-bold text-blue-600">
-                      {user?.role === 'manager' ? 'Manager' : 'Affiliate'}
+                      {user?.isManagerMode ? 'Manager' : 'Affiliate'}
                     </p>
                   </div>
                 </div>

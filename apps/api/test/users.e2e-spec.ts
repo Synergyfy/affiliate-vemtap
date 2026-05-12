@@ -4,8 +4,11 @@ import * as request from "supertest";
 import { AppModule } from "../src/app.module";
 import * as cookieParser from "cookie-parser";
 import { PrismaService } from "../src/prisma/prisma.service";
-import { Role } from "@prisma/client";
+import { Role, Tier } from "@prisma/client";
 import * as bcrypt from "bcryptjs";
+import { ResendService } from "../src/otp/resend.service";
+import { PaystackService } from "../src/payments/paystack.service";
+import { RedisService } from "../src/redis/redis.service";
 
 describe("UsersController (e2e)", () => {
   let app: INestApplication;
@@ -15,7 +18,24 @@ describe("UsersController (e2e)", () => {
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(RedisService)
+      .useValue({
+        get: jest.fn().mockResolvedValue(null),
+        set: jest.fn().mockResolvedValue("OK"),
+        del: jest.fn().mockResolvedValue(1),
+        getClient: jest.fn().mockReturnValue({}),
+      })
+      .overrideProvider(ResendService)
+      .useValue({
+        sendOtpEmail: jest.fn().mockResolvedValue(true),
+      })
+      .overrideProvider(PaystackService)
+      .useValue({
+        listBanks: jest.fn().mockResolvedValue([]),
+        createTransferRecipient: jest.fn().mockResolvedValue({ recipient_code: "RCP_TEST" }),
+      })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.use(cookieParser());
@@ -64,33 +84,93 @@ describe("UsersController (e2e)", () => {
     expect(res.body.password).toBeUndefined();
   });
 
-  it("/users/profile (PATCH) - should update profile", async () => {
+  it("/users/profile (PATCH) - should update tier based on referral count", async () => {
+    // Manually set referral count to 15 (SILVER tier: 11-50)
+    await prismaService.user.update({
+      where: { email: "profile@test.com" },
+      data: { referralCount: 15 },
+    });
+
     const res = await request(app.getHttpServer())
       .patch("/users/profile")
       .set("Cookie", cookies)
-      .send({
-        fullName: "Updated Name",
-        bankName: "Test Bank",
-        accountNumber: "123456",
-      })
+      .send({ fullName: "Tier Tester" })
       .expect(200);
 
-    expect(res.body.fullName).toBe("Updated Name");
-    expect(res.body.bankName).toBe("Test Bank");
-    expect(res.body.accountNumber).toBe("123456");
-  });
+    expect(res.body.tier).toBe(Tier.SILVER);
 
-  it("/users/profile (PATCH) - should update password and still allow login", async () => {
-    await request(app.getHttpServer())
+    // Update to 60 (GOLD tier: 51+)
+    await prismaService.user.update({
+      where: { email: "profile@test.com" },
+      data: { referralCount: 60 },
+    });
+
+    const resGold = await request(app.getHttpServer())
       .patch("/users/profile")
       .set("Cookie", cookies)
-      .send({ password: "newpassword123" })
+      .send({ fullName: "Gold Tester" })
       .expect(200);
 
-    // Try logging in with new password
+    expect(resGold.body.tier).toBe(Tier.GOLD);
+  });
+
+  describe("Affiliate Agreement", () => {
+    it("/users/agreement/status (GET) - should show status", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/users/agreement/status")
+        .set("Cookie", cookies)
+        .expect(200);
+
+      expect(res.body).toHaveProperty("isUpToDate");
+      expect(res.body.isUpToDate).toBe(false); // Initially signedVersion is null, settings version is 1
+    });
+
+    it("/users/agreement/sign (POST) - should sign agreement", async () => {
+      const res = await request(app.getHttpServer())
+        .post("/users/agreement/sign")
+        .set("Cookie", cookies)
+        .expect(201);
+
+      expect(res.body.signedAgreementVersion).toBe(1);
+      
+      const statusRes = await request(app.getHttpServer())
+        .get("/users/agreement/status")
+        .set("Cookie", cookies)
+        .expect(200);
+      expect(statusRes.body.isUpToDate).toBe(true);
+    });
+  });
+
+  it("should complete the email update flow via OTP", async () => {
+    const newEmail = "newprofile@test.com";
+
+    // 1. Request update
+    await request(app.getHttpServer())
+      .post("/users/request-email-update")
+      .set("Cookie", cookies)
+      .send({ newEmail })
+      .expect(201);
+
+    // 2. Get code from DB
+    const user = await prismaService.user.findFirst({
+      where: { email: "profile@test.com" },
+    });
+    const code = user?.emailVerificationCode;
+    expect(code).toBeDefined();
+
+    // 3. Verify update
+    const verifyRes = await request(app.getHttpServer())
+      .post("/users/verify-email-update")
+      .set("Cookie", cookies)
+      .send({ code })
+      .expect(201);
+
+    expect(verifyRes.body.email).toBe(newEmail);
+
+    // 4. Verify login with new email
     await request(app.getHttpServer())
       .post("/auth/login")
-      .send({ email: "profile@test.com", password: "newpassword123" })
+      .send({ email: newEmail, password: "password123" })
       .expect(200);
   });
 });

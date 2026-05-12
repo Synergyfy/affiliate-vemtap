@@ -16,59 +16,89 @@ import {
 import { api } from '@/lib/api-client';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/toast';
 import { useRouter } from 'next/navigation';
+
+import { useAdminStats, useUpdateWithdrawalStatus } from '@/services/useAdminHooks';
+import { useWithdrawals } from '@/services/useAdminHooks';
+import { useFraudAlerts } from '@/services/useFraudHooks';
+import { Loader2 } from 'lucide-react';
 
 export default function AdminOverview() {
   const { showToast } = useToast();
   const router = useRouter();
-  const [stats, setStats] = useState<any>(null);
-  const [pendingWithdrawals, setPendingWithdrawals] = useState<any[]>([]);
-  const [fraudAlerts, setFraudAlerts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [statsData, withdrawalsResponse, fraudResponse] = await Promise.all([
-          api.get('/admin/dashboard/stats'),
-          api.get('/withdrawals?status=PENDING&limit=5'),
-          api.get('/fraud?limit=5')
-        ]);
-        setStats(statsData);
-        setPendingWithdrawals(withdrawalsResponse?.data || []);
-        setFraudAlerts(fraudResponse?.data || []);
-      } catch (error) {
-        console.error('Failed to fetch admin data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+  
+  const { data: stats, isLoading: isStatsLoading } = useAdminStats();
+  const { data: withdrawalsResponse, isLoading: isWithdrawalsLoading } = useWithdrawals({ limit: 5 });
+  const { data: fraudResponse, isLoading: isFraudLoading } = useFraudAlerts({ limit: 5 });
+  const updateWithdrawal = useUpdateWithdrawalStatus();
 
   const adminStats = [
-    { name: 'Total Affiliates', value: stats?.activeAffiliates?.toString() || '0', icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { name: 'Active Subscriptions', value: stats?.totalReferrals?.toString() || '0', icon: ShieldCheck, color: 'text-green-600', bg: 'bg-green-50' },
-    { name: 'Total Revenue', value: `₦${stats?.totalRevenue?.toLocaleString() || '0'}`, icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' },
-    { name: 'Commissions Paid', value: `₦${stats?.totalCommissionsPaid?.toLocaleString() || '0'}`, icon: Wallet, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { name: 'Pending Payouts', value: `₦${stats?.pendingPayouts?.toLocaleString() || '0'}`, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
-    { name: 'Fraud Alerts', value: stats?.fraudAlerts?.toString() || '0', icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50' },
+    { 
+      name: 'Total Affiliates', 
+      value: stats?.totalAffiliates?.toString() || '0', 
+      growth: stats?.totalAffiliatesGrowth || 0,
+      icon: Users, 
+      color: 'text-blue-600', 
+      bg: 'bg-blue-50' 
+    },
+    { 
+      name: 'Active Affiliates', 
+      value: stats?.activeAffiliates?.toString() || '0', 
+      icon: ShieldCheck, 
+      color: 'text-green-600', 
+      bg: 'bg-green-50' 
+    },
+    { 
+      name: 'Total Revenue', 
+      value: `₦${Number(stats?.totalRevenue || 0).toLocaleString()}`, 
+      growth: stats?.totalRevenueGrowth || 0,
+      icon: TrendingUp, 
+      color: 'text-purple-600', 
+      bg: 'bg-purple-50' 
+    },
+    { 
+      name: 'Commissions Paid', 
+      value: `₦${Number(stats?.commissionsPaid || 0).toLocaleString()}`, 
+      growth: stats?.commissionsTrendPercentage || 0,
+      icon: Wallet, 
+      color: 'text-blue-600', 
+      bg: 'bg-blue-50' 
+    },
+    { 
+      name: 'Pending Payouts', 
+      value: `₦${Number(stats?.pendingPayouts || 0).toLocaleString()}`, 
+      icon: Clock, 
+      color: 'text-orange-600', 
+      bg: 'bg-orange-50' 
+    },
+    { 
+      name: 'Fraud Alerts', 
+      value: stats?.fraudAlerts?.toString() || '0', 
+      icon: AlertTriangle, 
+      color: 'text-red-600', 
+      bg: 'bg-red-50' 
+    },
   ];
 
   const handleApprove = async (id: string, name: string) => {
     try {
-      await api.patch(`/withdrawals/${id}/status`, { status: 'PAID' });
+      await updateWithdrawal.mutateAsync({ id, status: 'PAID' });
       showToast(`Withdrawal for ${name} has been processed.`, 'success');
-      setPendingWithdrawals(prev => prev.filter(w => w.id !== id));
-      
-      // Refresh stats after payout
-      const updatedStats = await api.get('/admin/dashboard/stats');
-      setStats(updatedStats);
-    } catch (error) {
-      showToast('Failed to approve withdrawal.', 'error');
+    } catch (error: any) {
+      showToast(error.message || 'Failed to approve withdrawal.', 'error');
     }
   };
+
+  if (isStatsLoading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
@@ -87,10 +117,15 @@ export default function AdminOverview() {
                 <div className={cn("p-3 rounded-xl", stat.bg)}>
                   <stat.icon className={cn("w-6 h-6", stat.color)} />
                 </div>
-                <div className="flex items-center text-xs font-bold px-2 py-1 rounded-full text-blue-600 bg-blue-50">
-                  <TrendingUp className="w-3 h-3 mr-1" />
-                  Live
-                </div>
+                {stat.growth !== undefined && (
+                  <div className={cn(
+                    "flex items-center text-xs font-bold px-2 py-1 rounded-full",
+                    stat.growth >= 0 ? "text-green-600 bg-green-50" : "text-red-600 bg-red-50"
+                  )}>
+                    {stat.growth >= 0 ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <TrendingUp className="w-3 h-3 mr-1 rotate-180" />}
+                    {Math.abs(stat.growth)}%
+                  </div>
+                )}
               </div>
               <p className="text-sm font-medium text-slate-500 mb-1">{stat.name}</p>
               <h3 className="text-2xl font-bold text-slate-900">{stat.value}</h3>
@@ -111,7 +146,7 @@ export default function AdminOverview() {
               </button>
             </div>
             <div className="space-y-4">
-              {pendingWithdrawals.length > 0 ? pendingWithdrawals.map((item, idx) => (
+              {withdrawalsResponse?.data && withdrawalsResponse.data.length > 0 ? withdrawalsResponse.data.map((item, idx) => (
                 <div key={item.id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-slate-200 transition-all">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 font-bold">
@@ -128,7 +163,7 @@ export default function AdminOverview() {
                       onClick={() => handleApprove(item.id, item.user?.fullName || 'User')}
                       className="text-[10px] font-bold text-blue-600 uppercase tracking-wider hover:underline"
                     >
-                      Approve
+                      {updateWithdrawal.isPending && updateWithdrawal.variables?.id === item.id ? 'Processing...' : 'Approve'}
                     </button>
                   </div>
                 </div>
@@ -151,7 +186,7 @@ export default function AdminOverview() {
               </button>
             </div>
             <div className="space-y-4">
-              {fraudAlerts.length > 0 ? fraudAlerts.map((item, idx) => (
+              {fraudResponse?.data && fraudResponse.data.length > 0 ? fraudResponse.data.map((item, idx) => (
                 <div key={item.id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-slate-200 transition-all">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-600">
@@ -159,15 +194,15 @@ export default function AdminOverview() {
                     </div>
                     <div>
                       <p className="font-bold text-slate-900">{item.user?.fullName || 'Unknown'}</p>
-                      <p className="text-xs text-slate-500">{item.reason || 'Suspicious activity'}</p>
+                      <p className="text-xs text-slate-500">{item.description || 'Suspicious activity'}</p>
                     </div>
                   </div>
                   <div className="text-right">
                     <span className={cn(
                       "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
-                      item.riskScore >= 70 ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-600"
+                      item.severity === 'HIGH' ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-600"
                     )}>
-                      {item.riskScore >= 70 ? 'High' : 'Medium'}
+                      {item.severity}
                     </span>
                     <p className="text-[10px] text-slate-500 mt-1">{new Date(item.createdAt).toLocaleDateString()}</p>
                   </div>

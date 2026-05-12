@@ -2,9 +2,11 @@ import { Client } from 'pg';
 import { execSync } from 'child_process';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import * as fs from 'fs';
 
 // Load the main .env to get the connection details, but we will connect to 'postgres' db
-dotenv.config({ path: path.join(__dirname, '../.env.test') });
+const envTestPath = path.join(__dirname, '../.env.test');
+dotenv.config({ path: envTestPath });
 
 const dbUrl = process.env.DATABASE_URL;
 if (!dbUrl) {
@@ -56,17 +58,33 @@ async function createDatabase() {
 async function run() {
   await createDatabase();
   console.log('Running Prisma DB push to setup schema...');
+  
+  const envPath = path.join(__dirname, '../.env');
+  const envBackupPath = path.join(__dirname, '../.env.backup');
+  const hasEnv = fs.existsSync(envPath);
+
   try {
+    // Temporarily rename .env to prevent Prisma from loading it
+    if (hasEnv) {
+      fs.renameSync(envPath, envBackupPath);
+    }
+
     // DATABASE_URL is already set in process.env from dotenv.config above
     execSync('pnpm exec prisma db push --accept-data-loss', {
       stdio: 'inherit',
       cwd: path.join(__dirname, '..'),
-      env: { ...process.env }, // forward the loaded .env.test vars
+      env: { ...process.env }, 
     });
     console.log('Database schema pushed successfully!');
   } catch (err) {
     console.error('Failed to push Prisma schema.');
-    process.exit(1);
+    throw err; // Rethrow so it can be handled or just exit naturally after finally
+  } finally {
+    // Restore .env
+    if (hasEnv && fs.existsSync(envBackupPath)) {
+      console.log('Restoring .env file...');
+      fs.renameSync(envBackupPath, envPath);
+    }
   }
 }
 

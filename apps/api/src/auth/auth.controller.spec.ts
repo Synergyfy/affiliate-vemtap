@@ -5,7 +5,6 @@ import { Response, Request } from 'express';
 
 describe('AuthController', () => {
   let controller: AuthController;
-  let authService: AuthService;
 
   const mockAuthService = {
     signup: jest.fn(),
@@ -32,7 +31,6 @@ describe('AuthController', () => {
     }).compile();
 
     controller = module.get<AuthController>(AuthController);
-    authService = module.get<AuthService>(AuthService);
   });
 
   afterEach(() => {
@@ -46,6 +44,11 @@ describe('AuthController', () => {
   describe('login', () => {
     it('should set cookies and return user on successful login', async () => {
       const res = mockResponse();
+      const req = {
+        header: jest.fn().mockReturnValue('127.0.0.1'),
+        ip: '127.0.0.1',
+        socket: { remoteAddress: '127.0.0.1' },
+      } as any;
       const user = { id: '1', email: 'test@test.com' };
       mockAuthService.validateUser.mockResolvedValueOnce(user);
       mockAuthService.login.mockResolvedValueOnce({
@@ -54,7 +57,7 @@ describe('AuthController', () => {
         user,
       });
 
-      const result = await controller.login({ email: 'test@test.com', password: 'password' }, res);
+      const result = await controller.login({ email: 'test@test.com', password: 'password' }, res, req);
 
       expect(res.cookie).toHaveBeenCalledWith('access_token', 'access', expect.any(Object));
       expect(res.cookie).toHaveBeenCalledWith('refresh_token', 'refresh', expect.any(Object));
