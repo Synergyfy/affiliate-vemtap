@@ -109,18 +109,9 @@ export class CreateTrainingModuleDto {
   scenarios?: ScenarioDto[];
 }
 
-export class UpdateTrainingModuleDto extends CreateTrainingModuleDto {
-  @IsOptional()
-  title: string;
-  @IsOptional()
-  description: string;
-  @IsOptional()
-  content: string;
-  @IsOptional()
-  order: number;
-  @IsOptional()
-  category: string;
-}
+import { PartialType } from '@nestjs/swagger';
+
+export class UpdateTrainingModuleDto extends PartialType(CreateTrainingModuleDto) {}
 
 export class UpdateTrainingProgressDto {
   @ApiProperty({ enum: ProgressStatus })

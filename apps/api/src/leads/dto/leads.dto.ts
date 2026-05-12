@@ -74,7 +74,9 @@ export class CreateLeadDto {
   assignedAgentId?: string;
 }
 
-export class UpdateLeadDto extends CreateLeadDto {}
+import { PartialType } from '@nestjs/swagger';
+
+export class UpdateLeadDto extends PartialType(CreateLeadDto) {}
 
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
