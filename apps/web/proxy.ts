@@ -22,10 +22,13 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
   // Get tokens from cookies
-  const accessToken = request.cookies.get('access_token')?.value;
+  const accessToken = request.cookies.get('access_token')?.value || request.cookies.get('vemtap-auth-token')?.value;
   const refreshToken = request.cookies.get('refresh_token')?.value;
   
   const isAuthenticated = !!accessToken || !!refreshToken;
+  
+  const allCookies = request.cookies.getAll().map(c => c.name);
+  console.log(`[Middleware] Path: ${pathname}, Auth: ${isAuthenticated}, Tokens: ${accessToken ? 'AT+' : 'AT-'}, ${refreshToken ? 'RT+' : 'RT-'}, All Cookies: [${allCookies.join(', ')}]`);
   
   // Extract role for RBAC
   const role = accessToken ? getRoleFromToken(accessToken) : (refreshToken ? getRoleFromToken(refreshToken) : null);
@@ -42,13 +45,18 @@ export function proxy(request: NextRequest) {
     '/cookies',
     '/forgot-password',
     '/reset-password',
-    '/verify-email'
+    '/verify-email',
+    '/manifest.json',
+    '/sw.js',
+    '/sw.js.map'
   ];
 
   const isPublicRoute = 
     publicPaths.some(path => pathname === path || pathname.startsWith(path + '/')) || 
     pathname.startsWith('/_next') || 
-    pathname.includes('/api/');
+    pathname.includes('/api/') ||
+    pathname.includes('.') || // Any file with an extension
+    pathname.startsWith('/assets/');
     
   const isAuthRoute = pathname === '/login' || pathname === '/signup';
   const isProtectedRoute = !isPublicRoute;
@@ -85,6 +93,14 @@ export function proxy(request: NextRequest) {
 // See "Matching Paths" below to learn more
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|assets|public).*)',
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - assets (public assets)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|assets|manifest.json|sw.js|.*\\..*).*)',
   ],
 };

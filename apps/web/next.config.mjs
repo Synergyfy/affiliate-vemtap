@@ -1,6 +1,15 @@
+import withSerwistInit from "@serwist/next";
+
+const withSerwist = withSerwistInit({
+  swSrc: "sw.ts",
+  swDest: "public/sw.js",
+  disable: process.env.NODE_ENV !== "production",
+});
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  turbopack: {},
   typescript: {
     ignoreBuildErrors: false,
   },
@@ -36,8 +45,20 @@ const nextConfig = {
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
   // output: 'standalone',
-  transpilePackages: ['framer-motion'],
-  turbopack: {},
+  transpilePackages: [
+    'framer-motion',
+    'recharts',
+    'victory-vendor',
+    'd3-array',
+    'd3-color',
+    'd3-format',
+    'd3-interpolate',
+    'd3-path',
+    'd3-scale',
+    'd3-shape',
+    'd3-time',
+    'd3-time-format'
+  ],
   webpack: (config, {dev}) => {
     // HMR is disabled in AI Studio via DISABLE_HMR env var.
     // Do not modify—file watching is disabled to prevent flickering during agent edits.
@@ -48,6 +69,14 @@ const nextConfig = {
     }
     return config;
   },
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'https://affiliateapi.vemtap.com/api/:path*',
+      },
+    ];
+  },
 };
 
-export default nextConfig;
+export default withSerwist(nextConfig);
