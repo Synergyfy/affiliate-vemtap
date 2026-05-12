@@ -335,6 +335,7 @@ export default function AgentLeadsPage() {
         isOpen={isModalOpen} 
         onClose={() => { setIsModalOpen(false); setSelectedLead(null); }} 
         agentId={user?.id} 
+        lead={selectedLead}
       />
       
       <LeadDetailsDrawer 
