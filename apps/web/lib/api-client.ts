@@ -3,7 +3,7 @@
  * Uses cookie-based authentication (httpOnly cookies set by the backend).
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4005/api';
+const API_BASE_URL = typeof window !== 'undefined' ? '/api' : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4005/api');
 
 let onUnauthorized: (() => void) | null = null;
 let isRefreshing = false;
