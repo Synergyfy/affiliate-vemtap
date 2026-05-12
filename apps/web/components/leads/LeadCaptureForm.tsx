@@ -25,7 +25,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useCreateLead } from '@/services/useLeadsHooks';
+import { useCreateLead, useUpdateLead } from '@/services/useLeadsHooks';
 
 const leadSchema = z.object({
   businessName: z.string().min(1, 'Business name is required'),
@@ -52,13 +52,15 @@ interface LeadCaptureFormProps {
   isPublic?: boolean;
   isAdmin?: boolean;
   onSuccess?: () => void;
+  lead?: any;
 }
 
-export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = false, onSuccess }: LeadCaptureFormProps) {
+export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = false, onSuccess, lead }: LeadCaptureFormProps) {
   const [showSuccess, setShowSuccess] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const { showToast } = useToast();
   const createLead = useCreateLead();
+  const updateLead = useUpdateLead();
 
   const {
     register,
@@ -75,6 +77,34 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
       status: 'POTENTIAL'
     }
   });
+
+  useEffect(() => {
+    if (lead) {
+      reset({
+        businessName: lead.businessName || '',
+        industry: lead.industry || '',
+        location: lead.location || '',
+        website: lead.website || '',
+        contactName: lead.contactName || '',
+        contactRole: lead.contactRole || '',
+        phone: lead.phone || '',
+        email: lead.email || '',
+        source: lead.source || 'Social Media',
+        otherSource: lead.otherSource || '',
+        priority: lead.priority || 'MEDIUM',
+        status: lead.status || 'POTENTIAL',
+        followUpDate: lead.followUpDate || '',
+        comments: lead.comments || '',
+        assignedAgentId: lead.assignedAgentId || '',
+      });
+    } else {
+      reset({
+        priority: 'MEDIUM',
+        source: 'Social Media',
+        status: 'POTENTIAL'
+      });
+    }
+  }, [lead, reset]);
 
   const selectedSource = watch('source');
   const selectedPriority = watch('priority');
@@ -110,7 +140,13 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
       }, 2500);
     } else {
       try {
-        await createLead.mutateAsync(leadData);
+        if (lead?.id) {
+          await updateLead.mutateAsync({ id: lead.id, data: leadData });
+          showToast('Lead updated successfully.', 'success');
+        } else {
+          await createLead.mutateAsync(leadData);
+          showToast('Lead created successfully.', 'success');
+        }
         setShowSuccess(true);
         setTimeout(() => {
           setShowSuccess(false);
@@ -310,10 +346,10 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
         <div className="flex flex-col sm:flex-row gap-4">
           <Button 
             type="submit" 
-            disabled={createLead.isPending}
+            disabled={createLead.isPending || updateLead.isPending}
             className="flex-grow bg-slate-900 hover:bg-blue-600 text-white h-16 rounded-2xl text-sm font-black shadow-xl transition-all flex items-center justify-center gap-3"
           >
-            {createLead.isPending ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Save className="w-5 h-5" /> {isPublic ? 'Submit Lead' : 'Save Business'}</>}
+            {(createLead.isPending || updateLead.isPending) ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Save className="w-5 h-5" /> {isPublic ? 'Submit Lead' : lead?.id ? 'Update Business' : 'Save Business'}</>}
           </Button>
           {!isPublic && (
             <Button 

@@ -9,9 +9,10 @@ interface LeadCreationModalProps {
   onClose: () => void;
   agentId?: string;
   isAdmin?: boolean;
+  lead?: any;
 }
 
-export default function LeadCreationModal({ isOpen, onClose, agentId, isAdmin = false }: LeadCreationModalProps) {
+export default function LeadCreationModal({ isOpen, onClose, agentId, isAdmin = false, lead }: LeadCreationModalProps) {
   if (!isOpen) return null;
 
   return (
@@ -34,8 +35,12 @@ export default function LeadCreationModal({ isOpen, onClose, agentId, isAdmin = 
           {/* Header */}
           <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
             <div>
-              <h2 className="text-2xl font-black text-slate-900 leading-tight">Quick Capture</h2>
-              <p className="text-xs text-slate-500 font-medium">Record a business lead instantly. Details can be completed later.</p>
+              <h2 className="text-2xl font-black text-slate-900 leading-tight">
+                {lead ? 'Edit Business Lead' : 'Quick Capture'}
+              </h2>
+              <p className="text-xs text-slate-500 font-medium">
+                {lead ? 'Update the details for this potential partner.' : 'Record a business lead instantly. Details can be completed later.'}
+              </p>
             </div>
             <button 
               onClick={onClose}
@@ -52,6 +57,7 @@ export default function LeadCreationModal({ isOpen, onClose, agentId, isAdmin = 
               isPublic={false} 
               onSuccess={onClose} 
               isAdmin={isAdmin}
+              lead={lead}
             />
           </div>
         </motion.div>
