@@ -20,7 +20,7 @@ import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
-import ManagerGuideModal from '@/components/dashboard/ManagerGuideModal';
+import SupervisorGuideModal from '@/components/dashboard/SupervisorGuideModal';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/toast';
 import { Loader2 } from 'lucide-react';
@@ -173,7 +173,7 @@ export default function NetworkPage() {
               </div>
             </div>
             
-            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-4">Unlock Manager Status</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-4">Unlock Supervisor Status</h2>
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
@@ -181,7 +181,7 @@ export default function NetworkPage() {
               </div>
             ) : (
               <p className="text-sm sm:text-base text-slate-500 max-w-lg mx-auto mb-8 sm:mb-12">
-                Build your team and hit the targets <span className="text-orange-600 font-bold">within {timeLimitDays} days</span> to unlock your <span className="font-bold text-blue-600">Manager Network</span> and earn <span className="font-bold text-blue-600">10% of affiliate earnings</span>.
+                Build your team and hit the targets <span className="text-orange-600 font-bold">within {timeLimitDays} days</span> to unlock your <span className="font-bold text-blue-600">Supervisor Network</span> and earn <span className="font-bold text-blue-600">10% of affiliate earnings</span>.
               </p>
             )}
 
@@ -258,7 +258,7 @@ export default function NetworkPage() {
           <div className="space-y-6 sm:space-y-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">Manager Network</h2>
+                <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">Supervisor Network</h2>
                 <div className="flex items-center gap-2 mt-1">
                   <p className="text-sm sm:text-base text-slate-500">Milestone System Active</p>
                   <span className="w-1 h-1 rounded-full bg-slate-300" />
@@ -274,7 +274,7 @@ export default function NetworkPage() {
               <div className="flex items-center gap-3">
                 <div className="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-full text-xs sm:text-sm font-bold flex items-center border border-emerald-100">
                   <ShieldCheck className="w-4 h-4 mr-2" />
-                  Verified Manager
+                  Verified Supervisor
                 </div>
                 <Button 
                   variant="outline" 
@@ -411,7 +411,7 @@ export default function NetworkPage() {
           </div>
         </div>
 
-        <ManagerGuideModal 
+        <SupervisorGuideModal 
           isOpen={showGuide} 
           onClose={() => setShowGuide(false)} 
         />

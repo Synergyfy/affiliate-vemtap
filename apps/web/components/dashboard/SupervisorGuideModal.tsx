@@ -16,16 +16,16 @@ import {
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 
-interface ManagerGuideModalProps {
+interface SupervisorGuideModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export default function ManagerGuideModal({ isOpen, onClose }: ManagerGuideModalProps) {
+export default function SupervisorGuideModal({ isOpen, onClose }: SupervisorGuideModalProps) {
   const steps = [
     {
       title: "1. Build Your Team",
-      desc: "Recruit affiliates using your special link. They become part of your Manager Network.",
+      desc: "Recruit affiliates using your special link. They become part of your Supervisor Network.",
       icon: Users,
       color: "text-blue-600",
       bg: "bg-blue-50"
@@ -74,7 +74,7 @@ export default function ManagerGuideModal({ isOpen, onClose }: ManagerGuideModal
                 <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3 backdrop-blur-md border border-white/30">
                   <ShieldCheck className="w-8 h-8 text-white" />
                 </div>
-                <h2 className="text-2xl font-black uppercase tracking-tight">Manager Network Guide</h2>
+                <h2 className="text-2xl font-black uppercase tracking-tight">Supervisor Network Guide</h2>
               </div>
               <button 
                 onClick={onClose}
