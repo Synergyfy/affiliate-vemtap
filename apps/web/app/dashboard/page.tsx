@@ -27,7 +27,7 @@ const gridItems = [
   { name: 'Referral Tools', icon: LinkIcon, color: 'from-emerald-400 to-teal-500', href: '/dashboard/tools' },
   { name: 'My Businesses', icon: Briefcase, color: 'from-orange-400 to-amber-500', href: '/dashboard/businesses' },
   { name: 'Wallet & Earnings', icon: Wallet, color: 'from-purple-500 to-indigo-600', href: '/dashboard/wallet' },
-  { name: 'Manager Network', icon: Users, color: 'from-sky-400 to-blue-500', href: '/dashboard/network' },
+  { name: 'Supervisor Network', icon: Users, color: 'from-sky-400 to-blue-500', href: '/dashboard/network' },
   { name: 'Sales Academy', icon: BookOpen, color: 'from-indigo-400 to-purple-500', href: '/dashboard/training' },
   { name: 'Leaderboard', icon: Trophy, color: 'from-yellow-400 to-orange-500', href: '/dashboard/leaderboard' },
   { name: 'My Profile', icon: User, color: 'from-slate-500 to-slate-700', href: '/dashboard/profile' },
@@ -53,7 +53,7 @@ export default function MobileFirstDashboard() {
                 stats?.currentLevel || 'Novice Affiliate'
               )}
             </div>
-            <h1 className="text-3xl font-black leading-tight">Welcome Back,<br />{user?.firstName || 'Affiliate'}!</h1>
+            <h1 className="text-3xl font-black leading-tight">Welcome,<br />{user?.firstName || user?.fullName?.split(' ')[0] || 'Affiliate'}!</h1>
             <p className="text-sm text-blue-100/80 font-medium max-w-[240px]">Record a new business lead or manage your existing network.</p>
             
             <div className="flex gap-3 pt-2">
@@ -130,7 +130,7 @@ export default function MobileFirstDashboard() {
           </div>
           <div className="flex-grow">
             <h5 className="text-sm font-black text-slate-900 leading-none mb-1">Direct Assistance</h5>
-            <p className="text-xs text-slate-500 font-medium">Need help with a lead? Chat with a manager now.</p>
+            <p className="text-xs text-slate-500 font-medium">Need help with a lead? Chat with a supervisor now.</p>
           </div>
         </div>
       </div>

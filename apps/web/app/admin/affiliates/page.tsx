@@ -39,7 +39,7 @@ import { Loader2 } from 'lucide-react';
 
 export default function AffiliatesManagement() {
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'All' | 'Managers'>('All');
+  const [activeTab, setActiveTab] = useState<'All' | 'Supervisors'>('All');
   const [selectedAffiliate, setSelectedAffiliate] = useState<UserType | null>(null);
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
@@ -48,7 +48,7 @@ export default function AffiliatesManagement() {
   const debouncedSearch = useDebounce(searchQuery, 500);
 
   const { data: usersResponse, isLoading } = useUsers({
-    role: activeTab === 'Managers' ? 'ADMIN' : undefined,
+    role: activeTab === 'Supervisors' ? 'ADMIN' : undefined,
     status: statusFilter === 'All' ? undefined : statusFilter,
     search: debouncedSearch || undefined,
     limit: 50
@@ -177,14 +177,14 @@ export default function AffiliatesManagement() {
             All Affiliates
           </button>
           <button 
-            onClick={() => setActiveTab('Managers')}
+            onClick={() => setActiveTab('Supervisors')}
             className={cn(
               "px-8 py-4 text-sm font-bold transition-all border-b-2 flex items-center gap-2",
-              activeTab === 'Managers' ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"
+               activeTab === 'Supervisors' ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"
             )}
           >
             <Users className="w-4 h-4" />
-            Manager List
+            Supervisor List
           </button>
         </div>
 
@@ -283,7 +283,7 @@ export default function AffiliatesManagement() {
                           <button 
                             onClick={() => handleRoleToggle(user.id, user.fullName, user.role)}
                             className="p-2 hover:bg-purple-50 rounded-lg text-slate-400 hover:text-purple-600 transition-all" 
-                            title='Upgrade to Manager'
+                            title='Upgrade to Supervisor'
                           >
                             <ArrowUpCircle className="w-4 h-4" />
                           </button>
@@ -373,12 +373,12 @@ export default function AffiliatesManagement() {
         onConfirm={executeAction}
         type={confirmModal.type}
         title={
-          confirmModal.type === 'upgrade' ? 'Promote to Manager?' : 
+          confirmModal.type === 'upgrade' ? 'Promote to Supervisor?' : 
           confirmModal.type === 'downgrade' ? 'Demote to Affiliate?' :
           confirmModal.type === 'suspend' ? 'Suspend Affiliate?' : 'Reactivate Affiliate?'
         }
         message={
-          confirmModal.type === 'upgrade' ? `Are you sure you want to upgrade ${confirmModal.name} to Manager? They will gain access to Manager-only tools.` :
+          confirmModal.type === 'upgrade' ? `Are you sure you want to upgrade ${confirmModal.name} to Supervisor? They will gain access to Supervisor-only tools.` :
           confirmModal.type === 'downgrade' ? `Are you sure you want to downgrade ${confirmModal.name} back to a standard Affiliate?` :
           confirmModal.type === 'suspend' ? `Are you sure you want to suspend ${confirmModal.name}? They will lose access to the dashboard immediately.` :
           `Are you sure you want to reactivate ${confirmModal.name}? They will regain full access to their affiliate account.`

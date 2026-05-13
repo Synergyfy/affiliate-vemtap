@@ -52,7 +52,7 @@ const sidebarItems = [
   { name: 'Leads', icon: Target, href: '/dashboard/leads' },
   { name: 'Referral Tools', icon: LinkIcon, href: '/dashboard/tools' },
   { name: 'Businesses', icon: Briefcase, href: '/dashboard/businesses' },
-  { name: 'Manager Network', icon: Users, href: '/dashboard/network' },
+  { name: 'Supervisor', icon: Users, href: '/dashboard/network' },
   { name: 'Leaderboard', icon: Trophy, href: '/dashboard/leaderboard' },
   { name: 'Wallet', icon: Wallet, href: '/dashboard/wallet' },
   { name: 'Sales Academy', icon: BookOpen, href: '/dashboard/training' },
@@ -145,6 +145,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             )}
             <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 rounded-lg hover:bg-slate-100"><Menu className="w-5 h-5" /></button>
           </div>
+
           <nav className="flex-grow px-4 space-y-2 mt-4">
             {sidebarItems.map((item) => (
               <Link key={item.name} href={item.href} className={cn("flex items-center gap-3 p-3 rounded-xl transition-all group", pathname === item.href ? "bg-blue-600 text-white shadow-lg" : "text-slate-600 hover:bg-slate-100")}>
@@ -170,13 +171,57 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </Link>
           </div>
           <div className="flex items-center gap-4">
-            <button className="relative p-2 text-slate-600"><Bell className="w-6 h-6" /><span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white" /></button>
-            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600"><User className="w-5 h-5" /></div>
+            <button 
+              onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+              className="relative p-2 text-slate-600"
+            >
+              <Bell className="w-6 h-6" />
+              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
+            </button>
+            <Link 
+              href="/dashboard/profile"
+              className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 active:scale-90 transition-transform"
+            >
+              <User className="w-5 h-5" />
+            </Link>
           </div>
         </header>
 
         {/* Main Content Area */}
         <main className="flex-grow flex flex-col min-w-0 pb-24 lg:pb-0 pt-16 lg:pt-0">
+          {/* Desktop Header */}
+          <header className="hidden lg:flex h-20 bg-white border-b border-slate-200 px-12 items-center justify-between sticky top-0 z-30">
+            <div>
+              <h1 className="text-xl font-black text-slate-900 uppercase tracking-tight">
+                {sidebarItems.find(item => item.href === pathname)?.name || 'Dashboard'}
+              </h1>
+            </div>
+            <div className="flex items-center gap-6">
+              <button 
+                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                className="relative p-2.5 bg-slate-50 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all"
+              >
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
+              </button>
+              
+              <div className="h-8 w-px bg-slate-200" />
+
+              <Link 
+                href="/dashboard/profile"
+                className="flex items-center gap-3 group"
+              >
+                <div className="text-right">
+                  <p className="text-xs font-black text-slate-900 group-hover:text-blue-600 transition-colors">{user?.fullName || 'User Profile'}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user?.role || 'Affiliate'}</p>
+                </div>
+                <div className="w-10 h-10 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
+                  <User className="w-5 h-5" />
+                </div>
+              </Link>
+            </div>
+          </header>
+
           <div className="p-4 md:p-8 lg:p-12 max-w-7xl mx-auto w-full">
             <OnboardingModal />
             {children}
