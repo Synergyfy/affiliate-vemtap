@@ -40,3 +40,11 @@ yarn-error.log*
 # Prisma
 **/prisma/*.db
 **/prisma/*.db-journal
+
+# PWA
+**/public/sw.js
+**/public/sw.js.map
+**/public/worker-*.js
+**/public/worker-*.js.map
+**/public/workbox-*.js
+**/public/workbox-*.js.map

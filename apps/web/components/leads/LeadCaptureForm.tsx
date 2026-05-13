@@ -29,14 +29,15 @@ import { useCreateLead, useUpdateLead } from '@/services/useLeadsHooks';
 
 const leadSchema = z.object({
   businessName: z.string().min(1, 'Business name is required'),
-  industry: z.string().min(1, 'Industry is required'),
+  industry: z.string().optional().or(z.literal('')),
+  businessAddress: z.string().optional(),
   location: z.string().optional(),
   website: z.string().optional(),
-  contactName: z.string().min(1, 'Contact person name is required'),
+  contactName: z.string().optional().or(z.literal('')),
   contactRole: z.string().optional(),
   phone: z.string().min(1, 'Phone number is required'),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
-  source: z.string().min(1, 'Lead source is required'),
+  source: z.string().optional().or(z.literal('')),
   otherSource: z.string().optional(),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH']).default('MEDIUM'),
   status: z.enum(['POTENTIAL', 'CONTACTED', 'INTERESTED', 'NOT_INTERESTED', 'COMPLETED']).default('POTENTIAL'),
@@ -210,18 +211,45 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
               <input {...register('businessName')} className={cn("w-full px-4 py-3 bg-slate-50 border rounded-2xl text-sm focus:ring-2 focus:ring-blue-100 outline-none transition-all", errors.businessName ? "border-red-300" : "border-slate-200")} placeholder="Name" />
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Industry *</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Phone Number *</label>
+              <div className="relative">
+                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input {...register('phone')} className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm" placeholder="+234 ..." />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Industry</label>
               <select {...register('industry')} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none">
                 <option value="">Select Industry</option>
-                <option value="Retail">Retail</option>
-                <option value="Hospitality">Hospitality</option>
-                <option value="Health">Health</option>
+                <option value="Retail & Shops">Retail & Shops</option>
+                <option value="Food & Hospitality">Food & Hospitality</option>
+                <option value="Beauty & Personal Care">Beauty & Personal Care</option>
+                <option value="Health & Medical">Health & Medical</option>
                 <option value="Professional Services">Professional Services</option>
+                <option value="Technology & Digital Services">Technology & Digital Services</option>
+                <option value="Education & Training">Education & Training</option>
+                <option value="Real Estate & Property">Real Estate & Property</option>
+                <option value="Automotive">Automotive</option>
+                <option value="Logistics & Transportation">Logistics & Transportation</option>
+                <option value="Construction & Home Services">Construction & Home Services</option>
+                <option value="Events & Entertainment">Events & Entertainment</option>
+                <option value="Finance & Financial Services">Finance & Financial Services</option>
+                <option value="Agriculture & Farming">Agriculture & Farming</option>
+                <option value="Manufacturing & Production">Manufacturing & Production</option>
+                <option value="Religious & Non-Profit Organizations">Religious & Non-Profit Organizations</option>
+                <option value="Government & Public Services">Government & Public Services</option>
                 <option value="Others">Others</option>
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Location</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Business Address</label>
+              <div className="relative">
+                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input {...register('businessAddress')} className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm" placeholder="123 Business St." />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">City/State</label>
               <div className="relative">
                 <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input {...register('location')} className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm" placeholder="City, State" />
@@ -247,15 +275,8 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
           </div>
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Contact Name *</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Contact Name</label>
               <input {...register('contactName')} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm" placeholder="Full Name" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Phone Number *</label>
-              <div className="relative">
-                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input {...register('phone')} className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm" placeholder="+234 ..." />
-              </div>
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Email</label>
@@ -281,7 +302,7 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
           </div>
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Lead Source *</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Lead Source</label>
               <select {...register('source')} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none">
                 <option value="Social Media">Social Media</option>
                 <option value="Direct Referral">Direct Referral</option>
@@ -292,12 +313,12 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
             </div>
             {selectedSource === 'Others' && (
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Specify Other Source *</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Specify Other Source</label>
                 <input {...register('otherSource')} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm" placeholder="Please specify..." />
               </div>
             )}
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Current Status *</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Current Status</label>
               <select {...register('status')} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none">
                 <option value="POTENTIAL">Potential</option>
                 <option value="CONTACTED">Contacted</option>
