@@ -216,7 +216,7 @@ export default function SettingsManagement() {
             </div>
           </motion.div>
 
-          {/* Manager Feature Settings */}
+          {/* Supervisor Feature Settings */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -225,7 +225,7 @@ export default function SettingsManagement() {
           >
             <div className="flex items-center gap-3 mb-8">
               <Users className="w-5 h-5 text-purple-600" />
-              <h3 className="text-lg font-bold text-slate-900">Manager Feature Configuration</h3>
+              <h3 className="text-lg font-bold text-slate-900">Supervisor Feature Configuration</h3>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -243,7 +243,7 @@ export default function SettingsManagement() {
                   />
                   <Users className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 </div>
-                <p className="text-xs text-slate-400">Sub-affiliates needed for Manager upgrade.</p>
+                <p className="text-xs text-slate-400">Sub-affiliates needed for Supervisor upgrade.</p>
               </div>
             </div>
           </motion.div>

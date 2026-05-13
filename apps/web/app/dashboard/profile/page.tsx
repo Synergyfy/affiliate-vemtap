@@ -541,7 +541,7 @@ export default function ProfilePage() {
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Level</p>
                     <p className="text-sm font-bold text-blue-600">
-                      {user?.isManagerMode ? 'Manager' : 'Affiliate'}
+                      {user?.isManagerMode ? 'Supervisor' : 'Affiliate'}
                     </p>
                   </div>
                 </div>
