@@ -29,14 +29,14 @@ import { useCreateLead } from '@/services/useLeadsHooks';
 
 const leadSchema = z.object({
   businessName: z.string().min(1, 'Business name is required'),
-  industry: z.string().min(1, 'Industry is required'),
+  industry: z.string().optional().or(z.literal('')),
   location: z.string().optional(),
   website: z.string().optional(),
-  contactName: z.string().min(1, 'Contact person name is required'),
+  contactName: z.string().optional().or(z.literal('')),
   contactRole: z.string().optional(),
   phone: z.string().min(1, 'Phone number is required'),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
-  source: z.string().min(1, 'Lead source is required'),
+  source: z.string().optional().or(z.literal('')),
   otherSource: z.string().optional(),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH']).default('MEDIUM'),
   status: z.enum(['POTENTIAL', 'CONTACTED', 'INTERESTED', 'NOT_INTERESTED', 'COMPLETED']).default('POTENTIAL'),
@@ -174,7 +174,7 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
               <input {...register('businessName')} className={cn("w-full px-4 py-3 bg-slate-50 border rounded-2xl text-sm focus:ring-2 focus:ring-blue-100 outline-none transition-all", errors.businessName ? "border-red-300" : "border-slate-200")} placeholder="Name" />
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Industry *</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Industry</label>
               <select {...register('industry')} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none">
                 <option value="">Select Industry</option>
                 <option value="Retail">Retail</option>
@@ -211,7 +211,7 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
           </div>
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Contact Name *</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Contact Name</label>
               <input {...register('contactName')} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm" placeholder="Full Name" />
             </div>
             <div className="space-y-2">
@@ -245,7 +245,7 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
           </div>
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Lead Source *</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Lead Source</label>
               <select {...register('source')} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none">
                 <option value="Social Media">Social Media</option>
                 <option value="Direct Referral">Direct Referral</option>
@@ -256,12 +256,12 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
             </div>
             {selectedSource === 'Others' && (
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Specify Other Source *</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Specify Other Source</label>
                 <input {...register('otherSource')} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm" placeholder="Please specify..." />
               </div>
             )}
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Current Status *</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Current Status</label>
               <select {...register('status')} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none">
                 <option value="POTENTIAL">Potential</option>
                 <option value="CONTACTED">Contacted</option>
