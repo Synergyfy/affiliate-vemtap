@@ -103,6 +103,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setHasCompletedTour(localStorage.getItem('hasCompletedTour') === 'true');
   }, []);
 
+  // Handle click outside for dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.profile-dropdown-container')) {
+        setIsProfileOpen(false);
+      }
+      if (!target.closest('.notifications-dropdown-container')) {
+        setIsNotificationsOpen(false);
+      }
+    };
+
+    if (isProfileOpen || isNotificationsOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isProfileOpen, isNotificationsOpen]);
+
   // Middleware handles server-side redirection, but we keep the loading state
   // and user check for UI consistency while client-side state is hydrating.
 
@@ -171,19 +189,63 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </Link>
           </div>
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-              className="relative p-2 text-slate-600"
-            >
-              <Bell className="w-6 h-6" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
-            </button>
-            <Link 
-              href="/dashboard/profile"
-              className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 active:scale-90 transition-transform"
-            >
-              <User className="w-5 h-5" />
-            </Link>
+            <div className="relative notifications-dropdown-container">
+              <button 
+                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                className="relative p-2 text-slate-600"
+              >
+                <Bell className="w-6 h-6" />
+                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
+              </button>
+            </div>
+            
+            <div className="relative profile-dropdown-container">
+              <button 
+                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 active:scale-90 transition-transform"
+              >
+                <User className="w-5 h-5" />
+              </button>
+              
+              <AnimatePresence>
+                {isProfileOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 mt-3 w-64 bg-white/90 backdrop-blur-xl border border-slate-200/50 rounded-3xl shadow-2xl p-2 z-50 origin-top-right overflow-hidden"
+                  >
+                    <div className="p-4 border-b border-slate-100 mb-2 bg-slate-50/50">
+                       <p className="text-sm font-black text-slate-900">{user?.fullName}</p>
+                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">{user?.email}</p>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <Link 
+                        href="/dashboard/profile"
+                        onClick={() => setIsProfileOpen(false)}
+                        className="flex items-center gap-3 p-3 rounded-2xl text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition-all group"
+                      >
+                        <div className="p-2 rounded-xl bg-slate-50 group-hover:bg-blue-100 transition-colors">
+                          <User className="w-4 h-4" />
+                        </div>
+                        <span className="font-bold text-sm">My Profile</span>
+                      </Link>
+                      
+                      <button 
+                        onClick={handleLogout}
+                        className="flex items-center gap-3 p-3 rounded-2xl text-slate-600 hover:bg-red-50 hover:text-red-600 transition-all group w-full text-left"
+                      >
+                        <div className="p-2 rounded-xl bg-slate-50 group-hover:bg-red-100 transition-colors">
+                          <LogOut className="w-4 h-4" />
+                        </div>
+                        <span className="font-bold text-sm">Logout</span>
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </header>
 
@@ -197,28 +259,82 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </h1>
             </div>
             <div className="flex items-center gap-6">
-              <button 
-                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                className="relative p-2.5 bg-slate-50 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all"
-              >
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
-              </button>
+              <div className="relative notifications-dropdown-container">
+                <button 
+                  onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                  className="relative p-2.5 bg-slate-50 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all"
+                >
+                  <Bell className="w-5 h-5" />
+                  <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
+                </button>
+              </div>
               
               <div className="h-8 w-px bg-slate-200" />
 
-              <Link 
-                href="/dashboard/profile"
-                className="flex items-center gap-3 group"
-              >
-                <div className="text-right">
-                  <p className="text-xs font-black text-slate-900 group-hover:text-blue-600 transition-colors">{user?.fullName || 'User Profile'}</p>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user?.role || 'Affiliate'}</p>
-                </div>
-                <div className="w-10 h-10 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
-                  <User className="w-5 h-5" />
-                </div>
-              </Link>
+              <div className="relative profile-dropdown-container">
+                <button 
+                  onClick={() => setIsProfileOpen(!isProfileOpen)}
+                  className="flex items-center gap-3 group px-2 py-1.5 rounded-2xl hover:bg-slate-50 transition-all"
+                >
+                  <div className="text-right hidden sm:block">
+                    <p className="text-xs font-black text-slate-900 group-hover:text-blue-600 transition-colors">{user?.fullName || 'User Profile'}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user?.role || 'Affiliate'}</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
+                    <User className="w-5 h-5" />
+                  </div>
+                </button>
+
+                <AnimatePresence>
+                  {isProfileOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
+                      className="absolute right-0 mt-3 w-72 bg-white/90 backdrop-blur-xl border border-slate-200/50 rounded-3xl shadow-2xl p-2 z-50 origin-top-right overflow-hidden"
+                    >
+                      <div className="p-4 border-b border-slate-100 mb-2 bg-slate-50/50 rounded-t-2xl">
+                         <div className="flex items-center gap-3 mb-1">
+                           <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-xs">
+                             {user?.fullName?.charAt(0) || 'U'}
+                           </div>
+                           <div>
+                             <p className="text-sm font-black text-slate-900">{user?.fullName}</p>
+                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user?.role || 'Affiliate'}</p>
+                           </div>
+                         </div>
+                         <p className="text-[10px] font-medium text-slate-400 truncate mt-2">{user?.email}</p>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <Link 
+                          href="/dashboard/profile"
+                          onClick={() => setIsProfileOpen(false)}
+                          className="flex items-center gap-3 p-3 rounded-2xl text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition-all group"
+                        >
+                          <div className="p-2 rounded-xl bg-slate-50 group-hover:bg-blue-100 transition-colors">
+                            <User className="w-4 h-4" />
+                          </div>
+                          <span className="font-bold text-sm">My Profile</span>
+                        </Link>
+                        
+                        <div className="h-px bg-slate-100 mx-2 my-1" />
+
+                        <button 
+                          onClick={handleLogout}
+                          className="flex items-center gap-3 p-3 rounded-2xl text-slate-600 hover:bg-red-50 hover:text-red-600 transition-all group w-full text-left"
+                        >
+                          <div className="p-2 rounded-xl bg-slate-50 group-hover:bg-red-100 transition-colors">
+                            <LogOut className="w-4 h-4" />
+                          </div>
+                          <span className="font-bold text-sm">Logout</span>
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </header>
 
