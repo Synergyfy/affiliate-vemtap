@@ -10,6 +10,11 @@ export const metadata: Metadata = {
   title: "Vemtap Affiliate Platform",
   description: "Multi-level affiliate marketing platform",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/assets/favicon.ico",
+    shortcut: "/assets/favicon.ico",
+    apple: "/assets/favicon.ico",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
