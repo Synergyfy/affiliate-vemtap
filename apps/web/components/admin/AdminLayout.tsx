@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -42,13 +42,40 @@ import { useRouter } from 'next/navigation';
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const pathname = usePathname();
-  const { logout } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   const router = useRouter();
+
+  // Redirect to login if hydration completes and no user is authenticated
+  // or redirect to dashboard if user is not an admin/super_admin
+  useEffect(() => {
+    if (!isLoading) {
+      if (!user) {
+        router.push('/login');
+      } else if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+        router.push('/dashboard');
+      }
+    }
+  }, [isLoading, user, router]);
 
   const handleLogout = async () => {
     await logout();
     router.push('/login');
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Verifying Admin Session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex">

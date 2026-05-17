@@ -121,6 +121,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isProfileOpen, isNotificationsOpen]);
 
+  // Redirect to login if hydration completes and no user is authenticated
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.push('/login');
+    }
+  }, [isLoading, user, router]);
+
   // Middleware handles server-side redirection, but we keep the loading state
   // and user check for UI consistency while client-side state is hydrating.
 
@@ -145,6 +152,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) {
     return null;
   }
+
 
   return (
     <DashboardContext.Provider value={{ isNotificationsOpen, setIsNotificationsOpen, isProfileOpen, setIsProfileOpen }}>

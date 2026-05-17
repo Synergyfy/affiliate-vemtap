@@ -69,8 +69,8 @@ describe('AuthController', () => {
     it('should clear cookies', async () => {
       const res = mockResponse();
       await controller.logout(res);
-      expect(res.clearCookie).toHaveBeenCalledWith('access_token');
-      expect(res.clearCookie).toHaveBeenCalledWith('refresh_token');
+      expect(res.clearCookie).toHaveBeenCalledWith('access_token', expect.any(Object));
+      expect(res.clearCookie).toHaveBeenCalledWith('refresh_token', expect.any(Object));
     });
   });
 });
