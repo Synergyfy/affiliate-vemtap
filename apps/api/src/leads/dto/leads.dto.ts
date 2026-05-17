@@ -11,6 +11,11 @@ export class CreateLeadDto {
   @IsString()
   industry: string;
 
+  @ApiPropertyOptional({ example: '123 Main St, Lagos' })
+  @IsOptional()
+  @IsString()
+  businessAddress?: string;
+
   @ApiPropertyOptional({ example: 'Lagos, Nigeria' })
   @IsOptional()
   @IsString()

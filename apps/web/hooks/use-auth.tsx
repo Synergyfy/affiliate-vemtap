@@ -67,6 +67,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkAuth();
   }, []);
 
+  useEffect(() => {
+    api.setUnauthorizedCallback(() => {
+      setUser(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem('vemtap_user');
+      if (typeof window !== 'undefined') {
+        document.cookie = "vemtap_logged_out=true; path=/; max-age=31536000";
+      }
+    });
+  }, []);
+
   const login = async (email: string, password?: string): Promise<User> => {
     setIsLoading(true);
     setError(null);
@@ -77,6 +88,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(user);
       setIsAuthenticated(true);
       localStorage.setItem('vemtap_user', JSON.stringify(user));
+      if (typeof window !== 'undefined') {
+        document.cookie = "vemtap_logged_out=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      }
       return user;
     } catch (err: any) {
       setError(err.message || 'Login failed');
@@ -96,6 +110,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(user);
       setIsAuthenticated(true);
       localStorage.setItem('vemtap_user', JSON.stringify(user));
+      if (typeof window !== 'undefined') {
+        document.cookie = "vemtap_logged_out=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      }
       return user;
     } catch (err: any) {
       setError(err.message || 'Signup failed');
@@ -121,6 +138,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setIsAuthenticated(false);
       localStorage.removeItem('vemtap_user');
+      if (typeof window !== 'undefined') {
+        document.cookie = "vemtap_logged_out=true; path=/; max-age=31536000";
+      }
     }
   };
 

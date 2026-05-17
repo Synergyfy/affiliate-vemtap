@@ -1,92 +1,29 @@
 /**
- * API Client for the Affiliate Platform.
- * Uses cookie-based authentication (httpOnly cookies set by the backend).
+ * API Client adapter for the Affiliate Platform.
+ * delegates to the unified Axios instance under the hood for consistency.
  */
 
-const API_BASE_URL = typeof window !== 'undefined' ? '/api' : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4005/api');
+import api, { setUnauthorizedCallback } from '@/services/api';
 
-let onUnauthorized: (() => void) | null = null;
-let isRefreshing = false;
-let refreshPromise: Promise<any> | null = null;
-
-async function fetchWithAuth(endpoint: string, options: RequestInit = {}): Promise<any> {
-  const isFormData = options.body instanceof FormData;
-  
-  const headers: Record<string, string> = {
-    ...(options.headers as Record<string, string> || {}),
-  };
-
-  if (!isFormData) {
-    headers['Content-Type'] = 'application/json';
-  }
-
-  const executeRequest = () => fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-    credentials: 'include', // Send cookies with every request
-  });
-
-  let response = await executeRequest();
-
-  // Handle 401 Unauthorized - Attempt silent refresh
-  if (response.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/refresh')) {
-    if (!isRefreshing) {
-      isRefreshing = true;
-      refreshPromise = fetch(`${API_BASE_URL}/auth/refresh`, {
-        method: 'POST',
-        credentials: 'include',
-      }).then(async (res) => {
-        isRefreshing = false;
-        if (res.ok) return res.json();
-        throw new Error('Refresh failed');
-      }).catch((err) => {
-        isRefreshing = false;
-        if (onUnauthorized) onUnauthorized();
-        throw err;
-      });
-    }
-
-    try {
-      await refreshPromise;
-      // Retry the original request after successful refresh
-      response = await executeRequest();
-    } catch (refreshError) {
-      // If refresh fails, we've already called onUnauthorized
-      throw refreshError;
-    }
-  }
-
-  if (!response.ok) {
-    if (response.status === 401 && onUnauthorized) {
-      onUnauthorized();
-    }
-    const errorData = await response.json().catch(() => ({}));
-    const error = new Error(errorData.message || 'API request failed');
-    (error as any).status = response.status;
-    throw error;
-  }
-
-  // Handle 204 No Content or empty responses
-  const contentType = response.headers.get('content-type');
-  if (response.status === 204 || !contentType?.includes('application/json')) {
-    return null;
-  }
-
-  return response.json();
-}
-
-export const api = {
-  get: <T = any>(endpoint: string): Promise<T> => fetchWithAuth(endpoint, { method: 'GET' }),
-  post: <T = any>(endpoint: string, body?: any): Promise<T> => fetchWithAuth(endpoint, { 
-    method: 'POST', 
-    body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined) 
-  }),
-  patch: <T = any>(endpoint: string, body: any): Promise<T> => fetchWithAuth(endpoint, { 
-    method: 'PATCH', 
-    body: body instanceof FormData ? body : JSON.stringify(body) 
-  }),
-  delete: <T = any>(endpoint: string): Promise<T> => fetchWithAuth(endpoint, { method: 'DELETE' }),
-  setUnauthorizedCallback: (callback: () => void) => {
-    onUnauthorized = callback;
+export const apiFetch = {
+  get: async <T = any>(endpoint: string): Promise<T> => {
+    const response = await api.get<T>(endpoint);
+    return response.data;
   },
+  post: async <T = any>(endpoint: string, body?: any): Promise<T> => {
+    const response = await api.post<T>(endpoint, body);
+    return response.data;
+  },
+  patch: async <T = any>(endpoint: string, body?: any): Promise<T> => {
+    const response = await api.patch<T>(endpoint, body);
+    return response.data;
+  },
+  delete: async <T = any>(endpoint: string): Promise<T> => {
+    const response = await api.delete<T>(endpoint);
+    return response.data;
+  },
+  setUnauthorizedCallback,
 };
+
+export { apiFetch as api };
+
