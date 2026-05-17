@@ -70,10 +70,11 @@ const nextConfig = {
     return config;
   },
   async rewrites() {
+    const apiTarget = process.env.NEXT_PUBLIC_API_URL || 'https://affiliateapi.vemtap.com/api';
     return [
       {
         source: '/api/:path*',
-        destination: 'https://affiliateapi.vemtap.com/api/:path*',
+        destination: `${apiTarget}/:path*`,
       },
     ];
   },

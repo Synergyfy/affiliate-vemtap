@@ -16,6 +16,8 @@ describe('UsersService', () => {
       findFirst: jest.fn(),
       update: jest.fn(),
       create: jest.fn(),
+      findMany: jest.fn(),
+      count: jest.fn(),
     },
   };
 
@@ -147,6 +149,8 @@ describe('UsersService', () => {
       const status = await service.getAgreementStatus('1');
       expect(status.isUpToDate).toBe(false);
     });
+  });
+
   describe('findAllAdmin', () => {
     it('should call prisma.user.findMany and count with filters', async () => {
       const mockUsers = [{ id: '1', fullName: 'John Doe' }];
@@ -176,7 +180,7 @@ describe('UsersService', () => {
       await service.findAllAdmin({ skip: 0, take: 10 });
 
       expect(mockPrisma.user.findMany).toHaveBeenCalledWith(expect.objectContaining({
-        where: {}
+        where: { role: 'AFFILIATE' }
       }));
     });
   });

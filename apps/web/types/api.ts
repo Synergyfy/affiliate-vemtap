@@ -14,6 +14,7 @@ export interface Lead {
   id: string;
   businessName: string;
   industry: string;
+  businessAddress?: string;
   location?: string;
   website?: string;
   contactName: string;

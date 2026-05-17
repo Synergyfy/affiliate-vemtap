@@ -25,13 +25,16 @@ export function proxy(request: NextRequest) {
   const accessToken = request.cookies.get('access_token')?.value || request.cookies.get('vemtap-auth-token')?.value;
   const refreshToken = request.cookies.get('refresh_token')?.value;
   
-  const isAuthenticated = !!accessToken || !!refreshToken;
+  // Check if client-side explicitly set a logged out state to bypass stale httpOnly cookies
+  const isLoggedOut = request.cookies.get('vemtap_logged_out')?.value === 'true';
+  
+  const isAuthenticated = (!!accessToken || !!refreshToken) && !isLoggedOut;
   
   const allCookies = request.cookies.getAll().map(c => c.name);
-  console.log(`[Middleware] Path: ${pathname}, Auth: ${isAuthenticated}, Tokens: ${accessToken ? 'AT+' : 'AT-'}, ${refreshToken ? 'RT+' : 'RT-'}, All Cookies: [${allCookies.join(', ')}]`);
+  console.log(`[Proxy Middleware] Path: ${pathname}, Auth: ${isAuthenticated}, StaleCookiesIgnored: ${isLoggedOut}, All Cookies: [${allCookies.join(', ')}]`);
   
   // Extract role for RBAC
-  const role = accessToken ? getRoleFromToken(accessToken) : (refreshToken ? getRoleFromToken(refreshToken) : null);
+  const role = isAuthenticated ? (accessToken ? getRoleFromToken(accessToken) : (refreshToken ? getRoleFromToken(refreshToken) : null)) : null;
 
   // Define route patterns
   const publicPaths = [

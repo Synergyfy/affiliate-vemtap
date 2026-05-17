@@ -573,6 +573,7 @@ model Lead {
   id              String      @id @default(uuid())
   businessName    String
   industry        String
+  businessAddress String?
   location        String?
   website         String?
   contactName     String
