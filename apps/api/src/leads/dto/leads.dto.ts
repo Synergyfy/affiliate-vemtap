@@ -7,9 +7,10 @@ export class CreateLeadDto {
   @IsString()
   businessName: string;
 
-  @ApiProperty({ example: 'Technology' })
+  @ApiPropertyOptional({ example: 'Technology' })
+  @IsOptional()
   @IsString()
-  industry: string;
+  industry?: string;
 
   @ApiPropertyOptional({ example: '123 Main St, Lagos' })
   @IsOptional()
@@ -26,9 +27,10 @@ export class CreateLeadDto {
   @IsString()
   website?: string;
 
-  @ApiProperty({ example: 'John Doe' })
+  @ApiPropertyOptional({ example: 'John Doe' })
+  @IsOptional()
   @IsString()
-  contactName: string;
+  contactName?: string;
 
   @ApiPropertyOptional({ example: 'CEO' })
   @IsOptional()
@@ -44,9 +46,10 @@ export class CreateLeadDto {
   @IsEmail()
   email?: string;
 
-  @ApiProperty({ example: 'Social Media' })
+  @ApiPropertyOptional({ example: 'Social Media' })
+  @IsOptional()
   @IsString()
-  source: string;
+  source?: string;
 
   @ApiPropertyOptional({ example: 'Referral from Michael' })
   @IsOptional()

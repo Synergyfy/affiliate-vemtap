@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Lead" ALTER COLUMN "industry" DROP NOT NULL,
+ALTER COLUMN "contactName" DROP NOT NULL,
+ALTER COLUMN "source" DROP NOT NULL;

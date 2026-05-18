@@ -572,15 +572,15 @@ model LinkClick {
 model Lead {
   id              String      @id @default(uuid())
   businessName    String
-  industry        String
+  industry        String?
   businessAddress String?
   location        String?
   website         String?
-  contactName     String
+  contactName     String?
   contactRole     String?
   phone           String
   email           String?
-  source          String
+  source          String?
   otherSource     String?
   priority        Priority    @default(MEDIUM)
   status          LeadStatus  @default(POTENTIAL)
