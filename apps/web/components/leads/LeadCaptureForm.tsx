@@ -122,9 +122,17 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
   }, []);
 
   const onSubmit = async (data: LeadFormValues) => {
+    // Filter out any empty strings, null, or undefined values to only send filled fields
+    const cleanedData = Object.entries(data).reduce((acc: any, [key, value]) => {
+      if (value !== '' && value !== null && value !== undefined) {
+        acc[key] = value;
+      }
+      return acc;
+    }, {});
+
     const leadData = {
-      ...data,
-      assignedAgentId: isAdmin ? data.assignedAgentId : undefined,
+      ...cleanedData,
+      assignedAgentId: isAdmin && data.assignedAgentId ? data.assignedAgentId : undefined,
     };
 
     if (!navigator.onLine) {
@@ -208,14 +216,34 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Business Name *</label>
-              <input {...register('businessName')} className={cn("w-full px-4 py-3 bg-slate-50 border rounded-2xl text-sm focus:ring-2 focus:ring-blue-100 outline-none transition-all", errors.businessName ? "border-red-300" : "border-slate-200")} placeholder="Name" />
+              <input 
+                {...register('businessName')} 
+                className={cn(
+                  "w-full px-4 py-3 bg-slate-50 border rounded-2xl text-sm focus:ring-2 focus:ring-blue-100 outline-none transition-all", 
+                  errors.businessName ? "border-red-300 focus:ring-red-100" : "border-slate-200"
+                )} 
+                placeholder="Name" 
+              />
+              {errors.businessName && (
+                <p className="text-xs text-red-500 font-bold px-1">{errors.businessName.message}</p>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Phone Number *</label>
               <div className="relative">
                 <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input {...register('phone')} className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm" placeholder="+234 ..." />
+                <input 
+                  {...register('phone')} 
+                  className={cn(
+                    "w-full pl-12 pr-4 py-3 bg-slate-50 border rounded-2xl text-sm focus:ring-2 focus:ring-blue-100 outline-none transition-all",
+                    errors.phone ? "border-red-300 focus:ring-red-100" : "border-slate-200"
+                  )} 
+                  placeholder="+234 ..." 
+                />
               </div>
+              {errors.phone && (
+                <p className="text-xs text-red-500 font-bold px-1">{errors.phone.message}</p>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Industry</label>
@@ -282,8 +310,18 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Email</label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input {...register('email')} className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm" placeholder="email@example.com" />
+                <input 
+                  {...register('email')} 
+                  className={cn(
+                    "w-full pl-12 pr-4 py-3 bg-slate-50 border rounded-2xl text-sm focus:ring-2 focus:ring-blue-100 outline-none transition-all",
+                    errors.email ? "border-red-300 focus:ring-red-100" : "border-slate-200"
+                  )} 
+                  placeholder="email@example.com" 
+                />
               </div>
+              {errors.email && (
+                <p className="text-xs text-red-500 font-bold px-1">{errors.email.message}</p>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Role/Position</label>
