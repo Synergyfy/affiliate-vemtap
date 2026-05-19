@@ -257,6 +257,10 @@ export class UsersService {
       where.status = filter.status;
     }
 
+    if (filter.isManager !== undefined) {
+      where.isManagerMode = filter.isManager;
+    }
+
     if (filter.search) {
       where.OR = [
         { fullName: { contains: filter.search, mode: "insensitive" } },
@@ -284,6 +288,7 @@ export class UsersService {
           referralCode: true,
           createdAt: true,
           totalEarnings: true,
+          isManagerMode: true,
         },
       }),
       this.prisma.user.count({ where }),
@@ -326,6 +331,21 @@ export class UsersService {
     return this.prisma.user.update({
       where: { id },
       data: { role },
+    });
+  }
+
+  async updateManagerMode(id: string, isManagerMode: boolean) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException("User not found");
+
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        isManagerMode,
+        managerQualificationExpiry: isManagerMode 
+          ? new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) 
+          : null,
+      },
     });
   }
 

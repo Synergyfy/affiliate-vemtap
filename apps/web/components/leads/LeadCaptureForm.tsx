@@ -11,7 +11,6 @@ import {
   Target, 
   MessageSquare,
   Save,
-  Rocket,
   Info,
   CheckCircle2,
   AlertCircle,
@@ -410,18 +409,6 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
           >
             {(createLead.isPending || updateLead.isPending) ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Save className="w-5 h-5" /> {isPublic ? 'Submit Lead' : lead?.id ? 'Update Business' : 'Save Business'}</>}
           </Button>
-          {!isPublic && (
-            <Button 
-              type="button"
-              onClick={handleSubmit((data) => {
-                onSubmit(data);
-                showToast('Initiating onboarding sequence...', 'info');
-              })}
-              className="flex-grow bg-blue-600 hover:bg-blue-700 text-white h-16 rounded-2xl text-sm font-black shadow-xl transition-all flex items-center justify-center gap-3"
-            >
-              <Rocket className="w-5 h-5" /> Save & Start Onboarding
-            </Button>
-          )}
         </div>
       </form>
 
