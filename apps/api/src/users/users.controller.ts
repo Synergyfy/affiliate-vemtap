@@ -275,4 +275,25 @@ export class UsersController {
   updateRole(@Param("id") id: string, @Body() data: { role: Role }) {
     return this.usersService.updateRole(id, data.role);
   }
+
+  @Patch(":id/manager-mode")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Update user manager mode status (Admin only)" })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        isManagerMode: { type: "boolean" }
+      },
+      required: ["isManagerMode"]
+    }
+  })
+  @ApiOkResponse({ type: UserResponseDto })
+  @ApiResponse({ status: 400, description: "Invalid input" })
+  updateManagerMode(
+    @Param("id") id: string,
+    @Body() data: { isManagerMode: boolean }
+  ) {
+    return this.usersService.updateManagerMode(id, data.isManagerMode);
+  }
 }
