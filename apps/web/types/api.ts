@@ -69,7 +69,6 @@ export interface User {
   accountNumber?: string;
   accountName?: string;
   kycStatus?: 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
-  isManagerMode?: boolean;
 }
 
 export interface PlatformSettings {

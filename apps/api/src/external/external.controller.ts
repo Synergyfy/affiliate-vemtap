@@ -7,7 +7,6 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
-  Query,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -21,8 +20,6 @@ import {
 import { ExternalService } from "./external.service";
 import { RecordReferralDto } from "./dto/record-referral.dto";
 import { ProcessWithdrawalDto } from "./dto/process-withdrawal.dto";
-import { GetAffiliatesFilterDto } from "./dto/get-affiliates-filter.dto";
-import { AttachBusinessDto } from "./dto/attach-business.dto";
 import { ApiKeyGuard } from "../api-keys/guards/api-key.guard";
 
 @ApiTags("External — Vemtap Integration")
@@ -150,50 +147,5 @@ export class ExternalController {
   @ApiResponse({ status: 401, description: "Invalid API key" })
   async processWithdrawal(@Body() dto: ProcessWithdrawalDto) {
     return this.externalService.processWithdrawal(dto);
-  }
-
-  @Get("affiliates")
-  @ApiOperation({
-    summary: "Fetch affiliate users for Vemtap selection",
-    description: "Allows fetching active/all affiliate users with search & filter capabilities for selection.",
-  })
-  @ApiResponse({
-    status: 200,
-    description: "Successfully fetched affiliate users",
-  })
-  @ApiResponse({ status: 401, description: "Invalid API key" })
-  async getAffiliates(@Query() filters: GetAffiliatesFilterDto) {
-    return this.externalService.getAffiliates(filters);
-  }
-
-  @Post("businesses/attach")
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({
-    summary: "Attach a business to an affiliate user",
-    description: "Allows manual attachment of a business to an affiliate. Validates that no affiliate is already attached to this business (using the business's email).",
-  })
-  @ApiBody({
-    type: AttachBusinessDto,
-    description: "Manual attachment details",
-  })
-  @ApiResponse({
-    status: 201,
-    description: "Business successfully attached and commission triggered",
-  })
-  @ApiResponse({
-    status: 400,
-    description: "Affiliate not active or invalid details",
-  })
-  @ApiResponse({
-    status: 404,
-    description: "Affiliate not found",
-  })
-  @ApiResponse({
-    status: 409,
-    description: "An affiliate is already attached to this business",
-  })
-  @ApiResponse({ status: 401, description: "Invalid API key" })
-  async attachBusiness(@Body() dto: AttachBusinessDto) {
-    return this.externalService.attachBusiness(dto);
   }
 }

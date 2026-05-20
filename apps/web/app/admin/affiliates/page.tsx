@@ -25,7 +25,6 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/AdminLayout';
 import ConfirmationModal from '@/components/admin/ConfirmationModal';
 import FilterBar from '@/components/admin/FilterBar';
@@ -40,7 +39,6 @@ import { Loader2 } from 'lucide-react';
 
 export default function AffiliatesManagement() {
   const { showToast } = useToast();
-  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'All' | 'Supervisors'>('All');
   const [selectedAffiliate, setSelectedAffiliate] = useState<UserType | null>(null);
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
@@ -50,7 +48,7 @@ export default function AffiliatesManagement() {
   const debouncedSearch = useDebounce(searchQuery, 500);
 
   const { data: usersResponse, isLoading } = useUsers({
-    isManager: activeTab === 'Supervisors' ? true : undefined,
+    role: activeTab === 'Supervisors' ? 'ADMIN' : undefined,
     status: statusFilter === 'All' ? undefined : statusFilter,
     search: debouncedSearch || undefined,
     limit: 50
@@ -65,14 +63,14 @@ export default function AffiliatesManagement() {
     isOpen: boolean;
     id: string;
     name: string;
-    isManagerMode: boolean;
+    currentRole: string;
     currentStatus: string;
     type: 'upgrade' | 'downgrade' | 'suspend' | 'reactivate';
   }>({
     isOpen: false,
     id: '',
     name: '',
-    isManagerMode: false,
+    currentRole: '',
     currentStatus: '',
     type: 'upgrade'
   });
@@ -83,19 +81,19 @@ export default function AffiliatesManagement() {
       isOpen: true,
       id,
       name,
-      isManagerMode: false,
+      currentRole: '',
       currentStatus,
       type
     });
   };
 
-  const handleRoleToggle = (id: string, name: string, isManagerMode: boolean) => {
-    const type = isManagerMode ? 'downgrade' : 'upgrade';
+  const handleRoleToggle = (id: string, name: string, currentRole: string) => {
+    const type = currentRole === 'ADMIN' || currentRole === 'SUPER_ADMIN' ? 'downgrade' : 'upgrade';
     setConfirmModal({
       isOpen: true,
       id,
       name,
-      isManagerMode,
+      currentRole,
       currentStatus: '',
       type
     });
@@ -113,14 +111,13 @@ export default function AffiliatesManagement() {
   }, []);
 
   const executeAction = async () => {
-    const { id, isManagerMode, currentStatus, type } = confirmModal;
+    const { id, currentRole, currentStatus, type } = confirmModal;
     
     try {
       if (type === 'upgrade' || type === 'downgrade') {
-        const targetManagerMode = type === 'upgrade';
-        await api.patch(`/users/${id}/manager-mode`, { isManagerMode: targetManagerMode });
-        showToast(`Supervisor status updated successfully`, 'success');
-        queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+        const newRole = currentRole === 'ADMIN' ? 'AFFILIATE' : 'ADMIN';
+        await api.patch(`/users/${id}/role`, { role: newRole });
+        showToast(`Role updated to ${newRole} for user`, 'success');
       } else {
         const newStatus = currentStatus === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
         await updateStatus.mutateAsync({ id, status: newStatus });
@@ -235,10 +232,9 @@ export default function AffiliatesManagement() {
                     <td className="p-4">
                       <span className={cn(
                         "text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest",
-                        user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' ? "bg-purple-100 text-purple-600 border border-purple-200" :
-                        user.isManagerMode ? "bg-blue-100 text-blue-600 border border-blue-200" : "bg-slate-100 text-slate-500"
+                        user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' ? "bg-purple-100 text-purple-600 border border-purple-200" : "bg-slate-100 text-slate-500"
                       )}>
-                        {user.isManagerMode ? 'SUPERVISOR' : user.role}
+                        {user.role}
                       </span>
                     </td>
                     <td className="p-4">
@@ -275,9 +271,9 @@ export default function AffiliatesManagement() {
                         </button>
  
                         {/* Upgrade/Downgrade Action */}
-                        {user.isManagerMode ? (
+                        {user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' ? (
                           <button 
-                            onClick={() => handleRoleToggle(user.id, user.fullName, true)}
+                            onClick={() => handleRoleToggle(user.id, user.fullName, user.role)}
                             className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-all" 
                             title='Downgrade to Affiliate'
                           >
@@ -285,7 +281,7 @@ export default function AffiliatesManagement() {
                           </button>
                         ) : (
                           <button 
-                            onClick={() => handleRoleToggle(user.id, user.fullName, false)}
+                            onClick={() => handleRoleToggle(user.id, user.fullName, user.role)}
                             className="p-2 hover:bg-purple-50 rounded-lg text-slate-400 hover:text-purple-600 transition-all" 
                             title='Upgrade to Supervisor'
                           >
@@ -434,10 +430,9 @@ export default function AffiliatesManagement() {
                     <div className="mt-2 flex items-center justify-center gap-2">
                       <span className={cn(
                         "text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest",
-                        selectedAffiliate.role === 'ADMIN' || selectedAffiliate.role === 'SUPER_ADMIN' ? "bg-purple-100 text-purple-600 border border-purple-200" :
-                        selectedAffiliate.isManagerMode ? "bg-blue-100 text-blue-600 border border-blue-200" : "bg-slate-100 text-slate-500"
+                        selectedAffiliate.role === 'ADMIN' || selectedAffiliate.role === 'SUPER_ADMIN' ? "bg-purple-100 text-purple-600 border border-purple-200" : "bg-slate-100 text-slate-500"
                       )}>
-                        {selectedAffiliate.isManagerMode ? 'SUPERVISOR' : selectedAffiliate.role}
+                        {selectedAffiliate.role}
                       </span>
                       <span className={cn(
                         "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
