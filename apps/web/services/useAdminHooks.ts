@@ -69,6 +69,7 @@ export const useUsers = (params?: {
   search?: string; 
   limit?: number; 
   page?: number; 
+  isManager?: boolean;
 }) => {
   return useQuery<PaginatedResponse<User>>({
     queryKey: ['admin', 'users', params],
