@@ -1,8 +1,7 @@
-import { IsOptional, IsString, IsEnum, IsBoolean } from 'class-validator';
+import { IsOptional, IsString, IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Role, UserStatus } from '@prisma/client';
 import { PaginationDto } from '../../common/dto/pagination.dto';
-import { Transform } from 'class-transformer';
 
 export class UserFilterDto extends PaginationDto {
   @ApiProperty({ required: false })
@@ -19,10 +18,4 @@ export class UserFilterDto extends PaginationDto {
   @IsOptional()
   @IsEnum(UserStatus)
   status?: UserStatus;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @Transform(({ value }) => value === 'true' || value === true)
-  @IsBoolean()
-  isManager?: boolean;
 }
