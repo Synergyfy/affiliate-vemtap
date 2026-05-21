@@ -80,6 +80,19 @@ export const useUsers = (params?: {
   });
 };
 
+export const useUpdateUser = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...payload }: { id: string } & Record<string, any>) => {
+      const { data } = await api.patch(`/users/${id}/profile`, payload);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+    },
+  });
+};
+
 export const useUpdateUserStatus = () => {
   const queryClient = useQueryClient();
   return useMutation({

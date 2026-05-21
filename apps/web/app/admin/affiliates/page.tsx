@@ -28,6 +28,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/AdminLayout';
 import ConfirmationModal from '@/components/admin/ConfirmationModal';
+import EditAffiliateModal from '@/components/admin/EditAffiliateModal';
 import FilterBar from '@/components/admin/FilterBar';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/toast';
@@ -44,6 +45,7 @@ export default function AffiliatesManagement() {
   const [activeTab, setActiveTab] = useState<'All' | 'Supervisors'>('All');
   const [selectedAffiliate, setSelectedAffiliate] = useState<UserType | null>(null);
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'ACTIVE' | 'SUSPENDED'>('All');
@@ -144,6 +146,11 @@ export default function AffiliatesManagement() {
     } catch (error) {
       showToast('Failed to load user profile', 'error');
     }
+  };
+
+  const handleAffiliateUpdate = (updated: UserType) => {
+    setSelectedAffiliate(updated);
+    queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
   };
 
   return (
@@ -394,6 +401,13 @@ export default function AffiliatesManagement() {
         }
       />
 
+      <EditAffiliateModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        affiliate={selectedAffiliate}
+        onUpdate={handleAffiliateUpdate}
+      />
+
       {/* Profile Side Panel */}
       <AnimatePresence>
         {isSidePanelOpen && selectedAffiliate && (
@@ -512,7 +526,7 @@ export default function AffiliatesManagement() {
 
                 {/* Footer Actions */}
                 <div className="pt-8 flex gap-3">
-                  <Button className="flex-1 rounded-2xl h-12 font-bold" onClick={() => showToast("Edit modal coming soon", "info")}>
+                  <Button className="flex-1 rounded-2xl h-12 font-bold" onClick={() => setIsEditModalOpen(true)}>
                     Edit Profile
                   </Button>
                   <Button variant="outline" className="flex-1 rounded-2xl h-12 font-bold text-red-600 border-red-100 hover:bg-red-50" onClick={() => handleStatusChange(selectedAffiliate.id, selectedAffiliate.fullName, selectedAffiliate.status)}>

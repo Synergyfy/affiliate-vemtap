@@ -5,78 +5,39 @@ import { motion } from 'framer-motion';
 import { 
   FileText, 
   Save, 
-  RotateCcw, 
   Eye, 
   Edit3,
   ShieldCheck,
   Info,
-  ChevronLeft
+  ChevronLeft,
+  Loader2
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/hooks/toast';
 import Link from 'next/link';
-import { api } from '@/lib/api-client';
-
-const DEFAULT_AGREEMENT = `<h4>1. Independent Contractor Status</h4>
-<p>
-  The Affiliate acknowledges and agrees that their relationship with Vemtap is that of an <strong>Independent Contractor</strong>. This agreement DOES NOT create an employee-employer relationship, a partnership, or a joint venture between the parties.
-</p>
-
-<h4>2. No Staff Benefits</h4>
-<p>
-  The Affiliate is not entitled to any benefits, including but not limited to health insurance, paid leave, pension contributions, or any other staff-related perks provided by Vemtap to its full-time employees.
-</p>
-
-<h4>3. Non-Representation</h4>
-<p>
-  The Affiliate shall not represent themselves as a staff member, agent, or legal representative of Vemtap in any capacity that could bind the Company to any contract or obligation. Any marketing materials used must clearly state the "Affiliate" status.
-</p>
-
-<h4>4. Tax Responsibility</h4>
-<p>
-  The Affiliate is solely responsible for reporting and paying any taxes applicable to the commissions earned through the Vemtap Affiliate Network according to local laws.
-</p>
-
-<h4>5. Confidentiality</h4>
-<p>
-  The Affiliate agrees to keep confidential any non-public information regarding Vemtap's business processes, technology, and partner businesses discovered during their participation in the program.
-</p>`;
-
+import { useAgreement, useUpdateAgreement } from '@/services/useAgreementHooks';
 import RichTextEditor from '@/components/admin/RichTextEditor';
 
 export default function AgreementEditor() {
-  const [agreementText, setAgreementText] = useState(DEFAULT_AGREEMENT);
+  const { data: agreementData, isLoading, isError } = useAgreement();
+  const updateAgreement = useUpdateAgreement();
+  const [agreementText, setAgreementText] = useState('');
   const [isPreview, setIsPreview] = useState(false);
   const { showToast } = useToast();
 
   useEffect(() => {
-    const fetchAgreement = async () => {
-      try {
-        const data = await api.get('/settings');
-        if (data?.affiliateAgreement) {
-          setAgreementText(data.affiliateAgreement);
-        }
-      } catch (error) {
-        console.error('Failed to fetch agreement:', error);
-      }
-    };
-    fetchAgreement();
-  }, []);
+    if (agreementData?.agreementTemplate) {
+      setAgreementText(agreementData.agreementTemplate);
+    }
+  }, [agreementData]);
 
   const handleSave = async () => {
     try {
-      await api.patch('/settings', { affiliateAgreement: agreementText });
+      await updateAgreement.mutateAsync({ agreementTemplate: agreementText });
       showToast("Affiliate agreement updated successfully.", "success");
     } catch (error) {
       showToast("Failed to update agreement.", "error");
-    }
-  };
-
-  const handleReset = () => {
-    if (confirm("Are you sure you want to reset to the default agreement? All current changes will be lost.")) {
-      setAgreementText(DEFAULT_AGREEMENT);
-      showToast("Reset to default template.", "info");
     }
   };
 
@@ -108,10 +69,15 @@ export default function AgreementEditor() {
             </Button>
             <Button 
               onClick={handleSave}
+              disabled={updateAgreement.isPending}
               className="h-11 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 font-bold px-8"
             >
-              <Save className="w-4 h-4 mr-2" />
-              Save Changes
+              {updateAgreement.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              {updateAgreement.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </div>
         </div>
@@ -127,17 +93,13 @@ export default function AgreementEditor() {
                 <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
                   {isPreview ? "Final Document Preview" : "Agreement Visual Editor"}
                 </span>
-                {!isPreview && (
-                   <button 
-                    onClick={handleReset}
-                    className="text-[10px] font-bold text-red-500 flex items-center gap-1 hover:bg-red-50 px-2 py-1 rounded transition-colors"
-                  >
-                    <RotateCcw className="w-3 h-3" /> Reset to Default
-                  </button>
-                )}
               </div>
 
-              {isPreview ? (
+              {isLoading ? (
+                <div className="flex-grow flex items-center justify-center min-h-[500px]">
+                  <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+                </div>
+              ) : isPreview ? (
                 <div className="flex-grow p-10 prose prose-slate max-w-none prose-h4:text-slate-900 prose-h4:font-black prose-p:text-slate-600 prose-strong:text-slate-900">
                   <div className="mb-8 pb-8 border-b border-slate-100">
                     <p className="text-sm font-bold text-slate-900 mb-1">Affiliate Agreement</p>

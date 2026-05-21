@@ -232,6 +232,23 @@ export class UsersController {
     return this.usersService.findOneAdmin(id);
   }
 
+  @Patch(":id/profile")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Update user profile by ID (Admin only)" })
+  @ApiBody({
+    type: UpdateProfileDto,
+    description: "Profile fields to update",
+  })
+  @ApiOkResponse({ type: UserResponseDto })
+  @ApiResponse({ status: 400, description: "Invalid input" })
+  @ApiResponse({ status: 404, description: "User not found" })
+  updateUserByAdmin(
+    @Param("id") id: string,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    return this.usersService.update(id, dto);
+  }
+
   @Patch(":id/status")
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Update user status (Admin only)" })
