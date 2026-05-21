@@ -68,6 +68,8 @@ export interface User {
   bankName?: string;
   accountNumber?: string;
   accountName?: string;
+  nin?: string;
+  bvn?: string;
   kycStatus?: 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
   isManagerMode?: boolean;
 }
@@ -81,7 +83,14 @@ export interface PlatformSettings {
   subAffiliateUnlockCount: number;
   fraudThresholdScore: number;
   earningDurationMonths: number;
+  agreementTemplate?: string;
+  agreementVersion?: number;
   updatedAt: string;
+}
+
+export interface Agreement {
+  agreementTemplate: string;
+  agreementVersion: number;
 }
 
 export interface Business {

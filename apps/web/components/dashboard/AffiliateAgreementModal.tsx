@@ -6,6 +6,7 @@ import { ShieldCheck, PenTool, Calendar, User } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/hooks/use-auth';
+import { api } from '@/lib/api-client';
 
 interface AffiliateAgreementModalProps {
   isOpen: boolean;
@@ -20,18 +21,34 @@ export default function AffiliateAgreementModal({ isOpen, onSign }: AffiliateAgr
   const [dynamicAgreement, setDynamicAgreement] = useState<string | null>(null);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('vemtap_agreement_template');
-      if (saved) setDynamicAgreement(saved);
+    const fetchAgreement = async () => {
+      try {
+        const data = await api.get('/settings/agreement');
+        if (data?.agreementTemplate) {
+          setDynamicAgreement(data.agreementTemplate);
+          localStorage.setItem('vemtap_agreement_template', data.agreementTemplate);
+          return;
+        }
+      } catch {
+        // fallback to localStorage below
+      }
+
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('vemtap_agreement_template');
+        if (saved) setDynamicAgreement(saved);
+      }
+    };
+
+    if (isOpen) {
+      fetchAgreement();
     }
-  }, []);
+  }, [isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!signatureName || !signatureDate) return;
     
     setIsSubmitting(true);
-    // Simulate slight delay for professional feel
     setTimeout(() => {
       onSign(signatureName, signatureDate);
       setIsSubmitting(false);
@@ -79,32 +96,7 @@ export default function AffiliateAgreementModal({ isOpen, onSign }: AffiliateAgr
                 {dynamicAgreement ? (
                   <div className="prose prose-slate prose-sm max-w-none prose-h4:text-slate-800 prose-h4:font-bold prose-p:text-slate-600" dangerouslySetInnerHTML={{ __html: dynamicAgreement }} />
                 ) : (
-                  <>
-                    <h4 className="font-bold text-slate-800">1. Independent Contractor Status</h4>
-                    <p>
-                      The Affiliate acknowledges and agrees that their relationship with Vemtap is that of an <strong>Independent Contractor</strong>. This agreement DOES NOT create an employee-employer relationship, a partnership, or a joint venture between the parties.
-                    </p>
-
-                    <h4 className="font-bold text-slate-800">2. No Staff Benefits</h4>
-                    <p>
-                      The Affiliate is not entitled to any benefits, including but not limited to health insurance, paid leave, pension contributions, or any other staff-related perks provided by Vemtap to its full-time employees.
-                    </p>
-
-                    <h4 className="font-bold text-slate-800">3. Non-Representation</h4>
-                    <p>
-                      The Affiliate shall not represent themselves as a staff member, agent, or legal representative of Vemtap in any capacity that could bind the Company to any contract or obligation. Any marketing materials used must clearly state the &quot;Affiliate&quot; status.
-                    </p>
-
-                    <h4 className="font-bold text-slate-800">4. Tax Responsibility</h4>
-                    <p>
-                      The Affiliate is solely responsible for reporting and paying any taxes applicable to the commissions earned through the Vemtap Affiliate Network according to local laws.
-                    </p>
-
-                    <h4 className="font-bold text-slate-800">5. Confidentiality</h4>
-                    <p>
-                      The Affiliate agrees to keep confidential any non-public information regarding Vemtap&apos;s business processes, technology, and partner businesses discovered during their participation in the program.
-                    </p>
-                  </>
+                  <p className="text-slate-400 text-center py-8">Loading agreement...</p>
                 )}
 
                 <p className="pt-4 border-t border-slate-200 text-[11px] uppercase tracking-wider font-bold text-slate-400">
