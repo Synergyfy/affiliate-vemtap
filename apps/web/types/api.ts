@@ -72,6 +72,11 @@ export interface User {
   bvn?: string;
   kycStatus?: 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
   isManagerMode?: boolean;
+  _count?: {
+    referrals?: number;
+    businesses?: number;
+    leads?: number;
+  };
 }
 
 export interface PlatformSettings {

@@ -59,6 +59,19 @@ export class UserResponseDto {
 
   @ApiProperty({ description: "Total earnings in kobo", example: 125000 })
   totalEarnings: number;
+
+  @ApiProperty({ description: "Referral count (sub-affiliates)", example: 5 })
+  referralCount?: number;
+
+  @ApiProperty({
+    description: "Aggregated relation counts",
+    example: { referrals: 5, businesses: 10, leads: 3 },
+  })
+  _count?: {
+    referrals?: number;
+    businesses?: number;
+    leads?: number;
+  };
 }
 
 export class PaginatedUserResponseDto {

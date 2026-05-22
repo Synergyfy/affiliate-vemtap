@@ -1,11 +1,15 @@
 import { NestFactory } from "@nestjs/core";
+import { NestExpressApplication } from "@nestjs/platform-express";
 import { ValidationPipe } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import * as cookieParser from "cookie-parser";
 import { AppModule } from "./app.module";
+import { ObservabilityLoggingInterceptor } from "./observability/observability.interceptor";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  app.useBodyParser("json", { limit: "10mb" });
 
   app.enableCors({
     origin: [
@@ -19,6 +23,9 @@ async function bootstrap() {
   });
 
   app.use(cookieParser());
+
+  const observabilityInterceptor = app.get(ObservabilityLoggingInterceptor);
+  app.useGlobalInterceptors(observabilityInterceptor);
 
   app.useGlobalPipes(
     new ValidationPipe({

@@ -289,6 +289,10 @@ export class UsersService {
           createdAt: true,
           totalEarnings: true,
           isManagerMode: true,
+          referralCount: true,
+          _count: {
+            select: { referrals: true, businesses: true, leads: true },
+          },
         },
       }),
       this.prisma.user.count({ where }),
@@ -304,7 +308,7 @@ export class UsersService {
           select: { id: true, fullName: true, referralCode: true },
         },
         _count: {
-          select: { referrals: true, businesses: true },
+          select: { referrals: true, businesses: true, leads: true },
         },
       },
     });

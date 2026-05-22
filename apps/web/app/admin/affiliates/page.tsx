@@ -213,6 +213,7 @@ export default function AffiliatesManagement() {
                   <th className="p-4 font-bold text-slate-600 text-sm">Role</th>
                   <th className="p-4 font-bold text-slate-600 text-sm">Contact</th>
                   <th className="p-4 font-bold text-slate-600 text-sm text-center">Referrals</th>
+                  <th className="p-4 font-bold text-slate-600 text-sm text-center">Leads</th>
                   <th className="p-4 font-bold text-slate-600 text-sm">Status</th>
                   <th className="p-4 font-bold text-slate-600 text-sm text-right">Actions</th>
                 </tr>
@@ -260,7 +261,8 @@ export default function AffiliatesManagement() {
                         </div>
                       </div>
                     </td>
-                    <td className="p-4 text-sm text-slate-600 text-center font-bold">{user.referralCount || 0}</td>
+                    <td className="p-4 text-sm text-slate-600 text-center font-bold">{(user._count?.referrals ?? 0) + (user._count?.businesses ?? 0)}</td>
+                    <td className="p-4 text-sm text-slate-600 text-center font-bold">{user._count?.leads ?? 0}</td>
                     <td className="p-4">
                       <span className={cn(
                         "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
@@ -466,11 +468,25 @@ export default function AffiliatesManagement() {
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div className="flex items-center gap-2 text-blue-600 mb-1">
+                    <div className="flex items-center gap-2 text-purple-600 mb-1">
                       <Briefcase className="w-4 h-4" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest">Referrals</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest">Business</span>
                     </div>
-                    <p className="text-xl font-black text-slate-900">{selectedAffiliate.referralCount || 0}</p>
+                    <p className="text-xl font-black text-slate-900">{selectedAffiliate._count?.businesses ?? 0}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div className="flex items-center gap-2 text-blue-600 mb-1">
+                      <Users className="w-4 h-4" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest">Affiliates</span>
+                    </div>
+                    <p className="text-xl font-black text-slate-900">{selectedAffiliate._count?.referrals ?? 0}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div className="flex items-center gap-2 text-amber-600 mb-1">
+                      <UserPlus className="w-4 h-4" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest">Leads</span>
+                    </div>
+                    <p className="text-xl font-black text-slate-900">{selectedAffiliate._count?.leads ?? 0}</p>
                   </div>
                   <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                     <div className="flex items-center gap-2 text-emerald-600 mb-1">
