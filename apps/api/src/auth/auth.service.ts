@@ -104,6 +104,7 @@ export class AuthService {
         fullName: user.fullName,
         referralCode: user.referralCode,
         role: user.role,
+        isManagerMode: user.isManagerMode,
       },
     };
   }

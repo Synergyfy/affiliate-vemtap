@@ -51,7 +51,7 @@ export default function MobileFirstDashboard() {
               {isLoading ? (
                 <div className="w-20 h-3 bg-white/20 animate-pulse rounded" />
               ) : (
-                stats?.currentLevel || 'Novice Affiliate'
+                user?.isManagerMode ? 'Supervisor' : stats?.currentLevel || 'Novice Affiliate'
               )}
             </div>
             <h1 className="text-3xl font-black leading-tight">Welcome,<br />{user?.firstName || user?.fullName?.split(' ')[0] || 'Affiliate'}!</h1>
