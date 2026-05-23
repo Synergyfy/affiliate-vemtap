@@ -37,7 +37,7 @@ export class WithdrawalsController {
   constructor(private readonly withdrawalsService: WithdrawalsService) {}
 
   @Post()
-  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({
     summary: "Request a withdrawal",
     description:
@@ -63,7 +63,7 @@ export class WithdrawalsController {
   }
 
   @Get("me")
-  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Get own withdrawals" })
   @ApiOkResponse({ type: PaginatedWithdrawalResponseDto })
   async findAll(

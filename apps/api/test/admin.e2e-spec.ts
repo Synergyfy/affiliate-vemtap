@@ -251,10 +251,13 @@ describe("Admin Backend (e2e)", () => {
     });
 
     it("/fraud/:id/status (PATCH) - should update fraud alert status", async () => {
+      const user = await prismaService.user.findUnique({ where: { email: "affiliate@test.com" } });
+      if (!user) throw new Error("Affiliate user not found");
+
       // Create a dummy fraud alert first
       const alert = await prismaService.fraudAlert.create({
         data: {
-          userId: "some-user-id",
+          userId: user.id,
           type: "SELF_REFERRAL",
           severity: "HIGH",
           description: "Test fraud",

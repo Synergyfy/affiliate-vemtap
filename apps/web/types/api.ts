@@ -1,4 +1,4 @@
-export type Role = 'AFFILIATE' | 'ADMIN' | 'SUPER_ADMIN' | 'AGENT';
+export type Role = 'AFFILIATE' | 'ADMIN' | 'SUPER_ADMIN' | 'AGENT' | 'SUPERVISOR' | 'MANAGER';
 export type BusinessStatus = 'TRIAL' | 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
 export type PlanType = 'BASIC' | 'PREMIUM' | 'ENTERPRISE';
 export type CommissionType = 'DIRECT' | 'INDIRECT' | 'BONUS';
@@ -74,6 +74,9 @@ export interface User {
   isManagerMode?: boolean;
   dailyLeadTarget?: number;
   monthlyConversionTarget?: number;
+  reportingScore?: number;
+  attendanceRate?: number;
+  territoryId?: string;
   _count?: {
     referrals?: number;
     businesses?: number;

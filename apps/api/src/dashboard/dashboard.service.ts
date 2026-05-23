@@ -149,38 +149,42 @@ export class DashboardService {
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-    const [recruits, networkBusinesses] = await Promise.all([
+    const [recruits, networkBusinesses, supervisorsCount] = await Promise.all([
       this.prisma.user.findMany({
-        where: { referrerId: managerId, createdAt: { gte: ninetyDaysAgo } },
+        where: { referrerId: managerId },
+        include: { _count: { select: { businesses: true } } },
       }),
       this.prisma.business.count({
         where: {
-          affiliate: { referrerId: managerId },
-          createdAt: { gte: ninetyDaysAgo },
+          status: 'ACTIVE',
+          OR: [
+            { affiliateId: managerId },
+            { affiliate: { referrerId: managerId } }
+          ]
         },
       }),
+      this.prisma.user.count({
+        where: { referrerId: managerId, role: 'SUPERVISOR' }
+      })
     ]);
 
-    const activeAgents = recruits.filter((r) => r.referralCount > 0);
+    const activeAgents = recruits.filter((r) => r.role === 'AGENT' && r._count.businesses > 0);
 
     // Network Size: Sum of referrals' referrals (all time)
-    const directReferralIds = await this.prisma.user
-      .findMany({
-        where: { referrerId: managerId },
-        select: { id: true },
-      })
-      .then((users) => users.map((u) => u.id));
+    const directReferralIds = recruits.map((u) => u.id);
 
     const networkSize = await this.prisma.user.count({
       where: { referrerId: { in: directReferralIds } },
     });
 
+    const isQualified = activeAgents.length >= 10 && supervisorsCount >= 5 && networkBusinesses >= 100;
+
     return {
       activeAgentsCount: activeAgents.length,
       newNetworkBusinessesCount: networkBusinesses,
       networkSize,
-      isQualified: activeAgents.length >= 30 && networkBusinesses >= 100,
-      targetAgents: 30,
+      isQualified,
+      targetAgents: 10,
       targetBusinesses: 100,
     };
   }

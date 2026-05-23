@@ -52,6 +52,9 @@ describe("DashboardService", () => {
             linkClick: {
               count: jest.fn(),
             },
+            lead: {
+              count: jest.fn(),
+            },
           },
         },
         {
@@ -233,17 +236,19 @@ describe("DashboardService", () => {
   describe("getManagerPerformance", () => {
     it("should return manager performance including networkSize", async () => {
       const recruits = [
-        { id: "recruit1", referralCount: 1 },
-        { id: "recruit2", referralCount: 0 },
+        { id: "recruit1", role: "AGENT", _count: { businesses: 1 } },
+        { id: "recruit2", role: "AGENT", _count: { businesses: 0 } },
       ];
 
       jest
         .spyOn(prisma.user, "findMany")
-        .mockResolvedValueOnce(recruits as any) // First call: recruits within 90 days
-        .mockResolvedValueOnce([{ id: "recruit1" }, { id: "recruit2" }] as any); // Second call: directReferralIds (all time)
+        .mockResolvedValueOnce(recruits as any);
 
       jest.spyOn(prisma.business, "count").mockResolvedValue(50);
-      jest.spyOn(prisma.user, "count").mockResolvedValue(120); // networkSize
+      jest
+        .spyOn(prisma.user, "count")
+        .mockResolvedValueOnce(120) // supervisorsCount
+        .mockResolvedValueOnce(120); // networkSize
 
       const result = await service.getManagerPerformance("managerId");
 

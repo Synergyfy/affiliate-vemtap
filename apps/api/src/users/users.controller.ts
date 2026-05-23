@@ -47,7 +47,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get("profile")
-  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Get current user profile" })
   @ApiOkResponse({
     type: UserResponseDto,
@@ -59,7 +59,7 @@ export class UsersController {
   }
 
   @Patch("profile")
-  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Update current user profile" })
   @ApiBody({
     type: UpdateProfileDto,
@@ -88,7 +88,7 @@ export class UsersController {
   }
 
   @Post("request-email-update")
-  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Request an email update with OTP" })
   @ApiBody({
     type: RequestEmailUpdateDto,
@@ -112,7 +112,7 @@ export class UsersController {
   }
 
   @Post("verify-email-update")
-  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Verify OTP and update email" })
   @ApiBody({
     type: VerifyEmailUpdateDto,
@@ -133,7 +133,7 @@ export class UsersController {
   }
 
   @Get("leaderboard")
-  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Get affiliate leaderboard" })
   @ApiQuery({
     name: "limit",
@@ -165,7 +165,7 @@ export class UsersController {
   }
 
   @Post("agreement/sign")
-  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Sign the latest affiliate agreement" })
   @ApiResponse({
     status: 201,
@@ -180,7 +180,7 @@ export class UsersController {
   }
 
   @Get("agreement/status")
-  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Check if user has signed the latest agreement" })
   @ApiResponse({
     status: 200,

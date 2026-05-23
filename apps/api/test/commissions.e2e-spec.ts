@@ -41,7 +41,7 @@ describe("Admin Businesses & Commissions (e2e)", () => {
         fullName: "Manager",
         phone: "111",
         password,
-        role: Role.AFFILIATE,
+        role: Role.SUPERVISOR,
         referralCode: "MGR01",
       },
     });

@@ -15,11 +15,18 @@ describe('SettingsService', () => {
     },
   };
 
+  const mockCache = {
+    get: jest.fn(),
+    set: jest.fn(),
+    del: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SettingsService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: 'CACHE_MANAGER', useValue: mockCache },
       ],
     }).compile();
 
@@ -72,6 +79,49 @@ describe('SettingsService', () => {
     it('should throw NotFoundException if settings do not exist', async () => {
       mockPrisma.platformSettings.findFirst.mockResolvedValue(null);
       await expect(service.updateSettings({ linkExpiryDays: 45 })).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getAgreement', () => {
+    it('should return cached agreement if it exists', async () => {
+      const mockCached = { agreementTemplate: '<p>Cached</p>', agreementVersion: 2 };
+      mockCache.get.mockResolvedValue(mockCached);
+
+      const result = await service.getAgreement();
+      expect(result).toEqual(mockCached);
+      expect(mockCache.get).toHaveBeenCalledWith('settings_agreement');
+    });
+
+    it('should retrieve and cache agreement from DB if not cached', async () => {
+      mockCache.get.mockResolvedValue(null);
+      const mockSettings = { id: '1', agreementTemplate: '<p>DB Template</p>', agreementVersion: 1 };
+      mockPrisma.platformSettings.findFirst.mockResolvedValue(mockSettings);
+
+      const result = await service.getAgreement();
+      expect(result.agreementTemplate).toBe('<p>DB Template</p>');
+      expect(result.agreementVersion).toBe(1);
+      expect(mockCache.set).toHaveBeenCalledWith('settings_agreement', expect.any(Object), 3600 * 1000);
+    });
+  });
+
+  describe('updateAgreement', () => {
+    it('should update agreement and clear cache', async () => {
+      const mockSettings = { id: '1' };
+      mockPrisma.platformSettings.findFirst.mockResolvedValue(mockSettings);
+      mockPrisma.platformSettings.update.mockResolvedValue({
+        agreementTemplate: '<p>New Template</p>',
+        agreementVersion: 2,
+      });
+
+      const result = await service.updateAgreement({ agreementTemplate: '<p>New Template</p>' });
+      expect(result.agreementTemplate).toBe('<p>New Template</p>');
+      expect(result.agreementVersion).toBe(2);
+      expect(mockCache.del).toHaveBeenCalledWith('settings_agreement');
+    });
+
+    it('should throw NotFoundException if settings do not exist on update', async () => {
+      mockPrisma.platformSettings.findFirst.mockResolvedValue(null);
+      await expect(service.updateAgreement({ agreementTemplate: 'test' })).rejects.toThrow(NotFoundException);
     });
   });
 });

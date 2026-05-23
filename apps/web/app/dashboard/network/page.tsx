@@ -102,12 +102,19 @@ export default function NetworkPage() {
   }, []);
   
   // Real targets from networkStats or defaults
-  const affiliateCount = networkStats?.activeAgentsCount || 0;
-  const businessesCount = networkStats?.totalNetworkBusinesses || 0;
-  const totalRecruits = networkStats?.totalRecruitsCount || 0;
+  const isAgent = user?.role === 'AGENT';
   
-  const targetAffiliates = networkStats?.milestones?.agents?.target || 30;
-  const targetBusinesses = networkStats?.milestones?.businesses?.target || 100;
+  const affiliateCount = isAgent 
+    ? (networkStats?.daysActive || 0) 
+    : (networkStats?.activeAgentsCount || 0);
+  const targetAffiliates = isAgent ? 90 : (networkStats?.milestones?.agents?.target || 30);
+  
+  const businessesCount = isAgent 
+    ? (networkStats?.personalActiveBusinesses || 0) 
+    : (networkStats?.totalNetworkBusinesses || 0);
+  const targetBusinesses = isAgent ? 40 : (networkStats?.milestones?.businesses?.target || 100);
+
+  const totalRecruits = networkStats?.totalRecruitsCount || 0;
   const rewardDuration: string = '1year';
 
   const rewardDurationLabel = 
@@ -173,12 +180,18 @@ export default function NetworkPage() {
               </div>
             </div>
             
-            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-4">Unlock Supervisor Status</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-4">
+              {isAgent ? 'Supervisor Upgrade Dashboard' : 'Unlock Supervisor Status'}
+            </h2>
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
-                <p className="text-slate-500 font-bold">Synchronizing network data...</p>
+                <p className="text-slate-500 font-bold">Synchronizing performance data...</p>
               </div>
+            ) : isAgent ? (
+              <p className="text-sm sm:text-base text-slate-500 max-w-lg mx-auto mb-8 sm:mb-12">
+                Establish a consistent personal operational record to promote to <span className="font-bold text-blue-600">Supervisor</span>. Maintain high daily reporting scores, zero fraud flags, and lock in your portfolio.
+              </p>
             ) : (
               <p className="text-sm sm:text-base text-slate-500 max-w-lg mx-auto mb-8 sm:mb-12">
                 Build your team and hit the targets <span className="text-orange-600 font-bold">within {timeLimitDays} days</span> to unlock your <span className="font-bold text-blue-600">Supervisor Network</span> and earn <span className="font-bold text-blue-600">10% of affiliate earnings</span>.
@@ -189,9 +202,15 @@ export default function NetworkPage() {
               <div className="space-y-3">
                 <div className="flex justify-between items-end">
                   <div className="text-left">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">Active Agent Target</span>
-                    <span className="text-sm font-bold text-slate-900">{affiliateCount} / {targetAffiliates} Active Agents</span>
-                    <p className="text-[9px] text-slate-400 font-medium">Recruits who have closed at least 1 business</p>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">
+                      {isAgent ? 'Days Active Target' : 'Active Agent Target'}
+                    </span>
+                    <span className="text-sm font-bold text-slate-900">
+                      {affiliateCount} / {targetAffiliates} {isAgent ? 'Days on Platform' : 'Active Agents'}
+                    </span>
+                    <p className="text-[9px] text-slate-400 font-medium">
+                      {isAgent ? 'Time elapsed since selected as a field operational worker' : 'Recruits who have closed at least 1 business'}
+                    </p>
                   </div>
                   <span className="text-sm font-bold text-blue-600">{Math.round(affiliateProgress)}%</span>
                 </div>
@@ -207,8 +226,12 @@ export default function NetworkPage() {
               <div className="space-y-3">
                 <div className="flex justify-between items-end">
                   <div className="text-left">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">Business Target</span>
-                    <span className="text-sm font-bold text-slate-900">{businessesCount} / {targetBusinesses} Businesses</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">
+                      {isAgent ? 'Personal Businesses Closed' : 'Business Target'}
+                    </span>
+                    <span className="text-sm font-bold text-slate-900">
+                      {businessesCount} / {targetBusinesses} Businesses
+                    </span>
                   </div>
                   <span className="text-sm font-bold text-blue-600">{Math.round(businessProgress)}%</span>
                 </div>
@@ -222,19 +245,57 @@ export default function NetworkPage() {
               </div>
 
               <div className="flex flex-wrap justify-center gap-4 text-xs font-bold text-slate-500">
-                <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-xl border border-slate-100">
-                  <Users className="w-4 h-4 text-blue-600" />
-                  <span>{totalRecruits} Total Recruits</span>
-                </div>
-                <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 rounded-xl border border-emerald-100">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>{affiliateCount} Active Agents</span>
-                </div>
+                {isAgent ? (
+                  <>
+                    <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-xl border border-slate-100">
+                      <Target className="w-4 h-4 text-blue-600" />
+                      <span>{networkStats?.reportingScore}% Reporting Score</span>
+                    </div>
+                    <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 rounded-xl border border-emerald-100">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>{networkStats?.attendanceRate}% Attendance Rate</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-xl border border-slate-100">
+                      <Users className="w-4 h-4 text-blue-600" />
+                      <span>{totalRecruits} Total Recruits</span>
+                    </div>
+                    <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 rounded-xl border border-emerald-100">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>{affiliateCount} Active Agents</span>
+                    </div>
+                  </>
+                )}
               </div>
 
-              <Button className="w-full mt-10 text-sm sm:text-base h-14 bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-100 font-black uppercase tracking-widest" onClick={() => router.push('/dashboard/tools')}>
-                Start Recruiting Now
-              </Button>
+              {isAgent ? (
+                <Button 
+                  className={cn(
+                    "w-full mt-10 text-sm sm:text-base h-14 font-black uppercase tracking-widest shadow-xl transition-all duration-300",
+                    networkStats?.isEligibleForSupervisor 
+                      ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-100 text-white" 
+                      : "bg-slate-300 hover:bg-slate-300 shadow-none text-slate-500 cursor-not-allowed"
+                  )}
+                  disabled={!networkStats?.isEligibleForSupervisor}
+                  onClick={async () => {
+                    try {
+                      const res = await api.post('/network/toggle-manager-mode');
+                      showToast('Successfully promoted to Supervisor!', 'success');
+                      window.location.reload();
+                    } catch (e: any) {
+                      showToast(e.response?.data?.message || 'Promotion failed', 'error');
+                    }
+                  }}
+                >
+                  {networkStats?.isEligibleForSupervisor ? 'Apply for Supervisor Promotion' : 'Targets Not Met Yet'}
+                </Button>
+              ) : (
+                <Button className="w-full mt-10 text-sm sm:text-base h-14 bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-100 font-black uppercase tracking-widest" onClick={() => router.push('/dashboard/tools')}>
+                  Start Recruiting Now
+                </Button>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
                 <div className="bg-emerald-50/50 p-6 rounded-[24px] border-2 border-emerald-100 text-center group hover:bg-emerald-50 transition-colors">

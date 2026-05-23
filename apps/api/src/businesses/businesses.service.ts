@@ -229,62 +229,88 @@ export class BusinessesService {
     let indirectRate = settings?.indirectCommissionRate ? Number(settings.indirectCommissionRate) : 0.05;
 
     return this.prisma.$transaction(async (tx) => {
-      // 1. Direct Commission
-      const directAmount = amount * directRate;
-      
-      await tx.commission.create({
-        data: {
-          amount: directAmount,
-          type: 'DIRECT',
-          status: 'PENDING',
-          userId: business.affiliateId,
+      // Guard: Check if direct commission already exists for this business
+      const existingDirect = await tx.commission.findFirst({
+        where: {
           businessId: business.id,
-          description: `Direct commission (${directRate * 100}%) from ${business.businessName}`,
+          type: 'DIRECT',
         },
       });
 
-      // Update Affiliate Balance
-      await tx.user.update({
-        where: { id: business.affiliateId },
-        data: { 
-          pendingEarnings: { increment: directAmount },
-          totalEarnings: { increment: directAmount },
-        },
-      });
-
-      // 2. Manager Override (Indirect)
-      if (business.affiliate.referrerId) {
-        const referrer = await tx.user.findUnique({
-          where: { id: business.affiliate.referrerId },
-          select: { isManagerMode: true },
-        });
-
-        if (referrer?.isManagerMode) {
-          indirectRate = 0.10; // Manager Mode Boost
-        }
-
-        const indirectAmount = amount * indirectRate;
-
+      if (!existingDirect) {
+        // 1. Direct Commission
+        const directAmount = amount * directRate;
+        
         await tx.commission.create({
           data: {
-            amount: indirectAmount,
-            type: 'INDIRECT',
+            amount: directAmount,
+            type: 'DIRECT',
             status: 'PENDING',
-            userId: business.affiliate.referrerId,
+            userId: business.affiliateId,
             businessId: business.id,
-            subAffiliateId: business.affiliateId,
-            description: `Indirect commission (${indirectRate * 100}%) from ${business.businessName} (via ${business.affiliate.fullName})${referrer?.isManagerMode ? ' [Manager Mode Boost]' : ''}`,
+            description: `Direct commission (${directRate * 100}%) from ${business.businessName}`,
           },
         });
 
-        // Update Manager Balance
+        // Update Affiliate Balance
         await tx.user.update({
-          where: { id: business.affiliate.referrerId },
+          where: { id: business.affiliateId },
           data: { 
-            pendingEarnings: { increment: indirectAmount },
-            totalEarnings: { increment: indirectAmount },
+            pendingEarnings: { increment: directAmount },
+            totalEarnings: { increment: directAmount },
           },
         });
+      }
+
+      // 2. Team Override (Indirect)
+      if (business.affiliate.referrerId) {
+        // Guard: Check if indirect commission already exists for this business
+        const existingIndirect = await tx.commission.findFirst({
+          where: {
+            businessId: business.id,
+            type: 'INDIRECT',
+          },
+        });
+
+        if (!existingIndirect) {
+          const referrer = await tx.user.findUnique({
+            where: { id: business.affiliate.referrerId },
+            select: { role: true, isManagerMode: true },
+          });
+
+          // Only Supervisors and Managers (or legacy users in Manager Mode) earn overrides
+          if (referrer && ((referrer.role as string) === 'SUPERVISOR' || (referrer.role as string) === 'MANAGER' || referrer.isManagerMode)) {
+            // Managers earn a boosted 10% override; Supervisors earn 5%
+            if ((referrer.role as string) === 'MANAGER') {
+              indirectRate = 0.10;
+            } else {
+              indirectRate = 0.05;
+            }
+
+            const indirectAmount = amount * indirectRate;
+
+            await tx.commission.create({
+              data: {
+                amount: indirectAmount,
+                type: 'INDIRECT',
+                status: 'PENDING',
+                userId: business.affiliate.referrerId,
+                businessId: business.id,
+                subAffiliateId: business.affiliateId,
+                description: `Indirect commission (${indirectRate * 100}%) from ${business.businessName} (via ${business.affiliate.fullName})${referrer.role === 'MANAGER' ? ' [Manager Mode Boost]' : ''}`,
+              },
+            });
+
+            // Update Recruiter Balance
+            await tx.user.update({
+              where: { id: business.affiliate.referrerId },
+              data: { 
+                pendingEarnings: { increment: indirectAmount },
+                totalEarnings: { increment: indirectAmount },
+              },
+            });
+          }
+        }
       }
     });
   }

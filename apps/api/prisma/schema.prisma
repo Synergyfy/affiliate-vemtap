@@ -77,6 +77,9 @@ model User {
 
   dailyLeadTarget          Int       @default(0)
   monthlyConversionTarget  Int       @default(0)
+  reportingScore           Decimal   @default(100)
+  attendanceRate           Decimal   @default(100)
+  territoryId              String?
 
   @@index([referralCode])
   @@index([referredBy])
@@ -96,6 +99,8 @@ enum Role {
   ADMIN
   SUPER_ADMIN
   AGENT
+  SUPERVISOR
+  MANAGER
 }
 
 enum UserStatus {
