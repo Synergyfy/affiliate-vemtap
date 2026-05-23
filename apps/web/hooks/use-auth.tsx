@@ -14,7 +14,7 @@ interface User {
   hasAcceptedTerms?: boolean;
   hasSignedAgreement?: boolean;
   createdAt?: string;
-  role?: 'AFFILIATE' | 'ADMIN' | 'SUPER_ADMIN' | 'AGENT';
+  role?: 'AFFILIATE' | 'ADMIN' | 'SUPER_ADMIN' | 'AGENT' | 'SUPERVISOR' | 'MANAGER';
   location?: string;
   address?: string;
   isKycVerified?: boolean;
