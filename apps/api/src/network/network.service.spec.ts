@@ -3,6 +3,7 @@ import { NetworkService } from './network.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { BonusType } from './dto/network-response.dto';
 import { BadRequestException } from '@nestjs/common';
+import { SettingsService } from '../settings/settings.service';
 
 describe('NetworkService', () => {
   let service: NetworkService;
@@ -15,11 +16,34 @@ describe('NetworkService', () => {
   };
 
   const mockBusiness = {
-    count: jest.fn(),
+    count: jest.fn().mockImplementation((args?: any) => {
+      if (args?.where?.affiliateId) {
+        return 10; // Personal active businesses
+      }
+      return 45; // Total network active businesses
+    }),
   };
 
   const mockCommission = {
     create: jest.fn(),
+  };
+
+  const mockFraudAlert = {
+    count: jest.fn(),
+  };
+
+  const mockSettingsService = {
+    getSettings: jest.fn().mockResolvedValue({
+      reqAgentActiveDays: 90,
+      reqAgentActiveBusinesses: 40,
+      reqAgentMinReportingScore: 85.0,
+      reqAgentMinAttendanceRate: 90.0,
+      reqAffiliateActiveAgents: 30,
+      reqAffiliateNetworkBusinesses: 100,
+      reqSupervisorActiveAgents: 10,
+      reqSupervisorActiveSupervisors: 5,
+      reqSupervisorNetworkBusinesses: 100,
+    }),
   };
 
   // Define mockPrisma structure first
@@ -27,16 +51,22 @@ describe('NetworkService', () => {
     user: mockUser,
     business: mockBusiness,
     commission: mockCommission,
+    fraudAlert: mockFraudAlert,
   };
 
   // Then add $transaction
   mockPrisma.$transaction = jest.fn((cb) => cb(mockPrisma));
+
+  beforeEach(() => {
+    mockFraudAlert.count.mockResolvedValue(0); // Default to no fraud issues
+  });
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NetworkService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: SettingsService, useValue: mockSettingsService },
       ],
     }).compile();
 
@@ -56,13 +86,17 @@ describe('NetworkService', () => {
       const userId = 'user-1';
       mockUser.findUnique.mockResolvedValue({
         id: userId,
+        role: 'AFFILIATE',
+        createdAt: new Date(),
         managerQualificationExpiry: null,
         isManagerMode: false,
         hasClaimedAgentBonus: false,
         hasClaimedBusinessBonus: false,
       });
       mockUser.count.mockResolvedValue(15); // active agents
-      mockBusiness.count.mockResolvedValue(45); // total network businesses
+      mockBusiness.count
+        .mockResolvedValueOnce(10)  // personalActiveBusinesses
+        .mockResolvedValueOnce(45); // totalNetworkBusinesses
 
       const result = await service.getStats(userId);
 
@@ -76,6 +110,8 @@ describe('NetworkService', () => {
       const userId = 'user-1';
       mockUser.findUnique.mockResolvedValue({
         id: userId,
+        role: 'SUPERVISOR', // supervisors evaluate manager targets (10 agents, 100 businesses)
+        createdAt: new Date(),
         managerQualificationExpiry: null,
         isManagerMode: false,
         hasClaimedAgentBonus: false,
@@ -94,8 +130,8 @@ describe('NetworkService', () => {
   describe('claimBonus', () => {
     it('should throw if target for agent bonus not reached', async () => {
       const userId = 'user-1';
-      mockUser.findUnique.mockResolvedValue({ id: userId, hasClaimedAgentBonus: false });
-      mockUser.count.mockResolvedValue(10); // < 30
+      mockUser.findUnique.mockResolvedValue({ id: userId, role: 'SUPERVISOR', createdAt: new Date(), hasClaimedAgentBonus: false });
+      mockUser.count.mockResolvedValue(5); // < 10 target
       mockBusiness.count.mockResolvedValue(0);
 
       await expect(service.claimBonus(userId, BonusType.AGENT))
@@ -104,7 +140,7 @@ describe('NetworkService', () => {
 
     it('should throw if agent bonus already claimed', async () => {
       const userId = 'user-1';
-      mockUser.findUnique.mockResolvedValue({ id: userId, hasClaimedAgentBonus: true });
+      mockUser.findUnique.mockResolvedValue({ id: userId, role: 'SUPERVISOR', createdAt: new Date(), hasClaimedAgentBonus: true });
       mockUser.count.mockResolvedValue(30);
       mockBusiness.count.mockResolvedValue(100);
 
@@ -114,7 +150,7 @@ describe('NetworkService', () => {
 
     it('should successfully claim agent bonus when qualified', async () => {
       const userId = 'user-1';
-      mockUser.findUnique.mockResolvedValue({ id: userId, hasClaimedAgentBonus: false });
+      mockUser.findUnique.mockResolvedValue({ id: userId, role: 'SUPERVISOR', createdAt: new Date(), hasClaimedAgentBonus: false });
       mockUser.count.mockResolvedValue(30);
       mockBusiness.count.mockResolvedValue(0);
 
@@ -130,8 +166,8 @@ describe('NetworkService', () => {
   describe('toggleManagerMode', () => {
     it('should throw if milestones not reached', async () => {
       const userId = 'user-1';
-      mockUser.findUnique.mockResolvedValue({ id: userId });
-      mockUser.count.mockResolvedValue(10); // Not qualified
+      mockUser.findUnique.mockResolvedValue({ id: userId, role: 'SUPERVISOR', createdAt: new Date() });
+      mockUser.count.mockResolvedValue(2); // Not qualified
       mockBusiness.count.mockResolvedValue(10);
 
       await expect(service.toggleManagerMode(userId))
@@ -140,10 +176,10 @@ describe('NetworkService', () => {
 
     it('should toggle mode if qualified', async () => {
       const userId = 'user-1';
-      mockUser.findUnique.mockResolvedValue({ id: userId, isManagerMode: false });
+      mockUser.findUnique.mockResolvedValue({ id: userId, role: 'SUPERVISOR', createdAt: new Date(), isManagerMode: false });
       mockUser.count.mockResolvedValue(30);
       mockBusiness.count.mockResolvedValue(100);
-      mockUser.update.mockResolvedValue({ id: userId, isManagerMode: true });
+      mockUser.update.mockResolvedValue({ id: userId, role: 'MANAGER', isManagerMode: true });
 
       const result = await service.toggleManagerMode(userId);
 

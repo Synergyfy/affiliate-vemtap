@@ -19,27 +19,49 @@ import { cn } from '@/lib/utils';
 interface SupervisorGuideModalProps {
   isOpen: boolean;
   onClose: () => void;
+  networkStats?: any;
 }
 
-export default function SupervisorGuideModal({ isOpen, onClose }: SupervisorGuideModalProps) {
+export default function SupervisorGuideModal({ isOpen, onClose, networkStats }: SupervisorGuideModalProps) {
+  const role = networkStats?.role || 'AFFILIATE';
+  const isAgent = role === 'AGENT';
+  const isSupervisorOrManager = role === 'SUPERVISOR' || role === 'MANAGER';
+  
+  const targetAffiliates = networkStats?.milestones?.agents?.target || (isAgent ? 90 : 30);
+  const targetBusinesses = networkStats?.milestones?.businesses?.target || (isAgent ? 40 : 100);
+
+  let targetsDescription = `Reach ${targetAffiliates} active affiliates and ${targetBusinesses} businesses closed within your network within 90 days.`;
+  if (isAgent) {
+    targetsDescription = `Maintain active operation for ${targetAffiliates} days on the platform and close ${targetBusinesses} personal active businesses.`;
+  } else if (isSupervisorOrManager) {
+    targetsDescription = `Reach ${targetAffiliates} active agents and ${targetBusinesses} cumulative network closed deals.`;
+  }
+
+  let rewardsDescription = `Unlock 12-month extended earnings, 10% team commission, and ₦15,000 in cash bonuses.`;
+  if (isSupervisorOrManager) {
+    rewardsDescription = `Unlock permanent Manager mode and secure overriding team commissions across referred agents.`;
+  }
+
   const steps = [
     {
-      title: "1. Build Your Team",
-      desc: "Recruit affiliates using your special link. They become part of your Supervisor Network.",
+      title: isAgent ? "1. Maintain Daily Activity" : "1. Build Your Team",
+      desc: isAgent 
+        ? "Consistently perform operational duties, submit reports, and verify attendance daily." 
+        : "Recruit affiliates using your special link. They become part of your Supervisor Network.",
       icon: Users,
       color: "text-blue-600",
       bg: "bg-blue-50"
     },
     {
       title: "2. Hit the Targets",
-      desc: "Reach 30 active affiliates and 100 businesses closed within your network within 90 days.",
+      desc: targetsDescription,
       icon: Target,
       color: "text-orange-600",
       bg: "bg-orange-50"
     },
     {
       title: "3. Massive Rewards",
-      desc: "Unlock 12-month extended earnings, 10% team commission, and ₦15,000 in cash bonuses.",
+      desc: rewardsDescription,
       icon: Trophy,
       color: "text-emerald-600",
       bg: "bg-emerald-50"
@@ -74,7 +96,9 @@ export default function SupervisorGuideModal({ isOpen, onClose }: SupervisorGuid
                 <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3 backdrop-blur-md border border-white/30">
                   <ShieldCheck className="w-8 h-8 text-white" />
                 </div>
-                <h2 className="text-2xl font-black uppercase tracking-tight">Supervisor Network Guide</h2>
+                <h2 className="text-2xl font-black uppercase tracking-tight">
+                  {isSupervisorOrManager ? "Manager Promotion Guide" : "Supervisor Network Guide"}
+                </h2>
               </div>
               <button 
                 onClick={onClose}
@@ -106,15 +130,23 @@ export default function SupervisorGuideModal({ isOpen, onClose }: SupervisorGuid
                   <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-emerald-600 shadow-sm mb-2">
                     <Clock className="w-4 h-4" />
                   </div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Duration</p>
-                  <p className="text-xs font-bold text-slate-900">12 Months Mode</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                    {isAgent ? "Active Operating" : "Qualification Window"}
+                  </p>
+                  <p className="text-xs font-bold text-slate-900">
+                    {isAgent ? `${targetAffiliates} Days` : "90 Days Window"}
+                  </p>
                 </div>
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col items-center text-center">
                   <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-blue-600 shadow-sm mb-2">
                     <TrendingUp className="w-4 h-4" />
                   </div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Commission</p>
-                  <p className="text-xs font-bold text-slate-900">10% Indirect Share</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                    {isAgent ? "Reporting Target" : "Commission Perk"}
+                  </p>
+                  <p className="text-xs font-bold text-slate-900">
+                    {isAgent ? `${networkStats?.reportingScore ?? 85}% Score` : "10% Override"}
+                  </p>
                 </div>
               </div>
 

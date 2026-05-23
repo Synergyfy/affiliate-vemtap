@@ -17,7 +17,7 @@ export class NetworkController {
   constructor(private readonly networkService: NetworkService) {}
 
   @Get('recruits')
-  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'List direct recruits and their stats' })
   @ApiOkResponse({ type: PaginatedNetworkRecruitResponseDto })
   async getRecruits(@CurrentUser() user: { id: string }, @Query() paginationDto: PaginationDto) {
@@ -38,7 +38,7 @@ export class NetworkController {
   }
 
   @Get('stats')
-  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get network summary stats and milestone progress' })
   @ApiOkResponse({ type: NetworkStatsResponseDto })
   getStats(@CurrentUser() user: { id: string }) {
@@ -46,7 +46,7 @@ export class NetworkController {
   }
 
   @Post('claim-bonus')
-  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Claim a milestone bonus' })
   @ApiCreatedResponse({ description: 'Bonus claimed successfully' })
   claimBonus(@CurrentUser() user: { id: string }, @Body() claimBonusDto: ClaimBonusDto) {
@@ -54,7 +54,7 @@ export class NetworkController {
   }
 
   @Post('toggle-manager-mode')
-  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Toggle Extended Earnings (Manager Mode)' })
   @ApiCreatedResponse({ description: 'Manager mode toggled successfully' })
   toggleManagerMode(@CurrentUser() user: { id: string }) {

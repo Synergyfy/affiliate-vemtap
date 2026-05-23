@@ -60,7 +60,7 @@ export class BusinessesController {
   }
 
   @Get("export")
-  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Export businesses as CSV" })
   @Header("Content-Type", "text/csv")
   @Header("Content-Disposition", "attachment; filename=businesses.csv")
@@ -75,7 +75,7 @@ export class BusinessesController {
   }
 
   @Get("me")
-  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Get businesses referred by the current user" })
   @ApiOkResponse({ type: PaginatedBusinessResponseDto })
   async findAll(
@@ -99,14 +99,14 @@ export class BusinessesController {
   }
 
   @Get("stats")
-  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Get portfolio side-panel stats" })
   async getPortfolioStats(@CurrentUser() user: { id: string }) {
     return this.businessesService.getPortfolioStats(user.id);
   }
 
   @Post()
-  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Register a new business referral" })
   @ApiOkResponse({
     type: BusinessResponseDto,
@@ -121,7 +121,7 @@ export class BusinessesController {
   }
 
   @Patch(":id")
-  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({
     summary: "Update business details (Affiliate access restricted)",
   })
@@ -136,7 +136,7 @@ export class BusinessesController {
   }
 
   @Post(":id/reminder")
-  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Send a payment reminder to the business owner" })
   @ApiResponse({
     status: 201,

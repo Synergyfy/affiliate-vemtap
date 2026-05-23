@@ -287,7 +287,7 @@ export class UsersService {
       where.role = filter.role;
     } else {
       // Default to showing affiliates unless a role filter is explicitly set
-      where.role = { in: [Role.AFFILIATE] };
+      where.role = Role.AFFILIATE;
     }
 
     if (filter.status) {

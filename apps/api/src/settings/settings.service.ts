@@ -6,6 +6,7 @@ import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { UpdateAgreementDto } from './dto/update-agreement.dto';
 
 const AGREEMENT_CACHE_KEY = 'settings_agreement';
+const SETTINGS_CACHE_KEY = 'platform_settings';
 
 const DEFAULT_AGREEMENT_HTML = `<h4>1. Independent Contractor Status</h4>
 <p>
@@ -56,21 +57,60 @@ export class SettingsService implements OnModuleInit {
           linkExpiryDays: 30,
           managerRewardDurationMonths: 12,
           maxIpUsage: 2,
+          reqAgentActiveDays: 90,
+          reqAgentActiveBusinesses: 40,
+          reqAgentMinReportingScore: 85.0,
+          reqAgentMinAttendanceRate: 90.0,
+          reqAffiliateActiveAgents: 30,
+          reqAffiliateNetworkBusinesses: 100,
+          reqSupervisorActiveAgents: 10,
+          reqSupervisorActiveSupervisors: 5,
+          reqSupervisorNetworkBusinesses: 100,
         },
       });
+      await this.cacheManager.del(SETTINGS_CACHE_KEY);
     } else {
       const settings = await this.prisma.platformSettings.findFirst();
-      if (settings && !settings.agreementTemplate) {
-        await this.prisma.platformSettings.update({
-          where: { id: settings.id },
-          data: { agreementTemplate: DEFAULT_AGREEMENT_HTML },
-        });
+      if (settings) {
+        const updateData: any = {};
+        if (!settings.agreementTemplate) {
+          updateData.agreementTemplate = DEFAULT_AGREEMENT_HTML;
+        }
+
+        // Automatic backfill check for new customizable settings fields
+        if (settings.reqAgentActiveDays === undefined || settings.reqAgentActiveDays === null) {
+          updateData.reqAgentActiveDays = 90;
+          updateData.reqAgentActiveBusinesses = 40;
+          updateData.reqAgentMinReportingScore = 85.0;
+          updateData.reqAgentMinAttendanceRate = 90.0;
+          updateData.reqAffiliateActiveAgents = 30;
+          updateData.reqAffiliateNetworkBusinesses = 100;
+          updateData.reqSupervisorActiveAgents = 10;
+          updateData.reqSupervisorActiveSupervisors = 5;
+          updateData.reqSupervisorNetworkBusinesses = 100;
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          await this.prisma.platformSettings.update({
+            where: { id: settings.id },
+            data: updateData,
+          });
+          await this.cacheManager.del(SETTINGS_CACHE_KEY);
+        }
       }
     }
   }
 
   async getSettings() {
-    return this.prisma.platformSettings.findFirst();
+    const cached = await this.cacheManager.get<any>(SETTINGS_CACHE_KEY);
+    if (cached) {
+      return cached;
+    }
+    const settings = await this.prisma.platformSettings.findFirst();
+    if (settings) {
+      await this.cacheManager.set(SETTINGS_CACHE_KEY, settings, 3600 * 1000); // 1 hour cache
+    }
+    return settings;
   }
 
   async updateSettings(data: UpdateSettingsDto) {
@@ -78,10 +118,12 @@ export class SettingsService implements OnModuleInit {
     if (!settings) {
       throw new NotFoundException('Platform settings not found');
     }
-    return this.prisma.platformSettings.update({
+    const updated = await this.prisma.platformSettings.update({
       where: { id: settings.id },
       data,
     });
+    await this.cacheManager.del(SETTINGS_CACHE_KEY);
+    return updated;
   }
 
   async getAgreement() {
