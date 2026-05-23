@@ -84,8 +84,8 @@ export function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL('/admin', request.url));
     }
     
-    // Affiliates cannot access the Admin Dashboard
-    if (pathname.startsWith('/admin') && role === 'AFFILIATE') {
+    // Affiliates and Agents cannot access the Admin Dashboard
+    if (pathname.startsWith('/admin') && (role === 'AFFILIATE' || role === 'AGENT')) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
   }

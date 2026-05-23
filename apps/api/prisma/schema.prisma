@@ -75,6 +75,9 @@ model User {
   emailVerificationCode String?
   emailVerificationExpiry DateTime?
 
+  dailyLeadTarget          Int       @default(0)
+  monthlyConversionTarget  Int       @default(0)
+
   @@index([referralCode])
   @@index([referredBy])
   @@index([referrerId])
@@ -92,6 +95,7 @@ enum Role {
   AFFILIATE
   ADMIN
   SUPER_ADMIN
+  AGENT
 }
 
 enum UserStatus {

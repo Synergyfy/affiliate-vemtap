@@ -218,13 +218,17 @@ export class DashboardService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const [user, activeReferrals, totalClicks, todayCommissions, todayClicks] = await Promise.all([
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    const [user, activeReferrals, totalClicks, todayCommissions, todayClicks, todayLeadsCount, monthlyLeadsCount, monthlyConversionsCount] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
         select: {
           totalEarnings: true,
           pendingEarnings: true,
           referralCount: true,
+          dailyLeadTarget: true,
+          monthlyConversionTarget: true,
         },
       }),
       this.prisma.business.count({
@@ -234,15 +238,27 @@ export class DashboardService {
         where: { userId },
       }),
       this.prisma.commission.aggregate({
-        where: { 
-          userId, 
-          createdAt: { gte: today }, 
-          status: { in: ['PENDING', 'APPROVED', 'PAID'] } 
+        where: {
+          userId,
+          createdAt: { gte: today },
+          status: { in: ['PENDING', 'APPROVED', 'PAID'] }
         },
         _sum: { amount: true }
       }),
       this.prisma.linkClick.count({
         where: { userId, createdAt: { gte: today } },
+      }),
+      // Leads submitted today by this user
+      this.prisma.lead.count({
+        where: { affiliateId: userId, createdAt: { gte: today } },
+      }),
+      // Leads submitted this month by this user
+      this.prisma.lead.count({
+        where: { affiliateId: userId, createdAt: { gte: startOfMonth } },
+      }),
+      // Businesses (conversions) created this month linked to this user
+      this.prisma.business.count({
+        where: { affiliateId: userId, status: 'ACTIVE', createdAt: { gte: startOfMonth } },
       }),
     ]);
 
@@ -263,6 +279,12 @@ export class DashboardService {
       referralCount,
       totalClicks,
       referralSignupUrl: this.configService.get<string>('VEMTAP_SIGNUP_URL') || 'https://vemtap.com/signup',
+      // Agent target metrics
+      dailyLeadTarget: user?.dailyLeadTarget || 0,
+      monthlyConversionTarget: user?.monthlyConversionTarget || 0,
+      todayLeadsCount,
+      monthlyLeadsCount,
+      monthlyConversionsCount,
     };
   }
 

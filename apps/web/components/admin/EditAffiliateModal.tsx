@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Phone, Banknote, CreditCard, Hash, Fingerprint } from 'lucide-react';
+import { X, User, Phone, Banknote, CreditCard, Hash, Fingerprint, Target, TrendingUp } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/hooks/toast';
@@ -59,6 +59,8 @@ export default function EditAffiliateModal({ isOpen, onClose, affiliate, onUpdat
         accountName: affiliate.accountName || '',
         nin: affiliate.nin || '',
         bvn: affiliate.bvn || '',
+        dailyLeadTarget: String(affiliate.dailyLeadTarget ?? 0),
+        monthlyConversionTarget: String(affiliate.monthlyConversionTarget ?? 0),
       };
       setFormValues(vals);
       setInitialValues(vals);
@@ -188,6 +190,30 @@ export default function EditAffiliateModal({ isOpen, onClose, affiliate, onUpdat
                   placeholder="12345678901"
                 />
               </div>
+
+              {/* Agent Targets Section */}
+              {affiliate?.role === 'AGENT' && (
+                <div className="border-t border-slate-100 pt-4 space-y-4">
+                  <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <Target className="w-3.5 h-3.5 text-violet-500" />
+                    Performance Targets
+                  </h5>
+                  <FormField
+                    label="Daily Lead Target"
+                    icon={<Target className="w-3 h-3" />}
+                    value={formValues.dailyLeadTarget || '0'}
+                    onChange={handleChange('dailyLeadTarget')}
+                    placeholder="e.g. 10"
+                  />
+                  <FormField
+                    label="Monthly Conversion Target"
+                    icon={<TrendingUp className="w-3 h-3" />}
+                    value={formValues.monthlyConversionTarget || '0'}
+                    onChange={handleChange('monthlyConversionTarget')}
+                    placeholder="e.g. 20"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="p-6 border-t border-slate-100 flex gap-3">

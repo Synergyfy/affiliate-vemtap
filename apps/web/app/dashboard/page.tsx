@@ -18,6 +18,7 @@ import {
   MessageCircle
 } from 'lucide-react';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
+import AgentTargetTracker from '@/components/dashboard/AgentTargetTracker';
 import { useAuth } from '@/hooks/use-auth';
 import { useAffiliateStats } from '@/services/useDashboardHooks';
 import { Loader2 } from 'lucide-react';
@@ -50,7 +51,7 @@ export default function MobileFirstDashboard() {
               {isLoading ? (
                 <div className="w-20 h-3 bg-white/20 animate-pulse rounded" />
               ) : (
-                stats?.currentLevel || 'Novice Affiliate'
+                user?.isManagerMode ? 'Supervisor' : stats?.currentLevel || 'Novice Affiliate'
               )}
             </div>
             <h1 className="text-3xl font-black leading-tight">Welcome,<br />{user?.firstName || user?.fullName?.split(' ')[0] || 'Affiliate'}!</h1>
@@ -100,6 +101,11 @@ export default function MobileFirstDashboard() {
             </motion.div>
           ))}
         </div>
+
+        {/* Agent Target Tracker — visible only to agents */}
+        {user?.role === 'AGENT' && stats && (
+          <AgentTargetTracker stats={stats} />
+        )}
 
         {/* Quick Stats / Announcements */}
         <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm flex items-center justify-between">
