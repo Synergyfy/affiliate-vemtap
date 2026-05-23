@@ -11,7 +11,9 @@ import {
   Coins,
   Users,
   Briefcase,
-  Loader2
+  Loader2,
+  Trophy,
+  ShieldCheck
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { cn } from '@/lib/utils';
@@ -34,7 +36,16 @@ export default function SettingsManagement() {
     earningDurationMonths: 3,
     subAffiliateUnlockCount: 30,
     fraudThresholdScore: 80,
-    minWithdrawal: 5000
+    minWithdrawal: 5000,
+    reqAgentActiveDays: 90,
+    reqAgentActiveBusinesses: 40,
+    reqAgentMinReportingScore: 85,
+    reqAgentMinAttendanceRate: 90,
+    reqAffiliateActiveAgents: 30,
+    reqAffiliateNetworkBusinesses: 100,
+    reqSupervisorActiveAgents: 10,
+    reqSupervisorActiveSupervisors: 5,
+    reqSupervisorNetworkBusinesses: 100
   });
 
   useEffect(() => {
@@ -45,7 +56,16 @@ export default function SettingsManagement() {
         earningDurationMonths: settings.earningDurationMonths,
         subAffiliateUnlockCount: settings.subAffiliateUnlockCount,
         fraudThresholdScore: settings.fraudThresholdScore,
-        minWithdrawal: settings.minWithdrawal
+        minWithdrawal: settings.minWithdrawal,
+        reqAgentActiveDays: settings.reqAgentActiveDays ?? 90,
+        reqAgentActiveBusinesses: settings.reqAgentActiveBusinesses ?? 40,
+        reqAgentMinReportingScore: settings.reqAgentMinReportingScore ?? 85,
+        reqAgentMinAttendanceRate: settings.reqAgentMinAttendanceRate ?? 90,
+        reqAffiliateActiveAgents: settings.reqAffiliateActiveAgents ?? 30,
+        reqAffiliateNetworkBusinesses: settings.reqAffiliateNetworkBusinesses ?? 100,
+        reqSupervisorActiveAgents: settings.reqSupervisorActiveAgents ?? 10,
+        reqSupervisorActiveSupervisors: settings.reqSupervisorActiveSupervisors ?? 5,
+        reqSupervisorNetworkBusinesses: settings.reqSupervisorNetworkBusinesses ?? 100
       });
     }
   }, [settings]);
@@ -244,6 +264,141 @@ export default function SettingsManagement() {
                   <Users className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 </div>
                 <p className="text-xs text-slate-400">Sub-affiliates needed for Supervisor upgrade.</p>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Promotion & Career Path Rules */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm"
+          >
+            <div className="flex items-center gap-3 mb-8">
+              <Trophy className="w-5 h-5 text-orange-500" />
+              <h3 className="text-lg font-bold text-slate-900">Career Path & Promotion Targets</h3>
+            </div>
+
+            <div className="space-y-8">
+              {/* Field Agent to Supervisor */}
+              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                <h4 className="text-sm font-black text-slate-900 uppercase tracking-wider mb-6 flex items-center gap-2">
+                  <Briefcase className="w-4 h-4 text-blue-600" />
+                  Field Agent Promotion (Agent ➔ Supervisor)
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700">Active Operating Days</label>
+                    <input 
+                      type="number" 
+                      value={formData.reqAgentActiveDays ?? 90}
+                      onChange={(e) => setFormData(prev => ({ ...prev, reqAgentActiveDays: Number(e.target.value) }))}
+                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
+                    />
+                    <p className="text-[10px] text-slate-400">Timeline threshold since selected for operational tasks.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700">Personal Active Businesses</label>
+                    <input 
+                      type="number" 
+                      value={formData.reqAgentActiveBusinesses ?? 40}
+                      onChange={(e) => setFormData(prev => ({ ...prev, reqAgentActiveBusinesses: Number(e.target.value) }))}
+                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
+                    />
+                    <p className="text-[10px] text-slate-400">Total active business closures required.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700">Daily Reporting Compliance Score (%)</label>
+                    <input 
+                      type="number" 
+                      value={formData.reqAgentMinReportingScore ?? 85}
+                      onChange={(e) => setFormData(prev => ({ ...prev, reqAgentMinReportingScore: Number(e.target.value) }))}
+                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
+                    />
+                    <p className="text-[10px] text-slate-400">Minimum daily task reporting score required.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700">Minimum Attendance Rate (%)</label>
+                    <input 
+                      type="number" 
+                      value={formData.reqAgentMinAttendanceRate ?? 90}
+                      onChange={(e) => setFormData(prev => ({ ...prev, reqAgentMinAttendanceRate: Number(e.target.value) }))}
+                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
+                    />
+                    <p className="text-[10px] text-slate-400">Minimum attendance verification rate required.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Freelance Affiliate to Supervisor */}
+              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                <h4 className="text-sm font-black text-slate-900 uppercase tracking-wider mb-6 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-purple-600" />
+                  Freelance Affiliate Promotion (Affiliate ➔ Supervisor)
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700">Direct Active Agents</label>
+                    <input 
+                      type="number" 
+                      value={formData.reqAffiliateActiveAgents ?? 30}
+                      onChange={(e) => setFormData(prev => ({ ...prev, reqAffiliateActiveAgents: Number(e.target.value) }))}
+                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
+                    />
+                    <p className="text-[10px] text-slate-400">Recruits with at least one active business referral.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700">Total Network Closed Deals</label>
+                    <input 
+                      type="number" 
+                      value={formData.reqAffiliateNetworkBusinesses ?? 100}
+                      onChange={(e) => setFormData(prev => ({ ...prev, reqAffiliateNetworkBusinesses: Number(e.target.value) }))}
+                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
+                    />
+                    <p className="text-[10px] text-slate-400">Cumulative direct and indirect closed deals inside network.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Supervisor to Manager */}
+              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                <h4 className="text-sm font-black text-slate-900 uppercase tracking-wider mb-6 flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  Supervisor Leadership Promotion (Supervisor ➔ Manager)
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700">Direct Active Agents</label>
+                    <input 
+                      type="number" 
+                      value={formData.reqSupervisorActiveAgents ?? 10}
+                      onChange={(e) => setFormData(prev => ({ ...prev, reqSupervisorActiveAgents: Number(e.target.value) }))}
+                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
+                    />
+                    <p className="text-[10px] text-slate-400">Active operational agents directly referred.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700">Direct Qualified Supervisors</label>
+                    <input 
+                      type="number" 
+                      value={formData.reqSupervisorActiveSupervisors ?? 5}
+                      onChange={(e) => setFormData(prev => ({ ...prev, reqSupervisorActiveSupervisors: Number(e.target.value) }))}
+                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
+                    />
+                    <p className="text-[10px] text-slate-400">Referred team members promoted to Supervisor.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-700">Cumulative Network Closed Deals</label>
+                    <input 
+                      type="number" 
+                      value={formData.reqSupervisorNetworkBusinesses ?? 100}
+                      onChange={(e) => setFormData(prev => ({ ...prev, reqSupervisorNetworkBusinesses: Number(e.target.value) }))}
+                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold"
+                    />
+                    <p className="text-[10px] text-slate-400">Total businesses closed across the direct and sub-networks.</p>
+                  </div>
+                </div>
               </div>
             </div>
           </motion.div>

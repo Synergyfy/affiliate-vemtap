@@ -419,6 +419,17 @@ model PlatformSettings {
   managerRewardDurationMonths Int    @default(12)
   
   maxIpUsage              Int       @default(2)
+
+  // Promotion requirements
+  reqAgentActiveDays             Int      @default(90)
+  reqAgentActiveBusinesses       Int      @default(40)
+  reqAgentMinReportingScore      Decimal  @default(85.0)
+  reqAgentMinAttendanceRate      Decimal  @default(90.0)
+  reqAffiliateActiveAgents       Int      @default(30)
+  reqAffiliateNetworkBusinesses  Int      @default(100)
+  reqSupervisorActiveAgents      Int      @default(10)
+  reqSupervisorActiveSupervisors Int      @default(5)
+  reqSupervisorNetworkBusinesses Int      @default(100)
   
   updatedAt               DateTime @updatedAt
 }

@@ -124,4 +124,60 @@ export class UpdateSettingsDto {
   @IsNumber()
   @Min(1)
   maxIpUsage?: number;
+
+  @ApiProperty({ required: false, example: 90, description: "Agent promotion active days requirement" })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  reqAgentActiveDays?: number;
+
+  @ApiProperty({ required: false, example: 40, description: "Agent promotion personal active businesses requirement" })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  reqAgentActiveBusinesses?: number;
+
+  @ApiProperty({ required: false, example: 85, description: "Agent promotion minimum reporting compliance score (0-100)" })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  reqAgentMinReportingScore?: number;
+
+  @ApiProperty({ required: false, example: 90, description: "Agent promotion minimum attendance rate (0-100)" })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  reqAgentMinAttendanceRate?: number;
+
+  @ApiProperty({ required: false, example: 30, description: "Affiliate promotion active agents requirement" })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  reqAffiliateActiveAgents?: number;
+
+  @ApiProperty({ required: false, example: 100, description: "Affiliate promotion network active businesses requirement" })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  reqAffiliateNetworkBusinesses?: number;
+
+  @ApiProperty({ required: false, example: 10, description: "Supervisor promotion active agents requirement" })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  reqSupervisorActiveAgents?: number;
+
+  @ApiProperty({ required: false, example: 5, description: "Supervisor promotion active supervisors requirement" })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  reqSupervisorActiveSupervisors?: number;
+
+  @ApiProperty({ required: false, example: 100, description: "Supervisor promotion network active businesses requirement" })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  reqSupervisorNetworkBusinesses?: number;
 }

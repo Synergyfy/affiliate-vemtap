@@ -52,33 +52,49 @@ describe('SettingsService', () => {
   });
 
   describe('getSettings', () => {
-    it('should return settings', async () => {
+    it('should return cached settings if available without querying DB', async () => {
       const mockSettings = { id: '1', agreementVersion: 1 };
-      mockPrisma.platformSettings.findFirst.mockResolvedValue(mockSettings);
+      mockCache.get.mockResolvedValue(mockSettings);
+
       const result = await service.getSettings();
       expect(result).toEqual(mockSettings);
+      expect(mockCache.get).toHaveBeenCalledWith('platform_settings');
+      expect(mockPrisma.platformSettings.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('should query DB and cache settings if not in cache', async () => {
+      mockCache.get.mockResolvedValue(null);
+      const mockSettings = { id: '1', reqAgentActiveDays: 90 };
+      mockPrisma.platformSettings.findFirst.mockResolvedValue(mockSettings);
+
+      const result = await service.getSettings();
+      expect(result).toEqual(mockSettings);
+      expect(mockCache.get).toHaveBeenCalledWith('platform_settings');
+      expect(mockPrisma.platformSettings.findFirst).toHaveBeenCalled();
+      expect(mockCache.set).toHaveBeenCalledWith('platform_settings', mockSettings, 3600 * 1000);
     });
   });
 
   describe('updateSettings', () => {
-    it('should update settings', async () => {
+    it('should update settings and evict platform settings cache', async () => {
       const mockSettings = { id: '1' };
       mockPrisma.platformSettings.findFirst.mockResolvedValue(mockSettings);
-      mockPrisma.platformSettings.update.mockResolvedValue({ ...mockSettings, linkExpiryDays: 45 });
+      mockPrisma.platformSettings.update.mockResolvedValue({ ...mockSettings, reqAgentActiveDays: 45 });
 
-      const result = await service.updateSettings({ linkExpiryDays: 45 });
-      expect(result.linkExpiryDays).toBe(45);
+      const result = await service.updateSettings({ reqAgentActiveDays: 45 });
+      expect(result.reqAgentActiveDays).toBe(45);
       expect(mockPrisma.platformSettings.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: '1' },
-          data: { linkExpiryDays: 45 },
+          data: { reqAgentActiveDays: 45 },
         }),
       );
+      expect(mockCache.del).toHaveBeenCalledWith('platform_settings');
     });
 
     it('should throw NotFoundException if settings do not exist', async () => {
       mockPrisma.platformSettings.findFirst.mockResolvedValue(null);
-      await expect(service.updateSettings({ linkExpiryDays: 45 })).rejects.toThrow(NotFoundException);
+      await expect(service.updateSettings({ reqAgentActiveDays: 45 })).rejects.toThrow(NotFoundException);
     });
   });
 

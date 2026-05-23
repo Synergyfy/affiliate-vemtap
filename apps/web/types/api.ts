@@ -96,6 +96,15 @@ export interface PlatformSettings {
   agreementTemplate?: string;
   agreementVersion?: number;
   updatedAt: string;
+  reqAgentActiveDays?: number;
+  reqAgentActiveBusinesses?: number;
+  reqAgentMinReportingScore?: number;
+  reqAgentMinAttendanceRate?: number;
+  reqAffiliateActiveAgents?: number;
+  reqAffiliateNetworkBusinesses?: number;
+  reqSupervisorActiveAgents?: number;
+  reqSupervisorActiveSupervisors?: number;
+  reqSupervisorNetworkBusinesses?: number;
 }
 
 export interface Agreement {

@@ -3,6 +3,7 @@ import { NetworkService } from './network.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { BonusType } from './dto/network-response.dto';
 import { BadRequestException } from '@nestjs/common';
+import { SettingsService } from '../settings/settings.service';
 
 describe('NetworkService', () => {
   let service: NetworkService;
@@ -31,6 +32,20 @@ describe('NetworkService', () => {
     count: jest.fn(),
   };
 
+  const mockSettingsService = {
+    getSettings: jest.fn().mockResolvedValue({
+      reqAgentActiveDays: 90,
+      reqAgentActiveBusinesses: 40,
+      reqAgentMinReportingScore: 85.0,
+      reqAgentMinAttendanceRate: 90.0,
+      reqAffiliateActiveAgents: 30,
+      reqAffiliateNetworkBusinesses: 100,
+      reqSupervisorActiveAgents: 10,
+      reqSupervisorActiveSupervisors: 5,
+      reqSupervisorNetworkBusinesses: 100,
+    }),
+  };
+
   // Define mockPrisma structure first
   const mockPrisma: any = {
     user: mockUser,
@@ -51,6 +66,7 @@ describe('NetworkService', () => {
       providers: [
         NetworkService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: SettingsService, useValue: mockSettingsService },
       ],
     }).compile();
 

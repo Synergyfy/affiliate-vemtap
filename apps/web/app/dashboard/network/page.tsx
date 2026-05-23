@@ -107,12 +107,12 @@ export default function NetworkPage() {
   const affiliateCount = isAgent 
     ? (networkStats?.daysActive || 0) 
     : (networkStats?.activeAgentsCount || 0);
-  const targetAffiliates = isAgent ? 90 : (networkStats?.milestones?.agents?.target || 30);
+  const targetAffiliates = networkStats?.milestones?.agents?.target || (isAgent ? 90 : 30);
   
   const businessesCount = isAgent 
     ? (networkStats?.personalActiveBusinesses || 0) 
     : (networkStats?.totalNetworkBusinesses || 0);
-  const targetBusinesses = isAgent ? 40 : (networkStats?.milestones?.businesses?.target || 100);
+  const targetBusinesses = networkStats?.milestones?.businesses?.target || (isAgent ? 40 : 100);
 
   const totalRecruits = networkStats?.totalRecruitsCount || 0;
   const rewardDuration: string = '1year';
@@ -475,6 +475,7 @@ export default function NetworkPage() {
         <SupervisorGuideModal 
           isOpen={showGuide} 
           onClose={() => setShowGuide(false)} 
+          networkStats={networkStats}
         />
       </div>
     </DashboardLayout>
