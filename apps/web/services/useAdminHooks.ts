@@ -77,6 +77,7 @@ export const useUsers = (params?: {
       const { data } = await api.get('/users', { params });
       return data;
     },
+    staleTime: 0, // Always refetch on mount after invalidation so every tab stays fresh
   });
 };
 
@@ -88,7 +89,8 @@ export const useUpdateUser = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'], exact: false });
     },
   });
 };
@@ -101,7 +103,8 @@ export const useUpdateUserStatus = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'], exact: false });
     },
   });
 };
@@ -140,6 +143,28 @@ export const useBusinesses = (params?: {
     queryFn: async () => {
       const { data } = await api.get('/businesses', { params });
       return data;
+    },
+  });
+};
+
+export const useCreateUser = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: {
+      fullName: string;
+      email: string;
+      phone: string;
+      password: string;
+      role?: string;
+      dailyLeadTarget?: number;
+      monthlyConversionTarget?: number;
+    }) => {
+      const { data } = await api.post('/users', payload);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'], exact: false });
     },
   });
 };

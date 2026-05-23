@@ -22,6 +22,7 @@ import {
 import { UsersService } from "./users.service";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { UpdateUserStatusDto, UpdateKycDto } from "./dto/admin-user.dto";
+import { CreateUserAdminDto } from "./dto/create-user-admin.dto";
 import {
   UserResponseDto,
   PaginatedUserResponseDto,
@@ -203,6 +204,32 @@ export class UsersController {
     res.setHeader("Content-Type", "text/csv");
     res.setHeader("Content-Disposition", "attachment; filename=users.csv");
     return res.status(200).send(csv);
+  }
+
+  @Post()
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Create a new user/agent (Admin only)' })
+  @ApiBody({
+    type: CreateUserAdminDto,
+    description: 'New user/agent details',
+    examples: {
+      default: {
+        value: {
+          fullName: 'Jane Marketer',
+          email: 'jane@example.com',
+          phone: '08012345678',
+          password: 'securePassword123',
+          role: 'AGENT',
+          dailyLeadTarget: 10,
+          monthlyConversionTarget: 20,
+        },
+      },
+    },
+  })
+  @ApiOkResponse({ type: UserResponseDto })
+  @ApiResponse({ status: 409, description: 'Email or phone already in use' })
+  createUserByAdmin(@Body() dto: CreateUserAdminDto) {
+    return this.usersService.createUserByAdmin(dto);
   }
 
   @Get()

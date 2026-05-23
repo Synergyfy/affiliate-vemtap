@@ -20,7 +20,7 @@ import {
 @ApiBearerAuth()
 @Controller('affiliate/dashboard')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+@Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN, Role.AGENT)
 export class AffiliateDashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, MinLength } from "class-validator";
+import { IsString, IsOptional, MinLength, IsInt, Min } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 
 export class UpdateProfileDto {
@@ -93,4 +93,24 @@ export class UpdateProfileDto {
   @IsString()
   @MinLength(6)
   password?: string;
+
+  @ApiProperty({
+    required: false,
+    example: 10,
+    description: "Daily lead target (Agent only)",
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  dailyLeadTarget?: number;
+
+  @ApiProperty({
+    required: false,
+    example: 20,
+    description: "Monthly conversion target (Agent only)",
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  monthlyConversionTarget?: number;
 }
