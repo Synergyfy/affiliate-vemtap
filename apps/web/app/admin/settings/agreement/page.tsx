@@ -93,6 +93,13 @@ export default function AgreementEditor() {
                 <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
                   {isPreview ? "Final Document Preview" : "Agreement Visual Editor"}
                 </span>
+                {!isPreview && agreementText && (
+                  <span className="text-[11px] font-mono text-slate-400">
+                    {new TextEncoder().encode(agreementText).length < 1024
+                      ? `${new TextEncoder().encode(agreementText).length} B`
+                      : `${(new TextEncoder().encode(agreementText).length / 1024).toFixed(1)} KB`}
+                  </span>
+                )}
               </div>
 
               {isLoading ? (

@@ -1,6 +1,7 @@
 import { Injectable, ConflictException, Logger, BadRequestException, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateUserDto } from "./dto/create-user.dto";
+import { CreateUserAdminDto } from "./dto/create-user-admin.dto";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
 import * as bcrypt from "bcryptjs";
 import { User, Tier, Role, UserStatus, KycStatus, Prisma } from "@prisma/client";
@@ -71,6 +72,38 @@ export class UsersService {
     return result;
   }
 
+  async createUserByAdmin(dto: CreateUserAdminDto): Promise<Omit<User, 'password'>> {
+    const { email, phone, password, role, dailyLeadTarget, monthlyConversionTarget, ...rest } = dto;
+
+    const existingUser = await this.prisma.user.findFirst({
+      where: { OR: [{ email }, { phone }] },
+    });
+
+    if (existingUser) {
+      throw new ConflictException('User with this email or phone already exists');
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const uniqueReferralCode = await this.generateUniqueReferralCode();
+
+    const user = await this.prisma.user.create({
+      data: {
+        ...rest,
+        email,
+        phone,
+        password: hashedPassword,
+        referralCode: uniqueReferralCode,
+        role: role ?? Role.AGENT,
+        tier: Tier.BRONZE,
+        dailyLeadTarget: dailyLeadTarget ?? 0,
+        monthlyConversionTarget: monthlyConversionTarget ?? 0,
+      },
+    });
+
+    const { password: _pw, ...result } = user;
+    return result;
+  }
+
   async findByEmail(email: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { email } });
   }
@@ -86,9 +119,12 @@ export class UsersService {
     return result;
   }
 
-  async update(userId: string, dto: UpdateProfileDto): Promise<Omit<User, "password">> {
-    const { kycDocumentUrl, password, ...rest } = dto;
+  async update(userId: string, dto: UpdateProfileDto): Promise<Omit<User, 'password'>> {
+    const { kycDocumentUrl, password, dailyLeadTarget, monthlyConversionTarget, ...rest } = dto;
     const data: Prisma.UserUpdateInput = { ...rest };
+
+    if (dailyLeadTarget !== undefined) data.dailyLeadTarget = dailyLeadTarget;
+    if (monthlyConversionTarget !== undefined) data.monthlyConversionTarget = monthlyConversionTarget;
     
     const currentUser = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -250,6 +286,7 @@ export class UsersService {
     if (filter.role) {
       where.role = filter.role;
     } else {
+      // Default to showing affiliates unless a role filter is explicitly set
       where.role = Role.AFFILIATE;
     }
 
@@ -289,6 +326,10 @@ export class UsersService {
           createdAt: true,
           totalEarnings: true,
           isManagerMode: true,
+          referralCount: true,
+          _count: {
+            select: { referrals: true, businesses: true, leads: true },
+          },
         },
       }),
       this.prisma.user.count({ where }),
@@ -304,7 +345,7 @@ export class UsersService {
           select: { id: true, fullName: true, referralCode: true },
         },
         _count: {
-          select: { referrals: true, businesses: true },
+          select: { referrals: true, businesses: true, leads: true },
         },
       },
     });

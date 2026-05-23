@@ -67,6 +67,7 @@ describe("NetworkController (e2e)", () => {
         referralCode: "REC001",
         affiliateId: recruit.id,
         subscriptionAmount: 3000,
+        status: 'ACTIVE',
       },
     });
 

@@ -41,7 +41,7 @@ export class TrainingController {
   constructor(private readonly trainingService: TrainingService) {}
 
   @Get("modules")
-  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Get available training modules" })
   @ApiOkResponse({ type: PaginatedTrainingModuleResponseDto })
   @ApiResponse({ status: 401, description: "Unauthorized" })
@@ -69,7 +69,7 @@ export class TrainingController {
   }
 
   @Patch("modules/:id/progress")
-  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Update progress for a module" })
   @ApiBody({
     type: UpdateTrainingProgressDto,

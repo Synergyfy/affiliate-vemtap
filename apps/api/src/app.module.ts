@@ -27,6 +27,9 @@ import { TrackingModule } from './tracking/tracking.module';
 import { ShortLinksModule } from './tools/short-links/short-links.module';
 import { LeadsModule } from './leads/leads.module';
 import { OperationsModule } from './operations/operations.module';
+import { ObservabilityModule } from './observability/observability.module';
+import { RequestIdMiddleware } from './observability/request-id.middleware';
+import { MetricsMiddleware } from './observability/metrics.middleware';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 
 @Module({
@@ -42,6 +45,7 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
     ShortLinksModule,
     LeadsModule,
     OperationsModule,
+    ObservabilityModule,
     ToolsModule,
     BusinessesModule,
     NetworkModule,
@@ -66,6 +70,8 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(LoggerMiddleware).forRoutes('*');
+    consumer
+      .apply(RequestIdMiddleware, MetricsMiddleware, LoggerMiddleware)
+      .forRoutes('*');
   }
 }

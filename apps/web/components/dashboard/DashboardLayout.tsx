@@ -50,6 +50,7 @@ export const useDashboard = () => {
 const sidebarItems = [
   { name: 'Home', icon: Home, href: '/dashboard' },
   { name: 'Leads', icon: Target, href: '/dashboard/leads' },
+  { name: 'Operations', icon: CheckSquare, href: '/dashboard/operations' },
   { name: 'Referral Tools', icon: LinkIcon, href: '/dashboard/tools' },
   { name: 'Businesses', icon: Briefcase, href: '/dashboard/businesses' },
   { name: 'Supervisor', icon: Users, href: '/dashboard/network' },
@@ -173,12 +174,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <nav className="flex-grow px-4 space-y-2 mt-4">
-            {sidebarItems.map((item) => (
-              <Link key={item.name} href={item.href} className={cn("flex items-center gap-3 p-3 rounded-xl transition-all group", pathname === item.href ? "bg-blue-600 text-white shadow-lg" : "text-slate-600 hover:bg-slate-100")}>
-                <item.icon className="w-5 h-5" />
-                {isSidebarOpen && <span className="font-bold text-sm">{item.name}</span>}
-              </Link>
-            ))}
+            {sidebarItems
+              .filter((item) => {
+                if (item.name === 'Operations') {
+                  return user?.role === 'AGENT' || user?.role === 'SUPERVISOR' || user?.role === 'MANAGER';
+                }
+                if (item.name === 'Supervisor') {
+                  return user?.role === 'SUPERVISOR' || user?.role === 'MANAGER' || user?.isManagerMode;
+                }
+                if (item.name === 'Referral Tools') {
+                  return user?.role !== 'AGENT';
+                }
+                return true;
+              })
+              .map((item) => (
+                <Link key={item.name} href={item.href} className={cn("flex items-center gap-3 p-3 rounded-xl transition-all group", pathname === item.href ? "bg-blue-600 text-white shadow-lg" : "text-slate-600 hover:bg-slate-100")}>
+                  <item.icon className="w-5 h-5" />
+                  {isSidebarOpen && <span className="font-bold text-sm">{item.name}</span>}
+                </Link>
+              ))}
           </nav>
           <div className="p-4 border-t border-slate-100">
             <button onClick={handleLogout} className="flex items-center gap-3 p-3 rounded-xl w-full text-slate-600 hover:bg-red-50 hover:text-red-600 transition-all">
@@ -286,7 +300,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 >
                   <div className="text-right hidden sm:block">
                     <p className="text-xs font-black text-slate-900 group-hover:text-blue-600 transition-colors">{user?.fullName || 'User Profile'}</p>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user?.role || 'Affiliate'}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user?.isManagerMode ? 'Supervisor' : user?.role || 'Affiliate'}</p>
                   </div>
                   <div className="w-10 h-10 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
                     <User className="w-5 h-5" />
@@ -308,9 +322,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                              {user?.fullName?.charAt(0) || 'U'}
                            </div>
                            <div>
-                             <p className="text-sm font-black text-slate-900">{user?.fullName}</p>
-                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user?.role || 'Affiliate'}</p>
-                           </div>
+                              <p className="text-sm font-black text-slate-900">{user?.fullName}</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user?.isManagerMode ? 'Supervisor' : user?.role || 'Affiliate'}</p>
+                             </div>
                          </div>
                          <p className="text-[10px] font-medium text-slate-400 truncate mt-2">{user?.email}</p>
                       </div>

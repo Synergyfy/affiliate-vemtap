@@ -1,4 +1,4 @@
-export type Role = 'AFFILIATE' | 'ADMIN' | 'SUPER_ADMIN';
+export type Role = 'AFFILIATE' | 'ADMIN' | 'SUPER_ADMIN' | 'AGENT' | 'SUPERVISOR' | 'MANAGER';
 export type BusinessStatus = 'TRIAL' | 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
 export type PlanType = 'BASIC' | 'PREMIUM' | 'ENTERPRISE';
 export type CommissionType = 'DIRECT' | 'INDIRECT' | 'BONUS';
@@ -72,6 +72,16 @@ export interface User {
   bvn?: string;
   kycStatus?: 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
   isManagerMode?: boolean;
+  dailyLeadTarget?: number;
+  monthlyConversionTarget?: number;
+  reportingScore?: number;
+  attendanceRate?: number;
+  territoryId?: string;
+  _count?: {
+    referrals?: number;
+    businesses?: number;
+    leads?: number;
+  };
 }
 
 export interface PlatformSettings {
@@ -86,6 +96,15 @@ export interface PlatformSettings {
   agreementTemplate?: string;
   agreementVersion?: number;
   updatedAt: string;
+  reqAgentActiveDays?: number;
+  reqAgentActiveBusinesses?: number;
+  reqAgentMinReportingScore?: number;
+  reqAgentMinAttendanceRate?: number;
+  reqAffiliateActiveAgents?: number;
+  reqAffiliateNetworkBusinesses?: number;
+  reqSupervisorActiveAgents?: number;
+  reqSupervisorActiveSupervisors?: number;
+  reqSupervisorNetworkBusinesses?: number;
 }
 
 export interface Agreement {
@@ -230,6 +249,12 @@ export interface AffiliateStats {
   referralCount: number;
   totalClicks: number;
   referralSignupUrl: string;
+  // Agent target metrics
+  dailyLeadTarget: number;
+  monthlyConversionTarget: number;
+  todayLeadsCount: number;
+  monthlyLeadsCount: number;
+  monthlyConversionsCount: number;
 }
 
 export interface AffiliateForecast {

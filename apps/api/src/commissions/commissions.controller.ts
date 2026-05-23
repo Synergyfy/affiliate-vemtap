@@ -35,7 +35,7 @@ export class CommissionsController {
   constructor(private readonly commissionsService: CommissionsService) {}
 
   @Get("me")
-  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Get commissions for the current user" })
   @ApiOkResponse({ type: PaginatedCommissionResponseDto })
   @ApiResponse({ status: 401, description: "Unauthorized" })
@@ -62,7 +62,7 @@ export class CommissionsController {
   }
 
   @Get("stats")
-  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Get commission statistics for the current user" })
   @ApiResponse({
     status: 200,

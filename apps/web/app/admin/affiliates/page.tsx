@@ -22,13 +22,21 @@ import {
   Mail,
   Phone,
   ShieldCheck,
-  ShieldAlert
+  ShieldAlert,
+  Download,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle,
+  AlertTriangle,
+  ArrowUpDown
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/AdminLayout';
 import ConfirmationModal from '@/components/admin/ConfirmationModal';
 import EditAffiliateModal from '@/components/admin/EditAffiliateModal';
+import AddAgentModal from '@/components/admin/AddAgentModal';
 import FilterBar from '@/components/admin/FilterBar';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/toast';
@@ -37,12 +45,12 @@ import { api } from '@/lib/api-client';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useUsers, useUpdateUserStatus } from '@/services/useAdminHooks';
 import { Role, User as UserType } from '@/types/api';
-import { Loader2 } from 'lucide-react';
 
 export default function AffiliatesManagement() {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'All' | 'Supervisors'>('All');
+  const [activeTab, setActiveTab] = useState<'All' | 'Supervisors' | 'Agents'>('All');
+  const [isAddAgentOpen, setIsAddAgentOpen] = useState(false);
   const [selectedAffiliate, setSelectedAffiliate] = useState<UserType | null>(null);
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -52,10 +60,16 @@ export default function AffiliatesManagement() {
   const debouncedSearch = useDebounce(searchQuery, 500);
 
   const { data: usersResponse, isLoading } = useUsers({
+    role: activeTab === 'Agents' ? 'AGENT' as any : undefined,
     isManager: activeTab === 'Supervisors' ? true : undefined,
     status: statusFilter === 'All' ? undefined : statusFilter,
     search: debouncedSearch || undefined,
     limit: 50
+  });
+
+  const { data: agentsResponse } = useUsers({
+    role: 'AGENT' as any,
+    limit: 1,
   });
 
   const updateStatus = useUpdateUserStatus();
@@ -122,7 +136,9 @@ export default function AffiliatesManagement() {
         const targetManagerMode = type === 'upgrade';
         await api.patch(`/users/${id}/manager-mode`, { isManagerMode: targetManagerMode });
         showToast(`Supervisor status updated successfully`, 'success');
-        queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+        // Invalidate every users cache entry (all tabs: All, Supervisors, Agents, count badges)
+        await queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
+        await queryClient.invalidateQueries({ queryKey: ['admin', 'stats'], exact: false });
       } else {
         const newStatus = currentStatus === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
         await updateStatus.mutateAsync({ id, status: newStatus });
@@ -134,6 +150,7 @@ export default function AffiliatesManagement() {
     
     setConfirmModal(prev => ({ ...prev, isOpen: false }));
   };
+
 
   const handleViewProfile = async (user: UserType) => {
     try {
@@ -150,7 +167,8 @@ export default function AffiliatesManagement() {
 
   const handleAffiliateUpdate = (updated: UserType) => {
     setSelectedAffiliate(updated);
-    queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+    queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
+    queryClient.invalidateQueries({ queryKey: ['admin', 'stats'], exact: false });
   };
 
   return (
@@ -175,27 +193,53 @@ export default function AffiliatesManagement() {
           }
         />
 
-        {/* Tabs */}
-        <div className="flex border-b border-slate-200">
-          <button 
-            onClick={() => setActiveTab('All')}
-            className={cn(
-              "px-8 py-4 text-sm font-bold transition-all border-b-2",
-              activeTab === 'All' ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"
-            )}
-          >
-            All Affiliates
-          </button>
-          <button 
-            onClick={() => setActiveTab('Supervisors')}
-            className={cn(
-              "px-8 py-4 text-sm font-bold transition-all border-b-2 flex items-center gap-2",
-               activeTab === 'Supervisors' ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"
-            )}
-          >
-            <Users className="w-4 h-4" />
-            Supervisor List
-          </button>
+        {/* Tabs + Add Agent */}
+        <div className="flex items-center justify-between border-b border-slate-200">
+          <div className="flex">
+            <button 
+              onClick={() => setActiveTab('All')}
+              className={cn(
+                "px-8 py-4 text-sm font-bold transition-all border-b-2",
+                activeTab === 'All' ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"
+              )}
+            >
+              All Affiliates
+            </button>
+            <button 
+              onClick={() => setActiveTab('Supervisors')}
+              className={cn(
+                "px-8 py-4 text-sm font-bold transition-all border-b-2 flex items-center gap-2",
+                 activeTab === 'Supervisors' ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"
+              )}
+            >
+              <Users className="w-4 h-4" />
+              Supervisor List
+            </button>
+            <button 
+              onClick={() => setActiveTab('Agents')}
+              className={cn(
+                "px-8 py-4 text-sm font-bold transition-all border-b-2 flex items-center gap-2",
+                 activeTab === 'Agents' ? "border-violet-600 text-violet-600" : "border-transparent text-slate-500 hover:text-slate-700"
+              )}
+            >
+              <UserCog className="w-4 h-4" />
+              Agents
+              {(agentsResponse?.meta?.total ?? 0) > 0 && (
+                <span className="px-2 py-0.5 bg-violet-100 text-violet-600 text-[10px] font-black rounded-full">
+                  {agentsResponse?.meta?.total}
+                </span>
+              )}
+            </button>
+          </div>
+          {activeTab === 'Agents' && (
+            <button
+              onClick={() => setIsAddAgentOpen(true)}
+              className="mr-4 flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-violet-200 hover:shadow-violet-300 transition-all active:scale-95"
+            >
+              <UserPlus className="w-4 h-4" />
+              Add Agent
+            </button>
+          )}
         </div>
 
         {/* Header Actions */}
@@ -206,13 +250,139 @@ export default function AffiliatesManagement() {
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
               </div>
             )}
-            <table className="w-full text-left border-collapse">
+
+            {activeTab === 'Agents' ? (
+              /* AGENTS TABLE */
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-violet-50 border-b border-violet-100">
+                    <th className="p-4 font-bold text-slate-600 text-sm">Agent</th>
+                    <th className="p-4 font-bold text-slate-600 text-sm">Contact</th>
+                    <th className="p-4 font-bold text-slate-600 text-sm text-center">Daily Lead Target</th>
+                    <th className="p-4 font-bold text-slate-600 text-sm text-center">Monthly Conversion Target</th>
+                    <th className="p-4 font-bold text-slate-600 text-sm text-center">Leads</th>
+                    <th className="p-4 font-bold text-slate-600 text-sm">Status</th>
+                    <th className="p-4 font-bold text-slate-600 text-sm text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {usersResponse?.data.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="p-12 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="w-16 h-16 bg-violet-50 rounded-3xl flex items-center justify-center">
+                            <UserCog className="w-8 h-8 text-violet-400" />
+                          </div>
+                          <p className="font-bold text-slate-600">No agents yet</p>
+                          <p className="text-sm text-slate-400">Click "Add Agent" to create a marketer account</p>
+                          <button
+                            onClick={() => setIsAddAgentOpen(true)}
+                            className="mt-2 px-6 py-2.5 bg-violet-600 text-white rounded-xl text-sm font-bold hover:bg-violet-700 transition-all"
+                          >
+                            Create First Agent
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  {usersResponse?.data.map((user: UserType, idx: number) => (
+                    <motion.tr
+                      key={user.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.04 }}
+                      className="hover:bg-violet-50/30 transition-all"
+                    >
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-400 to-purple-600 flex items-center justify-center font-bold text-white text-sm">
+                            {user.fullName?.charAt(0) || 'A'}
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900">{user.fullName}</p>
+                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-violet-100 text-violet-600 uppercase tracking-widest">Agent</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-xs text-slate-600">
+                            <Mail className="w-3 h-3 text-slate-400" />
+                            {user.email}
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-slate-600">
+                            <Phone className="w-3 h-3 text-slate-400" />
+                            {user.phone}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4 text-center">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-lg font-black text-slate-900">{user.dailyLeadTarget ?? 0}</span>
+                          <span className="text-[9px] font-bold text-slate-400 uppercase">leads/day</span>
+                        </div>
+                      </td>
+                      <td className="p-4 text-center">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-lg font-black text-slate-900">{user.monthlyConversionTarget ?? 0}</span>
+                          <span className="text-[9px] font-bold text-slate-400 uppercase">converts/mo</span>
+                        </div>
+                      </td>
+                      <td className="p-4 text-center">
+                        <span className="text-sm font-bold text-slate-700">{user._count?.leads ?? 0}</span>
+                      </td>
+                      <td className="p-4">
+                        <span className={cn(
+                          "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
+                          user.status === 'ACTIVE' ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
+                        )}>
+                          {user.status}
+                        </span>
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleViewProfile(user)}
+                            className="p-2 hover:bg-violet-50 rounded-lg text-slate-400 hover:text-violet-600 transition-all"
+                            title="View Profile"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => { setSelectedAffiliate(user); setIsEditModalOpen(true); }}
+                            className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-700 transition-all"
+                            title="Edit Targets"
+                          >
+                            <UserCog className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleStatusChange(user.id, user.fullName, user.status)}
+                            className={cn(
+                              "p-2 rounded-lg transition-all",
+                              user.status === 'ACTIVE'
+                                ? "hover:bg-red-50 text-slate-400 hover:text-red-600"
+                                : "hover:bg-green-50 text-slate-400 hover:text-green-600"
+                            )}
+                            title={user.status === 'ACTIVE' ? 'Suspend' : 'Reactivate'}
+                          >
+                            {user.status === 'ACTIVE' ? <ShieldAlert className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              /* AFFILIATES / SUPERVISORS TABLE */
+              <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="p-4 font-bold text-slate-600 text-sm">Affiliate</th>
                   <th className="p-4 font-bold text-slate-600 text-sm">Role</th>
                   <th className="p-4 font-bold text-slate-600 text-sm">Contact</th>
                   <th className="p-4 font-bold text-slate-600 text-sm text-center">Referrals</th>
+                  <th className="p-4 font-bold text-slate-600 text-sm text-center">Leads</th>
                   <th className="p-4 font-bold text-slate-600 text-sm">Status</th>
                   <th className="p-4 font-bold text-slate-600 text-sm text-right">Actions</th>
                 </tr>
@@ -260,7 +430,8 @@ export default function AffiliatesManagement() {
                         </div>
                       </div>
                     </td>
-                    <td className="p-4 text-sm text-slate-600 text-center font-bold">{user.referralCount || 0}</td>
+                    <td className="p-4 text-sm text-slate-600 text-center font-bold">{(user._count?.referrals ?? 0) + (user._count?.businesses ?? 0)}</td>
+                    <td className="p-4 text-sm text-slate-600 text-center font-bold">{user._count?.leads ?? 0}</td>
                     <td className="p-4">
                       <span className={cn(
                         "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
@@ -360,6 +531,7 @@ export default function AffiliatesManagement() {
                 ))}
               </tbody>
             </table>
+            )}
           </div>
           
           {/* Pagination */}
@@ -399,6 +571,11 @@ export default function AffiliatesManagement() {
           confirmModal.type === 'downgrade' ? 'Yes, Downgrade' :
           confirmModal.type === 'suspend' ? 'Yes, Suspend Account' : 'Yes, Reactivate Account'
         }
+      />
+
+      <AddAgentModal
+        isOpen={isAddAgentOpen}
+        onClose={() => setIsAddAgentOpen(false)}
       />
 
       <EditAffiliateModal
@@ -466,11 +643,25 @@ export default function AffiliatesManagement() {
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div className="flex items-center gap-2 text-blue-600 mb-1">
+                    <div className="flex items-center gap-2 text-purple-600 mb-1">
                       <Briefcase className="w-4 h-4" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest">Referrals</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest">Business</span>
                     </div>
-                    <p className="text-xl font-black text-slate-900">{selectedAffiliate.referralCount || 0}</p>
+                    <p className="text-xl font-black text-slate-900">{selectedAffiliate._count?.businesses ?? 0}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div className="flex items-center gap-2 text-blue-600 mb-1">
+                      <Users className="w-4 h-4" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest">Affiliates</span>
+                    </div>
+                    <p className="text-xl font-black text-slate-900">{selectedAffiliate._count?.referrals ?? 0}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div className="flex items-center gap-2 text-amber-600 mb-1">
+                      <UserPlus className="w-4 h-4" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest">Leads</span>
+                    </div>
+                    <p className="text-xl font-black text-slate-900">{selectedAffiliate._count?.leads ?? 0}</p>
                   </div>
                   <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                     <div className="flex items-center gap-2 text-emerald-600 mb-1">

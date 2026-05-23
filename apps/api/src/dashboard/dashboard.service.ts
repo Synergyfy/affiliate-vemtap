@@ -149,38 +149,42 @@ export class DashboardService {
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-    const [recruits, networkBusinesses] = await Promise.all([
+    const [recruits, networkBusinesses, supervisorsCount] = await Promise.all([
       this.prisma.user.findMany({
-        where: { referrerId: managerId, createdAt: { gte: ninetyDaysAgo } },
+        where: { referrerId: managerId },
+        include: { _count: { select: { businesses: true } } },
       }),
       this.prisma.business.count({
         where: {
-          affiliate: { referrerId: managerId },
-          createdAt: { gte: ninetyDaysAgo },
+          status: 'ACTIVE',
+          OR: [
+            { affiliateId: managerId },
+            { affiliate: { referrerId: managerId } }
+          ]
         },
       }),
+      this.prisma.user.count({
+        where: { referrerId: managerId, role: 'SUPERVISOR' }
+      })
     ]);
 
-    const activeAgents = recruits.filter((r) => r.referralCount > 0);
+    const activeAgents = recruits.filter((r) => r.role === 'AGENT' && r._count.businesses > 0);
 
     // Network Size: Sum of referrals' referrals (all time)
-    const directReferralIds = await this.prisma.user
-      .findMany({
-        where: { referrerId: managerId },
-        select: { id: true },
-      })
-      .then((users) => users.map((u) => u.id));
+    const directReferralIds = recruits.map((u) => u.id);
 
     const networkSize = await this.prisma.user.count({
       where: { referrerId: { in: directReferralIds } },
     });
 
+    const isQualified = activeAgents.length >= 10 && supervisorsCount >= 5 && networkBusinesses >= 100;
+
     return {
       activeAgentsCount: activeAgents.length,
       newNetworkBusinessesCount: networkBusinesses,
       networkSize,
-      isQualified: activeAgents.length >= 30 && networkBusinesses >= 100,
-      targetAgents: 30,
+      isQualified,
+      targetAgents: 10,
       targetBusinesses: 100,
     };
   }
@@ -218,13 +222,17 @@ export class DashboardService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const [user, activeReferrals, totalClicks, todayCommissions, todayClicks] = await Promise.all([
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    const [user, activeReferrals, totalClicks, todayCommissions, todayClicks, todayLeadsCount, monthlyLeadsCount, monthlyConversionsCount] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
         select: {
           totalEarnings: true,
           pendingEarnings: true,
           referralCount: true,
+          dailyLeadTarget: true,
+          monthlyConversionTarget: true,
         },
       }),
       this.prisma.business.count({
@@ -234,15 +242,27 @@ export class DashboardService {
         where: { userId },
       }),
       this.prisma.commission.aggregate({
-        where: { 
-          userId, 
-          createdAt: { gte: today }, 
-          status: { in: ['PENDING', 'APPROVED', 'PAID'] } 
+        where: {
+          userId,
+          createdAt: { gte: today },
+          status: { in: ['PENDING', 'APPROVED', 'PAID'] }
         },
         _sum: { amount: true }
       }),
       this.prisma.linkClick.count({
         where: { userId, createdAt: { gte: today } },
+      }),
+      // Leads submitted today by this user
+      this.prisma.lead.count({
+        where: { affiliateId: userId, createdAt: { gte: today } },
+      }),
+      // Leads submitted this month by this user
+      this.prisma.lead.count({
+        where: { affiliateId: userId, createdAt: { gte: startOfMonth } },
+      }),
+      // Businesses (conversions) created this month linked to this user
+      this.prisma.business.count({
+        where: { affiliateId: userId, status: 'ACTIVE', createdAt: { gte: startOfMonth } },
       }),
     ]);
 
@@ -263,6 +283,12 @@ export class DashboardService {
       referralCount,
       totalClicks,
       referralSignupUrl: this.configService.get<string>('VEMTAP_SIGNUP_URL') || 'https://vemtap.com/signup',
+      // Agent target metrics
+      dailyLeadTarget: user?.dailyLeadTarget || 0,
+      monthlyConversionTarget: user?.monthlyConversionTarget || 0,
+      todayLeadsCount,
+      monthlyLeadsCount,
+      monthlyConversionsCount,
     };
   }
 

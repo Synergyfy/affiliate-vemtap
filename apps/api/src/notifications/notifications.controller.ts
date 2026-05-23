@@ -40,7 +40,7 @@ export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @Get("me")
-  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Get current user notifications" })
   @ApiOkResponse({
     type: PaginatedNotificationResponseDto,
@@ -69,7 +69,7 @@ export class NotificationsController {
   }
 
   @Patch(":id/read")
-  @Roles(Role.AFFILIATE, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Mark notification as read" })
   @ApiOkResponse({
     type: NotificationResponseDto,

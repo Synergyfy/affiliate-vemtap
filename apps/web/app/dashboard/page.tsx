@@ -15,15 +15,18 @@ import {
   HelpCircle,
   TrendingUp,
   ArrowRight,
-  MessageCircle
+  MessageCircle,
+  CheckSquare
 } from 'lucide-react';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
+import AgentTargetTracker from '@/components/dashboard/AgentTargetTracker';
 import { useAuth } from '@/hooks/use-auth';
 import { useAffiliateStats } from '@/services/useDashboardHooks';
 import { Loader2 } from 'lucide-react';
 
 const gridItems = [
   { name: 'Leads Pipeline', icon: Target, color: 'from-blue-500 to-blue-700', href: '/dashboard/leads' },
+  { name: 'Operations Command', icon: CheckSquare, color: 'from-rose-500 to-pink-600', href: '/dashboard/operations' },
   { name: 'Referral Tools', icon: LinkIcon, color: 'from-emerald-400 to-teal-500', href: '/dashboard/tools' },
   { name: 'My Businesses', icon: Briefcase, color: 'from-orange-400 to-amber-500', href: '/dashboard/businesses' },
   { name: 'Wallet & Earnings', icon: Wallet, color: 'from-purple-500 to-indigo-600', href: '/dashboard/wallet' },
@@ -50,7 +53,7 @@ export default function MobileFirstDashboard() {
               {isLoading ? (
                 <div className="w-20 h-3 bg-white/20 animate-pulse rounded" />
               ) : (
-                stats?.currentLevel || 'Novice Affiliate'
+                user?.isManagerMode ? 'Supervisor' : stats?.currentLevel || 'Novice Affiliate'
               )}
             </div>
             <h1 className="text-3xl font-black leading-tight">Welcome,<br />{user?.firstName || user?.fullName?.split(' ')[0] || 'Affiliate'}!</h1>
@@ -75,7 +78,20 @@ export default function MobileFirstDashboard() {
 
         {/* Action Grid */}
         <div className="grid grid-cols-4 gap-y-10 gap-x-4 px-2">
-          {gridItems.map((item, idx) => (
+          {gridItems
+            .filter((item) => {
+              if (item.name === 'Operations Command') {
+                return user?.role === 'AGENT' || user?.role === 'SUPERVISOR' || user?.role === 'MANAGER';
+              }
+              if (item.name === 'Supervisor Network') {
+                return user?.role === 'SUPERVISOR' || user?.role === 'MANAGER' || user?.isManagerMode;
+              }
+              if (item.name === 'Referral Tools') {
+                return user?.role !== 'AGENT';
+              }
+              return true;
+            })
+            .map((item, idx) => (
             <motion.div
               key={item.name}
               initial={{ opacity: 0, scale: 0.8 }}
@@ -100,6 +116,11 @@ export default function MobileFirstDashboard() {
             </motion.div>
           ))}
         </div>
+
+        {/* Agent Target Tracker — visible only to agents */}
+        {user?.role === 'AGENT' && stats && (
+          <AgentTargetTracker stats={stats} />
+        )}
 
         {/* Quick Stats / Announcements */}
         <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm flex items-center justify-between">
