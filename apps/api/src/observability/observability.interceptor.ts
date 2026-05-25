@@ -55,7 +55,7 @@ export class ObservabilityLoggingInterceptor implements NestInterceptor {
             Object.keys(query || {}).length > 0 ? query : undefined,
           body:
             body && typeof body === 'object' && Object.keys(body).length > 0
-              ? body
+              ? this.truncate(body)
               : undefined,
           responseBody:
             responseBody && typeof responseBody === 'object'
@@ -85,7 +85,7 @@ export class ObservabilityLoggingInterceptor implements NestInterceptor {
             Object.keys(query || {}).length > 0 ? query : undefined,
           body:
             body && typeof body === 'object' && Object.keys(body).length > 0
-              ? body
+              ? this.truncate(body)
               : undefined,
           user: user
             ? { id: user.id, email: user.email, role: user.role }
@@ -126,20 +126,20 @@ export class ObservabilityLoggingInterceptor implements NestInterceptor {
     if (typeof obj !== 'object' || obj === null) return obj;
     try {
       const str = JSON.stringify(obj);
-      if (str.length > 5000) {
+      if (str.length > 1000) {
         if (Array.isArray(obj)) {
           const truncatedArray: any[] = [];
           let currentLength = 2; // "[]"
           for (const item of obj) {
             const itemStr = JSON.stringify(item);
-            if (currentLength + itemStr.length + 1 > 4800) {
+            if (currentLength + itemStr.length + 1 > 800) {
               break;
             }
             truncatedArray.push(item);
             currentLength += itemStr.length + 1;
           }
           truncatedArray.push({
-            _info: `Truncated ${obj.length - truncatedArray.length} items due to response size limit`,
+            _info: `Truncated ${obj.length - truncatedArray.length} items due to size limit`,
             _originalLength: obj.length,
           });
           return truncatedArray;
@@ -149,20 +149,20 @@ export class ObservabilityLoggingInterceptor implements NestInterceptor {
         let currentLength = 2; // "{}"
         for (const [key, value] of Object.entries(obj)) {
           const valStr = JSON.stringify({ [key]: value });
-          if (currentLength + valStr.length > 4800) {
+          if (currentLength + valStr.length > 800) {
             break;
           }
           truncatedObj[key] = value;
           currentLength += valStr.length;
         }
 
-        truncatedObj._info = 'Response body truncated due to size constraints';
+        truncatedObj._info = 'Body truncated due to size constraints';
         truncatedObj._originalLength = str.length;
         return truncatedObj;
       }
     } catch (err) {
       return {
-        _error: 'Failed to serialize or truncate response body',
+        _error: 'Failed to serialize or truncate body',
         message: err instanceof Error ? err.message : String(err),
       };
     }

@@ -57,12 +57,12 @@ describe('ObservabilityLoggingInterceptor', () => {
 
       expect(typeof result).toBe('object');
       expect(result).not.toBeNull();
-      expect(result._info).toContain('Response body truncated');
-      expect(result._originalLength).toBeGreaterThan(5000);
+      expect(result._info).toContain('Body truncated');
+      expect(result._originalLength).toBeGreaterThan(1000);
 
       // Verify it is JSON-serializable and under length
       const serialized = JSON.stringify(result);
-      expect(serialized.length).toBeLessThan(5000);
+      expect(serialized.length).toBeLessThan(1000);
       expect(() => JSON.parse(serialized)).not.toThrow();
     });
 
@@ -73,7 +73,7 @@ describe('ObservabilityLoggingInterceptor', () => {
       const result = (interceptor as any).truncate(circular);
 
       expect(result).toBeDefined();
-      expect(result._error).toBe('Failed to serialize or truncate response body');
+      expect(result._error).toBe('Failed to serialize or truncate body');
       expect(result.message).toContain('circular');
     });
   });
