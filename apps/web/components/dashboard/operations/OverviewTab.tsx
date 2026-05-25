@@ -11,7 +11,6 @@ import {
   MessageSquare,
   BarChart3,
   Trophy,
-  CheckCircle2
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/hooks/use-auth';
@@ -42,7 +41,7 @@ export default function OverviewTab() {
   return (
     <div className="space-y-8">
       {isManager && (
-        <div className="grid lg:grid-cols-4 gap-6">
+        <div className="grid lg:grid-cols-3 gap-6">
           <div className="bg-slate-900 p-6 rounded-[32px] text-white shadow-xl shadow-slate-200">
             <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-1">Team Revenue</p>
             <h4 className="text-2xl font-black mb-2">₦{isLoadingOpStats ? '...' : (opStats?.teamRevenue || 0).toLocaleString()}</h4>
@@ -65,14 +64,7 @@ export default function OverviewTab() {
               <span className="text-[10px] font-bold text-emerald-600">Total Pipeline Yield</span>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">SLA Performance</p>
-            <h4 className="text-2xl font-black text-slate-900 mb-2">{isLoadingOpStats ? '...' : `${opStats?.slaPerformance ?? 98}%`}</h4>
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-              <span className="text-[10px] font-bold text-emerald-600">Within Target</span>
-            </div>
-          </div>
+
         </div>
       )}
 

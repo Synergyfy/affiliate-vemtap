@@ -280,3 +280,51 @@ export interface NetworkStats {
   targetAgents: number;
   targetBusinesses: number;
 }
+
+export interface CustomAgreement {
+  id: string;
+  title: string;
+  description: string;
+  content: string;
+  targetRoles: Role[];
+  version: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AgreementSignature {
+  id: string;
+  agreementId: string;
+  agreement?: CustomAgreement;
+  userId: string;
+  user?: User;
+  version: number;
+  signedAt: string;
+}
+
+export interface AgreementStats {
+  agreementId: string;
+  title: string;
+  description: string;
+  version: number;
+  isActive: boolean;
+  createdAt: string;
+  stats: {
+    totalTargeted: number;
+    totalSigned: number;
+    totalPending: number;
+    signedPercentage: number;
+  };
+  signatures: {
+    userId: string;
+    fullName: string;
+    email: string;
+    role: Role;
+    signed: boolean;
+    signedVersion: number | null;
+    signedAt: string | null;
+    isUpToDate: boolean;
+  }[];
+}
+

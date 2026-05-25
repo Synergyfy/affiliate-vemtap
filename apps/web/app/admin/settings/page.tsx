@@ -109,7 +109,7 @@ export default function SettingsManagement() {
             <div className="flex items-center gap-2">
               <p className="text-sm text-slate-500 font-medium">Configure commission rates, payouts and system rules</p>
               <span>•</span>
-              <Link href="/admin/settings/agreement" className="text-sm font-bold text-blue-600 hover:underline">Edit Affiliate Agreement</Link>
+              <Link href="/admin/settings/agreement" className="text-sm font-bold text-blue-600 hover:underline">Manage Targeted Agreements</Link>
             </div>
           </div>
         </div>

@@ -80,6 +80,7 @@ model User {
   reportingScore           Decimal   @default(100)
   attendanceRate           Decimal   @default(100)
   territoryId              String?
+  agreementSignatures      AgreementSignature[]
 
   @@index([referralCode])
   @@index([referredBy])
@@ -138,6 +139,8 @@ model Business {
   trialEndsAt     DateTime?
   paidAt          DateTime?
   lastReminderAt  DateTime?
+  healthScore     Int      @default(100)
+  churnRisk       String   @default("LOW")
   
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -420,6 +423,8 @@ model PlatformSettings {
   
   maxIpUsage              Int       @default(2)
 
+  onboardingBonusAmount   Decimal   @default(2500)
+
   // Promotion requirements
   reqAgentActiveDays             Int      @default(90)
   reqAgentActiveBusinesses       Int      @default(40)
@@ -616,6 +621,7 @@ model Lead {
 
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+  deletedAt       DateTime?
 
   @@index([affiliateId])
   @@index([status])
@@ -735,3 +741,34 @@ model Activity {
   @@index([userId])
   @@index([type])
 }
+
+model Agreement {
+  id          String   @id @default(uuid())
+  title       String
+  description String   @db.Text
+  content     String   @db.Text
+  targetRoles Role[]   // PostgreSQL enum array of target roles
+  version     Int      @default(1)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  signatures  AgreementSignature[]
+
+  @@index([isActive])
+}
+
+model AgreementSignature {
+  id          String    @id @default(uuid())
+  agreementId String
+  agreement   Agreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  version     Int       // The version of the agreement when signed
+  signedAt    DateTime  @default(now())
+
+  @@unique([userId, agreementId, version])
+  @@index([agreementId])
+  @@index([userId])
+}
+

@@ -44,6 +44,7 @@ import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api-client';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useUsers, useUpdateUserStatus } from '@/services/useAdminHooks';
+import { useUserAgreementHistory } from '@/services/useAgreementHooks';
 import { Role, User as UserType } from '@/types/api';
 
 export default function AffiliatesManagement() {
@@ -73,6 +74,7 @@ export default function AffiliatesManagement() {
   });
 
   const updateStatus = useUpdateUserStatus();
+  const { data: userAgreements, isLoading: isLoadingUserAgs } = useUserAgreementHistory(selectedAffiliate?.id || '');
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   
@@ -712,6 +714,51 @@ export default function AffiliatesManagement() {
                         </div>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Agreements History Section */}
+                  <div className="space-y-4">
+                    <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-blue-500" /> Targeted Policies & Agreements
+                    </h5>
+                    
+                    {isLoadingUserAgs ? (
+                      <div className="flex items-center gap-2 text-slate-400 py-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span className="text-xs font-semibold">Loading agreement history...</span>
+                      </div>
+                    ) : userAgreements?.agreements && userAgreements.agreements.length > 0 ? (
+                      <div className="space-y-3">
+                        {userAgreements.agreements.map((ag: any) => (
+                          <div key={ag.agreementId} className="p-4 bg-slate-50 rounded-2xl border border-slate-100/80 flex items-center justify-between gap-4">
+                            <div className="min-w-0 flex-grow">
+                              <p className="text-xs font-bold text-slate-800 leading-tight truncate">{ag.title}</p>
+                              <p className="text-[9px] text-slate-400 font-semibold mt-1">
+                                {ag.signed 
+                                  ? `Signed v${ag.signedVersion} on ${new Date(ag.signedAt).toLocaleDateString()}` 
+                                  : `Pending Signature (Latest: v${ag.latestVersion})`}
+                              </p>
+                            </div>
+                            
+                            {ag.isUpToDate ? (
+                              <span className="shrink-0 inline-flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded text-[9px] font-black uppercase border border-emerald-100/50">
+                                <CheckCircle className="w-3 h-3" /> Up to date
+                              </span>
+                            ) : ag.signed ? (
+                              <span className="shrink-0 inline-flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded text-[9px] font-black uppercase border border-amber-100/50">
+                                Outdated v{ag.signedVersion}
+                              </span>
+                            ) : (
+                              <span className="shrink-0 inline-flex items-center gap-1 text-red-600 bg-red-50 px-2 py-0.5 rounded text-[9px] font-black uppercase border border-red-100/50">
+                                Unsigned
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-400 italic py-2">No targeted agreements deployed for this user role.</p>
+                    )}
                   </div>
                 </div>
 

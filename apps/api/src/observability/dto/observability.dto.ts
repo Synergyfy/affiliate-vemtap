@@ -1,5 +1,6 @@
 import { IsOptional, IsString, IsEnum, IsInt, Min, Max } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 
 export enum HttpMethod {
   GET = 'GET',
@@ -46,12 +47,14 @@ export class QueryLogsDto {
 
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   page?: number = 1;
 
   @ApiPropertyOptional({ default: 50 })
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(500)

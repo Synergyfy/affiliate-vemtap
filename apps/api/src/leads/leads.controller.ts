@@ -45,7 +45,7 @@ export class LeadsController {
   @Get(':id')
   @ApiOperation({ summary: 'Get a specific lead' })
   findOne(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.leadsService.findOne(id, user.id);
+    return this.leadsService.findOne(id, user);
   }
 
   @Patch(':id')
@@ -55,12 +55,12 @@ export class LeadsController {
     @CurrentUser() user: any,
     @Body() updateLeadDto: UpdateLeadDto,
   ) {
-    return this.leadsService.update(id, user.id, updateLeadDto);
+    return this.leadsService.update(id, user, updateLeadDto);
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete a lead' })
+  @ApiOperation({ summary: 'Soft delete a lead' })
   remove(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.leadsService.remove(id, user.id);
+    return this.leadsService.remove(id, user);
   }
 }

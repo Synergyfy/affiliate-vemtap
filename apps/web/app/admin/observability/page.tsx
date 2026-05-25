@@ -195,7 +195,7 @@ export default function ObservabilityDashboard() {
   }, []);
 
   // Mode: LIVE or SANDBOX
-  const [sandboxMode, setSandboxMode] = useState<boolean>(true);
+  const [sandboxMode, setSandboxMode] = useState<boolean>(false);
   const [liveStreamActive, setLiveStreamActive] = useState<boolean>(true);
 
   // Filters State
@@ -227,7 +227,7 @@ export default function ObservabilityDashboard() {
 
   // Load initial sandbox dataset
   useEffect(() => {
-    if (sandboxLogs.length === 0) {
+    if (sandboxMode && sandboxLogs.length === 0) {
       const logsList: LogEntry[] = [];
       const now = Date.now();
       // Backfill 80 logs with simulated past timestamps
@@ -238,7 +238,7 @@ export default function ObservabilityDashboard() {
       }
       setSandboxLogs(logsList);
     }
-  }, [sandboxLogs.length]);
+  }, [sandboxMode, sandboxLogs.length]);
 
   // Periodic sandbox ticker to simulate incoming real-time requests (every 2.5s)
   useEffect(() => {
@@ -369,8 +369,8 @@ export default function ObservabilityDashboard() {
               data: [newLog, ...oldData.data.slice(0, 49)] // Prepend and slice to maintain length
             };
           });
-          // Invalidate stats to pull new metrics
-          queryClient.invalidateQueries({ queryKey: ['observability', 'stats'] });
+          // Stats are fetched periodically (every 5s) by React Query's refetchInterval when active.
+          // Invalidation here is disabled to avoid flooding the server with HTTP requests on every SSE event.
         } catch (err) {
           console.error('Failed to parse SSE payload', err);
         }
