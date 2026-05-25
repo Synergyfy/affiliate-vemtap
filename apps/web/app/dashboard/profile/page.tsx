@@ -17,7 +17,9 @@ import {
   Clock,
   Loader2,
   Search,
-  ChevronDown
+  ChevronDown,
+  Eye,
+  FileText
 } from 'lucide-react';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { Button } from '@/components/ui/Button';
@@ -26,6 +28,7 @@ import { useToast } from '@/hooks/toast';
 import { api } from '@/lib/api-client';
 import { useAuth } from '@/hooks/use-auth';
 import { useBanks, useResolveAccount } from '@/hooks/use-payments';
+import { useMySignatures } from '@/services/useAgreementHooks';
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuth();
@@ -33,6 +36,9 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [kycStatus, setKycStatus] = useState<'unverified' | 'pending' | 'verified'>('unverified');
+
+  const { data: signatures, isLoading: isLoadingSigs } = useMySignatures();
+  const [selectedAgreement, setSelectedAgreement] = useState<any | null>(null);
 
   const { banks, isLoading: isLoadingBanks } = useBanks();
   const { resolveAccount, isVerifying } = useResolveAccount();
@@ -577,6 +583,119 @@ export default function ProfilePage() {
             </Button>
           </div>
         </form>
+
+        {/* Signed Agreements Section */}
+        <section className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900">Signed Agreements History</h3>
+          </div>
+
+          {isLoadingSigs ? (
+            <div className="flex items-center gap-2 text-slate-400 py-4">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span className="text-xs font-semibold">Loading agreement logs...</span>
+            </div>
+          ) : signatures && signatures.length > 0 ? (
+            <div className="divide-y divide-slate-100">
+              {signatures.map((sig) => (
+                <div key={sig.id} className="py-4 first:pt-0 last:pb-0 flex items-center justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 shrink-0">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-800 leading-tight">
+                        {sig.agreement?.title || 'Unknown Agreement'}
+                      </h4>
+                      <p className="text-slate-400 text-[10px] font-semibold mt-0.5">
+                        Signed Version {sig.version} • {new Date(sig.signedAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const { data } = await api.get(`/agreements/${sig.agreementId}`);
+                        setSelectedAgreement(data);
+                      } catch {
+                        showToast('Failed to load agreement text', 'error');
+                      }
+                    }}
+                    className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-950 rounded-xl text-xs font-bold transition-colors active:scale-95"
+                  >
+                    <Eye className="w-4 h-4" /> Read Terms
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 bg-slate-50 rounded-2xl border border-slate-100/50">
+              <FileText className="w-8 h-8 text-slate-350 mx-auto mb-2" />
+              <p className="text-slate-500 font-bold text-sm">No signed agreements found</p>
+              <p className="text-slate-400 text-xs mt-0.5">
+                If new agreements are posted for your role, they will be prompted here.
+              </p>
+            </div>
+          )}
+        </section>
+
+        {/* View Agreement Detail Modal */}
+        <AnimatePresence>
+          {selectedAgreement && (
+            <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm"
+                onClick={() => setSelectedAgreement(null)}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative w-full max-w-xl bg-white rounded-[32px] border border-slate-100 shadow-2xl p-6 sm:p-8 space-y-6 my-auto max-h-[85vh] flex flex-col"
+              >
+                <div className="shrink-0">
+                  <h3 className="text-lg font-black text-slate-900 leading-tight">{selectedAgreement.title}</h3>
+                  <p className="text-slate-400 text-[10px] font-semibold tracking-wider mt-1 uppercase">
+                    Target Roles: {selectedAgreement.targetRoles?.join(', ')} • Current Version {selectedAgreement.version}
+                  </p>
+                </div>
+
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100/80 shrink-0">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Description</p>
+                  <p className="text-xs font-semibold text-slate-600 leading-normal">{selectedAgreement.description}</p>
+                </div>
+
+                <div className="overflow-y-auto flex-grow bg-slate-50 p-5 rounded-2xl border border-slate-100 max-h-[300px] text-xs leading-relaxed text-slate-600 scrollbar-thin">
+                  <div 
+                    className="prose prose-slate prose-xs max-w-none prose-h4:text-slate-800 prose-h4:font-bold prose-p:text-slate-600" 
+                    dangerouslySetInnerHTML={{ __html: selectedAgreement.content }} 
+                  />
+                </div>
+
+                <Button
+                  onClick={() => setSelectedAgreement(null)}
+                  className="w-full h-12 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold shrink-0 shadow-lg shadow-slate-100"
+                >
+                  Close Document
+                </Button>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </DashboardLayout>
   );

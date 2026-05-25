@@ -15,14 +15,47 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/hooks/use-toast';
-import { useDemos } from '@/services/useOperationsHooks';
+import { useDemos, useCreateDemo, useUpdateDemo } from '@/services/useOperationsHooks';
 
 export default function DemosTab() {
   const { showToast } = useToast();
   const { data: demos = [], isLoading } = useDemos();
 
+  const createDemo = useCreateDemo();
+  const updateDemo = useUpdateDemo();
+
   const handleAction = (action: string) => {
     showToast(`${action} action triggered`, 'info');
+  };
+
+  const handleScheduleDemo = async () => {
+    const businessName = prompt('Business name:');
+    if (!businessName) return;
+    const date = prompt('Demo date (YYYY-MM-DD):');
+    if (!date) return;
+    try {
+      await createDemo.mutateAsync({ businessName, date });
+      showToast('Demo scheduled successfully', 'success');
+    } catch {
+      showToast('Failed to schedule demo', 'error');
+    }
+  };
+
+  const handleCompleteDemo = async (id: string) => {
+    try {
+      await updateDemo.mutateAsync({ id, data: { status: 'COMPLETED' } });
+      showToast('Demo marked as completed', 'success');
+    } catch {
+      showToast('Failed to update demo', 'error');
+    }
+  };
+
+  const handleJoinMeeting = (url?: string) => {
+    if (url) {
+      window.open(url, '_blank');
+    } else {
+      showToast('No meeting link available', 'info');
+    }
   };
 
   const upcomingToday = demos.filter(d => {
@@ -59,7 +92,7 @@ export default function DemosTab() {
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-bold text-slate-900">Upcoming Demos</h3>
         <Button 
-          onClick={() => handleAction('Schedule Demo')}
+          onClick={handleScheduleDemo}
           className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold h-10 rounded-xl px-6"
         >
           Schedule New Demo
@@ -120,10 +153,10 @@ export default function DemosTab() {
 
               <div className="flex items-center gap-2">
                 <Button 
-                  onClick={() => handleAction(demo.meetingUrl ? 'Joining Meeting' : 'Viewing Details')}
+                  onClick={() => demo.status === 'SCHEDULED' ? handleCompleteDemo(demo.id) : handleAction('Viewing Details')}
                   className="flex-grow bg-slate-900 hover:bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest h-11 rounded-xl shadow-lg transition-all"
                 >
-                  {demo.meetingUrl ? 'Join Meeting' : 'View Details'}
+                  {demo.status === 'SCHEDULED' ? 'Mark Completed' : demo.meetingUrl ? 'Join Meeting' : 'View Details'}
                 </Button>
                 <Button 
                   onClick={() => handleAction('Options')}
@@ -135,13 +168,6 @@ export default function DemosTab() {
               </div>
             </div>
             
-            <div className="bg-slate-50 px-6 py-3 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Preparation Task</span>
-              <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span className="text-[10px] font-black text-emerald-600">Deck Ready</span>
-              </div>
-            </div>
           </div>
         ))}
       </div>

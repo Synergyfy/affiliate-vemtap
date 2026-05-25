@@ -1,4 +1,6 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
 import { 
   CreateTaskDto, UpdateTaskDto, 
@@ -9,7 +11,10 @@ import { TaskStatus, DemoStatus, OnboardingStatus, OnboardingStage } from '@pris
 
 @Injectable()
 export class OperationsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {}
 
   // --- TASKS ---
   async findAllTasks(userId: string, role: string) {
@@ -129,6 +134,118 @@ export class OperationsService {
     });
   }
 
+  // --- BUSINESS HEALTH ---
+  async getBusinessHealth(userId: string, role: string) {
+    const cacheKey = `business_health_${role === 'ADMIN' || role === 'SUPER_ADMIN' ? 'all' : userId}`;
+    const cached = await this.cacheManager.get<any>(cacheKey);
+    if (cached) return cached;
+
+    const isPrivileged = role === 'ADMIN' || role === 'SUPER_ADMIN';
+    const businesses = await this.prisma.business.findMany({
+      where: isPrivileged ? {} : { affiliateId: userId },
+      include: {
+        onboarding: { select: { stage: true } },
+        affiliate: { select: { id: true, fullName: true } },
+      },
+    });
+
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const recentActivities = await this.prisma.activity.findMany({
+      where: {
+        businessName: { in: businesses.map(b => b.businessName) },
+        createdAt: { gte: thirtyDaysAgo },
+      },
+      select: { businessName: true, createdAt: true },
+    });
+
+    const recentActivityMap = new Map<string, Date>();
+    for (const act of recentActivities) {
+      if (!act.businessName) continue;
+      const existing = recentActivityMap.get(act.businessName);
+      if (!existing || act.createdAt > existing) {
+        recentActivityMap.set(act.businessName, act.createdAt);
+      }
+    }
+
+    const healthData = businesses.map(business => {
+      const lastActivity = recentActivityMap.get(business.businessName);
+      let score = 0;
+
+      switch (business.status) {
+        case 'ACTIVE': score = 80; break;
+        case 'TRIAL': score = 50; break;
+        case 'EXPIRED': score = 20; break;
+        case 'CANCELLED': score = 10; break;
+        default: score = 40;
+      }
+
+      if (lastActivity) {
+        if (lastActivity >= sevenDaysAgo) score += 20;
+        else if (lastActivity >= thirtyDaysAgo) score += 10;
+      }
+
+      if (business.onboarding?.stage === 'ACTIVATION') score += 10;
+      else if (business.onboarding?.stage === 'SETUP') score += 5;
+
+      if (Number(business.subscriptionAmount) > 0) score += 10;
+
+      score = Math.min(100, Math.max(0, score));
+
+      let churnRisk: string;
+      if (business.status === 'EXPIRED' || business.status === 'CANCELLED') {
+        churnRisk = 'HIGH';
+      } else if (score < 30) {
+        churnRisk = 'HIGH';
+      } else if (score < 60) {
+        churnRisk = 'MEDIUM';
+      } else {
+        churnRisk = 'LOW';
+      }
+
+      return {
+        businessId: business.id,
+        businessName: business.businessName,
+        status: business.status,
+        healthScore: score,
+        churnRisk,
+        lastActivity: lastActivity?.toISOString() || null,
+        affiliateName: business.affiliate?.fullName || '',
+      };
+    });
+
+    const result = {
+      businesses: healthData,
+      summary: {
+        totalBusinesses: healthData.length,
+        highRisk: healthData.filter(b => b.churnRisk === 'HIGH').length,
+        mediumRisk: healthData.filter(b => b.churnRisk === 'MEDIUM').length,
+        lowRisk: healthData.filter(b => b.churnRisk === 'LOW').length,
+        averageHealthScore: healthData.length > 0
+          ? Math.round(healthData.reduce((s, b) => s + b.healthScore, 0) / healthData.length)
+          : 100,
+      },
+    };
+
+    await this.cacheManager.set(cacheKey, result, 300 * 1000);
+    return result;
+  }
+
+  // --- ONBOARDING BONUS ---
+  async getOnboardingBonus(): Promise<{ amount: number }> {
+    const cacheKey = 'onboarding_bonus';
+    const cached = await this.cacheManager.get<{ amount: number }>(cacheKey);
+    if (cached) return cached;
+
+    const settings = await this.prisma.platformSettings.findFirst();
+    const amount = Number(settings?.onboardingBonusAmount || 2500);
+    const result = { amount };
+    await this.cacheManager.set(cacheKey, result, 300 * 1000); // 5 min cache
+    return result;
+  }
+
   // --- STATS ---
   async getOperationalStats(userId: string, role: string) {
     const isPrivileged = role === 'ADMIN' || role === 'SUPER_ADMIN';
@@ -161,7 +278,6 @@ export class OperationsService {
       activeOnboarding,
       leadConversion,
       teamRevenue,
-      slaPerformance: 98,
     };
   }
 }

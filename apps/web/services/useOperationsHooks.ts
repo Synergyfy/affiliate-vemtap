@@ -53,7 +53,6 @@ export interface OperationalStats {
   upcomingDemos: number;
   activeOnboarding: number;
   leadConversion: number;
-  slaPerformance: number;
   teamRevenue: number;
 }
 
@@ -92,6 +91,18 @@ export function useActivities() {
   });
 }
 
+export function useCreateTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { title: string; description?: string; priority?: string; dueDate?: string }) => 
+      api.post('/operations/tasks', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['operations-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['operations-stats'] });
+    },
+  });
+}
+
 export function useUpdateTask() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -99,6 +110,18 @@ export function useUpdateTask() {
       api.patch(`/operations/tasks/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['operations-tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['operations-stats'] });
+    },
+  });
+}
+
+export function useCreateDemo() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { businessName: string; date: string; meetingUrl?: string; notes?: string; leadId?: string }) => 
+      api.post('/operations/demos', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['operations-demos'] });
       queryClient.invalidateQueries({ queryKey: ['operations-stats'] });
     },
   });
@@ -113,6 +136,43 @@ export function useUpdateDemo() {
       queryClient.invalidateQueries({ queryKey: ['operations-demos'] });
       queryClient.invalidateQueries({ queryKey: ['operations-stats'] });
     },
+  });
+}
+
+export interface BusinessHealthItem {
+  businessId: string;
+  businessName: string;
+  status: string;
+  healthScore: number;
+  churnRisk: string;
+  lastActivity: string | null;
+  affiliateName: string;
+}
+
+export interface BusinessHealthResponse {
+  businesses: BusinessHealthItem[];
+  summary: {
+    totalBusinesses: number;
+    highRisk: number;
+    mediumRisk: number;
+    lowRisk: number;
+    averageHealthScore: number;
+  };
+}
+
+export function useBusinessHealth() {
+  return useQuery<BusinessHealthResponse>({
+    queryKey: ['operations-business-health'],
+    queryFn: () => api.get('/operations/business-health'),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useOnboardingBonus() {
+  return useQuery<{ amount: number }>({
+    queryKey: ['operations-onboarding-bonus'],
+    queryFn: () => api.get('/operations/onboarding/bonus'),
+    staleTime: 5 * 60 * 1000,
   });
 }
 

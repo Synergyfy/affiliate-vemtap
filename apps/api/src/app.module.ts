@@ -17,6 +17,7 @@ import { FraudModule } from './fraud/fraud.module';
 import { TrainingModule } from './training/training.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { SettingsModule } from './settings/settings.module';
+import { AgreementsModule } from './agreements/agreements.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ApiKeysModule } from './api-keys/api-keys.module';
@@ -57,6 +58,7 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
     TrainingModule,
     NotificationsModule,
     SettingsModule,
+    AgreementsModule,
     TransactionsModule,
     PaymentsModule,
     ApiKeysModule,

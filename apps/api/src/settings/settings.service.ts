@@ -57,6 +57,7 @@ export class SettingsService implements OnModuleInit {
           linkExpiryDays: 30,
           managerRewardDurationMonths: 12,
           maxIpUsage: 2,
+          onboardingBonusAmount: 2500,
           reqAgentActiveDays: 90,
           reqAgentActiveBusinesses: 40,
           reqAgentMinReportingScore: 85.0,
@@ -78,6 +79,10 @@ export class SettingsService implements OnModuleInit {
         }
 
         // Automatic backfill check for new customizable settings fields
+        if (settings.onboardingBonusAmount === undefined || settings.onboardingBonusAmount === null) {
+          updateData.onboardingBonusAmount = 2500;
+        }
+
         if (settings.reqAgentActiveDays === undefined || settings.reqAgentActiveDays === null) {
           updateData.reqAgentActiveDays = 90;
           updateData.reqAgentActiveBusinesses = 40;

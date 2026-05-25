@@ -17,7 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/hooks/use-toast';
-import { useOnboarding } from '@/services/useOperationsHooks';
+import { useOnboarding, useUpdateOnboarding, useOnboardingBonus } from '@/services/useOperationsHooks';
 
 const stages = [
   { id: 'QR_DESIGN', name: 'QR Design', icon: QrCode },
@@ -30,8 +30,28 @@ export default function OnboardingTab() {
   const { showToast } = useToast();
   const { data: onboarding = [], isLoading } = useOnboarding();
 
+  const updateOnboarding = useUpdateOnboarding();
+
+  const { data: bonus } = useOnboardingBonus();
+
   const handleAction = (action: string) => {
     showToast(`${action} action triggered`, 'info');
+  };
+
+  const handleAdvanceStage = async (id: string, currentStage: string) => {
+    const stageOrder = ['QR_DESIGN', 'SHIPMENT', 'SETUP', 'ACTIVATION'];
+    const currentIdx = stageOrder.indexOf(currentStage);
+    if (currentIdx === -1 || currentIdx >= stageOrder.length - 1) {
+      showToast('Already at final stage', 'info');
+      return;
+    }
+    const nextStage = stageOrder[currentIdx + 1];
+    try {
+      await updateOnboarding.mutateAsync({ id, data: { stage: nextStage } });
+      showToast(`Advanced to ${stages.find(s => s.id === nextStage)?.name || nextStage}`, 'success');
+    } catch {
+      showToast('Failed to advance stage', 'error');
+    }
   };
 
   return (
@@ -147,7 +167,7 @@ export default function OnboardingTab() {
                       </div>
                       <div className="flex items-center gap-2 mt-4">
                         <Button 
-                          onClick={() => handleAction('Advancing Stage')}
+                          onClick={() => handleAdvanceStage(item.id, item.stage)}
                           className="flex-grow bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest h-10 rounded-xl"
                         >
                           Advance Stage
@@ -178,7 +198,7 @@ export default function OnboardingTab() {
                     className="bg-slate-900 p-4 rounded-2xl text-center cursor-pointer hover:bg-slate-800 transition-all"
                   >
                     <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Activation Bonus</p>
-                    <p className="text-sm font-black text-white">₦2,500</p>
+                    <p className="text-sm font-black text-white">₦{bonus?.amount?.toLocaleString() || '2,500'}</p>
                   </div>
                 </div>
               </div>
