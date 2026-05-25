@@ -20,14 +20,26 @@ import { Button } from '@/components/ui/Button';
 import { useToast } from '@/hooks/use-toast';
 
 import { useMyBusinesses } from '@/services/useBusinessHooks';
+import { useBusinessHealth } from '@/services/useOperationsHooks';
 
 export default function BusinessesTab() {
   const { showToast } = useToast();
   const { data: businessesResponse, isLoading } = useMyBusinesses({ limit: 50 });
+  const { data: healthData } = useBusinessHealth();
   const businesses = businessesResponse?.data || [];
+  const healthMap = new Map(healthData?.businesses.map(b => [b.businessId, b]) || []);
 
   const handleAction = (action: string) => {
     showToast(`${action} action triggered`, 'info');
+  };
+
+  const handleReviewRisks = () => {
+    if (!healthData || healthData.summary.highRisk === 0) {
+      showToast('No high-risk businesses found', 'info');
+      return;
+    }
+    const names = healthData.businesses.filter(b => b.churnRisk === 'HIGH').map(b => b.businessName);
+    showToast(`High-risk businesses: ${names.join(', ')}`, 'info');
   };
 
   return (
@@ -125,11 +137,19 @@ export default function BusinessesTab() {
                     <div className="flex items-center gap-3 max-w-[120px]">
                       <div className="flex-grow h-1.5 bg-slate-100 rounded-full overflow-hidden">
                         <div 
-                          className="h-full rounded-full bg-emerald-500 transition-all duration-1000"
-                          style={{ width: `85%` }}
+                          className={cn(
+                            "h-full rounded-full transition-all duration-1000",
+                            (healthMap.get(business.id)?.healthScore ?? 85) >= 70 ? "bg-emerald-500" :
+                            (healthMap.get(business.id)?.healthScore ?? 85) >= 40 ? "bg-orange-500" : "bg-red-500"
+                          )}
+                          style={{ width: `${healthMap.get(business.id)?.healthScore ?? 85}%` }}
                         />
                       </div>
-                      <span className="text-[10px] font-black text-emerald-600">85%</span>
+                      <span className={cn(
+                        "text-[10px] font-black",
+                        (healthMap.get(business.id)?.healthScore ?? 85) >= 70 ? "text-emerald-600" :
+                        (healthMap.get(business.id)?.healthScore ?? 85) >= 40 ? "text-orange-600" : "text-red-600"
+                      )}>{healthMap.get(business.id)?.healthScore ?? 85}%</span>
                     </div>
                   </td>
                   <td className="px-6 py-5">
@@ -168,25 +188,27 @@ export default function BusinessesTab() {
       </div>
       
       {/* Risk Alert Panel */}
-      <div className="bg-red-50 border border-red-100 p-6 rounded-[32px] flex flex-col md:flex-row items-center justify-between gap-6">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-red-600 shadow-sm shadow-red-100">
-            <AlertCircle className="w-6 h-6" />
+      {healthData && healthData.summary.highRisk > 0 && (
+        <div className="bg-red-50 border border-red-100 p-6 rounded-[32px] flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-red-600 shadow-sm shadow-red-100">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="text-sm font-black text-red-900 uppercase tracking-widest mb-1">Customer Churn Alert</h4>
+              <p className="text-xs text-red-700 font-medium max-w-md">
+                {healthData.summary.highRisk} {healthData.summary.highRisk === 1 ? 'Business has' : 'Businesses have'} low engagement scores. Immediate follow-up recommended to prevent churn.
+              </p>
+            </div>
           </div>
-          <div>
-            <h4 className="text-sm font-black text-red-900 uppercase tracking-widest mb-1">Customer Churn Alert</h4>
-            <p className="text-xs text-red-700 font-medium max-w-md">
-              3 Businesses have low engagement scores this week. Immediate follow-up recommended to prevent churn.
-            </p>
-          </div>
+          <Button 
+            onClick={handleReviewRisks}
+            className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-black uppercase tracking-widest h-11 px-8 rounded-xl shadow-lg shadow-red-200 shrink-0"
+          >
+            Review Risks
+          </Button>
         </div>
-        <Button 
-          onClick={() => handleAction('Risk Review')}
-          className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-black uppercase tracking-widest h-11 px-8 rounded-xl shadow-lg shadow-red-200 shrink-0"
-        >
-          Review Risks
-        </Button>
-      </div>
+      )}
     </div>
   );
 }

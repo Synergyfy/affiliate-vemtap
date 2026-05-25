@@ -9,7 +9,10 @@ export class LeadsService {
 
   async findAll(user: any, filters: LeadFilterDto) {
     const isPrivileged = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
-    const where: any = isPrivileged ? {} : { affiliateId: user.id };
+    const where: any = {
+      deletedAt: null,
+      ...(isPrivileged ? {} : { affiliateId: user.id }),
+    };
 
     if (filters.status) {
       where.status = filters.status;
@@ -46,16 +49,17 @@ export class LeadsService {
   }
 
 
-  async findOne(id: string, userId: string) {
+  async findOne(id: string, user: any) {
     const lead = await this.prisma.lead.findUnique({
-      where: { id },
+      where: { id, deletedAt: null },
     });
 
     if (!lead) {
       throw new NotFoundException('Lead not found');
     }
 
-    if (lead.affiliateId !== userId) {
+    const isPrivileged = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
+    if (!isPrivileged && lead.affiliateId !== user.id) {
       throw new ForbiddenException('You do not have access to this lead');
     }
 
@@ -72,8 +76,8 @@ export class LeadsService {
     });
   }
 
-  async update(id: string, userId: string, dto: UpdateLeadDto) {
-    const lead = await this.findOne(id, userId);
+  async update(id: string, user: any, dto: UpdateLeadDto) {
+    const lead = await this.findOne(id, user);
 
     return this.prisma.lead.update({
       where: { id },
@@ -84,10 +88,11 @@ export class LeadsService {
     });
   }
 
-  async remove(id: string, userId: string) {
-    await this.findOne(id, userId);
-    return this.prisma.lead.delete({
+  async remove(id: string, user: any) {
+    await this.findOne(id, user);
+    return this.prisma.lead.update({
       where: { id },
+      data: { deletedAt: new Date() },
     });
   }
 

@@ -29,6 +29,7 @@ import { createContext, useContext } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import OnboardingModal from './OnboardingModal';
+import AgreementSignModal from './AgreementSignModal';
 import DashboardTour from './DashboardTour';
 import Image from 'next/image';
 
@@ -362,6 +363,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           <div className="p-4 md:p-8 lg:p-12 max-w-7xl mx-auto w-full">
             <OnboardingModal />
+            <AgreementSignModal />
             {children}
           </div>
         </main>

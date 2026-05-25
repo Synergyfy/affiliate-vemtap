@@ -61,4 +61,14 @@ export class OperationsController {
   getActivities(@Req() req: any) {
     return this.operationsService.findAllActivities(req.user.id, req.user.role);
   }
+
+  @Get('business-health')
+  getBusinessHealth(@Req() req: any) {
+    return this.operationsService.getBusinessHealth(req.user.id, req.user.role);
+  }
+
+  @Get('onboarding/bonus')
+  getOnboardingBonus() {
+    return this.operationsService.getOnboardingBonus();
+  }
 }

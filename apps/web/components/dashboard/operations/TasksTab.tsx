@@ -13,14 +13,37 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/hooks/use-toast';
-import { useTasks } from '@/services/useOperationsHooks';
+import { useTasks, useCreateTask, useUpdateTask } from '@/services/useOperationsHooks';
 
 export default function TasksTab() {
   const { showToast } = useToast();
   const { data: tasks = [], isLoading } = useTasks();
 
+  const createTask = useCreateTask();
+  const updateTask = useUpdateTask();
+
   const handleAction = (action: string) => {
     showToast(`${action} action triggered`, 'info');
+  };
+
+  const handleCreateTask = async () => {
+    const title = prompt('Task title:');
+    if (!title) return;
+    try {
+      await createTask.mutateAsync({ title });
+      showToast('Task created successfully', 'success');
+    } catch {
+      showToast('Failed to create task', 'error');
+    }
+  };
+
+  const handleCompleteTask = async (id: string, title: string) => {
+    try {
+      await updateTask.mutateAsync({ id, data: { status: 'COMPLETED' } });
+      showToast(`Task "${title}" completed`, 'success');
+    } catch {
+      showToast('Failed to update task', 'error');
+    }
   };
 
   const overdueCount = tasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'COMPLETED').length;
@@ -51,7 +74,7 @@ export default function TasksTab() {
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
         <div className="flex items-center gap-2">
           <Button 
-            onClick={() => handleAction('Create Task')}
+            onClick={handleCreateTask}
             className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold h-10 rounded-xl px-6 flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
@@ -89,7 +112,7 @@ export default function TasksTab() {
             <div key={task.id} className="p-6 hover:bg-slate-50 transition-colors group flex items-center justify-between gap-6">
               <div className="flex items-center gap-4 flex-grow">
                 <button 
-                  onClick={() => showToast(`Task: "${task.title}" completed!`, 'success')}
+                  onClick={() => task.status !== 'COMPLETED' && handleCompleteTask(task.id, task.title)}
                   className={cn(
                     "w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all group/check shrink-0",
                     task.status === 'COMPLETED' ? "bg-emerald-500 border-emerald-500" : "border-slate-200 hover:border-blue-500 hover:bg-blue-50"

@@ -2,40 +2,56 @@
 
 import { 
   PhoneCall, 
-  MessageCircle, 
-  Mail, 
   AlertCircle, 
   CheckCircle2, 
   Clock, 
-  Calendar as CalendarIcon,
   MoreHorizontal,
-  ChevronRight,
   RefreshCw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/hooks/use-toast';
-import { useLeads } from '@/services/useLeadsHooks';
+import { useLeads, useUpdateLead } from '@/services/useLeadsHooks';
 
 export default function FollowUpsTab() {
   const { showToast } = useToast();
   const { data: response, isLoading } = useLeads({ status: 'CONTACTED' });
   const leads = response?.data || [];
-
+  const updateLead = useUpdateLead();
 
   // Filter leads that have follow-up dates and are not completed
   const followUps = leads.filter(lead => lead.followUpDate).map(lead => ({
     id: lead.id,
     business: lead.businessName,
     contact: lead.contactName,
-    type: 'Call', // Defaulting to Call for now
     dueDate: lead.followUpDate ? new Date(lead.followUpDate).toLocaleString() : 'N/A',
     priority: lead.priority.charAt(0) + lead.priority.slice(1).toLowerCase(),
-    status: 'Pending'
+    status: 'Pending',
+    leadData: lead,
   }));
 
   const handleAction = (action: string) => {
     showToast(`${action} action triggered`, 'info');
+  };
+
+  const handleComplete = async (id: string) => {
+    try {
+      await updateLead.mutateAsync({ id, data: { status: 'COMPLETED' as any } });
+      showToast('Follow-up marked as completed', 'success');
+    } catch {
+      showToast('Failed to complete follow-up', 'error');
+    }
+  };
+
+  const handleReschedule = async (id: string) => {
+    const newDate = prompt('Enter new follow-up date (YYYY-MM-DD):');
+    if (!newDate) return;
+    try {
+      await updateLead.mutateAsync({ id, data: { followUpDate: newDate } });
+      showToast('Follow-up rescheduled', 'success');
+    } catch {
+      showToast('Failed to reschedule follow-up', 'error');
+    }
   };
 
   return (
@@ -93,10 +109,7 @@ export default function FollowUpsTab() {
                   item.priority === 'High' ? "bg-red-50 text-red-600" : 
                   item.priority === 'Medium' ? "bg-orange-50 text-orange-600" : "bg-blue-50 text-blue-600"
                 )}>
-                  {item.type === 'Call' && <PhoneCall className="w-6 h-6" />}
-                  {item.type === 'Email' && <Mail className="w-6 h-6" />}
-                  {item.type === 'WhatsApp' && <MessageCircle className="w-6 h-6" />}
-                  {item.type === 'Meeting' && <CalendarIcon className="w-6 h-6" />}
+                  <PhoneCall className="w-6 h-6" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
@@ -133,14 +146,14 @@ export default function FollowUpsTab() {
                 </div>
                 <div className="col-span-2 md:col-span-2 lg:flex items-center gap-2">
                   <Button 
-                    onClick={() => handleAction(`Complete ${item.business}`)}
+                    onClick={() => handleComplete(item.id)}
                     className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-widest h-10 px-4 rounded-xl flex items-center gap-2"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     Complete
                   </Button>
                   <Button 
-                    onClick={() => handleAction(`Reschedule ${item.business}`)}
+                    onClick={() => handleReschedule(item.id)}
                     variant="outline" 
                     className="border-slate-100 text-slate-400 hover:text-blue-600 hover:border-blue-100 text-[10px] font-black uppercase tracking-widest h-10 px-4 rounded-xl"
                   >

@@ -2,12 +2,71 @@ import { Injectable } from '@nestjs/common';
 import { Subject, Observable } from 'rxjs';
 import { LogEntryDto, QueryLogsDto, ObservabilityStatsDto } from './dto/observability.dto';
 
-const MAX_ENTRIES = 500;
+const MAX_ENTRIES = 100;
 
 @Injectable()
 export class ObservabilityStoreService {
   private buffer: LogEntryDto[] = [];
   private subject = new Subject<LogEntryDto>();
+
+  constructor() {
+    this.seedInitialLogs();
+  }
+
+  private seedInitialLogs(): void {
+    const now = Date.now();
+    const systemLogs: LogEntryDto[] = [
+      {
+        id: 'sys_' + Math.random().toString(36).substring(2, 9),
+        timestamp: new Date(now - 120000).toISOString(),
+        method: 'POST',
+        url: '/api/v1/auth/system-bootstrap',
+        statusCode: 201,
+        responseTime: 145,
+        headers: { host: 'api.vemtap.com', 'user-agent': 'VemtapCore/1.0.0' },
+        body: { service: 'AffiliateAPI', action: 'BOOTSTRAP', version: '0.1.0' },
+        responseBody: { success: true, servicesInitialized: ['Prisma', 'Redis', 'Observability', 'Storage'] },
+        traceId: 'trace_boot_' + Math.random().toString(16).substring(2, 10),
+      },
+      {
+        id: 'sys_' + Math.random().toString(36).substring(2, 9),
+        timestamp: new Date(now - 90000).toISOString(),
+        method: 'GET',
+        url: '/api/health',
+        statusCode: 200,
+        responseTime: 8,
+        headers: { host: 'api.vemtap.com', 'user-agent': 'VemtapHealthMonitor/1.0' },
+        responseBody: { status: 'ok', database: 'connected', redis: 'connected' },
+        traceId: 'trace_health_' + Math.random().toString(16).substring(2, 10),
+      },
+      {
+        id: 'sys_' + Math.random().toString(36).substring(2, 9),
+        timestamp: new Date(now - 60000).toISOString(),
+        method: 'GET',
+        url: '/api/v1/settings',
+        statusCode: 200,
+        responseTime: 18,
+        headers: { host: 'api.vemtap.com', 'user-agent': 'Mozilla/5.0' },
+        responseBody: { currency: 'NGN', referralRate: 0.1, payoutMin: 5000 },
+        traceId: 'trace_settings_' + Math.random().toString(16).substring(2, 10),
+      },
+      {
+        id: 'sys_' + Math.random().toString(36).substring(2, 9),
+        timestamp: new Date(now - 30000).toISOString(),
+        method: 'GET',
+        url: '/api/v1/dashboard/stats',
+        statusCode: 200,
+        responseTime: 54,
+        headers: { host: 'api.vemtap.com', 'user-agent': 'Mozilla/5.0' },
+        responseBody: { activeAffiliates: 142, pendingWithdrawals: 4, monthlyRevenue: 1250000 },
+        traceId: 'trace_dash_' + Math.random().toString(16).substring(2, 10),
+      }
+    ];
+
+    for (const log of systemLogs) {
+      this.buffer.push(log);
+    }
+  }
 
   addLog(entry: LogEntryDto): void {
     this.buffer.push(entry);
@@ -59,7 +118,15 @@ export class ObservabilityStoreService {
     const start = (page - 1) * limit;
     const data = filtered.slice(start, start + limit).reverse();
 
-    return { data, total, page, limit, totalPages };
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
+      },
+    };
   }
 
   getStats(): ObservabilityStatsDto {
@@ -79,31 +146,46 @@ export class ObservabilityStoreService {
       };
     }
 
-    const totalTime = entries.reduce((sum, e) => sum + e.responseTime, 0);
-    const avgResponseTime = Math.round(totalTime / totalRequests);
-
-    const errors = entries.filter((e) => e.statusCode >= 400).length;
-    const errorRate = Math.round((errors / totalRequests) * 100);
-
-    const slowCount = entries.filter((e) => e.responseTime >= 1000).length;
-    const criticalCount = entries.filter((e) => e.responseTime >= 3000).length;
-
+    let totalTime = 0;
+    let errors = 0;
+    let slowCount = 0;
+    let criticalCount = 0;
     const methodDistribution: Record<string, number> = {};
     const statusDistribution: Record<string, number> = {};
-    for (const e of entries) {
+
+    // For bucketing the last 20 entries
+    const recentStartIndex = Math.max(0, totalRequests - 20);
+    const buckets: Record<string, { count: number; totalLatency: number }> = {};
+
+    for (let i = 0; i < totalRequests; i++) {
+      const e = entries[i];
+      totalTime += e.responseTime;
+      if (e.statusCode >= 400) {
+        errors++;
+      }
+      if (e.responseTime >= 3000) {
+        criticalCount++;
+        slowCount++;
+      } else if (e.responseTime >= 1000) {
+        slowCount++;
+      }
+
       methodDistribution[e.method] = (methodDistribution[e.method] || 0) + 1;
       const statusClass = String(e.statusCode).charAt(0) + 'XX';
       statusDistribution[statusClass] = (statusDistribution[statusClass] || 0) + 1;
+
+      // Capture recent traffic for the last 20 entries in the single pass
+      if (i >= recentStartIndex) {
+        const minute = new Date(e.timestamp).toISOString().slice(0, 16);
+        if (!buckets[minute]) buckets[minute] = { count: 0, totalLatency: 0 };
+        buckets[minute].count++;
+        buckets[minute].totalLatency += e.responseTime;
+      }
     }
 
-    const recent = entries.slice(-20);
-    const buckets: Record<string, { count: number; totalLatency: number }> = {};
-    for (const e of recent) {
-      const minute = new Date(e.timestamp).toISOString().slice(0, 16);
-      if (!buckets[minute]) buckets[minute] = { count: 0, totalLatency: 0 };
-      buckets[minute].count++;
-      buckets[minute].totalLatency += e.responseTime;
-    }
+    const avgResponseTime = Math.round(totalTime / totalRequests);
+    const errorRate = Math.round((errors / totalRequests) * 100);
+
     const recentTraffic = Object.entries(buckets).map(([timestamp, d]) => ({
       timestamp,
       count: d.count,

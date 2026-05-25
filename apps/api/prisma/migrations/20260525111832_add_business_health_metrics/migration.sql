@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Business" ADD COLUMN     "churnRisk" TEXT NOT NULL DEFAULT 'LOW',
+ADD COLUMN     "healthScore" INTEGER NOT NULL DEFAULT 100;
