@@ -37,7 +37,8 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [kycStatus, setKycStatus] = useState<'unverified' | 'pending' | 'verified'>('unverified');
 
-  const { data: signatures, isLoading: isLoadingSigs } = useMySignatures();
+  const { data: rawSignatures, isLoading: isLoadingSigs } = useMySignatures();
+  const signatures = Array.isArray(rawSignatures) ? rawSignatures : rawSignatures ? [] : null;
   const [selectedAgreement, setSelectedAgreement] = useState<any | null>(null);
 
   const { banks, isLoading: isLoadingBanks } = useBanks();

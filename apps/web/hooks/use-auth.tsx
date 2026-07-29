@@ -82,6 +82,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     setError(null);
     try {
+      if (process.env.NEXT_PUBLIC_ADMIN_MOCK === 'true') {
+        const isAffiliate = email.toLowerCase().includes('affiliate') || email.toLowerCase().includes('dashboard') || email.toLowerCase() === 'test@vemtap.com';
+        
+        const mockAdminUser: User = {
+          id: isAffiliate ? 'affiliate-mock-user-1' : 'admin-mock-user-1',
+          fullName: isAffiliate ? 'Affiliate User' : 'Admin User',
+          email: email || 'admin@vemtap.com',
+          phone: '+2348012345678',
+          referralCode: isAffiliate ? 'AFFILIATE1' : 'ADMINMOCK',
+          role: isAffiliate ? 'AFFILIATE' : 'SUPER_ADMIN',
+          hasAcceptedTerms: true,
+          hasSignedAgreement: true,
+          isKycVerified: true,
+          kycStatus: 'VERIFIED',
+          totalEarnings: 1500000,
+        };
+        
+        // Try real login first if backend is running, otherwise use mock user
+        try {
+          const response = await api.post('/auth/login', { email, password });
+          if (response?.user) {
+            setUser(response.user);
+            setIsAuthenticated(true);
+            localStorage.setItem('vemtap_user', JSON.stringify(response.user));
+            return response.user;
+          }
+        } catch (apiErr) {
+          console.warn('Backend API unavailable. Falling back to mock admin login mode.', apiErr);
+        }
+
+        const MOCK_TOKEN = isAffiliate 
+          ? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiQUZGSUxJQVRFIiwiaWF0IjoxNjAwMDAwMDAwfQ.signature" 
+          : "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiU1VQRVJfQURNSU4iLCJpYXQiOjE2MDAwMDAwMDB9.signature";
+        setUser(mockAdminUser);
+        setIsAuthenticated(true);
+        localStorage.setItem('vemtap_user', JSON.stringify(mockAdminUser));
+        if (typeof window !== 'undefined') {
+          document.cookie = "vemtap_logged_out=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+          document.cookie = `vemtap-auth-token=${MOCK_TOKEN}; path=/; max-age=86400`;
+        }
+        return mockAdminUser;
+      }
+
       const response = await api.post('/auth/login', { email, password });
       const { user } = response;
       
@@ -104,6 +147,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     setError(null);
     try {
+      if (process.env.NEXT_PUBLIC_ADMIN_MOCK === 'true') {
+        const mockNewUser: User = {
+          id: 'user-mock-signup',
+          fullName: userData.fullName || 'New User',
+          email: userData.email || 'user@example.com',
+          phone: userData.phone || '+2348000000000',
+          referralCode: 'MOCKUSER1',
+          role: 'SUPER_ADMIN',
+          hasAcceptedTerms: true,
+          hasSignedAgreement: true,
+          isKycVerified: true,
+          kycStatus: 'VERIFIED',
+        };
+
+        try {
+          const response = await api.post('/auth/signup', userData);
+          if (response?.user) {
+            setUser(response.user);
+            setIsAuthenticated(true);
+            localStorage.setItem('vemtap_user', JSON.stringify(response.user));
+            return response.user;
+          }
+        } catch (apiErr) {
+          console.warn('Backend API unavailable. Falling back to mock signup.', apiErr);
+        }
+
+        const MOCK_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiU1VQRVJfQURNSU4iLCJpYXQiOjE2MDAwMDAwMDB9.signature";
+        setUser(mockNewUser);
+        setIsAuthenticated(true);
+        localStorage.setItem('vemtap_user', JSON.stringify(mockNewUser));
+        if (typeof window !== 'undefined') {
+          document.cookie = "vemtap_logged_out=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+          document.cookie = `vemtap-auth-token=${MOCK_TOKEN}; path=/; max-age=86400`;
+        }
+        return mockNewUser;
+      }
+
       const response = await api.post('/auth/signup', userData);
       const { user } = response;
       
@@ -131,7 +211,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await api.post('/auth/logout');
+      if (process.env.NEXT_PUBLIC_ADMIN_MOCK !== 'true') {
+        await api.post('/auth/logout');
+      }
     } catch (err) {
       console.error('Logout error:', err);
     } finally {
@@ -140,6 +222,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('vemtap_user');
       if (typeof window !== 'undefined') {
         document.cookie = "vemtap_logged_out=true; path=/; max-age=31536000";
+        document.cookie = "vemtap-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
       }
     }
   };

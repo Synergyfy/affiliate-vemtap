@@ -16,7 +16,8 @@ import {
   TrendingUp,
   ArrowRight,
   MessageCircle,
-  CheckSquare
+  CheckSquare,
+  BarChart3
 } from 'lucide-react';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import AgentTargetTracker from '@/components/dashboard/AgentTargetTracker';
@@ -25,7 +26,8 @@ import { useAffiliateStats } from '@/services/useDashboardHooks';
 import { Loader2 } from 'lucide-react';
 
 const gridItems = [
-  { name: 'Leads Pipeline', icon: Target, color: 'from-blue-500 to-blue-700', href: '/dashboard/leads' },
+  { name: 'Market Mapping', icon: Target, color: 'from-blue-500 to-blue-700', href: '/dashboard/market-mapping' },
+  { name: 'Pipeline', icon: BarChart3, color: 'from-indigo-500 to-purple-600', href: '/dashboard/market-mapping/pipeline' },
   { name: 'Operations Command', icon: CheckSquare, color: 'from-rose-500 to-pink-600', href: '/dashboard/operations' },
   { name: 'Referral Tools', icon: LinkIcon, color: 'from-emerald-400 to-teal-500', href: '/dashboard/tools' },
   { name: 'My Businesses', icon: Briefcase, color: 'from-orange-400 to-amber-500', href: '/dashboard/businesses' },
@@ -33,7 +35,6 @@ const gridItems = [
   { name: 'Supervisor Network', icon: Users, color: 'from-sky-400 to-blue-500', href: '/dashboard/network' },
   { name: 'Sales Academy', icon: BookOpen, color: 'from-indigo-400 to-purple-500', href: '/dashboard/training' },
   { name: 'Leaderboard', icon: Trophy, color: 'from-yellow-400 to-orange-500', href: '/dashboard/leaderboard' },
-  { name: 'My Profile', icon: User, color: 'from-slate-500 to-slate-700', href: '/dashboard/profile' },
   { name: 'Support', icon: HelpCircle, color: 'from-rose-400 to-red-500', href: '/support' },
 ];
 
@@ -57,11 +58,11 @@ export default function MobileFirstDashboard() {
               )}
             </div>
             <h1 className="text-3xl font-black leading-tight">Welcome,<br />{user?.firstName || user?.fullName?.split(' ')[0] || 'Affiliate'}!</h1>
-            <p className="text-sm text-blue-100/80 font-medium max-w-[240px]">Record a new business lead or manage your existing network.</p>
+            <p className="text-sm text-blue-100/80 font-medium max-w-[240px]">Plan your mission, execute visits, and grow your business network.</p>
             
             <div className="flex gap-3 pt-2">
-              <Link href="/dashboard/leads" className="bg-white text-slate-900 px-6 py-3 rounded-2xl text-xs font-black shadow-lg shadow-white/10 active:scale-95 transition-transform">
-                New Lead
+              <Link href="/dashboard/market-mapping" className="bg-white text-slate-900 px-6 py-3 rounded-2xl text-xs font-black shadow-lg shadow-white/10 active:scale-95 transition-transform">
+                Market Mapping
               </Link>
               <Link href="/dashboard/wallet" className="bg-blue-600/50 backdrop-blur-md text-white border border-white/20 px-6 py-3 rounded-2xl text-xs font-black active:scale-95 transition-transform">
                 Withdraw

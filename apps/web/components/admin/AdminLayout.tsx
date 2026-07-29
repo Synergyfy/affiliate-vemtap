@@ -19,13 +19,15 @@ import {
   BookOpen,
   FileText,
   Target,
-  Activity
+  Activity,
+  Globe2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const adminSidebarItems = [
   { name: 'Admin Overview', icon: Shield, href: '/admin' },
   { name: 'Operations Command', icon: Target, href: '/admin/operations' },
+  { name: 'Market Mapping', icon: Globe2, href: '/admin/market-mapping' },
   { name: 'Affiliates', icon: Users, href: '/admin/affiliates' },
   { name: 'Businesses & Referrals', icon: Briefcase, href: '/admin/referrals' },
   { name: 'Commissions', icon: Percent, href: '/admin/commissions' },
