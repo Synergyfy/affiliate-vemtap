@@ -27,6 +27,7 @@ import { OtpModule } from './otp/otp.module';
 import { TrackingModule } from './tracking/tracking.module';
 import { ShortLinksModule } from './tools/short-links/short-links.module';
 import { LeadsModule } from './leads/leads.module';
+import { AgentsModule } from './agents/agents.module';
 import { OperationsModule } from './operations/operations.module';
 import { ObservabilityModule } from './observability/observability.module';
 import { RequestIdMiddleware } from './observability/request-id.middleware';
@@ -45,6 +46,7 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
     AuthModule,
     ShortLinksModule,
     LeadsModule,
+    AgentsModule,
     OperationsModule,
     ObservabilityModule,
     ToolsModule,

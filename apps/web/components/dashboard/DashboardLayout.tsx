@@ -22,7 +22,8 @@ import {
   Home,
   CheckSquare,
   Star,
-  LineChart
+  LineChart,
+  Map
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createContext, useContext } from 'react';
@@ -50,8 +51,8 @@ export const useDashboard = () => {
 
 const sidebarItems = [
   { name: 'Home', icon: Home, href: '/dashboard' },
-  { name: 'Leads', icon: Target, href: '/dashboard/leads' },
   { name: 'Operations', icon: CheckSquare, href: '/dashboard/operations' },
+  { name: 'Market Mapping', icon: Map, href: '/dashboard/market-mapping' },
   { name: 'Referral Tools', icon: LinkIcon, href: '/dashboard/tools' },
   { name: 'Businesses', icon: Briefcase, href: '/dashboard/businesses' },
   { name: 'Supervisor', icon: Users, href: '/dashboard/network' },
@@ -63,7 +64,7 @@ const sidebarItems = [
 
 const mobileNavItems = [
   { name: 'Home', icon: Home, href: '/dashboard' },
-  { name: 'Leads', icon: Target, href: '/dashboard/leads' },
+  { name: 'Map', icon: Map, href: '/dashboard/market-mapping' },
   { name: 'VIP', icon: Star, href: '/dashboard/network' },
   { name: 'Profit', icon: LineChart, href: '/dashboard/wallet' },
   { name: 'My', icon: User, href: '/dashboard/profile' },
