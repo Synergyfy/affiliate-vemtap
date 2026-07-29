@@ -36,6 +36,7 @@ import { api } from '@/lib/api-client';
 import { useAuth } from '@/hooks/use-auth';
 import { AnimatePresence } from 'framer-motion';
 import { usePortfolioStats } from '@/services/useDashboardHooks';
+import { useMarketMapping } from '@/components/dashboard/market-mapping/MarketMappingContext';
 
 const initialBusinesses = [
   { id: 1, name: 'Tech Solutions Ltd', plan: 'Premium', status: 'Active', payment: 'Paid', commission: '₦15,000', date: '2024-03-15' },
@@ -62,6 +63,7 @@ const paymentColors = {
 export default function BusinessesPage() {
   const { user } = useAuth();
   const { data: portfolioStats } = usePortfolioStats();
+  const { visits } = useMarketMapping();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [businesses, setBusinesses] = useState<any[]>([]);
@@ -78,7 +80,6 @@ export default function BusinessesPage() {
     setIsLoading(true);
     try {
       const response = await api.get('/businesses/me');
-      // Map backend fields to frontend expectations
       const mapped = (response.data || []).map((b: any) => ({
         ...b,
         name: b.businessName,
@@ -87,9 +88,47 @@ export default function BusinessesPage() {
         commission: `₦${Number(b.commissionAmount || 0).toLocaleString()}`,
         date: new Date(b.createdAt).toISOString().split('T')[0]
       }));
-      setBusinesses(mapped);
+
+      // Merge subscribed businesses from market mapping
+      const mmCustomers = visits
+        .filter(v => v.status === 'CUSTOMER' && !v.isPlaceholder)
+        .map(v => ({
+          id: `mm-${v.id}`,
+          name: v.name,
+          plan: 'Basic',
+          status: 'Active',
+          payment: 'Paid',
+          commission: '₦0',
+          date: new Date().toISOString().split('T')[0],
+          address: v.address || '',
+          phone: v.phone || '',
+          createdAt: new Date().toISOString(),
+          source: 'market-mapping' as const,
+        }));
+
+      // Deduplicate by name
+      const existingNames = new Set(mapped.map((b: any) => (b.name || '').toLowerCase()));
+      const uniqueMm = mmCustomers.filter(b => !existingNames.has(b.name.toLowerCase()));
+
+      setBusinesses([...mapped, ...uniqueMm]);
     } catch (error) {
-      showToast('Failed to load businesses', 'error');
+      // On API failure, still show market mapping businesses
+      const mmCustomers = visits
+        .filter(v => v.status === 'CUSTOMER' && !v.isPlaceholder)
+        .map(v => ({
+          id: `mm-${v.id}`,
+          name: v.name,
+          plan: 'Basic',
+          status: 'Active',
+          payment: 'Paid',
+          commission: '₦0',
+          date: new Date().toISOString().split('T')[0],
+          address: v.address || '',
+          phone: v.phone || '',
+          createdAt: new Date().toISOString(),
+          source: 'market-mapping' as const,
+        }));
+      setBusinesses(mmCustomers);
     } finally {
       setIsLoading(false);
     }
@@ -97,7 +136,7 @@ export default function BusinessesPage() {
 
   useEffect(() => {
     fetchBusinesses();
-  }, []);
+  }, [visits]);
 
   const handleAddOrEditBusiness = async (data: any) => {
     try {
