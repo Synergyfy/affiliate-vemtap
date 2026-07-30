@@ -285,7 +285,7 @@ export default function ProfilePage() {
               
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 text-blue-600 animate-spin mb-4" />
+                   <Loader2 className="w-8 h-8 text-blue-600 animate-pulse mb-4" />
                   <p className="text-slate-500 font-bold">Fetching your profile details...</p>
                 </div>
               ) : (
@@ -444,7 +444,7 @@ export default function ProfilePage() {
                       <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-48 overflow-y-auto">
                         {isLoadingBanks ? (
                           <div className="px-4 py-3 text-sm text-slate-500 flex items-center gap-2">
-                            <Loader2 className="w-3 h-3 animate-spin" /> Loading banks...
+                            <Loader2 className="w-3 h-3 animate-pulse" /> Loading banks...
                           </div>
                         ) : banks.filter(b => b.name.toLowerCase().includes(bankSearch.toLowerCase())).length > 0 ? (
                           banks
@@ -500,7 +500,7 @@ export default function ProfilePage() {
                     />
                     {isVerifying && (
                       <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                        <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                         <Loader2 className="w-5 h-5 text-blue-600 animate-pulse" />
                       </div>
                     )}
                     {!isVerifying && profileData.accountName && selectedBankCode && profileData.accountNumber.length === 10 && (
@@ -548,7 +548,7 @@ export default function ProfilePage() {
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Level</p>
                     <p className="text-sm font-bold text-blue-600">
-                      {user?.isManagerMode ? 'Supervisor' : 'Affiliate'}
+                      {user?.isManagerMode ? 'Line Manager' : 'Affiliate'}
                     </p>
                   </div>
                 </div>
@@ -596,7 +596,7 @@ export default function ProfilePage() {
 
           {isLoadingSigs ? (
             <div className="flex items-center gap-2 text-slate-400 py-4">
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Loader2 className="w-5 h-5 animate-pulse" />
               <span className="text-xs font-semibold">Loading agreement logs...</span>
             </div>
           ) : signatures && signatures.length > 0 ? (

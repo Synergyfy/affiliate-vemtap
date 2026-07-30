@@ -19,7 +19,8 @@ import { useDemos, useCreateDemo, useUpdateDemo } from '@/services/useOperations
 
 export default function DemosTab() {
   const { showToast } = useToast();
-  const { data: demos = [], isLoading } = useDemos();
+  const { data: demosData, isLoading } = useDemos();
+  const demos = Array.isArray(demosData) ? demosData : [];
 
   const createDemo = useCreateDemo();
   const updateDemo = useUpdateDemo();

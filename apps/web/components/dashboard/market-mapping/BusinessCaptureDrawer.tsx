@@ -5,9 +5,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Save, Check, Navigation, Star, ChevronDown, Search, Info, MapPin, Clock, ArrowRight
 } from 'lucide-react';
-import { PlannedVisit, BUSINESS_CATEGORIES, DAILY_CUSTOMER_RANGES, OPENING_DAYS } from '@/types/affiliate-market-mapping';
+import { PlannedVisit } from '@/types/affiliate-market-mapping';
 import { cn } from '@/lib/utils';
 import { useMarketMapping } from './MarketMappingContext';
+import { useMarketMappingConfig } from '@/hooks/use-market-mapping-config';
 
 interface BusinessCaptureDrawerProps {
   visit: PlannedVisit | null;
@@ -118,10 +119,45 @@ function countFilledFields(d: Partial<PlannedVisit>): { filled: number; total: n
   return { filled, total };
 }
 
-const CONTACT_POSITIONS = ['Owner', 'Manager', 'HR Manager', 'Sales Manager', 'Custom'];
-
 export default function BusinessCaptureDrawer({ visit, onClose, onSave }: BusinessCaptureDrawerProps) {
   const { missionPlans } = useMarketMapping();
+  const { data: config } = useMarketMappingConfig();
+
+  const categories = config?.businessCategories ?? [
+    'Supermarket / Grocery', 'Pharmacy', 'Restaurant / Fast Food', 'Retail / Clothing',
+    'Electronics / Phone Accessories', 'Beauty / Salon / Barbing', 'Fuel / Gas Station',
+    'Hotel / Lodge', 'School / Training Center', 'Hospital / Clinic', 'Bakery / Confectionery',
+    'Water / Pure Water', 'POS / Bureau de Change', 'Printing / Cyber Cafe', 'Auto / Mechanic',
+    'Construction / Building Materials', 'Agriculture / Farm Supplies', 'Fashion / Tailoring',
+    'Entertainment / Event Center', 'Professional Services', 'Other',
+  ];
+  const customerRanges = config?.customerRanges ?? [
+    { value: 'LOW', label: 'Low (1–30)', min: 1, max: 30 },
+    { value: 'MEDIUM', label: 'Medium (31–100)', min: 31, max: 100 },
+    { value: 'HIGH', label: 'High (101–300)', min: 101, max: 300 },
+    { value: 'VERY_HIGH', label: 'Very High (300+)', min: 300, max: Infinity },
+  ];
+  const openingDays = config?.openingDays ?? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const contactPositions = config?.contactPositions ?? ['Owner', 'Manager', 'HR Manager', 'Sales Manager', 'Custom'];
+  const businessSizes = config?.businessSizes ?? [
+    { value: 'SMALL', label: 'Small (1–5 staff)', minStaff: 1, maxStaff: 5 },
+    { value: 'MEDIUM', label: 'Medium (6–20 staff)', minStaff: 6, maxStaff: 20 },
+    { value: 'LARGE', label: 'Large (21+ staff)', minStaff: 21, maxStaff: Infinity },
+  ];
+  const interestOptions = config?.interestOptions ?? [
+    { value: 'YES', label: 'Interested' },
+    { value: 'NO', label: 'Not Interested' },
+    { value: 'MAYBE', label: 'Maybe / Not decided' },
+  ];
+  const pipelineStatusOptions = config?.pipelineStatuses ?? [
+    { id: 'NOT_YET', name: 'Not yet' },
+    { id: 'VISITED', name: 'Visited' },
+    { id: 'CONTACTED', name: 'Contacted' },
+    { id: 'INTERESTED', name: 'Interested' },
+    { id: 'NOT_INTERESTED', name: 'Not Interested' },
+    { id: 'CUSTOMER', name: 'Customer' },
+  ];
+
   const activePlan = missionPlans[missionPlans.length - 1];
   const planLocation = activePlan?.location || '';
 
@@ -133,6 +169,14 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
   const [showDaysDropdown, setShowDaysDropdown] = useState(false);
   const [customPosition, setCustomPosition] = useState('');
   const prevVisitId = useRef<string | null>(null);
+  const openTimeRef = useRef<HTMLInputElement>(null);
+  const closeTimeRef = useRef<HTMLInputElement>(null);
+  const visitDateRef = useRef<HTMLInputElement>(null);
+  const visitTimeRef = useRef<HTMLInputElement>(null);
+
+  const triggerPicker = (ref: React.RefObject<HTMLInputElement | null>) => {
+    try { ref.current?.showPicker?.(); } catch { ref.current?.click(); }
+  };
 
   useEffect(() => {
     if (visit && visit.id !== prevVisitId.current) {
@@ -163,9 +207,9 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
   }, [formData, activeTab, onSave]);
 
   const filteredCategories = useMemo(() => {
-    if (!categorySearch) return BUSINESS_CATEGORIES;
-    return BUSINESS_CATEGORIES.filter(c => c.toLowerCase().includes(categorySearch.toLowerCase()));
-  }, [categorySearch]);
+    if (!categorySearch) return categories;
+    return categories.filter(c => c.toLowerCase().includes(categorySearch.toLowerCase()));
+  }, [categorySearch, categories]);
 
   const isAnchor = formData.dailyCustomers === 'HIGH' || formData.dailyCustomers === 'VERY_HIGH';
   const { filled, total } = countFilledFields(formData);
@@ -278,7 +322,7 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
                     <FieldLabel label="Contact Position" tooltip={TOOLTIPS.contactPosition} />
                     <select value={formData.contactPosition || ''} onChange={e => { const val = e.target.value; setFormData({ ...formData, contactPosition: val }); if (val !== 'Custom') setCustomPosition(''); }} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-400 transition-all">
                       <option value="">Select...</option>
-                      {CONTACT_POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                      {contactPositions.map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
                     {formData.contactPosition === 'Custom' && (
                       <input type="text" placeholder="Enter position..." value={customPosition} onChange={e => { setCustomPosition(e.target.value); setFormData({ ...formData, contactPosition: `Custom: ${e.target.value}` }); }} className="w-full mt-2 px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-400 transition-all" />
@@ -298,16 +342,14 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
                     <FieldLabel label="Business Size" tooltip={TOOLTIPS.businessSize} />
                     <select value={formData.businessSize || ''} onChange={e => setFormData({ ...formData, businessSize: e.target.value })} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-400 transition-all">
                       <option value="">Select size...</option>
-                      <option value="SMALL">Small (1–5 staff)</option>
-                      <option value="MEDIUM">Medium (6–20 staff)</option>
-                      <option value="LARGE">Large (21+ staff)</option>
+                      {businessSizes.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                     </select>
                   </div>
                   <div>
                     <FieldLabel label="Daily Customers" tooltip={TOOLTIPS.dailyCustomers} />
                     <select value={formData.dailyCustomers || ''} onChange={e => setFormData({ ...formData, dailyCustomers: e.target.value })} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-400 transition-all">
                       <option value="">Select range...</option>
-                      {DAILY_CUSTOMER_RANGES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                      {customerRanges.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                     </select>
                     {isAnchor && <p className="text-[10px] text-amber-600 font-semibold mt-1">Anchor business</p>}
                   </div>
@@ -316,11 +358,17 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-[10px] text-slate-400 mb-1">Open</label>
-                        <input type="time" value={formData.openingHours?.split('-')[0] || ''} onChange={e => { const close = formData.openingHours?.split('-')[1] || ''; setFormData({ ...formData, openingHours: `${e.target.value}-${close}` }); }} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-400 transition-all" />
+                        <button type="button" onClick={() => triggerPicker(openTimeRef)} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-left cursor-pointer hover:border-blue-300 transition-all">
+                          <span className="text-slate-700">{formData.openingHours?.split('-')[0] || 'Select time'}</span>
+                          <input ref={openTimeRef} type="time" value={formData.openingHours?.split('-')[0] || ''} onChange={e => { const close = formData.openingHours?.split('-')[1] || ''; setFormData({ ...formData, openingHours: `${e.target.value}-${close}` }); }} className="sr-only" />
+                        </button>
                       </div>
                       <div>
                         <label className="block text-[10px] text-slate-400 mb-1">Close</label>
-                        <input type="time" value={formData.openingHours?.split('-')[1] || ''} onChange={e => { const open = formData.openingHours?.split('-')[0] || ''; setFormData({ ...formData, openingHours: `${open}-${e.target.value}` }); }} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-400 transition-all" />
+                        <button type="button" onClick={() => triggerPicker(closeTimeRef)} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-left cursor-pointer hover:border-blue-300 transition-all">
+                          <span className="text-slate-700">{formData.openingHours?.split('-')[1] || 'Select time'}</span>
+                          <input ref={closeTimeRef} type="time" value={formData.openingHours?.split('-')[1] || ''} onChange={e => { const open = formData.openingHours?.split('-')[0] || ''; setFormData({ ...formData, openingHours: `${open}-${e.target.value}` }); }} className="sr-only" />
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -329,19 +377,19 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
                     <div className="relative">
                       <button type="button" onClick={() => setShowDaysDropdown(!showDaysDropdown)} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-left flex items-center justify-between focus:outline-none focus:border-blue-400 transition-all">
                         <span className={formData.openingDays?.length ? "text-slate-700" : "text-slate-400"}>
-                          {formData.openingDays?.length === OPENING_DAYS.length ? 'All Days' : formData.openingDays?.length ? formData.openingDays.join(', ') : 'Select days...'}
+                          {formData.openingDays?.length === openingDays.length ? 'All Days' : formData.openingDays?.length ? formData.openingDays.join(', ') : 'Select days...'}
                         </span>
                         <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", showDaysDropdown && "rotate-180")} />
                       </button>
                       {showDaysDropdown && (
                         <div className="absolute z-30 top-full mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
                           <div className="p-2 border-b border-slate-100">
-                            <button type="button" onClick={() => { const all = formData.openingDays?.length === OPENING_DAYS.length; setFormData({ ...formData, openingDays: all ? [] : [...OPENING_DAYS] }); }} className={cn("w-full px-3 py-1.5 rounded-lg text-[11px] font-semibold", formData.openingDays?.length === OPENING_DAYS.length ? "bg-blue-100 text-blue-600" : "bg-slate-100 text-slate-500")}>
-                              {formData.openingDays?.length === OPENING_DAYS.length ? 'Deselect All' : 'Select All'}
+                            <button type="button" onClick={() => { const all = formData.openingDays?.length === openingDays.length; setFormData({ ...formData, openingDays: all ? [] : [...openingDays] }); }} className={cn("w-full px-3 py-1.5 rounded-lg text-[11px] font-semibold", formData.openingDays?.length === openingDays.length ? "bg-blue-100 text-blue-600" : "bg-slate-100 text-slate-500")}>
+                              {formData.openingDays?.length === openingDays.length ? 'Deselect All' : 'Select All'}
                             </button>
                           </div>
                           <div className="p-1">
-                            {OPENING_DAYS.map(day => {
+                            {openingDays.map(day => {
                               const sel = formData.openingDays?.includes(day) || false;
                               return (
                                 <button key={day} type="button" onClick={() => { const cur = formData.openingDays || []; const next = sel ? cur.filter(d => d !== day) : [...cur, day]; setFormData({ ...formData, openingDays: next }); }} className={cn("w-full px-3 py-2 rounded-lg text-xs text-left flex items-center justify-between", sel ? "bg-blue-50 text-blue-600 font-semibold" : "text-slate-600 hover:bg-slate-50")}>
@@ -358,9 +406,7 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
                     <FieldLabel label="Level of Interest" tooltip={TOOLTIPS.interested} />
                     <select value={formData.interested || ''} onChange={e => setFormData({ ...formData, interested: e.target.value as any })} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-400 transition-all">
                       <option value="">Select...</option>
-                      <option value="YES">Interested</option>
-                      <option value="NO">Not Interested</option>
-                      <option value="MAYBE">Maybe / Not decided</option>
+                      {interestOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                   </div>
                   <div>
@@ -376,12 +422,7 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
                   <div>
                     <FieldLabel label="Pipeline Status" tooltip={TOOLTIPS.pipelineStatus} />
                     <select value={formData.status || 'NOT_YET'} onChange={e => setFormData({ ...formData, status: e.target.value as any })} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-400 transition-all">
-                      <option value="NOT_YET">Not yet</option>
-                      <option value="VISITED">Visited</option>
-                      <option value="CONTACTED">Contacted</option>
-                      <option value="INTERESTED">Interested</option>
-                      <option value="NOT_INTERESTED">Not Interested</option>
-                      <option value="CUSTOMER">Customer</option>
+                      {pipelineStatusOptions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                   </div>
                   <div className="space-y-2">
@@ -405,11 +446,17 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-[10px] text-slate-400 mb-1">Date</label>
-                        <input type="date" value={formData.nextVisitDate || ''} onChange={e => setFormData({ ...formData, nextVisitDate: e.target.value })} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-400 transition-all" />
+                        <button type="button" onClick={() => triggerPicker(visitDateRef)} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-left cursor-pointer hover:border-blue-300 transition-all">
+                          <span className="text-slate-700">{formData.nextVisitDate || 'Select date'}</span>
+                          <input ref={visitDateRef} type="date" value={formData.nextVisitDate || ''} onChange={e => setFormData({ ...formData, nextVisitDate: e.target.value })} className="sr-only" />
+                        </button>
                       </div>
                       <div>
                         <label className="block text-[10px] text-slate-400 mb-1">Time</label>
-                        <input type="time" value={formData.nextVisitTime || ''} onChange={e => setFormData({ ...formData, nextVisitTime: e.target.value })} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-400 transition-all" />
+                        <button type="button" onClick={() => triggerPicker(visitTimeRef)} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-left cursor-pointer hover:border-blue-300 transition-all">
+                          <span className="text-slate-700">{formData.nextVisitTime || 'Select time'}</span>
+                          <input ref={visitTimeRef} type="time" value={formData.nextVisitTime || ''} onChange={e => setFormData({ ...formData, nextVisitTime: e.target.value })} className="sr-only" />
+                        </button>
                       </div>
                     </div>
                   </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, 
@@ -29,9 +30,13 @@ import {
   ChevronRight,
   CheckCircle,
   AlertTriangle,
+  MapPin,
+  History,
   ArrowUpDown
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useQueryClient } from '@tanstack/react-query';
 import AdminLayout from '@/components/admin/AdminLayout';
 import ConfirmationModal from '@/components/admin/ConfirmationModal';
@@ -47,10 +52,31 @@ import { useUsers, useUpdateUserStatus } from '@/services/useAdminHooks';
 import { useUserAgreementHistory } from '@/services/useAgreementHooks';
 import { Role, User as UserType } from '@/types/api';
 
-export default function AffiliatesManagement() {
+const affiliateLocations: Record<string, { id: string; name: string }[]> = {
+  'aff-1': [
+    { id: 'banex', name: 'Banex Plaza' },
+    { id: 'garki-mkt', name: 'Garki Model Market' },
+  ],
+  'aff-2': [
+    { id: 'banex', name: 'Banex Plaza' },
+    { id: 'wuse-mkt', name: 'Wuse Main Market' },
+  ],
+  'aff-3': [
+    { id: 'banex', name: 'Banex Plaza' },
+  ],
+  'aff-4': [
+    { id: 'wuse-mkt', name: 'Wuse Main Market' },
+  ],
+};
+
+function AffiliatesManagement() {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'All' | 'Supervisors' | 'Agents'>('All');
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const affiliateIdParam = searchParams.get('affiliateId');
+  const locationIdParam = searchParams.get('locationId');
+  const [activeTab, setActiveTab] = useState<'All' | 'Line Managers' | 'Agents' | 'Managers'>('All');
   const [isAddAgentOpen, setIsAddAgentOpen] = useState(false);
   const [selectedAffiliate, setSelectedAffiliate] = useState<UserType | null>(null);
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
@@ -61,8 +87,8 @@ export default function AffiliatesManagement() {
   const debouncedSearch = useDebounce(searchQuery, 500);
 
   const { data: usersResponse, isLoading } = useUsers({
-    role: activeTab === 'Agents' ? 'AGENT' as any : undefined,
-    isManager: activeTab === 'Supervisors' ? true : undefined,
+    role: activeTab === 'Agents' ? 'AGENT' as any : activeTab === 'Managers' ? 'MANAGER' as any : undefined,
+    isManager: activeTab === 'Line Managers' ? true : undefined,
     status: statusFilter === 'All' ? undefined : statusFilter,
     search: debouncedSearch || undefined,
     limit: 50
@@ -130,6 +156,13 @@ export default function AffiliatesManagement() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Redirect to detail page from query param
+  useEffect(() => {
+    if (affiliateIdParam) {
+      router.push(`/admin/affiliates/${affiliateIdParam}`);
+    }
+  }, [affiliateIdParam]);
+
   const executeAction = async () => {
     const { id, isManagerMode, currentStatus, type } = confirmModal;
     
@@ -137,7 +170,7 @@ export default function AffiliatesManagement() {
       if (type === 'upgrade' || type === 'downgrade') {
         const targetManagerMode = type === 'upgrade';
         await api.patch(`/users/${id}/manager-mode`, { isManagerMode: targetManagerMode });
-        showToast(`Supervisor status updated successfully`, 'success');
+        showToast(`Line Manager status updated successfully`, 'success');
         // Invalidate every users cache entry (all tabs: All, Supervisors, Agents, count badges)
         await queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
         await queryClient.invalidateQueries({ queryKey: ['admin', 'stats'], exact: false });
@@ -154,17 +187,8 @@ export default function AffiliatesManagement() {
   };
 
 
-  const handleViewProfile = async (user: UserType) => {
-    try {
-      const data = await api.get(`/users/${user.id}`);
-      setSelectedAffiliate({
-        ...user,
-        ...data
-      });
-      setIsSidePanelOpen(true);
-    } catch (error) {
-      showToast('Failed to load user profile', 'error');
-    }
+  const handleViewProfile = (user: UserType) => {
+    router.push(`/admin/affiliates/${user.id}`);
   };
 
   const handleAffiliateUpdate = (updated: UserType) => {
@@ -208,16 +232,16 @@ export default function AffiliatesManagement() {
               All Affiliates
             </button>
             <button 
-              onClick={() => setActiveTab('Supervisors')}
+              onClick={() => setActiveTab('Line Managers')}
               className={cn(
                 "px-8 py-4 text-sm font-bold transition-all border-b-2 flex items-center gap-2",
-                 activeTab === 'Supervisors' ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"
+                 activeTab === 'Line Managers' ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"
               )}
             >
               <Users className="w-4 h-4" />
-              Supervisor List
+              Line Managers List
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('Agents')}
               className={cn(
                 "px-8 py-4 text-sm font-bold transition-all border-b-2 flex items-center gap-2",
@@ -231,6 +255,15 @@ export default function AffiliatesManagement() {
                   {agentsResponse?.meta?.total}
                 </span>
               )}
+            </button>
+            <button
+              onClick={() => setActiveTab('Managers')}
+              className={cn(
+                "px-8 py-4 text-sm font-bold transition-all border-b-2",
+                 activeTab === 'Managers' ? "border-emerald-600 text-emerald-600" : "border-transparent text-slate-500 hover:text-slate-700"
+              )}
+            >
+              Managers
             </button>
           </div>
           {activeTab === 'Agents' && (
@@ -342,33 +375,46 @@ export default function AffiliatesManagement() {
                         </span>
                       </td>
                       <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleViewProfile(user)}
-                            className="p-2 hover:bg-violet-50 rounded-lg text-slate-400 hover:text-violet-600 transition-all"
-                            title="View Profile"
+                        <div className="relative" ref={activeDropdown === user.id ? dropdownRef : null}>
+                          <button 
+                            onClick={() => setActiveDropdown(activeDropdown === user.id ? null : user.id)}
+                            className="p-2 hover:bg-violet-100 rounded-lg text-slate-400 hover:text-violet-700 transition-all"
                           >
-                            <Eye className="w-4 h-4" />
+                            <MoreHorizontal className="w-4 h-4" />
                           </button>
-                          <button
-                            onClick={() => { setSelectedAffiliate(user); setIsEditModalOpen(true); }}
-                            className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-700 transition-all"
-                            title="Edit Targets"
-                          >
-                            <UserCog className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleStatusChange(user.id, user.fullName, user.status)}
-                            className={cn(
-                              "p-2 rounded-lg transition-all",
-                              user.status === 'ACTIVE'
-                                ? "hover:bg-red-50 text-slate-400 hover:text-red-600"
-                                : "hover:bg-green-50 text-slate-400 hover:text-green-600"
+                          <AnimatePresence>
+                            {activeDropdown === user.id && (
+                              <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                                className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 overflow-hidden"
+                              >
+                                <button onClick={() => { handleViewProfile(user); setActiveDropdown(null); }}
+                                  className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-3 transition-colors">
+                                  <Eye className="w-4 h-4" /> View Profile
+                                </button>
+                                <Link href={`/admin/affiliates/${user.id}/history`}
+                                  className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-amber-50 hover:text-amber-600 flex items-center gap-3 transition-colors">
+                                  <History className="w-4 h-4" /> Activity History
+                                </Link>
+                                <button onClick={() => { setSelectedAffiliate(user); setIsEditModalOpen(true); setActiveDropdown(null); }}
+                                  className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 flex items-center gap-3 transition-colors">
+                                  <UserCog className="w-4 h-4" /> Edit Targets
+                                </button>
+                                <div className="border-t border-slate-100 my-1" />
+                                <button onClick={() => { handleStatusChange(user.id, user.fullName, user.status); setActiveDropdown(null); }}
+                                  className={`w-full px-4 py-2.5 text-left text-sm font-bold flex items-center gap-3 transition-colors ${user.status === 'ACTIVE' ? 'text-red-600 hover:bg-red-50' : 'text-emerald-600 hover:bg-emerald-50'}`}>
+                                  {user.status === 'ACTIVE' ? <ShieldAlert className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+                                  {user.status === 'ACTIVE' ? 'Suspend Account' : 'Reactivate Account'}
+                                </button>
+                                <button onClick={() => { showToast("Email sent", "success"); setActiveDropdown(null); }}
+                                  className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-3 transition-colors">
+                                  <Mail className="w-4 h-4" /> Send Email
+                                </button>
+                              </motion.div>
                             )}
-                            title={user.status === 'ACTIVE' ? 'Suspend' : 'Reactivate'}
-                          >
-                            {user.status === 'ACTIVE' ? <ShieldAlert className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
-                          </button>
+                          </AnimatePresence>
                         </div>
                       </td>
                     </motion.tr>
@@ -383,6 +429,7 @@ export default function AffiliatesManagement() {
                   <th className="p-4 font-bold text-slate-600 text-sm">Affiliate</th>
                   <th className="p-4 font-bold text-slate-600 text-sm">Role</th>
                   <th className="p-4 font-bold text-slate-600 text-sm">Contact</th>
+                  <th className="p-4 font-bold text-slate-600 text-sm text-center">Locations</th>
                   <th className="p-4 font-bold text-slate-600 text-sm text-center">Referrals</th>
                   <th className="p-4 font-bold text-slate-600 text-sm text-center">Leads</th>
                   <th className="p-4 font-bold text-slate-600 text-sm">Status</th>
@@ -430,9 +477,28 @@ export default function AffiliatesManagement() {
                           <Phone className="w-3 h-3 text-slate-400" />
                           {user.phone}
                         </div>
-                      </div>
-                    </td>
-                    <td className="p-4 text-sm text-slate-600 text-center font-bold">{(user._count?.referrals ?? 0) + (user._count?.businesses ?? 0)}</td>
+                        </div>
+                      </td>
+                      <td className="p-4 text-center">
+                        <div className="flex flex-wrap gap-1 justify-center max-w-[160px]">
+                          {(affiliateLocations[user.id] || []).slice(0, 2).map(loc => (
+                            <Link
+                              key={loc.id}
+                              href={`/admin/market-mapping/assign/${loc.id}`}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-lg text-[9px] font-bold hover:bg-blue-100 transition-colors"
+                            >
+                              <MapPin className="w-2.5 h-2.5" /> {loc.name}
+                            </Link>
+                          ))}
+                          {(affiliateLocations[user.id] || []).length > 2 && (
+                            <span className="text-[9px] text-slate-400 font-bold px-1">+{affiliateLocations[user.id].length - 2} more</span>
+                          )}
+                          {(affiliateLocations[user.id] || []).length === 0 && (
+                            <span className="text-[9px] text-slate-300">—</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4 text-sm text-slate-600 text-center font-bold">{(user._count?.referrals ?? 0) + (user._count?.businesses ?? 0)}</td>
                     <td className="p-4 text-sm text-slate-600 text-center font-bold">{user._count?.leads ?? 0}</td>
                     <td className="p-4">
                       <span className={cn(
@@ -444,89 +510,57 @@ export default function AffiliatesManagement() {
                       </span>
                     </td>
                     <td className="p-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {/* View Action */}
+                      <div className="relative" ref={activeDropdown === user.id ? dropdownRef : null}>
                         <button 
-                          onClick={() => handleViewProfile(user)}
-                          className="p-2 hover:bg-blue-50 rounded-lg text-slate-400 hover:text-blue-600 transition-all" 
-                          title='View Profile'
+                          onClick={() => setActiveDropdown(activeDropdown === user.id ? null : user.id)}
+                          className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-900 transition-all"
                         >
-                          <Eye className="w-4 h-4" />
+                          <MoreHorizontal className="w-4 h-4" />
                         </button>
- 
-                        {/* Upgrade/Downgrade Action */}
-                        {user.isManagerMode ? (
-                          <button 
-                            onClick={() => handleRoleToggle(user.id, user.fullName, true)}
-                            className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-all" 
-                            title='Downgrade to Affiliate'
-                          >
-                            <ArrowDownCircle className="w-4 h-4" />
-                          </button>
-                        ) : (
-                          <button 
-                            onClick={() => handleRoleToggle(user.id, user.fullName, false)}
-                            className="p-2 hover:bg-purple-50 rounded-lg text-slate-400 hover:text-purple-600 transition-all" 
-                            title='Upgrade to Supervisor'
-                          >
-                            <ArrowUpCircle className="w-4 h-4" />
-                          </button>
-                        )}
-                        
-                        {/* More Actions Dropdown */}
-                        <div className="relative" ref={activeDropdown === user.id ? dropdownRef : null}>
-                          <button 
-                            onClick={() => setActiveDropdown(activeDropdown === user.id ? null : user.id)}
-                            className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-900 transition-all"
-                          >
-                            <MoreHorizontal className="w-4 h-4" />
-                          </button>
- 
-                          <AnimatePresence>
-                            {activeDropdown === user.id && (
-                              <motion.div
-                                initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                                className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 overflow-hidden"
-                              >
-                                {user.status === 'ACTIVE' ? (
-                                  <button 
-                                    onClick={() => {
-                                      handleStatusChange(user.id, user.fullName, user.status);
-                                      setActiveDropdown(null);
-                                    }}
-                                    className="w-full px-4 py-2 text-left text-sm font-bold text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
-                                  >
-                                    <ShieldAlert className="w-4 h-4" />
-                                    Suspend Account
-                                  </button>
-                                ) : (
-                                  <button 
-                                    onClick={() => {
-                                      handleStatusChange(user.id, user.fullName, user.status);
-                                      setActiveDropdown(null);
-                                    }}
-                                    className="w-full px-4 py-2 text-left text-sm font-bold text-emerald-600 hover:bg-emerald-50 flex items-center gap-2 transition-colors"
-                                  >
-                                    <ShieldCheck className="w-4 h-4" />
-                                    Reactivate Account
-                                  </button>
-                                )}
-                                <button 
-                                  onClick={() => {
-                                    showToast("Email sent to affiliate", "success");
-                                    setActiveDropdown(null);
-                                  }}
-                                  className="w-full px-4 py-2 text-left text-sm font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-2 transition-colors"
-                                >
-                                  <Mail className="w-4 h-4" />
-                                  Send Email
+                        <AnimatePresence>
+                          {activeDropdown === user.id && (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                              className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 overflow-hidden"
+                            >
+                              <button onClick={() => { handleViewProfile(user); setActiveDropdown(null); }}
+                                className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-3 transition-colors">
+                                <Eye className="w-4 h-4" /> View Profile
+                              </button>
+                              <Link href={`/admin/affiliates/${user.id}/history`}
+                                className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-amber-50 hover:text-amber-600 flex items-center gap-3 transition-colors">
+                                <History className="w-4 h-4" /> Activity History
+                              </Link>
+
+                              {/* Upgrade/Downgrade */}
+                              {user.isManagerMode ? (
+                                <button onClick={() => { handleRoleToggle(user.id, user.fullName, true); setActiveDropdown(null); }}
+                                  className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 flex items-center gap-3 transition-colors">
+                                  <ArrowDownCircle className="w-4 h-4" /> Demote to Affiliate
                                 </button>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
+                              ) : (
+                                <button onClick={() => { handleRoleToggle(user.id, user.fullName, false); setActiveDropdown(null); }}
+                                  className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-purple-50 hover:text-purple-600 flex items-center gap-3 transition-colors">
+                                  <ArrowUpCircle className="w-4 h-4" /> Promote to Line Manager
+                                </button>
+                              )}
+
+                              <div className="border-t border-slate-100 my-1" />
+
+                              <button onClick={() => { handleStatusChange(user.id, user.fullName, user.status); setActiveDropdown(null); }}
+                                className={`w-full px-4 py-2.5 text-left text-sm font-bold flex items-center gap-3 transition-colors ${user.status === 'ACTIVE' ? 'text-red-600 hover:bg-red-50' : 'text-emerald-600 hover:bg-emerald-50'}`}>
+                                {user.status === 'ACTIVE' ? <ShieldAlert className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+                                {user.status === 'ACTIVE' ? 'Suspend Account' : 'Reactivate Account'}
+                              </button>
+                              <button onClick={() => { showToast("Email sent", "success"); setActiveDropdown(null); }}
+                                className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-3 transition-colors">
+                                <Mail className="w-4 h-4" /> Send Email
+                              </button>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     </td>
                   </motion.tr>
@@ -558,12 +592,12 @@ export default function AffiliatesManagement() {
         onConfirm={executeAction}
         type={confirmModal.type}
         title={
-          confirmModal.type === 'upgrade' ? 'Promote to Supervisor?' : 
+          confirmModal.type === 'upgrade' ? 'Promote to Line Manager?' : 
           confirmModal.type === 'downgrade' ? 'Demote to Affiliate?' :
           confirmModal.type === 'suspend' ? 'Suspend Affiliate?' : 'Reactivate Affiliate?'
         }
         message={
-          confirmModal.type === 'upgrade' ? `Are you sure you want to upgrade ${confirmModal.name} to Supervisor? They will gain access to Supervisor-only tools.` :
+          confirmModal.type === 'upgrade' ? `Are you sure you want to upgrade ${confirmModal.name} to Line Manager? They will gain access to Line Manager tools.` :
           confirmModal.type === 'downgrade' ? `Are you sure you want to downgrade ${confirmModal.name} back to a standard Affiliate?` :
           confirmModal.type === 'suspend' ? `Are you sure you want to suspend ${confirmModal.name}? They will lose access to the dashboard immediately.` :
           `Are you sure you want to reactivate ${confirmModal.name}? They will regain full access to their affiliate account.`
@@ -608,12 +642,21 @@ export default function AffiliatesManagement() {
               <div className="p-8 space-y-8">
                 <div className="flex justify-between items-center">
                   <h3 className="text-2xl font-black text-slate-900">Affiliate Profile</h3>
-                  <button 
-                    onClick={() => setIsSidePanelOpen(false)}
-                    className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
-                  >
-                    <X className="w-6 h-6 text-slate-400" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/admin/affiliates/${selectedAffiliate.id}/history`}
+                      className="p-2 hover:bg-amber-50 rounded-xl text-slate-400 hover:text-amber-600 transition-colors"
+                      title="View Activity History"
+                    >
+                      <History className="w-5 h-5" />
+                    </Link>
+                    <button 
+                      onClick={() => setIsSidePanelOpen(false)}
+                      className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
+                    >
+                      <X className="w-6 h-6 text-slate-400" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Profile Header */}
@@ -716,6 +759,63 @@ export default function AffiliatesManagement() {
                     </div>
                   </div>
 
+                  {/* Covered Locations */}
+                  <div className="space-y-4">
+                    <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4 text-blue-500" /> Covered Locations
+                    </h5>
+                    <div className="space-y-2">
+                      {(affiliateLocations[selectedAffiliate.id] || []).length > 0 ? (
+                        affiliateLocations[selectedAffiliate.id].map(loc => (
+                          <Link
+                            key={loc.id}
+                            href={`/admin/affiliates/${selectedAffiliate.id}/history?locationId=${loc.id}`}
+                            className="flex items-center gap-3 p-4 bg-blue-50 rounded-2xl border border-blue-100 hover:bg-blue-100 transition-all group"
+                          >
+                            <MapPin className="w-5 h-5 text-blue-500" />
+                            <div className="flex-1">
+                              <p className="text-sm font-bold text-slate-900 group-hover:text-blue-700 transition-colors">{loc.name}</p>
+                              <p className="text-[10px] text-slate-500">Click to view history in this location</p>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-blue-400 group-hover:translate-x-1 transition-all" />
+                          </Link>
+                        ))
+                      ) : (
+                        <p className="text-xs text-slate-400 italic py-2">No locations assigned to this affiliate.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Role & Assignment */}
+                  <div className="space-y-4">
+                    <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-blue-500" /> Role & Assignment
+                    </h5>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Current Role</p>
+                          <p className="text-sm font-bold text-slate-900 mt-0.5">{selectedAffiliate.isManagerMode ? 'SUPERVISOR' : selectedAffiliate.role}</p>
+                        </div>
+                        <button onClick={() => showToast('Role change dialog opened', 'info')} className="px-3 py-1.5 bg-blue-600 text-white text-[10px] font-bold rounded-xl hover:bg-blue-700 transition-all">Change</button>
+                      </div>
+                      <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Assigned Line Manager</p>
+                          <p className="text-sm font-bold text-slate-900 mt-0.5">Not assigned</p>
+                        </div>
+                        <button onClick={() => showToast('Line Manager assignment opened', 'info')} className="px-3 py-1.5 bg-violet-600 text-white text-[10px] font-bold rounded-xl hover:bg-violet-700 transition-all">Assign</button>
+                      </div>
+                      <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Assigned Manager</p>
+                          <p className="text-sm font-bold text-slate-900 mt-0.5">Not assigned</p>
+                        </div>
+                        <button onClick={() => showToast('Manager assignment opened', 'info')} className="px-3 py-1.5 bg-emerald-600 text-white text-[10px] font-bold rounded-xl hover:bg-emerald-700 transition-all">Assign</button>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Agreements History Section */}
                   <div className="space-y-4">
                     <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
@@ -777,5 +877,13 @@ export default function AffiliatesManagement() {
         )}
       </AnimatePresence>
     </AdminLayout>
+  );
+}
+
+export default function AffiliatesPage() {
+  return (
+    <Suspense>
+      <AffiliatesManagement />
+    </Suspense>
   );
 }

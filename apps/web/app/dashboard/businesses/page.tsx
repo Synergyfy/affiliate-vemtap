@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Search, 
@@ -37,6 +37,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { AnimatePresence } from 'framer-motion';
 import { usePortfolioStats } from '@/services/useDashboardHooks';
 import { useMarketMapping } from '@/components/dashboard/market-mapping/MarketMappingContext';
+import { useMarketMappingConfig } from '@/hooks/use-market-mapping-config';
 
 const initialBusinesses = [
   { id: 1, name: 'Tech Solutions Ltd', plan: 'Premium', status: 'Active', payment: 'Paid', commission: '₦15,000', date: '2024-03-15' },
@@ -46,7 +47,7 @@ const initialBusinesses = [
   { id: 5, name: 'Future Tech', plan: 'Enterprise', status: 'Active', payment: 'Paid', commission: '₦25,000', date: '2024-03-05' },
 ];
 
-const statusColors = {
+const FALLBACK_STATUS_COLORS: Record<string, string> = {
   Active: 'bg-emerald-50 text-emerald-600 border-emerald-100',
   Converted: 'bg-emerald-50 text-emerald-600 border-emerald-100',
   Pending: 'bg-blue-50 text-blue-600 border-blue-100',
@@ -54,7 +55,7 @@ const statusColors = {
   Expired: 'bg-red-50 text-red-600 border-red-100',
 };
 
-const paymentColors = {
+const FALLBACK_PAYMENT_COLORS: Record<string, string> = {
   Paid: 'bg-emerald-50 text-emerald-600',
   Pending: 'bg-orange-50 text-orange-600',
   Unpaid: 'bg-red-50 text-red-600',
@@ -64,10 +65,13 @@ export default function BusinessesPage() {
   const { user } = useAuth();
   const { data: portfolioStats } = usePortfolioStats();
   const { visits } = useMarketMapping();
+  const { data: config } = useMarketMappingConfig();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [businesses, setBusinesses] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [apiBusinesses, setApiBusinesses] = useState<any[]>([]);
+  const fetchDone = useRef(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [selectedBusiness, setSelectedBusiness] = useState<any>(null);
@@ -76,7 +80,50 @@ export default function BusinessesPage() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
 
-  const fetchBusinesses = async () => {
+  const statusColors = useMemo(() => {
+    const bizStatuses = config?.businessStatuses as { id: string; color: string }[] | undefined;
+    if (!bizStatuses) return FALLBACK_STATUS_COLORS;
+    const map: Record<string, string> = {};
+    for (const s of bizStatuses) {
+      map[s.id] = s.color || 'bg-slate-50 text-slate-600 border-slate-100';
+    }
+    return { ...FALLBACK_STATUS_COLORS, ...map };
+  }, [config?.businessStatuses]);
+
+  const paymentColors = useMemo(() => {
+    const payStatuses = config?.paymentStatuses as { id: string; color: string }[] | undefined;
+    if (!payStatuses) return FALLBACK_PAYMENT_COLORS;
+    const map: Record<string, string> = {};
+    for (const s of payStatuses) {
+      map[s.id] = s.color || 'bg-slate-50 text-slate-600';
+    }
+    return { ...FALLBACK_PAYMENT_COLORS, ...map };
+  }, [config?.paymentStatuses]);
+
+  // Merge market-mapping customers into apiBusinesses
+  const mergeMmCustomers = useCallback((apiBiz: any[], mmVisits: typeof visits) => {
+    const mmCustomers = mmVisits
+      .filter(v => v.status === 'CUSTOMER' && !v.isPlaceholder)
+      .map(v => ({
+        id: `mm-${v.id}`,
+        name: v.name,
+        plan: 'Basic',
+        status: 'Active',
+        payment: 'Paid',
+        commission: '₦0',
+        date: new Date().toISOString().split('T')[0],
+        address: v.address || '',
+        phone: v.phone || '',
+        createdAt: new Date().toISOString(),
+        source: 'market-mapping' as const,
+      }));
+
+    const existingNames = new Set(apiBiz.map((b: any) => (b.name || '').toLowerCase()));
+    const uniqueMm = mmCustomers.filter(b => !existingNames.has(b.name.toLowerCase()));
+    return [...apiBiz, ...uniqueMm];
+  }, []);
+
+  const refreshApiBusinesses = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await api.get('/businesses/me');
@@ -88,55 +135,30 @@ export default function BusinessesPage() {
         commission: `₦${Number(b.commissionAmount || 0).toLocaleString()}`,
         date: new Date(b.createdAt).toISOString().split('T')[0]
       }));
-
-      // Merge subscribed businesses from market mapping
-      const mmCustomers = visits
-        .filter(v => v.status === 'CUSTOMER' && !v.isPlaceholder)
-        .map(v => ({
-          id: `mm-${v.id}`,
-          name: v.name,
-          plan: 'Basic',
-          status: 'Active',
-          payment: 'Paid',
-          commission: '₦0',
-          date: new Date().toISOString().split('T')[0],
-          address: v.address || '',
-          phone: v.phone || '',
-          createdAt: new Date().toISOString(),
-          source: 'market-mapping' as const,
-        }));
-
-      // Deduplicate by name
-      const existingNames = new Set(mapped.map((b: any) => (b.name || '').toLowerCase()));
-      const uniqueMm = mmCustomers.filter(b => !existingNames.has(b.name.toLowerCase()));
-
-      setBusinesses([...mapped, ...uniqueMm]);
+      setApiBusinesses(mapped);
+      setBusinesses(mergeMmCustomers(mapped, visits));
     } catch (error) {
-      // On API failure, still show market mapping businesses
-      const mmCustomers = visits
-        .filter(v => v.status === 'CUSTOMER' && !v.isPlaceholder)
-        .map(v => ({
-          id: `mm-${v.id}`,
-          name: v.name,
-          plan: 'Basic',
-          status: 'Active',
-          payment: 'Paid',
-          commission: '₦0',
-          date: new Date().toISOString().split('T')[0],
-          address: v.address || '',
-          phone: v.phone || '',
-          createdAt: new Date().toISOString(),
-          source: 'market-mapping' as const,
-        }));
-      setBusinesses(mmCustomers);
+      setApiBusinesses([]);
+      setBusinesses(mergeMmCustomers([], visits));
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [visits, mergeMmCustomers]);
 
+  // Fetch API businesses once on mount
   useEffect(() => {
-    fetchBusinesses();
-  }, [visits]);
+    if (fetchDone.current) return;
+    fetchDone.current = true;
+    refreshApiBusinesses();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When visits change, re-merge locally without re-fetching
+  useEffect(() => {
+    setBusinesses(prev => {
+      const apiBiz = apiBusinesses;
+      return mergeMmCustomers(apiBiz, visits);
+    });
+  }, [visits, apiBusinesses, mergeMmCustomers]);
 
   const handleAddOrEditBusiness = async (data: any) => {
     try {
@@ -152,7 +174,7 @@ export default function BusinessesPage() {
         });
         
         showToast(`${data.businessName} has been registered successfully!`, 'success');
-        fetchBusinesses();
+        refreshApiBusinesses();
       } else {
         // Backend currently missing Patch /businesses/:id for affiliates
         showToast(`Editing is currently restricted to Admins.`, 'info');
@@ -460,7 +482,7 @@ export default function BusinessesPage() {
           {(isLoading || filteredBusinesses.length === 0) && (
             <div className="p-12 text-center">
               <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                {isLoading ? <Loader2 className="w-8 h-8 text-blue-600 animate-spin" /> : <Search className="w-8 h-8 text-slate-300" />}
+                {isLoading ? <Loader2 className="w-8 h-8 text-blue-600 animate-pulse" /> : <Search className="w-8 h-8 text-slate-300" />}
               </div>
               <h4 className="text-lg font-bold text-slate-900 mb-1">
                 {isLoading ? 'Loading businesses...' : 'No businesses found'}

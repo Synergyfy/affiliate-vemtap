@@ -9,9 +9,11 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMemo, useState } from 'react';
+import { useMarketMappingConfig } from '@/hooks/use-market-mapping-config';
 
 export default function MarketMappingHubPage() {
   const { stats, missionPlans, performance, visits, setPerformance } = useMarketMapping();
+  const { data: config } = useMarketMappingConfig();
   const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long' });
 
@@ -19,8 +21,8 @@ export default function MarketMappingHubPage() {
   const weekPlan = missionPlans.find(p => p.horizon === 'WEEK');
   const activePlan = dayPlan || weekPlan;
 
-  const dayTarget = dayPlan?.targetCount || performance.dailyTarget || 20;
-  const weekTarget = weekPlan?.targetCount || performance.weeklyTarget || 100;
+  const dayTarget = dayPlan?.targetCount || performance.dailyTarget || config?.dailyTarget || 20;
+  const weekTarget = weekPlan?.targetCount || performance.weeklyTarget || config?.weeklyTarget || 100;
   const dayProgress = performance.dailyProgress;
   const weekProgress = performance.weeklyProgress;
   const dayRemaining = Math.max(0, dayTarget - dayProgress);
@@ -29,7 +31,7 @@ export default function MarketMappingHubPage() {
   const dayPercent = Math.min(100, Math.round((dayProgress / dayTarget) * 100));
   const weekPercent = Math.min(100, Math.round((weekProgress / weekTarget) * 100));
 
-  const monthlySubTarget = Math.max(20, performance.monthlyTarget);
+  const monthlySubTarget = Math.max(20, performance.monthlyTarget || config?.monthlyTarget || 20);
   const [editingTarget, setEditingTarget] = useState(false);
   const [targetInput, setTargetInput] = useState(String(monthlySubTarget));
 
