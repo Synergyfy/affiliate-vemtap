@@ -105,6 +105,50 @@ export interface PlatformSettings {
   reqSupervisorActiveAgents?: number;
   reqSupervisorActiveSupervisors?: number;
   reqSupervisorNetworkBusinesses?: number;
+  dailyTarget?: number;
+  weeklyTarget?: number;
+  monthlyTarget?: number;
+  marketMappingConfig?: MarketMappingConfig;
+}
+
+export interface PipelineStatusConfig {
+  id: string;
+  name: string;
+  color: string;
+  bg: string;
+  text: string;
+}
+
+export interface CustomerRangeConfig {
+  value: string;
+  label: string;
+  min: number;
+  max: number;
+}
+
+export interface BusinessSizeConfig {
+  value: string;
+  label: string;
+  minStaff: number;
+  maxStaff: number;
+}
+
+export interface MarketMappingConfig {
+  businessCategories: string[];
+  openingDays: string[];
+  customerRanges: CustomerRangeConfig[];
+  businessSizes: BusinessSizeConfig[];
+  contactPositions: string[];
+  pipelineStatuses: PipelineStatusConfig[];
+  interestOptions: { value: string; label: string }[];
+  planTypes: { value: string; label: string }[];
+  faqs: { id: string; question: string; answer: string; category: string }[];
+  ticketStatuses: { id: string; label: string; color: string; bg: string }[];
+  businessStatuses: { id: string; label: string; color: string; bg: string }[];
+  paymentStatuses: { id: string; label: string; color: string; bg: string }[];
+  dailyTarget: number;
+  weeklyTarget: number;
+  monthlyTarget: number;
 }
 
 export interface Agreement {

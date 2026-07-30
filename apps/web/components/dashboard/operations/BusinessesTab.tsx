@@ -27,18 +27,18 @@ export default function BusinessesTab() {
   const { data: businessesResponse, isLoading } = useMyBusinesses({ limit: 50 });
   const { data: healthData } = useBusinessHealth();
   const businesses = businessesResponse?.data || [];
-  const healthMap = new Map(healthData?.businesses.map(b => [b.businessId, b]) || []);
+  const healthMap = new Map(healthData?.businesses?.map(b => [b.businessId, b]) || []);
 
   const handleAction = (action: string) => {
     showToast(`${action} action triggered`, 'info');
   };
 
   const handleReviewRisks = () => {
-    if (!healthData || healthData.summary.highRisk === 0) {
+    if (!healthData?.summary || healthData.summary.highRisk === 0) {
       showToast('No high-risk businesses found', 'info');
       return;
     }
-    const names = healthData.businesses.filter(b => b.churnRisk === 'HIGH').map(b => b.businessName);
+    const names = (healthData?.businesses || []).filter(b => b.churnRisk === 'HIGH').map(b => b.businessName);
     showToast(`High-risk businesses: ${names.join(', ')}`, 'info');
   };
 
@@ -188,7 +188,7 @@ export default function BusinessesTab() {
       </div>
       
       {/* Risk Alert Panel */}
-      {healthData && healthData.summary.highRisk > 0 && (
+      {healthData?.summary && healthData.summary.highRisk > 0 && (
         <div className="bg-red-50 border border-red-100 p-6 rounded-[32px] flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-red-600 shadow-sm shadow-red-100">

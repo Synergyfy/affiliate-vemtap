@@ -17,7 +17,8 @@ import { useTasks, useCreateTask, useUpdateTask } from '@/services/useOperations
 
 export default function TasksTab() {
   const { showToast } = useToast();
-  const { data: tasks = [], isLoading } = useTasks();
+  const { data: tasksData, isLoading } = useTasks();
+  const tasks = Array.isArray(tasksData) ? tasksData : [];
 
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();

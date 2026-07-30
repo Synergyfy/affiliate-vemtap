@@ -63,6 +63,27 @@ export default function HierarchySidebar({
     return nodes.filter(n => n.parentId === (parentId || null));
   };
 
+  const calculateTotals = (nodeId: string): { biz: number, cust: number } => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) return { biz: 0, cust: 0 };
+    
+    const children = getChildren(nodeId);
+    if (children.length > 0) {
+      return children.reduce((acc, child) => {
+        const childTotals = calculateTotals(child.id);
+        return {
+          biz: acc.biz + childTotals.biz,
+          cust: acc.cust + childTotals.cust
+        };
+      }, { biz: 0, cust: 0 });
+    }
+    
+    return {
+      biz: node.totalBusinesses || 0,
+      cust: node.totalCustomers || 0
+    };
+  };
+
   const renderNodeTree = (parentId: string | null = null, depth = 0) => {
     const children = nodes.filter(n => (parentId === null ? !n.parentId : n.parentId === parentId));
 
@@ -105,14 +126,18 @@ export default function HierarchySidebar({
                 </div>
 
                 <div className="flex items-center gap-1 shrink-0">
-                  {node.type === 'CLUSTER' && node.penetrationPercentage !== undefined && (
-                    <span className={cn(
-                      "px-1.5 py-0.5 rounded-full text-[9px] font-bold",
-                      isSelected ? "bg-white/20 text-white" : "bg-blue-50 text-blue-700 border border-blue-100"
-                    )}>
-                      {node.penetrationPercentage}%
-                    </span>
-                  )}
+                  {(() => {
+                    const totals = calculateTotals(node.id);
+                    const percentage = totals.biz > 0 ? Math.round((totals.cust / totals.biz) * 100) : 0;
+                    return (
+                      <span className={cn(
+                        "px-1.5 py-0.5 rounded-full text-[9px] font-bold whitespace-nowrap",
+                        isSelected ? "bg-white/20 text-white" : "bg-blue-50 text-blue-700 border border-blue-100"
+                      )}>
+                        {percentage}% | {totals.biz} biz
+                      </span>
+                    );
+                  })()}
                   <button 
                     onClick={(e) => { e.stopPropagation(); onAddNode(getNextType(node.type), node.id); }}
                     className={cn("opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-black/10 transition-opacity", isSelected ? "text-white" : "text-slate-500")}
@@ -195,9 +220,13 @@ export default function HierarchySidebar({
                   </span>
                   <span className="truncate">{node.name}</span>
                 </div>
-                {node.totalBusinesses !== undefined && (
-                  <span className="text-[10px] opacity-75">{node.totalBusinesses} biz</span>
-                )}
+                {(() => {
+                  const totals = calculateTotals(node.id);
+                  const percentage = totals.biz > 0 ? Math.round((totals.cust / totals.biz) * 100) : 0;
+                  return (
+                    <span className="text-[10px] font-bold opacity-75">{percentage}% | {totals.biz} biz</span>
+                  );
+                })()}
               </div>
             ))}
           </div>

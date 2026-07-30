@@ -3,12 +3,35 @@
 import { AIRecommendation } from '@/types/affiliate-market-mapping';
 import { Sparkles, Crown, MapPin, Store, Handshake } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 interface AIRecommendationsProps {
   recommendations: AIRecommendation[];
 }
 
 export default function AIRecommendations({ recommendations }: AIRecommendationsProps) {
+  const router = useRouter();
+
+  const handleCardClick = (type: string) => {
+    const from = encodeURIComponent('/dashboard/market-mapping/insights');
+    switch (type) {
+      case 'PRIORITY_VISIT':
+        router.push(`/dashboard/market-mapping/execute?view=priority&from=${from}`);
+        break;
+      case 'UNTOUCHED_ANCHOR':
+        router.push(`/dashboard/market-mapping/execute?view=anchors&from=${from}`);
+        break;
+      case 'PARTNERSHIP':
+        router.push(`/dashboard/market-mapping/execute?view=partnership&from=${from}`);
+        break;
+      case 'MISSING_CATEGORY':
+        router.push('/dashboard/market-mapping/plan');
+        break;
+      default:
+        router.push('/dashboard/market-mapping/execute');
+    }
+  };
+
   const getIconAndColors = (type: string) => {
     switch (type) {
       case 'PRIORITY_VISIT': return { icon: Store, bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' };
@@ -32,7 +55,7 @@ export default function AIRecommendations({ recommendations }: AIRecommendations
         {recommendations.map(rec => {
           const style = getIconAndColors(rec.type);
           return (
-            <div key={rec.id} className="bg-white border border-slate-200 p-4 rounded-2xl hover:shadow-md transition-shadow cursor-pointer group">
+            <div key={rec.id} onClick={() => handleCardClick(rec.type)} className="bg-white border border-slate-200 p-4 rounded-2xl hover:shadow-md transition-shadow cursor-pointer group">
               <div className="flex items-start justify-between mb-3">
                 <span className={cn("px-2.5 py-1 text-[9px] font-black uppercase tracking-widest rounded-md border", style.bg, style.text, style.border)}>
                   {getLabel(rec.type)}

@@ -29,8 +29,10 @@ export default function OverviewTab() {
   const { data: leadsResponse, isLoading: isLoadingLeads } = useLeads({ limit: 3 });
   const recentLeads = leadsResponse?.data || [];
 
-  const { data: tasks = [] } = useTasks();
-  const { data: onboarding = [] } = useOnboarding();
+  const { data: tasksData } = useTasks();
+  const tasks = Array.isArray(tasksData) ? tasksData : [];
+  const { data: onboardingData } = useOnboarding();
+  const onboarding = Array.isArray(onboardingData) ? onboardingData : [];
 
   const handleAction = (action: string) => {
     showToast(`${action} action triggered`, 'info');

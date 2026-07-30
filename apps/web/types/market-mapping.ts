@@ -14,6 +14,8 @@ export interface GeographicHierarchyNode {
   totalAnchors?: number;
   penetrationPercentage?: number;
   clusterStage?: number; // 1-10
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface ExpansionStageInfo {

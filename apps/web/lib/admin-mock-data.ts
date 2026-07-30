@@ -1,4 +1,4 @@
-import { AdminStats, PaginatedResponse, Withdrawal, User, Business, FraudAlert, PlatformSettings } from '@/types/api';
+import { AdminStats, PaginatedResponse, Withdrawal, User, Business, FraudAlert, PlatformSettings, MarketMappingConfig } from '@/types/api';
 
 export const mockAdminStats: AdminStats = {
   totalAffiliates: 124,
@@ -131,6 +131,92 @@ export const mockUsers: PaginatedResponse<User> = {
   },
 };
 
+export const mockMarketMappingConfig: MarketMappingConfig = {
+  businessCategories: [
+    'Supermarket / Grocery',
+    'Pharmacy',
+    'Restaurant / Fast Food',
+    'Retail / Clothing',
+    'Electronics / Phone Accessories',
+    'Beauty / Salon / Barbing',
+    'Fuel / Gas Station',
+    'Hotel / Lodge',
+    'School / Training Center',
+    'Hospital / Clinic',
+    'Bakery / Confectionery',
+    'Water / Pure Water',
+    'POS / Bureau de Change',
+    'Printing / Cyber Cafe',
+    'Auto / Mechanic',
+    'Construction / Building Materials',
+    'Agriculture / Farm Supplies',
+    'Fashion / Tailoring',
+    'Entertainment / Event Center',
+    'Professional Services',
+    'Other',
+  ],
+  openingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+  customerRanges: [
+    { value: 'LOW', label: 'Low (1–30)', min: 1, max: 30 },
+    { value: 'MEDIUM', label: 'Medium (31–100)', min: 31, max: 100 },
+    { value: 'HIGH', label: 'High (101–300)', min: 101, max: 300 },
+    { value: 'VERY_HIGH', label: 'Very High (300+)', min: 300, max: Infinity },
+  ],
+  businessSizes: [
+    { value: 'SMALL', label: 'Small (1–5 staff)', minStaff: 1, maxStaff: 5 },
+    { value: 'MEDIUM', label: 'Medium (6–20 staff)', minStaff: 6, maxStaff: 20 },
+    { value: 'LARGE', label: 'Large (21+ staff)', minStaff: 21, maxStaff: Infinity },
+  ],
+  contactPositions: ['Owner', 'Manager', 'HR Manager', 'Sales Manager', 'Custom'],
+  pipelineStatuses: [
+    { id: 'NOT_YET', name: 'To Visit', color: 'bg-slate-500', bg: 'bg-slate-50', text: 'text-slate-600' },
+    { id: 'VISITED', name: 'Visited', color: 'bg-blue-500', bg: 'bg-blue-50', text: 'text-blue-600' },
+    { id: 'CONTACTED', name: 'Contacted', color: 'bg-purple-500', bg: 'bg-purple-50', text: 'text-purple-600' },
+    { id: 'INTERESTED', name: 'Interested', color: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-600' },
+    { id: 'NOT_INTERESTED', name: 'Not Interested', color: 'bg-red-500', bg: 'bg-red-50', text: 'text-red-600' },
+    { id: 'CUSTOMER', name: 'Customer', color: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-600' },
+  ],
+  interestOptions: [
+    { value: 'YES', label: 'Interested' },
+    { value: 'NO', label: 'Not Interested' },
+    { value: 'MAYBE', label: 'Maybe / Not decided' },
+  ],
+  planTypes: [
+    { value: 'BASIC', label: 'Basic' },
+    { value: 'STARTER', label: 'Starter' },
+    { value: 'PROFESSIONAL', label: 'Professional' },
+    { value: 'ENTERPRISE', label: 'Enterprise' },
+  ],
+  faqs: [
+    { id: '1', question: 'How do I start a new market mapping mission?', answer: 'Go to Market Mapping > Plan Mission. Set your start date, choose Day or Week, enter a location and target number, then save.', category: 'Market Mapping' },
+    { id: '2', question: 'How do I add a business after visiting?', answer: 'In Execute Visits, tap "Add Business" to create a placeholder, then tap the business card to open the capture drawer.', category: 'Market Mapping' },
+    { id: '3', question: 'What does "Subscribed" mean?', answer: 'A business is marked as Subscribed when they sign up through your referral. This counts toward your monthly subscription target.', category: 'General' },
+    { id: '4', question: 'How do I track my progress?', answer: 'Your dashboard shows daily and weekly targets with progress bars. The Pipeline page shows all businesses captured and their current status.', category: 'General' },
+    { id: '5', question: 'How are commissions calculated?', answer: 'Commissions are based on the plan type of each subscribed business. Check your Wallet & Earnings for details.', category: 'Commissions' },
+    { id: '6', question: 'How do I contact support?', answer: 'Use the Support page or Direct Assistance banner on your dashboard. Our team will respond via the platform.', category: 'General' },
+  ],
+  ticketStatuses: [
+    { id: 'PENDING', label: 'Pending', color: 'text-amber-600', bg: 'bg-amber-50' },
+    { id: 'IN_PROGRESS', label: 'In Progress', color: 'text-blue-600', bg: 'bg-blue-50' },
+    { id: 'RESOLVED', label: 'Resolved', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  ],
+  businessStatuses: [
+    { id: 'Active', label: 'Active', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { id: 'Converted', label: 'Converted', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { id: 'Pending', label: 'Pending', color: 'text-blue-600', bg: 'bg-blue-50' },
+    { id: 'Trial', label: 'Trial', color: 'text-blue-600', bg: 'bg-blue-50' },
+    { id: 'Expired', label: 'Expired', color: 'text-red-600', bg: 'bg-red-50' },
+  ],
+  paymentStatuses: [
+    { id: 'Paid', label: 'Paid', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { id: 'Pending', label: 'Pending', color: 'text-orange-600', bg: 'bg-orange-50' },
+    { id: 'Unpaid', label: 'Unpaid', color: 'text-red-600', bg: 'bg-red-50' },
+  ],
+  dailyTarget: 20,
+  weeklyTarget: 100,
+  monthlyTarget: 20,
+};
+
 export const mockSettings: PlatformSettings = {
   id: 'settings-1',
   directCommissionRate: 15,
@@ -140,6 +226,10 @@ export const mockSettings: PlatformSettings = {
   subAffiliateUnlockCount: 3,
   fraudThresholdScore: 75,
   earningDurationMonths: 12,
+  dailyTarget: 20,
+  weeklyTarget: 100,
+  monthlyTarget: 20,
+  marketMappingConfig: mockMarketMappingConfig,
   updatedAt: new Date().toISOString(),
 };
 

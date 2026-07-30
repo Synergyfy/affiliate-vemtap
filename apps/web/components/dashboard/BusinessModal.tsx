@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Building2, Phone, Mail, MapPin, MessageSquare, Plus, Loader2, Edit2, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { useMarketMappingConfig } from '@/hooks/use-market-mapping-config';
 
 interface BusinessModalProps {
   isOpen: boolean;
@@ -16,6 +17,13 @@ interface BusinessModalProps {
 
 export default function BusinessModal({ isOpen, onClose, onConfirm, initialData, mode }: BusinessModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { data: config } = useMarketMappingConfig();
+  const planTypes = config?.planTypes ?? [
+    { value: 'BASIC', label: 'Basic' },
+    { value: 'STARTER', label: 'Starter' },
+    { value: 'PROFESSIONAL', label: 'Professional' },
+    { value: 'ENTERPRISE', label: 'Enterprise' },
+  ];
   const [formData, setFormData] = useState({
     businessName: initialData?.name || '',
     ownerName: initialData?.ownerName || '',
@@ -168,16 +176,13 @@ export default function BusinessModal({ isOpen, onClose, onConfirm, initialData,
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                     <TrendingUp className="w-3.5 h-3.5" /> Plan Type
                   </label>
-                  <p className="text-[10px] text-slate-400 font-medium leading-none">BASIC, STARTER, PROFESSIONAL, ENTERPRISE</p>
+                    <p className="text-[10px] text-slate-400 font-medium leading-none">{planTypes.map(p => p.label).join(', ')}</p>
                   <select 
                     value={formData.planType}
                     onChange={(e) => setFormData({...formData, planType: e.target.value})}
                     className="w-full h-12 rounded-xl border border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none transition-all px-4 text-sm font-medium"
                   >
-                    <option value="BASIC">Basic</option>
-                    <option value="STARTER">Starter</option>
-                    <option value="PROFESSIONAL">Professional</option>
-                    <option value="ENTERPRISE">Enterprise</option>
+                    {planTypes.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                   </select>
                 </div>
               </div>
@@ -246,7 +251,7 @@ export default function BusinessModal({ isOpen, onClose, onConfirm, initialData,
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <Loader2 className="w-5 h-5 animate-pulse" />
                       {mode === 'edit' ? 'Updating...' : 'Registering...'}
                     </>
                   ) : (

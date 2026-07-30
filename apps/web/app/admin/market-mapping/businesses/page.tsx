@@ -1,20 +1,11 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdminLayout from '@/components/admin/AdminLayout';
-import KPIStrip from '@/components/dashboard/operations/KPIStrip';
-import TabNavigation from '@/components/dashboard/operations/TabNavigation';
-import OverviewTab from '@/components/dashboard/operations/OverviewTab';
-import LeadsTab from '@/components/dashboard/operations/LeadsTab';
-import FollowUpsTab from '@/components/dashboard/operations/FollowUpsTab';
-import DemosTab from '@/components/dashboard/operations/DemosTab';
-import BusinessesTab from '@/components/dashboard/operations/BusinessesTab';
-import OnboardingTab from '@/components/dashboard/operations/OnboardingTab';
-import TasksTab from '@/components/dashboard/operations/TasksTab';
-import ActivitiesTab from '@/components/dashboard/operations/ActivitiesTab';
-import { X, Building2, Crown, MapPin, Phone, Mail, User, Clock, Calendar, CheckCircle2, BarChart3, ArrowLeft, Users, Star, FileText, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Search, MapPin, Phone, Mail, Building2, User, Crown, CheckCircle2, Clock, AlertCircle, ChevronRight, FileText, ExternalLink, X, Globe, Users, Star, Calendar, BarChart3 } from 'lucide-react';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { mockBusinesses } from '@/lib/market-mapping-mock';
 import { MappedBusiness } from '@/types/market-mapping';
@@ -51,83 +42,119 @@ const movementHistory: Record<string, { from: string; to: string; date: string; 
     { from: 'PROSPECT', to: 'MEETING', date: '2026-07-01', by: 'Sarah Okafor' },
     { from: 'MEETING', to: 'NEGOTIATING', date: '2026-07-15', by: 'Sarah Okafor' },
   ],
+  'b-105': [],
+  'b-106': [],
 };
 
-function AdminOperationsPage() {
-  const searchParams = useSearchParams();
+export default function BusinessesPage() {
   const router = useRouter();
-  const businessId = searchParams.get('businessId');
-  const [activeTab, setActiveTab] = useState('overview');
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedBusiness, setSelectedBusiness] = useState<MappedBusiness | null>(null);
 
-  useEffect(() => {
-    if (businessId) {
-      const biz = mockBusinesses.find(b => b.id === businessId);
-      if (biz) {
-        setSelectedBusiness(biz);
-        setActiveTab('businesses');
-      }
-    }
-  }, [businessId]);
+  const filtered = mockBusinesses.filter(b => {
+    if (search && !b.name.toLowerCase().includes(search.toLowerCase()) && !b.ownerName.toLowerCase().includes(search.toLowerCase())) return false;
+    if (statusFilter !== 'ALL' && b.status !== statusFilter) return false;
+    return true;
+  });
 
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'overview':
-        return <OverviewTab />;
-      case 'leads':
-        return <LeadsTab isAdmin={true} />;
-      case 'follow-ups':
-        return <FollowUpsTab />;
-      case 'demos':
-        return <DemosTab />;
-      case 'businesses':
-        return <BusinessesTab />;
-      case 'onboarding':
-        return <OnboardingTab />;
-      case 'tasks':
-        return <TasksTab />;
-      case 'activities':
-        return <ActivitiesTab />;
-      default:
-        return <OverviewTab />;
-    }
-  };
+  const statuses = ['ALL', ...new Set(mockBusinesses.map(b => b.status))];
 
-  const closeBusinessModal = () => {
-    setSelectedBusiness(null);
-    router.replace('/admin/operations');
+  const openInOps = (biz: MappedBusiness) => {
+    router.push(`/admin/operations?businessId=${biz.id}`);
   };
 
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div>
-          <h2 className="text-3xl font-bold text-slate-900">Global Operations Command</h2>
-          <p className="text-slate-500">Full administrative control over leads, businesses, and operational workflows.</p>
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <Link href="/admin/market-mapping" className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors">
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <div>
+            <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-emerald-600" />
+              Captured Businesses
+            </h1>
+            <p className="text-xs text-slate-500 font-medium">
+              {mockBusinesses.length} businesses captured by affiliates — click a business to see full details
+            </p>
+          </div>
         </div>
 
-        <KPIStrip />
-
-        <div className="bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden">
-          <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
-          
-          <div className="p-6 sm:p-8 min-h-[600px]">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeTab}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-              >
-                {renderTabContent()}
-              </motion.div>
-            </AnimatePresence>
+        {/* Filters */}
+        <div className="flex flex-wrap gap-3">
+          <div className="relative flex-1 min-w-[200px] max-w-xs">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search by business or owner..."
+              className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 transition-all"
+            />
           </div>
+          <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
+            {statuses.map(s => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                  statusFilter === s ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                )}
+              >
+                {s === 'ALL' ? 'All' : s.charAt(0) + s.slice(1).toLowerCase()}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Business List */}
+        <div className="space-y-3">
+          {filtered.map(biz => (
+            <button
+              key={biz.id}
+              onClick={() => setSelectedBusiness(biz)}
+              className="w-full bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between text-left hover:border-blue-300 hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className={cn(
+                  "w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0",
+                  biz.isAnchor ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"
+                )}>
+                  {biz.name.charAt(0)}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-slate-900 truncate">{biz.name}</p>
+                    {biz.isAnchor && <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+                  </div>
+                  <p className="text-xs text-slate-500 truncate">{biz.category} • {biz.clusterName}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className={cn("px-2.5 py-1 rounded-full text-[10px] font-bold border", statusColor[biz.status] || '')}>
+                  {biz.status}
+                </span>
+                {biz.lastVisit && <span className="text-[10px] text-slate-400 hidden sm:inline">Last: {biz.lastVisit}</span>}
+                <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition-colors" />
+              </div>
+            </button>
+          ))}
+
+          {filtered.length === 0 && (
+            <div className="text-center py-16">
+              <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <p className="text-sm font-bold text-slate-500">No businesses found</p>
+              <p className="text-xs text-slate-400 mt-1">Try adjusting your search or filters</p>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Business Detail Modal */}
+      {/* Right Slide-in Panel */}
       <AnimatePresence>
         {selectedBusiness && (
           <>
@@ -135,7 +162,7 @@ function AdminOperationsPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={closeBusinessModal}
+              onClick={() => setSelectedBusiness(null)}
               className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[250]"
             />
             <motion.div
@@ -163,12 +190,15 @@ function AdminOperationsPage() {
                       <p className="text-xs text-slate-500">{selectedBusiness.category} • {selectedBusiness.industry}</p>
                     </div>
                   </div>
-                  <button onClick={closeBusinessModal} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+                  <button
+                    onClick={() => setSelectedBusiness(null)}
+                    className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
+                  >
                     <X className="w-5 h-5 text-slate-400" />
                   </button>
                 </div>
 
-                {/* Status */}
+                {/* Status Badge + Priority */}
                 <div className="flex items-center gap-3">
                   <span className={cn("px-3 py-1.5 rounded-full text-xs font-bold border", statusColor[selectedBusiness.status] || '')}>
                     {selectedBusiness.status}
@@ -187,7 +217,7 @@ function AdminOperationsPage() {
                   )}
                 </div>
 
-                {/* Quick Stats */}
+                {/* Quick Info Row */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Anchor Score</p>
@@ -207,26 +237,23 @@ function AdminOperationsPage() {
                   </div>
                 </div>
 
-                {/* Status Movement History */}
+                {/* Movement/Status History */}
                 {movementHistory[selectedBusiness.id] && movementHistory[selectedBusiness.id].length > 0 && (
                   <div className="space-y-3">
                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                      <BarChart3 className="w-3.5 h-3.5 text-blue-500" /> Lifecycle Movement
+                      <BarChart3 className="w-3.5 h-3.5 text-blue-500" /> Status Movement History
                     </h4>
-                    <div className="relative pl-6 space-y-3 before:absolute before:left-[9px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
+                    <div className="space-y-2">
                       {movementHistory[selectedBusiness.id].map((move, idx) => (
-                        <div key={idx} className="relative">
-                          <div className="absolute -left-[18px] top-1 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white shadow" />
-                          <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100 ml-2">
-                            <div className="flex flex-col gap-0.5">
-                              <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded text-center", statusColor[move.from] || '')}>{move.from}</span>
-                              <span className="text-[8px] text-slate-400 text-center">→</span>
-                              <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded text-center", statusColor[move.to] || '')}>{move.to}</span>
-                            </div>
-                            <div className="text-[10px] text-slate-500 ml-3">
-                              <p>by <span className="font-bold text-slate-700">{move.by}</span></p>
-                              <p className="flex items-center gap-1 mt-0.5"><Calendar className="w-3 h-3" /> {move.date}</p>
-                            </div>
+                        <div key={idx} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                          <div className="flex flex-col items-center gap-1">
+                            <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded", statusColor[move.from] || '')}>{move.from}</span>
+                            <ArrowLeft className="w-3 h-3 text-slate-400 rotate-180" />
+                            <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded", statusColor[move.to] || '')}>{move.to}</span>
+                          </div>
+                          <div className="text-[10px] text-slate-500 ml-2">
+                            <p>by <span className="font-bold text-slate-700">{move.by}</span></p>
+                            <p className="flex items-center gap-1 mt-0.5"><Calendar className="w-3 h-3" /> {move.date}</p>
                           </div>
                         </div>
                       ))}
@@ -339,19 +366,23 @@ function AdminOperationsPage() {
                     </div>
                   </div>
                 )}
+
+                {/* Action: See in Operation Command */}
+                <div className="pt-4 border-t border-slate-100">
+                  <button
+                    onClick={() => openInOps(selectedBusiness)}
+                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    See in Operation Command
+                  </button>
+                  <p className="text-[10px] text-slate-400 text-center mt-2">Open this business in the Global Operations Command for full lifecycle management</p>
+                </div>
               </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
     </AdminLayout>
-  );
-}
-
-export default function OperationsPage() {
-  return (
-    <Suspense>
-      <AdminOperationsPage />
-    </Suspense>
   );
 }

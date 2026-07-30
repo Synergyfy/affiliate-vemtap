@@ -36,7 +36,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {isLoading ? (
-          <Loader2 className="w-5 h-5 animate-spin mr-2" />
+          <Loader2 className="w-5 h-5 animate-pulse mr-2" />
         ) : null}
         {children}
       </button>
