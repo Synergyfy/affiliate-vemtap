@@ -34,14 +34,14 @@ export const mockExpansionStages: ExpansionStageInfo[] = [
 ];
 
 export const mockHierarchy: GeographicHierarchyNode[] = [
-  { id: 'ng', name: 'Nigeria', type: 'COUNTRY', childrenCount: 36, totalBusinesses: 1420, totalCustomers: 412, totalProspects: 1008, totalAnchors: 56, penetrationPercentage: 29 },
-  { id: 'fct', name: 'FCT', type: 'STATE', parentId: 'ng', childrenCount: 6, totalBusinesses: 850, totalCustomers: 260, totalProspects: 590, totalAnchors: 34, penetrationPercentage: 30.5 },
-  { id: 'abuja', name: 'Abuja', type: 'CITY', parentId: 'fct', childrenCount: 8, totalBusinesses: 620, totalCustomers: 210, totalProspects: 410, totalAnchors: 26, penetrationPercentage: 33.8 },
-  { id: 'wuse', name: 'Wuse', type: 'AREA', parentId: 'abuja', childrenCount: 5, totalBusinesses: 240, totalCustomers: 95, totalProspects: 145, totalAnchors: 12, penetrationPercentage: 39.5 },
-  { id: 'banex', name: 'Banex Plaza', type: 'CLUSTER', parentId: 'wuse', totalBusinesses: 120, totalCustomers: 48, totalProspects: 72, totalAnchors: 6, penetrationPercentage: 40, clusterStage: 6 },
-  { id: 'wuse-mkt', name: 'Wuse Main Market', type: 'CLUSTER', parentId: 'wuse', totalBusinesses: 85, totalCustomers: 32, totalProspects: 53, totalAnchors: 4, penetrationPercentage: 37.6, clusterStage: 5 },
-  { id: 'garki', name: 'Garki', type: 'AREA', parentId: 'abuja', childrenCount: 4, totalBusinesses: 180, totalCustomers: 50, totalProspects: 130, totalAnchors: 8, penetrationPercentage: 27.7 },
-  { id: 'garki-mkt', name: 'Garki Model Market', type: 'CLUSTER', parentId: 'garki', totalBusinesses: 90, totalCustomers: 25, totalProspects: 65, totalAnchors: 5, penetrationPercentage: 27.7, clusterStage: 4 },
+  { id: 'ng', name: 'Nigeria', type: 'COUNTRY', childrenCount: 36, totalBusinesses: 1420, totalCustomers: 412, totalProspects: 1008, totalAnchors: 56, penetrationPercentage: 29, latitude: 9.0820, longitude: 8.6753 },
+  { id: 'fct', name: 'FCT', type: 'STATE', parentId: 'ng', childrenCount: 6, totalBusinesses: 850, totalCustomers: 260, totalProspects: 590, totalAnchors: 34, penetrationPercentage: 30.5, latitude: 8.8932, longitude: 7.1812 },
+  { id: 'abuja', name: 'Abuja', type: 'CITY', parentId: 'fct', childrenCount: 8, totalBusinesses: 620, totalCustomers: 210, totalProspects: 410, totalAnchors: 26, penetrationPercentage: 33.8, latitude: 9.0765, longitude: 7.3986 },
+  { id: 'wuse', name: 'Wuse', type: 'AREA', parentId: 'abuja', childrenCount: 5, totalBusinesses: 240, totalCustomers: 95, totalProspects: 145, totalAnchors: 12, penetrationPercentage: 39.5, latitude: 9.0775, longitude: 7.4720 },
+  { id: 'banex', name: 'Banex Plaza', type: 'CLUSTER', parentId: 'wuse', totalBusinesses: 120, totalCustomers: 48, totalProspects: 72, totalAnchors: 6, penetrationPercentage: 40, clusterStage: 6, latitude: 9.0765, longitude: 7.4898 },
+  { id: 'wuse-mkt', name: 'Wuse Main Market', type: 'CLUSTER', parentId: 'wuse', totalBusinesses: 85, totalCustomers: 32, totalProspects: 53, totalAnchors: 4, penetrationPercentage: 37.6, clusterStage: 5, latitude: 9.0780, longitude: 7.4700 },
+  { id: 'garki', name: 'Garki', type: 'AREA', parentId: 'abuja', childrenCount: 4, totalBusinesses: 180, totalCustomers: 50, totalProspects: 130, totalAnchors: 8, penetrationPercentage: 27.7, latitude: 9.0289, longitude: 7.4877 },
+  { id: 'garki-mkt', name: 'Garki Model Market', type: 'CLUSTER', parentId: 'garki', totalBusinesses: 90, totalCustomers: 25, totalProspects: 65, totalAnchors: 5, penetrationPercentage: 27.7, clusterStage: 4, latitude: 9.0300, longitude: 7.4880 },
 ];
 
 export const mockClusterDetail: ClusterDetail = {

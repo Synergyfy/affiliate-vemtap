@@ -2,13 +2,16 @@
 
 import { TerritoryStats } from '@/types/affiliate-market-mapping';
 import { Flag, ShieldAlert, ArrowRight } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface MarketCompletionSummaryProps {
   stats: TerritoryStats;
 }
 
 export default function MarketCompletionSummary({ stats }: MarketCompletionSummaryProps) {
+  const router = useRouter();
   const isComplete = stats.clusterCompletion >= 80;
+  const from = encodeURIComponent('/dashboard/market-mapping/insights');
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm mb-6 text-center relative overflow-hidden">
@@ -43,15 +46,15 @@ export default function MarketCompletionSummary({ stats }: MarketCompletionSumma
 
       <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
         {isComplete ? (
-          <button className="px-6 py-3 bg-emerald-600 text-white text-sm font-black rounded-xl hover:bg-emerald-700 transition-colors flex items-center gap-2">
+          <button onClick={() => router.push('/support')} className="px-6 py-3 bg-emerald-600 text-white text-sm font-black rounded-xl hover:bg-emerald-700 transition-colors flex items-center gap-2">
             Request New Territory <ArrowRight className="w-4 h-4" />
           </button>
         ) : (
           <>
-            <button className="px-6 py-3 bg-slate-100 text-slate-700 text-sm font-black rounded-xl hover:bg-slate-200 transition-colors flex items-center gap-2">
+            <button onClick={() => router.push(`/dashboard/market-mapping/execute?view=anchors&from=${from}`)} className="px-6 py-3 bg-slate-100 text-slate-700 text-sm font-black rounded-xl hover:bg-slate-200 transition-colors flex items-center gap-2">
               <ShieldAlert className="w-4 h-4" /> View Remaining Anchors
             </button>
-            <button className="px-6 py-3 bg-blue-600 text-white text-sm font-black rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20">
+            <button onClick={() => router.push(`/dashboard/market-mapping/execute?from=${from}`)} className="px-6 py-3 bg-blue-600 text-white text-sm font-black rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20">
               Continue Mission
             </button>
           </>

@@ -84,14 +84,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       if (process.env.NEXT_PUBLIC_ADMIN_MOCK === 'true') {
         const isAffiliate = email.toLowerCase().includes('affiliate') || email.toLowerCase().includes('dashboard') || email.toLowerCase() === 'test@vemtap.com';
+        const isSupervisor = email.toLowerCase().includes('supervisor');
+        const isManager = email.toLowerCase().includes('manager');
         
+        const mockRole = isSupervisor ? 'SUPERVISOR' : isManager ? 'MANAGER' : isAffiliate ? 'AFFILIATE' : 'SUPER_ADMIN';
+        const mockName = isSupervisor ? 'Supervisor User' : isManager ? 'Manager User' : isAffiliate ? 'Affiliate User' : 'Admin User';
+
         const mockAdminUser: User = {
-          id: isAffiliate ? 'affiliate-mock-user-1' : 'admin-mock-user-1',
-          fullName: isAffiliate ? 'Affiliate User' : 'Admin User',
+          id: isAffiliate ? 'affiliate-mock-user-1' : isSupervisor ? 'supervisor-mock-user-1' : isManager ? 'manager-mock-user-1' : 'admin-mock-user-1',
+          fullName: mockName,
           email: email || 'admin@vemtap.com',
           phone: '+2348012345678',
-          referralCode: isAffiliate ? 'AFFILIATE1' : 'ADMINMOCK',
-          role: isAffiliate ? 'AFFILIATE' : 'SUPER_ADMIN',
+          referralCode: isAffiliate ? 'AFFILIATE1' : isSupervisor ? 'SUPERVISOR1' : isManager ? 'MANAGER1' : 'ADMINMOCK',
+          role: mockRole,
           hasAcceptedTerms: true,
           hasSignedAgreement: true,
           isKycVerified: true,
@@ -114,6 +119,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const MOCK_TOKEN = isAffiliate 
           ? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiQUZGSUxJQVRFIiwiaWF0IjoxNjAwMDAwMDAwfQ.signature" 
+          : isSupervisor
+          ? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiU1VQRVJWSVNPUiIsImlhdCI6MTYwMDAwMDAwMH0.signature"
+          : isManager
+          ? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiTUFOQUdFUiIsImlhdCI6MTYwMDAwMDAwMH0.signature"
           : "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiU1VQRVJfQURNSU4iLCJpYXQiOjE2MDAwMDAwMDB9.signature";
         setUser(mockAdminUser);
         setIsAuthenticated(true);

@@ -6,14 +6,15 @@ import { PlannedVisit, VisitStatus } from '@/types/affiliate-market-mapping';
 import { cn } from '@/lib/utils';
 import { Building2, Phone, MoreHorizontal } from 'lucide-react';
 import { useMarketMapping } from '@/components/dashboard/market-mapping/MarketMappingContext';
+import { useMarketMappingConfig } from '@/hooks/use-market-mapping-config';
 
-const pipelineStatuses: { id: VisitStatus; name: string; color: string; bg: string; text: string }[] = [
-  { id: 'NOT_YET', name: 'To Visit', color: 'bg-slate-500', bg: 'bg-slate-50', text: 'text-slate-600' },
-  { id: 'VISITED', name: 'Visited', color: 'bg-blue-500', bg: 'bg-blue-50', text: 'text-blue-600' },
-  { id: 'CONTACTED', name: 'Contacted', color: 'bg-purple-500', bg: 'bg-purple-50', text: 'text-purple-600' },
-  { id: 'INTERESTED', name: 'Interested', color: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-600' },
-  { id: 'NOT_INTERESTED', name: 'Not Interested', color: 'bg-red-500', bg: 'bg-red-50', text: 'text-red-600' },
-  { id: 'CUSTOMER', name: 'Customer', color: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-600' },
+const defaultPipelineStatuses = [
+  { id: 'NOT_YET' as const, name: 'To Visit', color: 'bg-slate-500', bg: 'bg-slate-50', text: 'text-slate-600' },
+  { id: 'VISITED' as const, name: 'Visited', color: 'bg-blue-500', bg: 'bg-blue-50', text: 'text-blue-600' },
+  { id: 'CONTACTED' as const, name: 'Contacted', color: 'bg-purple-500', bg: 'bg-purple-50', text: 'text-purple-600' },
+  { id: 'INTERESTED' as const, name: 'Interested', color: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-600' },
+  { id: 'NOT_INTERESTED' as const, name: 'Not Interested', color: 'bg-red-500', bg: 'bg-red-50', text: 'text-red-600' },
+  { id: 'CUSTOMER' as const, name: 'Customer', color: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-600' },
 ];
 
 interface PipelineViewProps {
@@ -23,6 +24,8 @@ interface PipelineViewProps {
 
 export default function PipelineView({ visits, onSelectVisit }: PipelineViewProps) {
   const { saveCapture } = useMarketMapping();
+  const { data: config } = useMarketMappingConfig();
+  const pipelineStatuses = config?.pipelineStatuses ?? defaultPipelineStatuses;
   
   const handleStatusChange = (visit: PlannedVisit, newStatus: VisitStatus) => {
     saveCapture({ ...visit, status: newStatus });

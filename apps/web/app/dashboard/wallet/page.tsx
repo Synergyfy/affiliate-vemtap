@@ -98,7 +98,7 @@ export default function WalletPage() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
+          <Loader2 className="w-8 h-8 animate-pulse text-slate-300" />
         </div>
       </DashboardLayout>
     );
@@ -223,7 +223,7 @@ export default function WalletPage() {
                     <>
                       <p className="text-[10px] sm:text-xs text-slate-500 mb-4">Minimum withdrawal amount is ₦5,000. Processing takes 24-48 hours.</p>
                       <Button type="submit" className="w-full text-sm sm:text-base font-bold" disabled={requestWithdrawal.isPending}>
-                        {requestWithdrawal.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                        {requestWithdrawal.isPending ? <Loader2 className="w-4 h-4 animate-pulse mr-2" /> : null}
                         Confirm Withdrawal
                       </Button>
                     </>

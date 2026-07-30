@@ -37,7 +37,7 @@ export default function LeaderboardPage() {
     { label: 'All Time', value: 'all' },
   ];
 
-  const displayData = (leaderboardData || []).filter(item => 
+  const displayData = (Array.isArray(leaderboardData) ? leaderboardData : []).filter(item => 
     item.fullName.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
@@ -53,7 +53,7 @@ export default function LeaderboardPage() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
+          <Loader2 className="w-8 h-8 animate-pulse text-slate-300" />
         </div>
       </DashboardLayout>
     );
@@ -276,12 +276,12 @@ export default function LeaderboardPage() {
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600 rounded-full blur-[100px] opacity-20 -mr-32 -mt-32" />
           <div className="flex items-center gap-6 relative z-10 text-center md:text-left flex-col md:flex-row">
             <div className="w-20 h-20 rounded-full border-4 border-white/10 flex items-center justify-center text-3xl font-black bg-white/5">
-              {(leaderboardData || []).findIndex(item => item.fullName === user?.fullName) + 1 || '--'}
+              {(Array.isArray(leaderboardData) ? leaderboardData : []).findIndex(item => item.fullName === user?.fullName) + 1 || '--'}
             </div>
             <div>
               <h3 className="text-xl font-bold">Your Current Rank</h3>
               <p className="text-slate-400">
-                {(leaderboardData || []).findIndex(item => item.fullName === user?.fullName) !== -1 
+                {(Array.isArray(leaderboardData) ? leaderboardData : []).findIndex(item => item.fullName === user?.fullName) !== -1 
                   ? "You are doing great! Keep it up." 
                   : "Start referring more businesses to climb the board!"}
               </p>

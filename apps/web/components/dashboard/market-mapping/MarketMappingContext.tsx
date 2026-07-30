@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { PlannedVisit, TerritoryStats, ClusterMaturity, AIRecommendation, AffiliatePerformance, BusinessNote, MissionPlan, MissionHistoryEntry } from '@/types/affiliate-market-mapping';
-import { mockAffiliateStats, mockAffiliatePerformance, mockClusterMaturity, mockRecommendations, mockVisits, mockNotes } from '@/lib/affiliate-mock';
+import { mockAffiliateStats, mockAffiliatePerformance, mockClusterMaturity, mockRecommendations, mockVisits, mockNotes, mockAnchorBusinesses, mockPriorityVisits, mockPartnershipVisits } from '@/lib/affiliate-mock';
 
 interface MarketMappingContextType {
   stats: TerritoryStats;
