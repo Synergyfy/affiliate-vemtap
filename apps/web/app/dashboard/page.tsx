@@ -18,12 +18,15 @@ import {
   BarChart3,
   FileText,
   Calculator,
-  HelpCircle
+  HelpCircle,
+  Download
 } from 'lucide-react';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import AgentTargetTracker from '@/components/dashboard/AgentTargetTracker';
 import { useAuth } from '@/hooks/use-auth';
 import { useAffiliateStats } from '@/services/useDashboardHooks';
+import { usePwaInstall } from '@/components/PwaInstallPrompt';
+import { useState, useEffect } from 'react';
 
 const gridItems = [
   { name: 'Market Mapping', icon: Target, color: 'from-blue-500 to-blue-700', href: '/dashboard/market-mapping' },
@@ -42,6 +45,12 @@ const gridItems = [
 export default function MobileFirstDashboard() {
   const { user } = useAuth();
   const { data: stats, isLoading } = useAffiliateStats();
+  const { openPrompt } = usePwaInstall();
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    setIsStandalone(window.matchMedia('(display-mode: standalone)').matches);
+  }, []);
 
   return (
     <DashboardLayout>
@@ -111,6 +120,29 @@ export default function MobileFirstDashboard() {
               </Link>
             </motion.div>
           ))}
+
+          {!isStandalone && (
+            <motion.div
+              key="install-app"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: gridItems.length * 0.05 }}
+              className="flex flex-col items-center gap-3 group"
+            >
+              <button onClick={openPrompt} className="flex flex-col items-center">
+                <div className={cn(
+                  "w-16 h-16 rounded-3xl bg-gradient-to-br flex items-center justify-center shadow-lg group-active:scale-90 transition-all relative overflow-hidden",
+                  "from-blue-600 to-indigo-700"
+                )}>
+                  <div className="absolute top-0 left-0 w-full h-1/2 bg-white/20 -skew-y-12 translate-y-[-50%]" />
+                  <Download className="w-8 h-8 text-white relative z-10" />
+                </div>
+                <span className="text-[10px] font-black text-slate-700 text-center leading-tight mt-3 break-words max-w-[70px]">
+                  Install App
+                </span>
+              </button>
+            </motion.div>
+          )}
         </div>
 
         {/* Agent Target Tracker */}

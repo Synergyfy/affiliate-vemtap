@@ -30,6 +30,7 @@ export const viewport: Viewport = {
 };
 
 import { ToastProvider } from "@/hooks/toast";
+import PwaInstallProvider from "@/components/PwaInstallPrompt";
 
 export default function RootLayout({
   children,
@@ -42,7 +43,9 @@ export default function RootLayout({
         <Providers>
           <AuthProvider>
             <ToastProvider>
-              {children}
+              <PwaInstallProvider>
+                {children}
+              </PwaInstallProvider>
             </ToastProvider>
           </AuthProvider>
         </Providers>
