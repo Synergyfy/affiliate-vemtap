@@ -572,7 +572,7 @@ function AffiliatesManagement() {
           
           {/* Pagination */}
           <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-            <p className="text-xs text-slate-500 font-medium">Showing {usersResponse?.data.length || 0} of {usersResponse?.meta.total || 0} affiliates</p>
+            <p className="text-xs text-slate-500 font-medium">Showing {usersResponse?.data?.length ?? (usersResponse?.data as any)?.data?.length ?? 0} of {usersResponse?.meta?.total ?? (usersResponse?.data as any)?.meta?.total ?? 0} affiliates</p>
             <div className="flex items-center gap-2">
               <button className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-400 cursor-not-allowed">Previous</button>
               <button 

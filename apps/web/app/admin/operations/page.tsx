@@ -11,10 +11,8 @@ import LeadsTab from '@/components/dashboard/operations/LeadsTab';
 import FollowUpsTab from '@/components/dashboard/operations/FollowUpsTab';
 import DemosTab from '@/components/dashboard/operations/DemosTab';
 import BusinessesTab from '@/components/dashboard/operations/BusinessesTab';
-import OnboardingTab from '@/components/dashboard/operations/OnboardingTab';
-import TasksTab from '@/components/dashboard/operations/TasksTab';
-import ActivitiesTab from '@/components/dashboard/operations/ActivitiesTab';
-import { X, Building2, Crown, MapPin, Phone, Mail, User, Clock, Calendar, CheckCircle2, BarChart3, ArrowLeft, Users, Star, FileText, ExternalLink } from 'lucide-react';
+import ReportViewsTab from '@/components/dashboard/operations/ReportViewsTab';
+import { X, Building2, Crown, MapPin, Phone, Mail, User, Clock, Calendar, CheckCircle2, BarChart3, ArrowLeft, Users, Star, FileText, ExternalLink, Search, Filter, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { mockBusinesses } from '@/lib/market-mapping-mock';
 import { MappedBusiness } from '@/types/market-mapping';
@@ -73,7 +71,7 @@ function AdminOperationsPage() {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'overview':
-        return <OverviewTab />;
+        return <OverviewTab onNavigate={setActiveTab} />;
       case 'leads':
         return <LeadsTab isAdmin={true} />;
       case 'follow-ups':
@@ -82,12 +80,8 @@ function AdminOperationsPage() {
         return <DemosTab />;
       case 'businesses':
         return <BusinessesTab />;
-      case 'onboarding':
-        return <OnboardingTab />;
-      case 'tasks':
-        return <TasksTab />;
-      case 'activities':
-        return <ActivitiesTab />;
+      case 'reports':
+        return <ReportViewsTab />;
       default:
         return <OverviewTab />;
     }

@@ -8,9 +8,7 @@ import {
   PhoneCall, 
   PlayCircle, 
   Briefcase, 
-  Rocket, 
-  CheckSquare, 
-  History 
+  BarChart3, 
 } from 'lucide-react';
 
 const tabs = [
@@ -19,9 +17,7 @@ const tabs = [
   { id: 'follow-ups', label: 'Follow-ups', icon: PhoneCall },
   { id: 'demos', label: 'Demos', icon: PlayCircle },
   { id: 'businesses', label: 'Businesses', icon: Briefcase },
-  { id: 'onboarding', label: 'Onboarding', icon: Rocket },
-  { id: 'tasks', label: 'Tasks', icon: CheckSquare },
-  { id: 'activities', label: 'Activities', icon: History },
+  { id: 'reports', label: 'Reports', icon: BarChart3 },
 ];
 
 interface TabNavigationProps {

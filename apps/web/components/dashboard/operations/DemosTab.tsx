@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { 
   Calendar, 
   PlayCircle, 
@@ -10,17 +11,28 @@ import {
   CheckCircle2, 
   ExternalLink,
   ChevronRight,
-  MoreHorizontal
+  MoreHorizontal,
+  Plus,
+  X,
+  Globe,
+  Building2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/hooks/use-toast';
 import { useDemos, useCreateDemo, useUpdateDemo } from '@/services/useOperationsHooks';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function DemosTab() {
   const { showToast } = useToast();
   const { data: demosData, isLoading } = useDemos();
   const demos = Array.isArray(demosData) ? demosData : [];
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [newDemoName, setNewDemoName] = useState('');
+  const [newDemoDate, setNewDemoDate] = useState('');
+  const [newDemoTime, setNewDemoTime] = useState('');
+  const [newDemoType, setNewDemoType] = useState<'virtual' | 'onsite'>('virtual');
+  const [newDemoUrl, setNewDemoUrl] = useState('');
 
   const createDemo = useCreateDemo();
   const updateDemo = useUpdateDemo();
@@ -30,13 +42,17 @@ export default function DemosTab() {
   };
 
   const handleScheduleDemo = async () => {
-    const businessName = prompt('Business name:');
-    if (!businessName) return;
-    const date = prompt('Demo date (YYYY-MM-DD):');
-    if (!date) return;
+    if (!newDemoName || !newDemoDate) return;
+    const dateStr = newDemoTime ? `${newDemoDate}T${newDemoTime}` : newDemoDate;
     try {
-      await createDemo.mutateAsync({ businessName, date });
+      await createDemo.mutateAsync({ businessName: newDemoName, date: dateStr, meetingUrl: newDemoType === 'virtual' ? newDemoUrl : undefined });
       showToast('Demo scheduled successfully', 'success');
+      setShowScheduleModal(false);
+      setNewDemoName('');
+      setNewDemoDate('');
+      setNewDemoTime('');
+      setNewDemoType('virtual');
+      setNewDemoUrl('');
     } catch {
       showToast('Failed to schedule demo', 'error');
     }
@@ -93,9 +109,10 @@ export default function DemosTab() {
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-bold text-slate-900">Upcoming Demos</h3>
         <Button 
-          onClick={handleScheduleDemo}
+          onClick={() => setShowScheduleModal(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold h-10 rounded-xl px-6"
         >
+          <Plus className="w-3.5 h-3.5 mr-1.5" />
           Schedule New Demo
         </Button>
       </div>
@@ -154,7 +171,7 @@ export default function DemosTab() {
 
               <div className="flex items-center gap-2">
                 <Button 
-                  onClick={() => demo.status === 'SCHEDULED' ? handleCompleteDemo(demo.id) : handleAction('Viewing Details')}
+                  onClick={() => demo.status === 'SCHEDULED' ? handleCompleteDemo(demo.id) : demo.meetingUrl ? handleJoinMeeting(demo.meetingUrl) : handleAction('Viewing Details')}
                   className="flex-grow bg-slate-900 hover:bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest h-11 rounded-xl shadow-lg transition-all"
                 >
                   {demo.status === 'SCHEDULED' ? 'Mark Completed' : demo.meetingUrl ? 'Join Meeting' : 'View Details'}
@@ -172,6 +189,113 @@ export default function DemosTab() {
           </div>
         ))}
       </div>
+
+      {/* Schedule Demo Modal */}
+      <AnimatePresence>
+        {showScheduleModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { setShowScheduleModal(false); setNewDemoName(''); setNewDemoDate(''); setNewDemoTime(''); setNewDemoType('virtual'); setNewDemoUrl(''); }}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md bg-white rounded-[2rem] shadow-2xl overflow-hidden p-8"
+            >
+              <div className="flex items-center gap-4 mb-6">
+                <div className="p-3 bg-blue-50 rounded-2xl">
+                  <PlayCircle className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">Schedule New Demo</h3>
+                  <p className="text-sm text-slate-500">Set up a product demonstration</p>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Business Name</label>
+                  <input
+                    type="text"
+                    value={newDemoName}
+                    onChange={(e) => setNewDemoName(e.target.value)}
+                    placeholder="Enter business name..."
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-bold"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Date</label>
+                    <input
+                      type="date"
+                      value={newDemoDate}
+                      onChange={(e) => setNewDemoDate(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-bold"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Time</label>
+                    <input
+                      type="time"
+                      value={newDemoTime}
+                      onChange={(e) => setNewDemoTime(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-bold"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Demo Type</label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setNewDemoType('virtual')}
+                      className={cn("flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border text-sm font-bold transition-all", newDemoType === 'virtual' ? "bg-blue-50 border-blue-200 text-blue-600" : "bg-white border-slate-200 text-slate-500 hover:border-slate-300")}
+                    >
+                      <Globe className="w-4 h-4" /> Virtual
+                    </button>
+                    <button
+                      onClick={() => setNewDemoType('onsite')}
+                      className={cn("flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border text-sm font-bold transition-all", newDemoType === 'onsite' ? "bg-blue-50 border-blue-200 text-blue-600" : "bg-white border-slate-200 text-slate-500 hover:border-slate-300")}
+                    >
+                      <Building2 className="w-4 h-4" /> On-site
+                    </button>
+                  </div>
+                </div>
+                {newDemoType === 'virtual' && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Meeting Link</label>
+                    <input
+                      type="url"
+                      value={newDemoUrl}
+                      onChange={(e) => setNewDemoUrl(e.target.value)}
+                      placeholder="https://meet.google.com/..."
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-bold"
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-3 mt-8">
+                <button
+                  onClick={() => { setShowScheduleModal(false); setNewDemoName(''); setNewDemoDate(''); setNewDemoTime(''); setNewDemoType('virtual'); setNewDemoUrl(''); }}
+                  className="flex-1 px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleScheduleDemo}
+                  disabled={!newDemoName || !newDemoDate}
+                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg disabled:opacity-50"
+                >
+                  Schedule Demo
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

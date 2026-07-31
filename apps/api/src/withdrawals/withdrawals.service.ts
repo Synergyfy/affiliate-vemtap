@@ -126,7 +126,7 @@ export class WithdrawalsService {
     return { data, total };
   }
 
-  async updateStatus(id: string, status: WithdrawalStatus, adminId?: string) {
+  async updateStatus(id: string, status: WithdrawalStatus, adminId?: string, reason?: string) {
     const withdrawal = await this.prisma.withdrawal.findUnique({
       where: { id },
       include: { user: true },
@@ -140,8 +140,9 @@ export class WithdrawalsService {
 
     const updated = await this.prisma.withdrawal.update({
       where: { id },
-      data: { 
+      data: {
         status,
+        adminNotes: reason !== undefined ? reason : withdrawal.adminNotes,
         processedAt: status === WithdrawalStatus.APPROVED ? new Date() : null,
         processedBy: adminId,
       },
@@ -151,6 +152,41 @@ export class WithdrawalsService {
       adminId,
       userId: withdrawal.userId,
       action: 'UPDATE_STATUS',
+      entity: 'WITHDRAWAL',
+      entityId: withdrawal.id,
+      oldValue: withdrawal,
+      newValue: updated,
+    });
+
+    return updated;
+  }
+
+  async updateAmount(id: string, amount: number, adminId?: string) {
+    const withdrawal = await this.prisma.withdrawal.findUnique({
+      where: { id },
+      include: { user: true },
+    });
+
+    if (!withdrawal) throw new NotFoundException('Withdrawal not found');
+
+    if (!amount || amount <= 0) {
+      throw new BadRequestException('Amount must be greater than zero');
+    }
+
+    const settings = await this.settingsService.getSettings();
+    const fee = settings?.withdrawalFee ? Number(settings.withdrawalFee) : 100;
+    const feeAmount = Math.min(amount, fee);
+    const netAmount = amount - feeAmount;
+
+    const updated = await this.prisma.withdrawal.update({
+      where: { id },
+      data: { amount: new Prisma.Decimal(amount), fee: new Prisma.Decimal(feeAmount), netAmount: new Prisma.Decimal(netAmount) },
+    });
+
+    await this.auditService.log({
+      adminId,
+      userId: withdrawal.userId,
+      action: 'UPDATE_AMOUNT',
       entity: 'WITHDRAWAL',
       entityId: withdrawal.id,
       oldValue: withdrawal,

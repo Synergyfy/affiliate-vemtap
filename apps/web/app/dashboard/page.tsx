@@ -16,6 +16,8 @@ import {
   MessageCircle,
   CheckSquare,
   BarChart3,
+  FileText,
+  Calculator,
   HelpCircle
 } from 'lucide-react';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
@@ -26,6 +28,8 @@ import { useAffiliateStats } from '@/services/useDashboardHooks';
 const gridItems = [
   { name: 'Market Mapping', icon: Target, color: 'from-blue-500 to-blue-700', href: '/dashboard/market-mapping' },
   { name: 'Pipeline', icon: BarChart3, color: 'from-indigo-500 to-purple-600', href: '/dashboard/market-mapping/pipeline' },
+  { name: 'My Reports', icon: FileText, color: 'from-blue-500 to-cyan-500', href: '/dashboard/market-mapping/insights/reports' },
+  { name: 'Earnings Calculator', icon: Calculator, color: 'from-emerald-400 to-green-600', href: '/dashboard/earnings-calculator' },
   { name: 'Referral Tools', icon: LinkIcon, color: 'from-emerald-400 to-teal-500', href: '/dashboard/tools' },
   { name: 'My Businesses', icon: Briefcase, color: 'from-orange-400 to-amber-500', href: '/dashboard/businesses' },
   { name: 'Wallet & Earnings', icon: Wallet, color: 'from-purple-500 to-indigo-600', href: '/dashboard/wallet' },

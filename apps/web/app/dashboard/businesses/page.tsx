@@ -24,10 +24,12 @@ import {
   TrendingUp as TrendingUpIcon, 
   Activity,
   Loader2,
-  ArrowRight
+  ArrowRight,
+  ArrowLeft
 } from 'lucide-react';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import BusinessModal from '@/components/dashboard/BusinessModal';
@@ -234,11 +236,15 @@ export default function BusinessesPage() {
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h2 className="text-3xl font-black text-slate-900">My Portfolio</h2>
-            <p className="text-slate-500 font-medium">Manage and track all businesses that have successfully onboarded via your referral.</p>
-          </div>
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard" className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors shrink-0">
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <div className="flex-1 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h2 className="text-3xl font-black text-slate-900">My Portfolio</h2>
+              <p className="text-slate-500 font-medium">Manage and track all businesses that have successfully onboarded via your referral.</p>
+            </div>
           <div className="flex gap-3 w-full md:w-auto">
             <Button 
               variant="outline" 
@@ -248,6 +254,7 @@ export default function BusinessesPage() {
               Export
             </Button>
           </div>
+        </div>
         </div>
 
         {/* Filters & Search */}

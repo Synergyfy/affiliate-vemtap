@@ -83,9 +83,24 @@ export const useWithdrawals = (params?: {
 export const useUpdateWithdrawalStatus = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+    mutationFn: async ({ id, status, reason }: { id: string; status: string; reason?: string }) => {
       if (IS_MOCK) return { id, status };
-      const { data } = await api.patch(`/withdrawals/${id}/status`, { status });
+      const { data } = await api.patch(`/withdrawals/${id}/status`, { status, reason });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'withdrawals'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
+    },
+  });
+};
+
+export const useUpdateWithdrawalAmount = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, amount }: { id: string; amount: number }) => {
+      if (IS_MOCK) return { id, amount };
+      const { data } = await api.patch(`/withdrawals/${id}`, { amount });
       return data;
     },
     onSuccess: () => {

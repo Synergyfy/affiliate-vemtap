@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Plus, Search, Filter, MoreHorizontal, Phone, Mail, MessageCircle, Clock } from 'lucide-react';
+import { Plus, Search, Filter, MoreHorizontal, Phone, Mail, MessageCircle, Clock, X, SlidersHorizontal, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import LeadCreationModal from './LeadCreationModal';
 import LeadCard from './LeadCard';
 import { useToast } from '@/hooks/use-toast';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import { DndContext, DragOverlay, useDroppable, PointerSensor, useSensor, useSensors, closestCorners } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -79,9 +80,20 @@ export default function LeadsTab({ isAdmin = false }: LeadsTabProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeLeadId, setActiveLeadId] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterPriority, setFilterPriority] = useState<string>('all');
+  const [filterIndustry, setFilterIndustry] = useState<string>('all');
 
   const { data: response, isLoading } = useLeads({ search: searchQuery });
   const leads = response?.data || [];
+
+  const filteredLeads = useMemo(() => {
+    return leads.filter(lead => {
+      if (filterPriority !== 'all' && lead.priority !== filterPriority) return false;
+      if (filterIndustry !== 'all' && lead.industry !== filterIndustry) return false;
+      return true;
+    });
+  }, [leads, filterPriority, filterIndustry]);
 
   const updateLead = useUpdateLead();
 
@@ -122,6 +134,11 @@ export default function LeadsTab({ isAdmin = false }: LeadsTabProps) {
     [leads, activeLeadId]
   );
 
+  const industries = useMemo(() => {
+    const set = new Set(leads.map(l => l.industry));
+    return Array.from(set);
+  }, [leads]);
+
   const handleAction = (action: string) => {
     showToast(`${action}`, 'info');
   };
@@ -141,12 +158,15 @@ export default function LeadsTab({ isAdmin = false }: LeadsTabProps) {
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <Button
-            onClick={() => showToast('Filters overlay coming soon', 'info')}
+            onClick={() => setShowFilters(!showFilters)}
             variant="outline"
-            className="flex-grow sm:flex-grow-0 border-slate-200 text-xs font-bold h-10 rounded-xl flex items-center gap-2"
+            className={cn("flex-grow sm:flex-grow-0 border-slate-200 text-xs font-bold h-10 rounded-xl flex items-center gap-2", showFilters && "bg-blue-50 border-blue-200 text-blue-600")}
           >
             <Filter className="w-3.5 h-3.5" />
             Filters
+            {(filterPriority !== 'all' || filterIndustry !== 'all') && (
+              <span className="w-2 h-2 rounded-full bg-blue-500" />
+            )}
           </Button>
           <Button
             onClick={() => setIsModalOpen(true)}
@@ -157,6 +177,54 @@ export default function LeadsTab({ isAdmin = false }: LeadsTabProps) {
           </Button>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-wrap gap-6 items-end">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Priority</label>
+                <select
+                  value={filterPriority}
+                  onChange={(e) => setFilterPriority(e.target.value)}
+                  className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 min-w-[140px]"
+                >
+                  <option value="all">All Priorities</option>
+                  <option value="HIGH">High</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="LOW">Low</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Industry</label>
+                <select
+                  value={filterIndustry}
+                  onChange={(e) => setFilterIndustry(e.target.value)}
+                  className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-100 min-w-[140px]"
+                >
+                  <option value="all">All Industries</option>
+                  {industries.map(ind => (
+                    <option key={ind} value={ind}>{ind}</option>
+                  ))}
+                </select>
+              </div>
+              {(filterPriority !== 'all' || filterIndustry !== 'all') && (
+                <button
+                  onClick={() => { setFilterPriority('all'); setFilterIndustry('all'); }}
+                  className="text-xs font-bold text-red-500 hover:text-red-600 flex items-center gap-1"
+                >
+                  <X className="w-3 h-3" /> Clear
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <LeadCreationModal
         isOpen={isModalOpen}
@@ -172,7 +240,7 @@ export default function LeadsTab({ isAdmin = false }: LeadsTabProps) {
       >
         <div className="flex gap-6 overflow-x-auto pb-6 scrollbar-hide min-h-[600px]">
           {stages.map((stage) => {
-            const stageLeads = leads.filter(l => l.status === stage.id);
+            const stageLeads = filteredLeads.filter(l => l.status === stage.id);
             return (
               <StageColumn
                 key={stage.id}

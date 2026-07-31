@@ -481,7 +481,7 @@ export default function TeamMemberDetailPage() {
                     summary: `Over 6 months, avg ${Math.round(mockEarningsHistory.reduce((s,r) => s+r.leads,0)/mockEarningsHistory.length)} leads/mo.`
                   },
                 ].map(section => (
-                  <div key={section.key} className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                  <div key={section.key} className="bg-white rounded-2xl border border-slate-200 relative">
                     <button
                       onClick={() => {
                         if (openReport === section.key) setOpenReport(null);
@@ -494,12 +494,6 @@ export default function TeamMemberDetailPage() {
                         {section.title}
                       </h3>
                       <div className="flex items-center gap-2">
-                        {openReport === section.key && (
-                          <>
-                            <button onClick={(e) => { e.stopPropagation(); shareReport(section.key, member); }} className={`p-2 rounded-lg hover:bg-${section.color}-100 text-${section.color}-600 transition-colors`} title="Share"><Share2 className="w-4 h-4" /></button>
-                            <button onClick={(e) => { e.stopPropagation(); downloadReport(section.key, member); }} className="p-2 rounded-lg hover:bg-emerald-100 text-emerald-600 transition-colors" title="Download"><Download className="w-4 h-4" /></button>
-                          </>
-                        )}
                         {openReport === section.key ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                       </div>
                     </button>
@@ -508,6 +502,10 @@ export default function TeamMemberDetailPage() {
                         {section.content}
                         <div className="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
                           <p className="text-xs text-slate-700"><span className="font-bold">Summary:</span> {section.summary}</p>
+                        </div>
+                        <div className="mt-3 flex items-center gap-2 justify-end">
+                          <button onClick={() => shareReport(section.key, member)} className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-${section.color}-50 hover:bg-${section.color}-100 text-${section.color}-600 font-bold text-xs transition-colors`}><Share2 className="w-3.5 h-3.5" /> Share</button>
+                          <button onClick={() => downloadReport(section.key, member)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold text-xs transition-colors"><Download className="w-3.5 h-3.5" /> Download</button>
                         </div>
                       </div>
                     )}

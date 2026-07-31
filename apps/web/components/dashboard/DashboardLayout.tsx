@@ -21,8 +21,7 @@ import {
   Target,
   Home,
   CheckSquare,
-  Star,
-  LineChart,
+  FileText,
   Map
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -64,8 +63,8 @@ const sidebarItems = [
 const mobileNavItems = [
   { name: 'Home', icon: Home, href: '/dashboard' },
   { name: 'Map', icon: Map, href: '/dashboard/market-mapping' },
-  { name: 'VIP', icon: Star, href: '/dashboard/network' },
-  { name: 'Profit', icon: LineChart, href: '/dashboard/wallet' },
+  { name: 'Report', icon: FileText, href: '/dashboard/market-mapping/insights/reports' },
+  { name: 'Manager', icon: Users, href: '/dashboard/network' },
   { name: 'My', icon: User, href: '/dashboard/profile' },
 ];
 

@@ -29,19 +29,33 @@ export default function NotificationsManagement() {
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [type, setType] = useState<NotificationType>('SYSTEM');
+  const [selectedRecipients, setSelectedRecipients] = useState<string[]>(['AFFILIATE']);
+
+  const recipientOptions = [
+    { value: 'AFFILIATE', label: 'Affiliates' },
+    { value: 'AGENT', label: 'Agents' },
+    { value: 'SUPERVISOR', label: 'Line Managers' },
+  ];
+
+  const toggleRecipient = (value: string) => {
+    setSelectedRecipients(prev => 
+      prev.includes(value) ? prev.filter(r => r !== value) : [...prev, value]
+    );
+  };
 
   const { data: notificationsResponse, isLoading: isHistoryLoading } = useNotifications({ limit: 20 });
   const broadcast = useBroadcastNotification();
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !message) return;
+    if (!title || !message || selectedRecipients.length === 0) return;
 
     try {
       await broadcast.mutateAsync({ 
         type,
         title, 
-        message 
+        message,
+        targetRoles: selectedRecipients,
       });
       showToast("Notification has been broadcasted successfully.", "success");
       setTitle('');
@@ -98,11 +112,25 @@ export default function NotificationsManagement() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-bold text-slate-700">Recipients</label>
-                <div className="relative">
-                  <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <select className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none text-sm font-medium">
-                    <option>All Affiliates</option>
-                  </select>
+                <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl min-h-[48px]">
+                  {recipientOptions.map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => toggleRecipient(opt.value)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                        selectedRecipients.includes(opt.value)
+                          ? "bg-blue-600 text-white shadow-sm"
+                          : "bg-white text-slate-600 border border-slate-200 hover:border-blue-200"
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                  {selectedRecipients.length === recipientOptions.length && (
+                    <span className="text-[10px] text-blue-600 font-bold self-center ml-1">(All selected)</span>
+                  )}
                 </div>
               </div>
               <div className="space-y-2">

@@ -521,7 +521,7 @@ export default function TeamMemberDetailModal({ isOpen, onClose, member, onTarge
               {activeTab === 'reports' && (
                 <div className="space-y-4">
                   {/* Daily Report */}
-                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                  <div className="bg-white rounded-2xl border border-slate-200 relative">
                     <button
                       onClick={() => setOpenReport(openReport === 'daily' ? null : 'daily')}
                       className="w-full p-5 flex items-center justify-between hover:bg-slate-50/50 transition-colors"
@@ -531,24 +531,6 @@ export default function TeamMemberDetailModal({ isOpen, onClose, member, onTarge
                         Daily Report — {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
                       </h3>
                       <div className="flex items-center gap-2">
-                        {openReport === 'daily' && (
-                          <>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); shareReport('daily', member); }}
-                              className="p-2 rounded-lg hover:bg-blue-100 text-blue-600 transition-colors"
-                              title="Share report"
-                            >
-                              <Share2 className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); downloadReport('daily', member); }}
-                              className="p-2 rounded-lg hover:bg-emerald-100 text-emerald-600 transition-colors"
-                              title="Download report"
-                            >
-                              <Download className="w-4 h-4" />
-                            </button>
-                          </>
-                        )}
                         {openReport === 'daily' ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                       </div>
                     </button>
@@ -582,12 +564,16 @@ export default function TeamMemberDetailModal({ isOpen, onClose, member, onTarge
                             }
                           </p>
                         </div>
+                        <div className="flex items-center gap-2 justify-end">
+                          <button onClick={() => shareReport('daily', member)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold text-xs transition-colors"><Share2 className="w-3.5 h-3.5" /> Share</button>
+                          <button onClick={() => downloadReport('daily', member)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold text-xs transition-colors"><Download className="w-3.5 h-3.5" /> Download</button>
+                        </div>
                       </div>
                     )}
                   </div>
 
                   {/* Weekly Report */}
-                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                  <div className="bg-white rounded-2xl border border-slate-200 relative">
                     <button
                       onClick={() => {
                         setOpenReport(openReport === 'weekly' ? null : 'weekly');
@@ -607,24 +593,6 @@ export default function TeamMemberDetailModal({ isOpen, onClose, member, onTarge
                         })()}
                       </h3>
                       <div className="flex items-center gap-2">
-                        {openReport === 'weekly' && (
-                          <>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); shareReport('weekly', member); }}
-                              className="p-2 rounded-lg hover:bg-indigo-100 text-indigo-600 transition-colors"
-                              title="Share report"
-                            >
-                              <Share2 className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); downloadReport('weekly', member); }}
-                              className="p-2 rounded-lg hover:bg-emerald-100 text-emerald-600 transition-colors"
-                              title="Download report"
-                            >
-                              <Download className="w-4 h-4" />
-                            </button>
-                          </>
-                        )}
                         {openReport === 'weekly' ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                       </div>
                     </button>
@@ -661,12 +629,16 @@ export default function TeamMemberDetailModal({ isOpen, onClose, member, onTarge
                             Their top-performing period for lead generation has been mid-week, and focusing on high-traffic periods could boost next week's numbers.
                           </p>
                         </div>
+                        <div className="flex items-center gap-2 justify-end">
+                          <button onClick={() => shareReport('weekly', member)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-xs transition-colors"><Share2 className="w-3.5 h-3.5" /> Share</button>
+                          <button onClick={() => downloadReport('weekly', member)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold text-xs transition-colors"><Download className="w-3.5 h-3.5" /> Download</button>
+                        </div>
                       </div>
                     )}
                   </div>
 
                   {/* Monthly Breakdown */}
-                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                  <div className="bg-white rounded-2xl border border-slate-200 relative">
                     <button
                       onClick={() => setOpenReport(openReport === 'monthly' ? null : 'monthly')}
                       className="w-full p-5 flex items-center justify-between hover:bg-slate-50/50 transition-colors"
@@ -676,24 +648,6 @@ export default function TeamMemberDetailModal({ isOpen, onClose, member, onTarge
                         Monthly Breakdown
                       </h3>
                       <div className="flex items-center gap-2">
-                        {openReport === 'monthly' && (
-                          <>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); shareReport('monthly', member); }}
-                              className="p-2 rounded-lg hover:bg-emerald-100 text-emerald-600 transition-colors"
-                              title="Share report"
-                            >
-                              <Share2 className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); downloadReport('monthly', member); }}
-                              className="p-2 rounded-lg hover:bg-emerald-100 text-emerald-600 transition-colors"
-                              title="Download report"
-                            >
-                              <Download className="w-4 h-4" />
-                            </button>
-                          </>
-                        )}
                         {openReport === 'monthly' ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                       </div>
                     </button>
@@ -752,6 +706,10 @@ export default function TeamMemberDetailModal({ isOpen, onClose, member, onTarge
                                 : `${member.name} would benefit from additional training and support.`
                             }
                           </p>
+                        </div>
+                        <div className="mt-4 flex items-center gap-2 justify-end">
+                          <button onClick={() => shareReport('monthly', member)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold text-xs transition-colors"><Share2 className="w-3.5 h-3.5" /> Share</button>
+                          <button onClick={() => downloadReport('monthly', member)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold text-xs transition-colors"><Download className="w-3.5 h-3.5" /> Download</button>
                         </div>
                       </div>
                     )}
