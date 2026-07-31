@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowRight,
   CheckCircle2,
+  Calculator,
   DollarSign,
   Users,
   HelpCircle,
@@ -370,6 +371,17 @@ export default function LandingPage() {
                         <h4 className="text-lg sm:text-xl md:text-2xl font-bold mb-1 sm:mb-2">Tier 2: Network Growth</h4>
                         <p className="text-xs sm:text-sm md:text-base text-slate-400">Unlock an additional <span className="text-white font-bold">5% indirect commission</span> from your sub-affiliates after 5 successful referrals.</p>
                       </div>
+                    </div>
+
+                    <div className="pt-4 sm:pt-6">
+                      <Link
+                        href="/earnings-calculator"
+                        className="inline-flex items-center gap-2.5 bg-blue-600 text-white px-6 sm:px-8 py-4 rounded-2xl sm:rounded-3xl text-sm sm:text-base font-bold hover:bg-blue-700 transition-all shadow-2xl shadow-blue-600/30 group/cta active:scale-95"
+                      >
+                        <Calculator className="w-5 h-5 group-hover/cta:rotate-12 transition-transform" />
+                        Calculate My Earnings
+                        <ArrowRight className="ml-1 group-hover/cta:translate-x-2 transition-transform" />
+                      </Link>
                     </div>
                   </div>
                 </div>
