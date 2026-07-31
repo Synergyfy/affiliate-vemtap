@@ -4,9 +4,10 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PlannedVisit, VisitStatus } from '@/types/affiliate-market-mapping';
 import { cn } from '@/lib/utils';
-import { Building2, Phone, MoreHorizontal } from 'lucide-react';
+import { Building2, Phone, MoreHorizontal, Edit3, MessageCircle, Copy, Check } from 'lucide-react';
 import { useMarketMapping } from '@/components/dashboard/market-mapping/MarketMappingContext';
 import { useMarketMappingConfig } from '@/hooks/use-market-mapping-config';
+import { useToast } from '@/hooks/use-toast';
 
 const defaultPipelineStatuses = [
   { id: 'NOT_YET' as const, name: 'To Visit', color: 'bg-slate-500', bg: 'bg-slate-50', text: 'text-slate-600' },
@@ -25,10 +26,41 @@ interface PipelineViewProps {
 export default function PipelineView({ visits, onSelectVisit }: PipelineViewProps) {
   const { saveCapture } = useMarketMapping();
   const { data: config } = useMarketMappingConfig();
+  const { showToast } = useToast();
   const pipelineStatuses = config?.pipelineStatuses ?? defaultPipelineStatuses;
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   
   const handleStatusChange = (visit: PlannedVisit, newStatus: VisitStatus) => {
     saveCapture({ ...visit, status: newStatus });
+  };
+
+  const handleCall = (visit: PlannedVisit) => {
+    if (!visit.phone) {
+      showToast('No phone number saved for this business.', 'info');
+      return;
+    }
+    window.location.href = `tel:${visit.phone}`;
+  };
+
+  const handleWhatsApp = (visit: PlannedVisit) => {
+    if (!visit.phone) {
+      showToast('No phone number saved for this business.', 'info');
+      return;
+    }
+    window.open(`https://wa.me/${visit.phone.replace(/[^0-9]/g, '')}`, '_blank');
+  };
+
+  const handleCopy = async (visit: PlannedVisit) => {
+    const text = `${visit.name}\n${visit.category || ''}\n${visit.address || ''}${visit.phone ? `\n${visit.phone}` : ''}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(visit.id);
+      showToast('Business details copied.', 'success');
+      setTimeout(() => setCopiedId(null), 1500);
+    } catch {
+      showToast('Failed to copy details.', 'error');
+    }
   };
 
   return (
@@ -63,9 +95,54 @@ export default function PipelineView({ visits, onSelectVisit }: PipelineViewProp
                         <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 shadow-inner">
                           <Building2 className="w-4 h-4" />
                         </div>
-                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                          <button className="p-1.5 rounded-lg bg-slate-50 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"><Phone className="w-3.5 h-3.5" /></button>
-                          <button className="p-1.5 rounded-lg bg-slate-50 text-slate-400 hover:text-slate-600 transition-all"><MoreHorizontal className="w-3.5 h-3.5" /></button>
+                        <div className="flex items-center gap-1 relative" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => handleCall(visit)}
+                            className="p-1.5 rounded-lg bg-slate-50 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                            title="Call"
+                          >
+                            <Phone className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setOpenMenuId(openMenuId === visit.id ? null : visit.id)}
+                            className="p-1.5 rounded-lg bg-slate-50 text-slate-400 hover:text-slate-600 transition-all"
+                            title="More actions"
+                          >
+                            <MoreHorizontal className="w-3.5 h-3.5" />
+                          </button>
+                          {openMenuId === visit.id && (
+                            <>
+                              <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />
+                              <div className="absolute right-0 top-full mt-1 z-50 w-44 bg-white rounded-xl border border-slate-200 shadow-xl p-1 origin-top-right">
+                                <button
+                                  onClick={() => { setOpenMenuId(null); onSelectVisit(visit); }}
+                                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors text-left"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" /> Edit Details
+                                </button>
+                                <button
+                                  onClick={() => { setOpenMenuId(null); handleCall(visit); }}
+                                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors text-left"
+                                >
+                                  <Phone className="w-3.5 h-3.5" /> Call Business
+                                </button>
+                                <button
+                                  onClick={() => { setOpenMenuId(null); handleWhatsApp(visit); }}
+                                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] font-bold text-slate-700 hover:bg-emerald-50 hover:text-emerald-600 transition-colors text-left"
+                                >
+                                  <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+                                </button>
+                                <div className="h-px bg-slate-100 my-1" />
+                                <button
+                                  onClick={() => { setOpenMenuId(null); handleCopy(visit); }}
+                                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] font-bold text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                                >
+                                  {copiedId === visit.id ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                                  {copiedId === visit.id ? 'Copied!' : 'Copy Details'}
+                                </button>
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
                       

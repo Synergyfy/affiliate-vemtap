@@ -18,7 +18,10 @@ import {
   Lock,
   Calendar,
   TrendingUp,
-  Loader2
+  Loader2,
+  ArrowLeft,
+  Calculator,
+  HelpCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
@@ -107,6 +110,32 @@ export default function WalletPage() {
   return (
     <DashboardLayout>
       <div className="max-w-5xl mx-auto space-y-6 sm:space-y-8">
+
+        {/* Back */}
+        <div className="flex items-center justify-between gap-2">
+          <Link href="/dashboard" className="inline-flex items-center gap-2 p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors w-fit">
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/dashboard/earnings-calculator"
+              className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs sm:text-sm font-bold transition-colors"
+            >
+              <Calculator className="w-4 h-4" />
+              <span className="hidden sm:inline">Earnings Calculator</span>
+              <span className="sm:hidden">Calculator</span>
+            </Link>
+            <Link
+              href="/dashboard/earnings-calculator?tab=guide"
+              className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs sm:text-sm font-bold transition-colors"
+            >
+              <HelpCircle className="w-4 h-4" />
+              <span className="hidden sm:inline">How Commissions Work</span>
+              <span className="sm:hidden">FAQ</span>
+            </Link>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
           {/* Balance Card */}
           <motion.div

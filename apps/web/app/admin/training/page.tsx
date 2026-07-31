@@ -13,13 +13,17 @@ import {
   Eye,
   Save,
   X,
-  Type,
-  Link as LinkIcon,
   Layout,
   Layers,
-  ChevronRight
+  ChevronRight,
+  MessageSquare,
+  HelpCircle,
+  CheckCircle2,
+  ListChecks,
+  Users
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
+import RichTextEditor from '@/components/admin/RichTextEditor';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/toast';
 
@@ -31,6 +35,139 @@ import {
 } from '@/services/useTrainingHooks';
 import { Loader2 } from 'lucide-react';
 import { TrainingModule, Quiz, Scenario } from '@/types/api';
+
+const AUDIENCE_OPTIONS = [
+  { value: 'AGENT', label: 'Agents' },
+  { value: 'AFFILIATE', label: 'Affiliates' },
+  { value: 'LINE_MANAGER', label: 'Line Managers' },
+];
+
+function AudiencePicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const toggle = (v: string) => {
+    onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v]);
+  };
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {AUDIENCE_OPTIONS.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => toggle(opt.value)}
+          className={cn(
+            "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center gap-1.5",
+            value.includes(opt.value)
+              ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+              : "bg-white text-slate-500 border-slate-200 hover:border-blue-300 hover:text-blue-600"
+          )}
+        >
+          {value.includes(opt.value) && <CheckCircle2 className="w-3.5 h-3.5" />}
+          {opt.label}
+        </button>
+      ))}
+      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Leave all unselected to show to everyone</span>
+    </div>
+  );
+}
+
+function OptionsEditor({ 
+  options, 
+  correctIndex, 
+  onOptionsChange, 
+  onCorrectChange 
+}: { 
+  options: string[]; 
+  correctIndex: number; 
+  onOptionsChange: (v: string[]) => void; 
+  onCorrectChange: (v: number) => void; 
+}) {
+  const updateOption = (i: number, val: string) => {
+    const next = [...options];
+    next[i] = val;
+    onOptionsChange(next);
+  };
+  const removeOption = (i: number) => {
+    const next = options.filter((_, idx) => idx !== i);
+    onCorrectChange(correctIndex === i ? -1 : correctIndex > i ? correctIndex - 1 : correctIndex);
+    onOptionsChange(next);
+  };
+  return (
+    <div className="space-y-2">
+      {options.map((opt, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onCorrectChange(i)}
+            className={cn(
+              "shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all",
+              correctIndex === i ? "border-emerald-500 bg-emerald-500" : "border-slate-300 hover:border-emerald-400"
+            )}
+            title={correctIndex === i ? "Marked as correct answer" : "Mark as correct answer"}
+          >
+            {correctIndex === i && <CheckCircle2 className="w-4 h-4 text-white" />}
+          </button>
+          <input
+            type="text"
+            value={opt}
+            onChange={(e) => updateOption(i, e.target.value)}
+            placeholder={`Answer option ${i + 1}`}
+            className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          />
+          <button
+            type="button"
+            onClick={() => removeOption(i)}
+            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+            title="Remove option"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => onOptionsChange([...options, ''])}
+        className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all"
+      >
+        <Plus className="w-4 h-4" /> Add option
+      </button>
+    </div>
+  );
+}
+
+function InputField({ label, value, onChange, placeholder, required }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; required?: boolean }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-xs font-bold text-slate-600 flex items-center gap-1">
+        {label} {required && <span className="text-rose-500">*</span>}
+      </label>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        required={required}
+        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+      />
+    </div>
+  );
+}
+
+function TextAreaField({ label, value, onChange, placeholder, rows = 2, required }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; rows?: number; required?: boolean }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-xs font-bold text-slate-600 flex items-center gap-1">
+        {label} {required && <span className="text-rose-500">*</span>}
+      </label>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={rows}
+        required={required}
+        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-y"
+      />
+    </div>
+  );
+}
 
 export default function TrainingManagement() {
   const { showToast } = useToast();
@@ -56,16 +193,32 @@ export default function TrainingManagement() {
     quizzes: []
   });
 
-  const [scenariosText, setScenariosText] = useState('[]');
-  const [quizzesText, setQuizzesText] = useState('[]');
-
   const handleSaveCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const payload: Partial<TrainingModule> = {
         ...newModule,
-        scenarios: JSON.parse(scenariosText),
-        quizzes: JSON.parse(quizzesText),
+        content: newModule.content || '',
+        scenarios: (newModule.scenarios || []).map((s, i) => ({
+          title: s.title,
+          situation: s.situation,
+          objection: s.objection,
+          idealResponse: s.idealResponse,
+          options: s.options && s.options.length >= 2
+            ? s.options
+            : [s.idealResponse || 'Best response', 'Let me talk to my manager and get back to you later.'],
+          correctAnswerIndex: s.options && s.options.length >= 2 && s.correctAnswerIndex != null ? s.correctAnswerIndex : 0,
+          audience: s.audience || [],
+          order: i + 1
+        })),
+        quizzes: (newModule.quizzes || []).map((q, i) => ({
+          question: q.question,
+          options: q.options || [],
+          correctAnswer: q.correctAnswer ?? 0,
+          explanation: q.explanation || '',
+          audience: q.audience || [],
+          order: i + 1
+        })),
         order: Number(newModule.order) || (trainingResponse?.data?.length || 0) + 1
       };
 
@@ -82,14 +235,12 @@ export default function TrainingManagement() {
       setSelectedCourse(null);
       resetForm();
     } catch (error: any) {
-      showToast(error.message || 'Failed to save course. Check JSON format.', 'error');
+      showToast(error.message || 'Failed to save course. Please check your questions.', 'error');
     }
   };
 
   const resetForm = () => {
     setNewModule({ title: '', description: '', category: 'Sales', content: '', videoUrl: '', pdfUrl: '', order: 1, isPublished: true, scenarios: [], quizzes: [] });
-    setScenariosText('[]');
-    setQuizzesText('[]');
   };
 
   const handleDelete = async (id: string) => {
@@ -113,12 +264,40 @@ export default function TrainingManagement() {
       videoUrl: course.videoUrl || '',
       pdfUrl: course.pdfUrl || '',
       order: course.order,
-      isPublished: course.isPublished
+      isPublished: course.isPublished,
+      scenarios: course.scenarios || [],
+      quizzes: course.quizzes || []
     });
-    setScenariosText(JSON.stringify(course.scenarios || [], null, 2));
-    setQuizzesText(JSON.stringify(course.quizzes || [], null, 2));
     setIsEditing(true);
     setIsCreating(true);
+  };
+
+  const updateScenario = (index: number, patch: Partial<Scenario>) => {
+    const next = [...(newModule.scenarios || [])];
+    next[index] = { ...next[index], ...patch };
+    setNewModule({ ...newModule, scenarios: next });
+  };
+
+  const addScenario = () => {
+    setNewModule({ ...newModule, scenarios: [...(newModule.scenarios || []), { title: '', situation: '', objection: '', idealResponse: '', options: ['', ''], correctAnswerIndex: 0, audience: [], order: (newModule.scenarios?.length || 0) + 1 }] });
+  };
+
+  const removeScenario = (index: number) => {
+    setNewModule({ ...newModule, scenarios: (newModule.scenarios || []).filter((_, i) => i !== index) });
+  };
+
+  const updateQuiz = (index: number, patch: Partial<Quiz>) => {
+    const next = [...(newModule.quizzes || [])];
+    next[index] = { ...next[index], ...patch };
+    setNewModule({ ...newModule, quizzes: next });
+  };
+
+  const addQuiz = () => {
+    setNewModule({ ...newModule, quizzes: [...(newModule.quizzes || []), { question: '', options: ['', ''], correctAnswer: 0, explanation: '', audience: [], order: (newModule.quizzes?.length || 0) + 1 }] });
+  };
+
+  const removeQuiz = (index: number) => {
+    setNewModule({ ...newModule, quizzes: (newModule.quizzes || []).filter((_, i) => i !== index) });
   };
 
   const modulesList = trainingResponse?.data || [];
@@ -243,38 +422,141 @@ export default function TrainingManagement() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Course Content (HTML/Markdown)</label>
-                    <textarea 
-                      value={newModule.content}
-                      onChange={(e) => setNewModule({...newModule, content: e.target.value})}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                      rows={10}
-                      placeholder="Enter the full lesson content here..."
-                      required
+                    <label className="text-sm font-bold text-slate-700">Course Content</label>
+                    <RichTextEditor 
+                      value={newModule.content || ''}
+                      onChange={(content) => setNewModule({...newModule, content})}
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">Interactive Scenarios (JSON Array)</label>
-                      <textarea 
-                        value={scenariosText}
-                        onChange={(e) => setScenariosText(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-900 text-emerald-400 font-mono text-xs rounded-xl"
-                        rows={8}
-                        placeholder='[{"title": "...", "situation": "...", "objection": "...", "idealResponse": "...", "order": 1}]'
-                      />
+                  {/* Practice Questions Builder */}
+                  <div className="rounded-3xl border-2 border-amber-100 bg-gradient-to-br from-amber-50/50 to-orange-50/30 p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-amber-100 rounded-xl">
+                          <MessageSquare className="w-5 h-5 text-amber-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-slate-900">Practice Questions</h4>
+                          <p className="text-xs text-slate-500">Build interactive scenarios with plain-English answers and choose who they show to.</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={addScenario}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-amber-600 text-white rounded-xl font-bold hover:bg-amber-700 transition-all text-sm"
+                      >
+                        <Plus className="w-4 h-4" /> Add Scenario
+                      </button>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700">Final Quiz Questions (JSON Array)</label>
-                      <textarea 
-                        value={quizzesText}
-                        onChange={(e) => setQuizzesText(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-900 text-blue-400 font-mono text-xs rounded-xl"
-                        rows={8}
-                        placeholder='[{"question": "...", "options": ["A", "B"], "correctAnswer": 0, "order": 1}]'
-                      />
+
+                    {(newModule.scenarios || []).length === 0 && (
+                      <div className="text-center py-8 border-2 border-dashed border-amber-200 rounded-2xl">
+                        <MessageSquare className="w-10 h-10 text-amber-300 mx-auto mb-2" />
+                        <p className="text-sm font-bold text-slate-400">No practice questions yet</p>
+                        <p className="text-xs text-slate-400 mt-1">Click "Add Scenario" to create your first one.</p>
+                      </div>
+                    )}
+
+                    {(newModule.scenarios || []).map((s, idx) => (
+                      <div key={idx} className="bg-white rounded-2xl border border-amber-100 p-5 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-amber-600 uppercase tracking-widest flex items-center gap-2">
+                            <Layers className="w-4 h-4" /> Scenario {idx + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeScenario(idx)}
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                            title="Remove scenario"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <InputField label="Title" value={s.title} onChange={(v) => updateScenario(idx, { title: v })} placeholder="e.g. Handling the 'Too Expensive' objection" required />
+                          <InputField label="Objection / Trigger" value={s.objection} onChange={(v) => updateScenario(idx, { objection: v })} placeholder="e.g. Customer says it is too expensive" />
+                        </div>
+                        <TextAreaField label="Situation" value={s.situation} onChange={(v) => updateScenario(idx, { situation: v })} placeholder="Describe the customer situation in plain English..." rows={2} required />
+                        <div>
+                          <label className="text-xs font-bold text-slate-600 mb-1.5 block">Answer Choices <span className="text-rose-500">*</span></label>
+                          <OptionsEditor
+                            options={s.options || []}
+                            correctIndex={s.correctAnswerIndex ?? 0}
+                            onOptionsChange={(options) => updateScenario(idx, { options })}
+                            onCorrectChange={(correctAnswerIndex) => updateScenario(idx, { correctAnswerIndex })}
+                          />
+                        </div>
+                        <TextAreaField label="Ideal Response (shown in feedback)" value={s.idealResponse} onChange={(v) => updateScenario(idx, { idealResponse: v })} placeholder="The best way to answer this objection..." rows={2} />
+                        <div>
+                          <label className="text-xs font-bold text-slate-600 mb-1.5 flex items-center gap-1"><Users className="w-3.5 h-3.5" /> Show to</label>
+                          <AudiencePicker value={s.audience || []} onChange={(audience) => updateScenario(idx, { audience })} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Test Questions Builder */}
+                  <div className="rounded-3xl border-2 border-blue-100 bg-gradient-to-br from-blue-50/50 to-indigo-50/30 p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-blue-100 rounded-xl">
+                          <ListChecks className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-slate-900">Test Questions</h4>
+                          <p className="text-xs text-slate-500">Build the final assessment with multiple-choice questions and target audiences.</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={addQuiz}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all text-sm"
+                      >
+                        <Plus className="w-4 h-4" /> Add Question
+                      </button>
                     </div>
+
+                    {(newModule.quizzes || []).length === 0 && (
+                      <div className="text-center py-8 border-2 border-dashed border-blue-200 rounded-2xl">
+                        <HelpCircle className="w-10 h-10 text-blue-300 mx-auto mb-2" />
+                        <p className="text-sm font-bold text-slate-400">No test questions yet</p>
+                        <p className="text-xs text-slate-400 mt-1">Click "Add Question" to create your first one.</p>
+                      </div>
+                    )}
+
+                    {(newModule.quizzes || []).map((q, idx) => (
+                      <div key={idx} className="bg-white rounded-2xl border border-blue-100 p-5 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-blue-600 uppercase tracking-widest flex items-center gap-2">
+                            <HelpCircle className="w-4 h-4" /> Question {idx + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeQuiz(idx)}
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                            title="Remove question"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <TextAreaField label="Question" value={q.question} onChange={(v) => updateQuiz(idx, { question: v })} placeholder="Ask the question in plain English..." rows={2} required />
+                        <div>
+                          <label className="text-xs font-bold text-slate-600 mb-1.5 block">Answer Choices <span className="text-rose-500">*</span></label>
+                          <OptionsEditor
+                            options={q.options || []}
+                            correctIndex={q.correctAnswer ?? 0}
+                            onOptionsChange={(options) => updateQuiz(idx, { options })}
+                            onCorrectChange={(correctAnswer) => updateQuiz(idx, { correctAnswer })}
+                          />
+                        </div>
+                        <TextAreaField label="Explanation (optional)" value={q.explanation || ''} onChange={(v) => updateQuiz(idx, { explanation: v })} placeholder="Short explanation shown after answering..." rows={2} />
+                        <div>
+                          <label className="text-xs font-bold text-slate-600 mb-1.5 flex items-center gap-1"><Users className="w-3.5 h-3.5" /> Show to</label>
+                          <AudiencePicker value={q.audience || []} onChange={(audience) => updateQuiz(idx, { audience })} />
+                        </div>
+                      </div>
+                    ))}
                   </div>
 
                   <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-8">
@@ -317,7 +599,7 @@ export default function TrainingManagement() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {modulesList.length > 0 ? modulesList.sort((a, b) => a.order - b.order).map((module, idx) => (
+                {modulesList.length > 0 ? modulesList.sort((a, b) => a.order - b.order).map((module) => (
                   <tr key={module.id} className="hover:bg-slate-50/50 group transition-all">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
@@ -327,6 +609,14 @@ export default function TrainingManagement() {
                         <div>
                           <p className="font-bold text-slate-900">{module.title}</p>
                           <p className="text-xs text-slate-400 line-clamp-1">{module.description}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <MessageSquare className="w-3 h-3" /> {module.scenarios?.length || 0}
+                            </span>
+                            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <HelpCircle className="w-3 h-3" /> {module.quizzes?.length || 0}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </td>

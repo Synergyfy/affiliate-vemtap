@@ -18,6 +18,7 @@ import {
   Loader2,
   Search,
   ChevronDown,
+  ArrowLeft,
   Eye,
   FileText
 } from 'lucide-react';
@@ -29,6 +30,7 @@ import { api } from '@/lib/api-client';
 import { useAuth } from '@/hooks/use-auth';
 import { useBanks, useResolveAccount } from '@/hooks/use-payments';
 import { useMySignatures } from '@/services/useAgreementHooks';
+import Link from 'next/link';
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuth();
@@ -218,9 +220,14 @@ export default function ProfilePage() {
     <DashboardLayout>
       <div className="max-w-4xl mx-auto space-y-8 pb-12">
         {/* Header */}
-        <div>
-          <h2 className="text-3xl font-bold text-slate-900">Profile & Verification</h2>
-          <p className="text-slate-500">Manage your personal details and KYC verification for withdrawals.</p>
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard" className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors shrink-0">
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <div>
+            <h2 className="text-3xl font-bold text-slate-900">Profile & Verification</h2>
+            <p className="text-slate-500">Manage your personal details and KYC verification for withdrawals.</p>
+          </div>
         </div>
 
         {/* KYC Status Banner */}

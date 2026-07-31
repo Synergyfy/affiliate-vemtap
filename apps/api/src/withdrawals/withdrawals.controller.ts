@@ -111,7 +111,7 @@ export class WithdrawalsController {
     description: "New withdrawal status",
     examples: {
       approve: { value: { status: "APPROVED" } },
-      reject: { value: { status: "REJECTED" } },
+      reject: { value: { status: "REJECTED", reason: "Insufficient balance verification" } },
       trigger: { value: { status: "TRIGGERED" } },
     },
   })
@@ -129,10 +129,28 @@ export class WithdrawalsController {
   @ApiResponse({ status: 404, description: "Withdrawal not found" })
   updateStatus(
     @Param("id") id: string,
-    @Body() data: { status: WithdrawalStatus },
+    @Body() data: { status: WithdrawalStatus; reason?: string },
     @CurrentUser() admin: { id: string },
   ) {
-    return this.withdrawalsService.updateStatus(id, data.status, admin.id);
+    return this.withdrawalsService.updateStatus(id, data.status, admin.id, data.reason);
+  }
+
+  @Patch(":id")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Edit withdrawal amount (Admin only)" })
+  @ApiBody({
+    description: "New withdrawal amount",
+    examples: { edit: { value: { amount: 45000 } } },
+  })
+  @ApiResponse({ status: 200, description: "Withdrawal amount updated" })
+  @ApiResponse({ status: 400, description: "Invalid amount" })
+  @ApiResponse({ status: 404, description: "Withdrawal not found" })
+  updateAmount(
+    @Param("id") id: string,
+    @Body() data: { amount: number },
+    @CurrentUser() admin: { id: string },
+  ) {
+    return this.withdrawalsService.updateAmount(id, data.amount, admin.id);
   }
 
   @Post("bulk-trigger")

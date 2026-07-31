@@ -89,7 +89,7 @@ export const useAdminAgreements = (filters?: { role?: string; isActive?: boolean
     queryKey: ['admin', 'agreements', filters],
     queryFn: async () => {
       const { data } = await api.get('/agreements', { params: filters });
-      return data;
+      return Array.isArray(data) ? data : (data as any)?.agreements ?? [];
     },
     staleTime: 1 * 60 * 1000,
   });

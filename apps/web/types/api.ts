@@ -108,6 +108,11 @@ export interface PlatformSettings {
   dailyTarget?: number;
   weeklyTarget?: number;
   monthlyTarget?: number;
+  recurringAgentCommission?: number;
+  recurringAffiliateCommission?: number;
+  recurringLineManagerCommission?: number;
+  recurringDurationMonths?: number;
+  recurringYear2Rate?: number;
   marketMappingConfig?: MarketMappingConfig;
 }
 
@@ -193,12 +198,16 @@ export interface Commission {
 export interface Withdrawal {
   id: string;
   amount: number;
+  fee?: number;
+  netAmount?: number;
   status: WithdrawalStatus;
   bankName: string;
   accountNumber: string;
   accountName: string;
-  createdAt: string;
+  adminNotes?: string;
   processedAt?: string;
+  processedBy?: string;
+  createdAt: string;
   userId: string;
   user?: User;
 }
@@ -235,6 +244,7 @@ export interface Quiz {
   options: string[];
   correctAnswer: number;
   explanation?: string;
+  audience?: string[];
   order: number;
 }
 
@@ -245,6 +255,7 @@ export interface Scenario {
   idealResponse: string;
   options?: string[];
   correctAnswerIndex?: number;
+  audience?: string[];
   order: number;
 }
 

@@ -5,7 +5,8 @@ import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { useMarketMapping } from '@/components/dashboard/market-mapping/MarketMappingContext';
 import {
   MapPin, Calendar, Navigation, BarChart3, Sparkles,
-  ArrowRight, Target, Users, Pencil, Check, ChevronDown
+  ArrowRight, Target, Users, Pencil, Check, ChevronDown,
+  FileText, ArrowLeft
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMemo, useState } from 'react';
@@ -89,6 +90,14 @@ export default function MarketMappingHubPage() {
       color: 'bg-purple-600',
       badge: null,
     },
+    {
+      href: '/dashboard/market-mapping/insights/reports',
+      icon: FileText,
+      title: 'My Reports',
+      description: 'Daily, weekly & monthly performance breakdown with targets, business visits and conversion insights.',
+      color: 'bg-rose-600',
+      badge: null,
+    },
   ];
 
   return (
@@ -96,9 +105,14 @@ export default function MarketMappingHubPage() {
       <div className="space-y-6 max-w-2xl mx-auto">
 
         {/* Header */}
-        <div className="space-y-1">
-          <h1 className="text-2xl font-black text-slate-900">Market Mapping</h1>
-          <p className="text-sm text-slate-500 font-medium">{currentDate}</p>
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard" className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors shrink-0">
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <div className="space-y-1">
+            <h1 className="text-2xl font-black text-slate-900">Market Mapping</h1>
+            <p className="text-sm text-slate-500 font-medium">{currentDate}</p>
+          </div>
         </div>
 
         {/* Active Mission — compact */}
