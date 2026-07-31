@@ -18,7 +18,9 @@ import {
   X,
   MapPin,
   Briefcase,
-  Loader2
+  Loader2,
+  Copy,
+  ExternalLink
 } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import AdminLayout from '@/components/admin/AdminLayout';
@@ -43,6 +45,30 @@ export default function ReferralsManagement() {
 
   const [selectedReferral, setSelectedReferral] = useState<Business | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
+
+  const copyText = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast(`${label} copied to clipboard`, 'success');
+    } catch {
+      showToast('Failed to copy', 'error');
+    }
+  };
+
+  const openReferral = (ref: Business) => {
+    setOpenMenuId(null);
+    setSelectedReferral(ref);
+    setIsModalOpen(true);
+  };
+
+  const openMenu = (e: React.MouseEvent<HTMLButtonElement>, id: string) => {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMenuPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+    setOpenMenuId(openMenuId === id ? null : id);
+  };
 
   return (
     <AdminLayout>
@@ -63,7 +89,12 @@ export default function ReferralsManagement() {
         />
 
         {/* Referrals Table */}
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden relative min-h-[400px]">
+          {isLoading && (
+            <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -77,12 +108,7 @@ export default function ReferralsManagement() {
                   <th className="p-4 font-bold text-slate-600 text-sm text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 relative min-h-[400px]">
-                {isLoading && (
-                  <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
-                    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-                  </div>
-                )}
+              <tbody className="divide-y divide-slate-100">
                 {businessesResponse?.data.map((ref, idx) => (
                   <motion.tr 
                     key={ref.id}
@@ -121,23 +147,58 @@ export default function ReferralsManagement() {
                       </div>
                     </td>
                       <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-2 transition-opacity">
+                        <div className="flex items-center justify-end gap-2 transition-opacity relative">
                           <button 
-                            onClick={() => {
-                              setSelectedReferral(ref);
-                              setIsModalOpen(true);
-                            }}
+                            onClick={() => openReferral(ref)}
                             className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-blue-600 transition-all"
                             title="View Details"
                           >
                             <ArrowUpRight className="w-4 h-4" />
                           </button>
-                          <button 
-                            onClick={() => showToast("More options coming soon", "info")}
-                            className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-900 transition-all"
-                          >
-                            <MoreHorizontal className="w-4 h-4" />
-                          </button>
+                          <div className="relative">
+                            <button 
+                              onClick={(e) => openMenu(e, ref.id)}
+                              className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-900 transition-all"
+                              title="More actions"
+                            >
+                              <MoreHorizontal className="w-4 h-4" />
+                            </button>
+                            {openMenuId === ref.id && menuPos && (
+                              <>
+                                <div className="fixed inset-0 z-[90]" onClick={() => { setOpenMenuId(null); }} />
+                                <div 
+                                  className="fixed z-[100] w-56 bg-white rounded-2xl border border-slate-200 shadow-2xl p-1.5 origin-top-right"
+                                  style={{ top: menuPos.top, right: menuPos.right }}
+                                >
+                                  <button
+                                    onClick={() => openReferral(ref)}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                                  >
+                                    <ExternalLink className="w-3.5 h-3.5" /> View Details
+                                  </button>
+                                  <button
+                                    onClick={() => { setOpenMenuId(null); window.location.href = `mailto:${ref.email}`; }}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                                  >
+                                    <Mail className="w-3.5 h-3.5" /> Email Owner
+                                  </button>
+                                  <button
+                                    onClick={() => { setOpenMenuId(null); window.location.href = `tel:${ref.phone}`; }}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                                  >
+                                    <Phone className="w-3.5 h-3.5" /> Call Owner
+                                  </button>
+                                  <div className="h-px bg-slate-100 my-1" />
+                                  <button
+                                    onClick={() => copyText(ref.id, 'Business ID')}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+                                  >
+                                    <Copy className="w-3.5 h-3.5" /> Copy Business ID
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </td>
                   </motion.tr>

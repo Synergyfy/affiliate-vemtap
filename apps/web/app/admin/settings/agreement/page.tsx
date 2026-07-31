@@ -79,7 +79,7 @@ export default function AgreementsWorkspace() {
   };
 
   const handleRoleAllToggle = () => {
-    const allRoles: Role[] = ['AFFILIATE', 'AGENT', 'SUPERVISOR', 'MANAGER'];
+    const allRoles: Role[] = ['AFFILIATE', 'AGENT', 'SUPERVISOR'];
     if (selectedRoles.length === allRoles.length) {
       setSelectedRoles([]);
     } else {
@@ -125,7 +125,12 @@ export default function AgreementsWorkspace() {
   };
 
   const activeAgreementObj = agreements?.find(a => a.id === selectedAgreementId);
-  const rolesAvailable: Role[] = ['AFFILIATE', 'AGENT', 'SUPERVISOR', 'MANAGER'];
+  const rolesAvailable: Role[] = ['AFFILIATE', 'AGENT', 'SUPERVISOR'];
+  const roleLabels: Record<string, string> = {
+    AFFILIATE: 'Affiliate',
+    AGENT: 'Agent',
+    SUPERVISOR: 'Line Manager',
+  };
 
   return (
     <AdminLayout>
@@ -315,7 +320,7 @@ export default function AgreementsWorkspace() {
                           }`}
                         >
                           {isSelected && <Check className="w-3 h-3 shrink-0" />}
-                          {role}
+                          {roleLabels[role] || role}
                         </button>
                       );
                     })}

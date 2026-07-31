@@ -23,11 +23,13 @@ import {
   Clock,
   Users,
   FileText,
-  Download
+  Download,
+  ArrowLeft
 } from 'lucide-react';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 import { useToast } from '@/hooks/toast';
 import { api } from '@/lib/api-client';
 import { useAuth } from '@/hooks/use-auth';
@@ -42,8 +44,18 @@ export default function AcademyPage() {
   const [completedModules, setCompletedModules] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   
-  const practiceScenarios = courses[0]?.scenarios || [];
-  const quizQuestions = courses[0]?.quizzes || [];
+  const userRole = user?.role;
+  const userAudience = userRole && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN'
+    ? (userRole === 'AGENT' ? 'AGENT' : userRole === 'AFFILIATE' ? 'AFFILIATE' : 'LINE_MANAGER')
+    : null;
+
+  const filterForRole = (items: any[] = []) => {
+    if (!userAudience) return items;
+    return items.filter((item: any) => !item.audience || item.audience.length === 0 || item.audience.includes(userAudience));
+  };
+
+  const practiceScenarios = filterForRole(courses[0]?.scenarios || []);
+  const quizQuestions = filterForRole(courses[0]?.quizzes || []);
   
   // Practice State
   const [practiceIndex, setPracticeIndex] = useState(0);
@@ -88,7 +100,7 @@ export default function AcademyPage() {
   
   const getBadge = () => {
     const activeCourse = courses[0]; // Assuming first course for badge logic if needed
-    const practiceScenarios = activeCourse?.scenarios || [];
+    const practiceScenarios = filterForRole(activeCourse?.scenarios || []);
     const totalPractice = practiceStats.correct + practiceStats.failed;
     const practiceDone = totalPractice > 0 && totalPractice >= practiceScenarios.length;
     
@@ -150,7 +162,7 @@ export default function AcademyPage() {
   };
 
   const handleQuizAnswer = (index: number) => {
-    const quizQuestions = courses[0]?.quizzes || [];
+    const quizQuestions = filterForRole(courses[0]?.quizzes || []);
     const isCorrect = index === quizQuestions[quizStep].correctAnswer;
     
     if (isCorrect) {
@@ -187,11 +199,15 @@ export default function AcademyPage() {
     <DashboardLayout>
       <div className="max-w-5xl mx-auto space-y-8">
         {/* Header & Progress */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div>
-            <h2 className="text-3xl font-bold text-slate-900">Vemtap Sales Academy</h2>
-            <p className="text-slate-500">Learn, Practice, and Test your way to becoming a Top Closer.</p>
-          </div>
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard" className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors shrink-0">
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <div className="flex-1 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div>
+              <h2 className="text-3xl font-bold text-slate-900">Vemtap Sales Academy</h2>
+              <p className="text-slate-500">Learn, Practice, and Test your way to becoming a Top Closer.</p>
+            </div>
           <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4 w-full md:w-auto">
             <div className="relative w-16 h-16 shrink-0">
               <svg className="w-full h-full" viewBox="0 0 36 36">
@@ -209,6 +225,7 @@ export default function AcademyPage() {
                 <span className="text-sm font-bold text-slate-900">{getBadge()}</span>
               </div>
             </div>
+          </div>
           </div>
         </div>
 
@@ -461,10 +478,21 @@ export default function AcademyPage() {
                     <p className="text-sm text-slate-500 mb-8 font-medium">Objection: {practiceScenarios[practiceIndex].objection}</p>
 
                           <div className="space-y-4">
-                            {[
-                              { text: practiceScenarios[practiceIndex].idealResponse, correct: true, feedback: 'Perfect! This addresses the objection directly and keeps the door open.' },
-                              { text: 'Let me talk to my manager and get back to you later.', correct: false, feedback: 'This sounds like you are avoiding the question. Try to handle it directly.' }
-                            ].map((option: any, i: number) => (
+                            {(() => {
+                              const scenario = practiceScenarios[practiceIndex];
+                              const scenarioOptions = scenario.options?.length >= 2
+                                ? scenario.options.map((text: string, i: number) => ({
+                                    text,
+                                    correct: i === scenario.correctAnswerIndex,
+                                    feedback: i === scenario.correctAnswerIndex
+                                      ? (scenario.idealResponse || 'Perfect! This addresses the objection directly and keeps the door open.')
+                                      : 'Not quite. Pick the approach that keeps the conversation moving forward.'
+                                  }))
+                                : [
+                                    { text: scenario.idealResponse, correct: true, feedback: 'Perfect! This addresses the objection directly and keeps the door open.' },
+                                    { text: 'Let me talk to my manager and get back to you later.', correct: false, feedback: 'This sounds like you are avoiding the question. Try to handle it directly.' }
+                                  ];
+                              return scenarioOptions.map((option: any, i: number) => (
                               <button
                                 key={i}
                                 disabled={!!practiceFeedback}
@@ -483,7 +511,8 @@ export default function AcademyPage() {
                                   {practiceFeedback && option.correct && <ThumbsUp className="w-5 h-5" />}
                                 </div>
                               </button>
-                            ))}
+                              ));
+                            })()}
                           </div>
 
                   <AnimatePresence>

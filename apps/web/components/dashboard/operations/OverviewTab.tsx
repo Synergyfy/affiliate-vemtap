@@ -11,6 +11,10 @@ import {
   MessageSquare,
   BarChart3,
   Trophy,
+  PlusCircle,
+  CalendarPlus,
+  ClipboardList,
+  ListChecks,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/hooks/use-auth';
@@ -19,7 +23,11 @@ import { cn } from '@/lib/utils';
 import { useLeadStats, useLeads } from '@/services/useLeadsHooks';
 import { useOperationsStats, useTasks, useOnboarding } from '@/services/useOperationsHooks';
 
-export default function OverviewTab() {
+interface OverviewTabProps {
+  onNavigate?: (tab: string) => void;
+}
+
+export default function OverviewTab({ onNavigate }: OverviewTabProps = {}) {
   const { user } = useAuth();
   const { showToast } = useToast();
   const isManager = !!user?.isManagerMode;
@@ -36,6 +44,14 @@ export default function OverviewTab() {
 
   const handleAction = (action: string) => {
     showToast(`${action} action triggered`, 'info');
+  };
+
+  const navigateTo = (tab: string) => {
+    if (onNavigate) {
+      onNavigate(tab);
+    } else {
+      showToast(`Navigating to ${tab}...`, 'info');
+    }
   };
 
   const pendingOnboardingCount = onboarding.filter(o => o.status !== 'COMPLETED').length;
@@ -90,7 +106,7 @@ export default function OverviewTab() {
                 You have {leadStats?.interested ?? 0} leads in the &quot;Interested&quot; stage. Follow up to convert them into active businesses.
               </p>
               <Button 
-                onClick={() => handleAction('View Pipeline')}
+                onClick={() => navigateTo('leads')}
                 variant="outline" 
                 className="w-full border-slate-200 text-xs font-bold h-10 rounded-xl"
               >
@@ -114,7 +130,7 @@ export default function OverviewTab() {
                 Your initial discovery pipeline has {leadStats?.potential ?? 0} businesses. Initiate first contact to move them forward.
               </p>
               <Button 
-                onClick={() => handleAction('Performance Insights')}
+                onClick={() => navigateTo('leads')}
                 variant="outline" 
                 className="w-full border-slate-200 text-xs font-bold h-10 rounded-xl"
               >
@@ -128,7 +144,7 @@ export default function OverviewTab() {
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-lg font-bold text-slate-900">Recent Lead Activity</h3>
               <Button 
-                onClick={() => handleAction('View All Activity')}
+                onClick={() => navigateTo('leads')}
                 variant="ghost" 
                 className="text-blue-600 text-xs font-bold"
               >
@@ -208,7 +224,7 @@ export default function OverviewTab() {
                 )}
               </div>
               <Button 
-                onClick={() => handleAction('Go to Tasks')}
+                onClick={() => navigateTo('leads')}
                 className="w-full mt-8 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest h-12 shadow-lg shadow-blue-500/20"
               >
                 Go to Tasks
@@ -220,14 +236,14 @@ export default function OverviewTab() {
             <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6">Quick Actions</h4>
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: 'Add Lead', color: 'text-blue-600', bg: 'bg-blue-50' },
-                { label: 'Schedule Demo', color: 'text-purple-600', bg: 'bg-purple-50' },
-                { label: 'Log Activity', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                { label: 'New Task', color: 'text-orange-600', bg: 'bg-orange-50' },
+                { label: 'Add Lead', tab: 'leads', color: 'text-blue-600', bg: 'bg-blue-50' },
+                { label: 'Schedule Demo', tab: 'demos', color: 'text-purple-600', bg: 'bg-purple-50' },
+                { label: 'Log Activity', tab: 'follow-ups', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                { label: 'View Businesses', tab: 'businesses', color: 'text-orange-600', bg: 'bg-orange-50' },
               ].map((action, idx) => (
                 <button 
                   key={idx} 
-                  onClick={() => handleAction(action.label)}
+                  onClick={() => navigateTo(action.tab)}
                   className={cn("flex flex-col items-center justify-center p-4 rounded-2xl border border-slate-50 transition-all hover:shadow-md hover:border-slate-100 group", action.bg)}
                 >
                   <span className={cn("text-[10px] font-black uppercase tracking-widest text-center", action.color)}>{action.label}</span>

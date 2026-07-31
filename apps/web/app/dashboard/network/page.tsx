@@ -7,12 +7,14 @@ import {
   ShieldCheck, CheckCircle2, Info, Trophy, Target, Gift,
   Clock, ArrowRight, Lock, TrendingUp, Users, UserPlus,
   BarChart3, DollarSign, Search, Loader2, Award, Star, BookOpen, Handshake,
-  ChevronRight, Activity, FileText, Eye
+  ChevronRight, ChevronDown, ChevronUp, Activity, FileText, Eye,
+  Share2, Download, ArrowLeft, MoreHorizontal
 } from 'lucide-react';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import LineManagerGuideModal from '@/components/dashboard/LineManagerGuideModal';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/toast';
@@ -93,6 +95,8 @@ export default function NetworkPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>(mockTeamMembers);
   const [commissionRate, setCommissionRate] = useState(10);
+  const [openReportTeam, setOpenReportTeam] = useState<'daily' | 'weekly' | 'monthly' | null>(null);
+  const [openMenuMember, setOpenMenuMember] = useState<string | null>(null);
   const router = useRouter();
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -204,11 +208,15 @@ export default function NetworkPage() {
     <DashboardLayout>
       <div className="max-w-5xl mx-auto space-y-8">
         {!isUnlocked ? (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl border border-slate-200 shadow-xl p-6 sm:p-8 md:p-16 text-center relative overflow-hidden"
-          >
+          <>
+            <Link href="/dashboard" className="inline-flex items-center gap-2 p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors w-fit">
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-3xl border border-slate-200 shadow-xl p-6 sm:p-8 md:p-16 text-center relative overflow-hidden"
+            >
             <div className="absolute top-0 left-0 w-full h-2 bg-slate-100">
               <motion.div
                 initial={{ width: 0 }}
@@ -331,72 +339,77 @@ export default function NetworkPage() {
               </div>
             </div>
           </motion.div>
+          </>
         ) : (
           <>
             {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">Line Manager Network</h2>
-                <div className="flex items-center gap-2 mt-1">
-                  <p className="text-sm sm:text-base text-slate-500">Team Management Dashboard</p>
-                  <span className="w-1 h-1 rounded-full bg-slate-300" />
-                  <div className={cn("flex items-center gap-1.5 text-sm font-bold px-3 py-1 rounded-full", isFullMilestoneReached ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-blue-50 text-blue-600 border border-blue-100")}>
-                    <Clock className="w-4 h-4" />
-                    {isFullMilestoneReached ? `${rewardDurationLabel} Mode Unlocked` : "3-Month Mode Active"}
+            <div className="flex items-start sm:items-center gap-2 sm:gap-3">
+              <Link href="/dashboard" className="p-1.5 sm:p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors shrink-0">
+                <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+              </Link>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg sm:text-2xl lg:text-3xl font-bold text-slate-900 truncate">Line Manager Network</h2>
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-0.5">
+                  <p className="text-xs sm:text-sm text-slate-500">Team Management</p>
+                  <span className="w-1 h-1 rounded-full bg-slate-300 hidden sm:block" />
+                  <div className={cn("flex items-center gap-1 text-xs font-bold px-2 sm:px-3 py-0.5 sm:py-1 rounded-full", isFullMilestoneReached ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-blue-50 text-blue-600 border border-blue-100")}>
+                    <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                    <span className="truncate">{isFullMilestoneReached ? `${rewardDurationLabel}` : "3-Month Mode"}</span>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-full text-xs sm:text-sm font-bold flex items-center border border-emerald-100">
-                  <ShieldCheck className="w-4 h-4 mr-2" /> Verified Line Manager
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <div className="hidden sm:flex bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-full text-xs font-bold items-center gap-1.5 border border-emerald-100">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Verified LM
                 </div>
-                <Button variant="primary" size="sm" className="rounded-full bg-blue-600 hover:bg-blue-700 font-bold text-white shadow-sm" onClick={openTeamReports}>
-                  <FileText className="w-4 h-4 mr-2" /> View Team Reports
-                </Button>
-                <Button variant="outline" size="sm" className="rounded-full border-slate-200 text-slate-500 font-bold hover:bg-slate-50" onClick={() => setShowGuide(true)}>
-                  <Info className="w-4 h-4 mr-2" /> Guide
-                </Button>
+                <button onClick={openTeamReports} className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors">
+                  <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Team Reports</span>
+                </button>
+                <button onClick={() => setShowGuide(true)} className="p-2 sm:px-3 sm:py-1.5 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 text-xs font-bold transition-colors">
+                  <Info className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                </button>
               </div>
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Team Members</p>
-                <p className="text-2xl font-black text-slate-900 mt-1">{teamMembers.length}</p>
-                <p className="text-[10px] text-slate-400">{agents.length} agents, {affiliates.length} affiliates</p>
+                <p className="text-xl sm:text-2xl font-black text-slate-900 mt-1">{teamMembers.length}</p>
+                <p className="text-[9px] sm:text-[10px] text-slate-400 truncate">{agents.length} agents, {affiliates.length} affiliates</p>
               </div>
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Team Earnings</p>
-                <p className="text-2xl font-black text-emerald-600 mt-1">₦{totalTeamEarnings.toLocaleString()}</p>
-                <p className="text-[10px] text-slate-400">Your {commissionRate}%: ₦{Math.round(totalTeamEarnings * (commissionRate / 100)).toLocaleString()}</p>
+                <p className="text-lg sm:text-2xl font-black text-emerald-600 mt-1 truncate">₦{totalTeamEarnings.toLocaleString()}</p>
+                <p className="text-[9px] sm:text-[10px] text-slate-400 truncate">Your {commissionRate}%: ₦{Math.round(totalTeamEarnings * (commissionRate / 100)).toLocaleString()}</p>
               </div>
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Weekly Leads</p>
-                <p className="text-2xl font-black text-blue-600 mt-1">{totalTeamLeads}</p>
-                <p className="text-[10px] text-slate-400">Across all team members</p>
+                <p className="text-xl sm:text-2xl font-black text-blue-600 mt-1">{totalTeamLeads}</p>
+                <p className="text-[9px] sm:text-[10px] text-slate-400">Across all members</p>
               </div>
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Avg Completion Rate</p>
-                <p className="text-2xl font-black text-purple-600 mt-1">{avgCompletion}%</p>
-                <p className="text-[10px] text-slate-400">{topEarners[0]?.name} leads at {topEarners[0]?.completionRate}%</p>
+                <p className="text-xl sm:text-2xl font-black text-purple-600 mt-1">{avgCompletion}%</p>
+                <p className="text-[9px] sm:text-[10px] text-slate-400 truncate">{topEarners[0]?.name} leads at {topEarners[0]?.completionRate}%</p>
               </div>
             </div>
 
             {/* Section Tabs */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="flex border-b border-slate-100">
+              <div className="flex border-b border-slate-100 overflow-x-auto scrollbar-hide">
                 {[
                   { key: 'team' as const, label: 'My Team', icon: Users },
                   { key: 'earnings' as const, label: 'Earnings', icon: DollarSign },
-                  { key: 'referrals' as const, label: 'Referral Center', icon: Handshake },
                   { key: 'team-reports' as const, label: 'Team Reports', icon: FileText },
+                  { key: 'referrals' as const, label: 'Referral Center', icon: Handshake },
                 ].map(tab => (
                   <button
                     key={tab.key}
                     onClick={() => setViewTab(tab.key)}
                     className={cn(
-                      "flex items-center gap-2 px-6 py-4 text-sm font-bold border-b-2 transition-all",
+                      "flex items-center gap-2 px-4 sm:px-6 py-4 text-xs sm:text-sm font-bold border-b-2 transition-all whitespace-nowrap",
                       viewTab === tab.key ? "border-blue-600 text-blue-600" : "border-transparent text-slate-400 hover:text-slate-600"
                     )}
                   >
@@ -464,36 +477,41 @@ export default function NetworkPage() {
                               </div>
                             </div>
                           </div>
-                          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3 mt-4 sm:mt-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <div className="flex items-center gap-2">
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                className="h-8 text-xs font-bold rounded-xl border-slate-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
-                                onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/network/${member.id}?tab=targets`); }}
-                              >
-                                Target Adjustment
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                className="h-8 text-xs font-bold rounded-xl border-slate-200 hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200"
-                                onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/network/${member.id}?tab=reports`); }}
-                              >
-                                Report View
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                className="h-8 text-xs font-bold rounded-xl border-slate-200 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200"
-                                onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/network/${member.id}?tab=history`); }}
-                              >
-                                Earnings
-                              </Button>
-                            </div>
-                            <div className="hidden sm:flex items-center gap-3 text-[10px] text-slate-400 ml-2">
+                          <div className="relative flex items-center gap-3">
+                            <div className="hidden sm:flex items-center gap-3 text-[10px] text-slate-400">
                               <span className={cn("font-bold px-2 py-0.5 rounded-full", member.completionRate >= 80 ? "bg-emerald-50 text-emerald-600" : member.completionRate >= 60 ? "bg-amber-50 text-amber-600" : "bg-red-50 text-red-600")}>{member.completionRate}%</span>
                             </div>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setOpenMenuMember(openMenuMember === member.id ? null : member.id); }}
+                              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all"
+                            >
+                              <MoreHorizontal className="w-5 h-5" />
+                            </button>
+                            {openMenuMember === member.id && (
+                              <>
+                                <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpenMenuMember(null); }} />
+                                <div className="absolute right-0 top-full mt-1 z-50 bg-white rounded-xl border border-slate-200 shadow-xl py-2 min-w-[200px]">
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setOpenMenuMember(null); router.push(`/dashboard/network/${member.id}?tab=targets`); }}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                                  >
+                                    <Target className="w-4 h-4" /> Target Adjustment
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setOpenMenuMember(null); router.push(`/dashboard/network/${member.id}?tab=reports`); }}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-purple-50 hover:text-purple-600 transition-colors"
+                                  >
+                                    <FileText className="w-4 h-4" /> Report View
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setOpenMenuMember(null); router.push(`/dashboard/network/${member.id}?tab=history`); }}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-amber-50 hover:text-amber-600 transition-colors"
+                                  >
+                                    <DollarSign className="w-4 h-4" /> Earnings
+                                  </button>
+                                </div>
+                              </>
+                            )}
                             <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors hidden sm:block" />
                           </div>
                         </button>
@@ -636,67 +654,187 @@ export default function NetworkPage() {
               )}
               {/* Team Reports */}
               {viewTab === 'team-reports' && (
-                <div className="p-6 space-y-6">
+                <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                       <FileText className="w-4 h-4 text-indigo-600" />
                       Team Performance Reports
                     </h3>
                   </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                     <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
-                        <h4 className="font-black text-slate-900 mb-1">Daily Report</h4>
-                        <p className="text-[10px] text-slate-500 font-medium mb-4 uppercase tracking-widest">Today's Activity</p>
-                        <div className="space-y-3">
-                           <div className="flex justify-between items-center text-sm border-b border-slate-200/50 pb-2">
-                             <span className="text-slate-600">Total Leads</span>
-                             <span className="font-black text-slate-900">{totalTeamLeads > 0 ? Math.round(totalTeamLeads / 7) : 0}</span>
-                           </div>
-                           <div className="flex justify-between items-center text-sm border-b border-slate-200/50 pb-2">
-                             <span className="text-slate-600">Conversions</span>
-                             <span className="font-black text-emerald-600">{totalTeamConversions > 0 ? Math.round(totalTeamConversions / 30) : 0}</span>
-                           </div>
-                        </div>
-                     </div>
 
-                     <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500" />
-                        <h4 className="font-black text-slate-900 mb-1">Weekly Report</h4>
-                        <p className="text-[10px] text-slate-500 font-medium mb-4 uppercase tracking-widest">This Week's Activity</p>
-                        <div className="space-y-3">
-                           <div className="flex justify-between items-center text-sm border-b border-slate-200/50 pb-2">
-                             <span className="text-slate-600">Total Leads</span>
-                             <span className="font-black text-slate-900">{totalTeamLeads}</span>
-                           </div>
-                           <div className="flex justify-between items-center text-sm border-b border-slate-200/50 pb-2">
-                             <span className="text-slate-600">Conversions</span>
-                             <span className="font-black text-emerald-600">{totalTeamConversions > 0 ? Math.round(totalTeamConversions / 4) : 0}</span>
-                           </div>
-                        </div>
-                     </div>
-
-                     <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
-                        <h4 className="font-black text-slate-900 mb-1">Monthly Report</h4>
-                        <p className="text-[10px] text-slate-500 font-medium mb-4 uppercase tracking-widest">This Month's Activity</p>
-                        <div className="space-y-3">
-                           <div className="flex justify-between items-center text-sm border-b border-slate-200/50 pb-2">
-                             <span className="text-slate-600">Total Leads</span>
-                             <span className="font-black text-slate-900">{totalTeamLeads * 4}</span>
-                           </div>
-                           <div className="flex justify-between items-center text-sm border-b border-slate-200/50 pb-2">
-                             <span className="text-slate-600">Conversions</span>
-                             <span className="font-black text-emerald-600">{totalTeamConversions}</span>
-                           </div>
-                           <div className="flex justify-between items-center text-sm">
-                             <span className="text-slate-600">Earnings</span>
-                             <span className="font-black text-blue-600">₦{totalTeamEarnings.toLocaleString()}</span>
-                           </div>
-                        </div>
-                     </div>
+                  {/* Summary Cards */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-2xl border border-blue-100">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Daily Leads</p>
+                      <p className="text-2xl font-black text-blue-600">{totalTeamLeads > 0 ? Math.round(totalTeamLeads / 7) : 0}</p>
+                      <p className="text-[10px] text-slate-500">{teamMembers.length} members active</p>
+                    </div>
+                    <div className="bg-gradient-to-br from-emerald-50 to-teal-50 p-4 rounded-2xl border border-emerald-100">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Weekly Leads</p>
+                      <p className="text-2xl font-black text-emerald-600">{totalTeamLeads}</p>
+                      <p className="text-[10px] text-slate-500">{avgCompletion}% avg rate</p>
+                    </div>
+                    <div className="bg-gradient-to-br from-purple-50 to-violet-50 p-4 rounded-2xl border border-purple-100">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Team Earnings</p>
+                      <p className="text-2xl font-black text-purple-600">₦{totalTeamEarnings.toLocaleString()}</p>
+                      <p className="text-[10px] text-slate-500">{totalTeamConversions} conversions</p>
+                    </div>
                   </div>
+
+                  {/* Accordion Reports */}
+                  {[
+                    { key: 'daily' as const, icon: BarChart3, color: 'blue', title: 'Daily Report — Today',
+                      stats: { leads: Math.round(totalTeamLeads / 7) || 0, target: teamMembers.length * 5, convs: Math.round(totalTeamConversions / 30) || 0, visits: Math.round(totalTeamLeads * 1.6 / 7) || 0, rate: avgCompletion, earnings: Math.round(totalTeamEarnings / 26) || 0 } },
+                    { key: 'weekly' as const, icon: Activity, color: 'indigo', title: 'Weekly Report — This Week',
+                      stats: { leads: totalTeamLeads, target: teamMembers.length * 25, convs: Math.round(totalTeamConversions / 4) || 0, visits: Math.round(totalTeamLeads * 1.6) || 0, rate: avgCompletion, earnings: Math.round(totalTeamEarnings / 4) || 0 } },
+                    { key: 'monthly' as const, icon: TrendingUp, color: 'emerald', title: 'Monthly Report — This Month',
+                      stats: { leads: totalTeamLeads * 4, target: teamMembers.length * 100, convs: totalTeamConversions, visits: Math.round(totalTeamLeads * 1.6 * 4) || 0, rate: avgCompletion, earnings: totalTeamEarnings } },
+                  ].map(section => {
+                    const s = section.stats;
+                    const isOpen = openReportTeam === section.key;
+                    return (
+                      <div key={section.key} className="bg-white rounded-2xl border border-slate-200 relative">
+                        <button
+                          onClick={() => setOpenReportTeam(isOpen ? null : section.key)}
+                          className="w-full p-5 flex items-center justify-between hover:bg-slate-50/50 transition-colors"
+                        >
+                          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                            <section.icon className={`w-4 h-4 text-${section.color}-600`} />
+                            {section.title}
+                          </h3>
+                          <span className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-400">{s.leads} team leads</span>
+                            {isOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                          </span>
+                        </button>
+                        {isOpen && (
+                          <div className="p-5 pt-0 border-t border-slate-100 space-y-4">
+                            {/* Summary */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 pt-4">
+                              <div className="p-3 rounded-xl bg-blue-50 border border-blue-100 text-center">
+                                <p className="text-lg sm:text-xl font-black text-blue-600">{s.leads}</p>
+                                <p className="text-[10px] font-bold text-slate-500">Team Leads</p>
+                              </div>
+                              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-center">
+                                <p className="text-lg sm:text-xl font-black text-emerald-600">{s.convs}</p>
+                                <p className="text-[10px] font-bold text-slate-500">Convs</p>
+                              </div>
+                              <div className="p-3 rounded-xl bg-purple-50 border border-purple-100 text-center">
+                                <p className="text-lg sm:text-xl font-black text-purple-600">{s.visits}</p>
+                                <p className="text-[10px] font-bold text-slate-500">Visits</p>
+                              </div>
+                              <div className="p-3 rounded-xl bg-amber-50 border border-amber-100 text-center">
+                                <p className="text-lg sm:text-xl font-black text-amber-600">{s.rate}%</p>
+                                <p className="text-[10px] font-bold text-slate-500">Rate</p>
+                              </div>
+                            </div>
+
+                            {/* Summary description */}
+                            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                              <p className="text-xs text-slate-700 leading-relaxed">
+                                <span className="font-bold">Team Summary:</span> Your team of {teamMembers.length} members has generated {s.leads} leads ({s.convs} conversions) during this period with an average completion rate of {s.rate}%. {s.leads >= s.target ? 'The team is meeting overall targets.' : `The team is at ${Math.round((s.leads / s.target) * 100)}% of the collective target.`} {s.rate >= 80 ? 'Consistency is strong across the board.' : s.rate >= 60 ? 'Some members may benefit from additional coaching.' : 'Consider reviewing individual performance to identify support needs.'}
+                              </p>
+                            </div>
+
+                            {/* Detailed Breakdown */}
+                            <div className="space-y-3">
+                              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                <Target className="w-3.5 h-3.5" /> Detailed Breakdown
+                              </h4>
+
+                              {/* Target Progress */}
+                              <div className="p-4 rounded-xl bg-white border border-slate-200">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <Target className="w-4 h-4 text-blue-600" />
+                                  <span className="text-xs font-bold text-slate-900">Team Target Progress</span>
+                                </div>
+                                <div className="space-y-3">
+                                  <div>
+                                    <div className="flex justify-between text-xs mb-1"><span className="text-slate-600">Leads Target</span><span className="font-bold text-slate-900">{s.leads}/{s.target}</span></div>
+                                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                      <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${Math.min(100, (s.leads / s.target) * 100)}%` }} />
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="flex justify-between text-xs mb-1"><span className="text-slate-600">Conversion Rate</span><span className="font-bold text-slate-900">{s.leads > 0 ? Math.round((s.convs / s.leads) * 100) : 0}%</span></div>
+                                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                      <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${Math.min(100, s.leads > 0 ? (s.convs / s.leads) * 100 : 0)}%` }} />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Conversion Breakdown */}
+                              <div className="p-4 rounded-xl bg-white border border-slate-200">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <TrendingUp className="w-4 h-4 text-emerald-600" />
+                                  <span className="text-xs font-bold text-slate-900">Conversion Breakdown</span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                                  <div className="p-3 rounded-xl bg-blue-50 border border-blue-100 text-center">
+                                    <p className="text-lg sm:text-xl font-black text-blue-600">{s.leads}</p>
+                                    <p className="text-[10px] font-bold text-slate-500">Team Leads</p>
+                                  </div>
+                                  <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-center">
+                                    <p className="text-lg sm:text-xl font-black text-emerald-600">{s.convs}</p>
+                                    <p className="text-[10px] font-bold text-slate-500">Conversions</p>
+                                  </div>
+                                  <div className="p-3 rounded-xl bg-purple-50 border border-purple-100 text-center">
+                                    <p className="text-lg sm:text-xl font-black text-purple-600">{s.visits}</p>
+                                    <p className="text-[10px] font-bold text-slate-500">Visits</p>
+                                  </div>
+                                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-100 text-center">
+                                    <p className="text-lg sm:text-xl font-black text-amber-600">₦{s.earnings.toLocaleString()}</p>
+                                    <p className="text-[10px] font-bold text-slate-500">Earnings</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Individual member breakdown */}
+                            <div className="space-y-2">
+                              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                <Users className="w-3.5 h-3.5" /> Member Breakdown
+                              </h4>
+                              <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl">
+                                {teamMembers.map(m => {
+                                  const memberLeads = section.key === 'daily' ? m.dailyLeads : section.key === 'weekly' ? m.weeklyLeads : Math.round(m.dailyLeads * 30);
+                                  const memberConvs = section.key === 'daily' ? Math.round(m.dailyLeads * 0.4) : section.key === 'weekly' ? m.monthlyConversions : m.monthlyConversions;
+                                  return (
+                                    <button
+                                      key={m.id}
+                                      onClick={() => router.push(`/dashboard/network/${m.id}`)}
+                                      className="w-full flex items-center justify-between p-3 hover:bg-slate-50 transition-colors text-left"
+                                    >
+                                      <div className="flex items-center gap-3">
+                                        <div className={cn("w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-xs", m.role === 'AGENT' ? "bg-violet-500" : "bg-cyan-500")}>{m.name.charAt(0)}</div>
+                                        <div>
+                                          <p className="text-xs font-bold text-slate-900">{m.name}</p>
+                                          <p className="text-[10px] text-slate-400">{m.role === 'AGENT' ? 'Agent' : 'Affiliate'}</p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-4 text-xs">
+                                        <span className="font-bold text-slate-900">{memberLeads} leads</span>
+                                        <span className="font-bold text-emerald-600">{memberConvs} convs</span>
+                                        <span className={cn("font-bold", m.completionRate >= 80 ? "text-emerald-600" : m.completionRate >= 60 ? "text-amber-600" : "text-red-500")}>{m.completionRate}%</span>
+                                        <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Share / Download */}
+                            <div className="flex items-center gap-2 justify-end pt-2 border-t border-slate-100">
+                              <button onClick={() => { const t = `Team ${section.key} report: ${s.leads} leads, ${s.convs} conversions, ${s.rate}% rate.`; if (navigator.share) navigator.share({ title: `Team ${section.key} Report`, text: t }); else navigator.clipboard.writeText(t); }} className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-xs transition-colors"><Share2 className="w-3.5 h-3.5" /> Share</button>
+                              <button onClick={() => { const t = `TEAM ${section.key.toUpperCase()} REPORT\n\nLeads: ${s.leads}\nConversions: ${s.convs}\nVisits: ${s.visits}\nRate: ${s.rate}%\nEarnings: ₦${s.earnings.toLocaleString()}`; const b = new Blob([t], {type:'text/plain'}); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `team-${section.key}-report.txt`; a.click(); URL.revokeObjectURL(a.href); }} className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold text-xs transition-colors"><Download className="w-3.5 h-3.5" /> Download</button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

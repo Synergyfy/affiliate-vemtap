@@ -44,6 +44,11 @@ export default function SettingsManagement() {
     reqSupervisorActiveAgents: 10,
     reqSupervisorActiveSupervisors: 5,
     reqSupervisorNetworkBusinesses: 100,
+    recurringAgentCommission: 5,
+    recurringAffiliateCommission: 10,
+    recurringLineManagerCommission: 3,
+    recurringDurationMonths: 12,
+    recurringYear2Rate: 50,
   });
 
   useEffect(() => {
@@ -64,6 +69,11 @@ export default function SettingsManagement() {
         reqSupervisorActiveAgents: settings.reqSupervisorActiveAgents ?? 10,
         reqSupervisorActiveSupervisors: settings.reqSupervisorActiveSupervisors ?? 5,
         reqSupervisorNetworkBusinesses: settings.reqSupervisorNetworkBusinesses ?? 100,
+        recurringAgentCommission: settings.recurringAgentCommission ?? 5,
+        recurringAffiliateCommission: settings.recurringAffiliateCommission ?? 10,
+        recurringLineManagerCommission: settings.recurringLineManagerCommission ?? 3,
+        recurringDurationMonths: settings.recurringDurationMonths ?? 12,
+        recurringYear2Rate: settings.recurringYear2Rate ?? 50,
       });
     }
   }, [settings]);
@@ -174,6 +184,91 @@ export default function SettingsManagement() {
                   <Clock className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 </div>
                 <p className="text-xs text-slate-400">How long an affiliate continues to earn commissions from a business&apos;s recurring subscriptions.</p>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Recurring Subscription Commission */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm"
+          >
+            <div className="flex items-center gap-3 mb-8">
+              <Clock className="w-5 h-5 text-purple-600" />
+              <h3 className="text-lg font-bold text-slate-900">Recurring Subscription Commission</h3>
+            </div>
+            <div className="bg-purple-50 border border-purple-100 rounded-2xl p-4 mb-6">
+              <p className="text-xs text-purple-800 leading-relaxed">
+                <strong>Recurring</strong> means from month 2 onward if the business renews. Default is 12 months (1 month main sub + 11 months recurring). After 12 months, year 2 reduces to the set rate. Same applies to Line Manager indirect earnings.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                  Agent Recurring (%)
+                  <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-500">Default 5%</span>
+                </label>
+                <div className="relative">
+                  <input type="number" value={formData.recurringAgentCommission ?? 5}
+                    onChange={(e) => setFormData(prev => ({ ...prev, recurringAgentCommission: Number(e.target.value) }))}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold" />
+                  <Percent className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                </div>
+                <p className="text-xs text-slate-400">Monthly recurring % for Agents from month 2.</p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                  Affiliate Recurring (%)
+                  <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-500">Default 10%</span>
+                </label>
+                <div className="relative">
+                  <input type="number" value={formData.recurringAffiliateCommission ?? 10}
+                    onChange={(e) => setFormData(prev => ({ ...prev, recurringAffiliateCommission: Number(e.target.value) }))}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold" />
+                  <Percent className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                </div>
+                <p className="text-xs text-slate-400">Monthly recurring % for Affiliates from month 2.</p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                  Line Manager Indirect Recurring (%)
+                  <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-500">Default 3%</span>
+                </label>
+                <div className="relative">
+                  <input type="number" value={formData.recurringLineManagerCommission ?? 3}
+                    onChange={(e) => setFormData(prev => ({ ...prev, recurringLineManagerCommission: Number(e.target.value) }))}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold" />
+                  <Percent className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                </div>
+                <p className="text-xs text-slate-400">Recurring % Line Managers earn from their team's recurring subscriptions.</p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                  Recurring Duration (Months)
+                  <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-500">Default 12</span>
+                </label>
+                <div className="relative">
+                  <input type="number" value={formData.recurringDurationMonths ?? 12}
+                    onChange={(e) => setFormData(prev => ({ ...prev, recurringDurationMonths: Number(e.target.value) }))}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold" />
+                  <Clock className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                </div>
+                <p className="text-xs text-slate-400">Total months a business subscription earns recurring commission.</p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                  Year 2+ Reduction Rate (%)
+                  <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-500">Default 50%</span>
+                </label>
+                <div className="relative">
+                  <input type="number" value={formData.recurringYear2Rate ?? 50}
+                    onChange={(e) => setFormData(prev => ({ ...prev, recurringYear2Rate: Number(e.target.value) }))}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold" />
+                  <Percent className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                </div>
+                <p className="text-xs text-slate-400">% of original recurring rate for subsequent years.</p>
               </div>
             </div>
           </motion.div>

@@ -14,7 +14,8 @@ import {
   Rocket,
   ShieldCheck,
   Target,
-  Loader2
+  Loader2,
+  ArrowLeft
 } from 'lucide-react';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { QRCodeSVG } from 'qrcode.react';
@@ -24,6 +25,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/toast';
 import { useReferralStats } from '@/hooks/use-referral-stats';
 import { useMarketingTools } from '@/hooks/use-marketing-tools';
+import Link from 'next/link';
 
 export default function ReferralTools() {
   const { user } = useAuth();
@@ -122,11 +124,16 @@ export default function ReferralTools() {
       <div className="max-w-3xl mx-auto space-y-6 px-4 sm:px-0">
 
         {/* Header */}
-        <div className="space-y-3">
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900">Referral Engine</h2>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium">
-            Scale your earnings by onboarding businesses or growing your sub-agent network.
-          </p>
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard" className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors shrink-0">
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <div className="space-y-1">
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900">Referral Engine</h2>
+            <p className="text-xs sm:text-sm text-slate-500 font-medium">
+              Scale your earnings by onboarding businesses or growing your sub-agent network.
+            </p>
+          </div>
         </div>
 
         {/* Tab Switcher */}

@@ -38,7 +38,7 @@ export const useMarkNotificationRead = () => {
 export const useBroadcastNotification = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { title: string; message: string; type: NotificationType }) => {
+    mutationFn: async (payload: { title: string; message: string; type: NotificationType; targetRoles?: string[] }) => {
       const { data } = await api.post('/notifications/broadcast', payload);
       return data;
     },

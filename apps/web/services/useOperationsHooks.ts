@@ -163,7 +163,13 @@ export interface BusinessHealthResponse {
 export function useBusinessHealth() {
   return useQuery<BusinessHealthResponse>({
     queryKey: ['operations-business-health'],
-    queryFn: () => api.get('/operations/business-health'),
+    queryFn: async () => {
+      const { data } = await api.get('/operations/business-health');
+      return data ?? {
+        businesses: [],
+        summary: { totalBusinesses: 0, highRisk: 0, mediumRisk: 0, lowRisk: 0, averageHealthScore: 100 },
+      };
+    },
     staleTime: 5 * 60 * 1000,
   });
 }
