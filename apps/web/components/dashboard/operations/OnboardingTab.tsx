@@ -28,7 +28,8 @@ const stages = [
 
 export default function OnboardingTab() {
   const { showToast } = useToast();
-  const { data: onboarding = [], isLoading } = useOnboarding();
+  const { data: onboardingData, isLoading } = useOnboarding();
+  const onboarding = Array.isArray(onboardingData) ? onboardingData : [];
 
   const updateOnboarding = useUpdateOnboarding();
 

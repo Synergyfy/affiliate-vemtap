@@ -26,19 +26,28 @@ export default function BusinessesTab() {
   const { showToast } = useToast();
   const { data: businessesResponse, isLoading } = useMyBusinesses({ limit: 50 });
   const { data: healthData } = useBusinessHealth();
-  const businesses = businessesResponse?.data || [];
-  const healthMap = new Map(healthData?.businesses.map(b => [b.businessId, b]) || []);
+  const responseBody: any = businessesResponse?.data;
+  const businesses: any[] = Array.isArray(responseBody)
+    ? responseBody
+    : Array.isArray(businessesResponse)
+      ? businessesResponse
+      : (responseBody?.data ?? []);
+  const businessesTotal = businessesResponse?.meta?.total ?? responseBody?.meta?.total ?? businesses.length;
+  const healthBody: any = (healthData as any)?.data ?? healthData;
+  const healthItems: any[] = healthBody?.businesses ?? [];
+  const healthMap = new Map(healthItems.map(b => [b.businessId, b]));
 
   const handleAction = (action: string) => {
     showToast(`${action} action triggered`, 'info');
   };
 
   const handleReviewRisks = () => {
-    if (!healthData || healthData.summary.highRisk === 0) {
+    const summary = healthBody?.summary;
+    if (!summary || summary.highRisk === 0) {
       showToast('No high-risk businesses found', 'info');
       return;
     }
-    const names = healthData.businesses.filter(b => b.churnRisk === 'HIGH').map(b => b.businessName);
+    const names = healthItems.filter(b => b.churnRisk === 'HIGH').map(b => b.businessName);
     showToast(`High-risk businesses: ${names.join(', ')}`, 'info');
   };
 
@@ -49,7 +58,7 @@ export default function BusinessesTab() {
         <div className="flex items-center gap-4 w-full lg:w-auto">
           <div className="bg-white px-4 py-2 rounded-2xl border border-slate-200 flex items-center gap-3">
             <span className="text-xs font-bold text-slate-500">Total:</span>
-            <span className="text-sm font-black text-slate-900">{businessesResponse?.meta.total || 0} Businesses</span>
+            <span className="text-sm font-black text-slate-900">{businessesTotal} Businesses</span>
           </div>
           <div className="bg-white px-4 py-2 rounded-2xl border border-slate-200 flex items-center gap-3">
             <span className="text-xs font-bold text-slate-500">Active:</span>
@@ -188,27 +197,30 @@ export default function BusinessesTab() {
       </div>
       
       {/* Risk Alert Panel */}
-      {healthData && healthData.summary.highRisk > 0 && (
-        <div className="bg-red-50 border border-red-100 p-6 rounded-[32px] flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-red-600 shadow-sm shadow-red-100">
-              <AlertCircle className="w-6 h-6" />
+      {(() => {
+        const summary = healthBody?.summary;
+        return summary && summary.highRisk > 0 && (
+          <div className="bg-red-50 border border-red-100 p-6 rounded-[32px] flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-red-600 shadow-sm shadow-red-100">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="text-sm font-black text-red-900 uppercase tracking-widest mb-1">Customer Churn Alert</h4>
+                <p className="text-xs text-red-700 font-medium max-w-md">
+                  {summary.highRisk} {summary.highRisk === 1 ? 'Business has' : 'Businesses have'} low engagement scores. Immediate follow-up recommended to prevent churn.
+                </p>
+              </div>
             </div>
-            <div>
-              <h4 className="text-sm font-black text-red-900 uppercase tracking-widest mb-1">Customer Churn Alert</h4>
-              <p className="text-xs text-red-700 font-medium max-w-md">
-                {healthData.summary.highRisk} {healthData.summary.highRisk === 1 ? 'Business has' : 'Businesses have'} low engagement scores. Immediate follow-up recommended to prevent churn.
-              </p>
-            </div>
+            <Button 
+              onClick={handleReviewRisks}
+              className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-black uppercase tracking-widest h-11 px-8 rounded-xl shadow-lg shadow-red-200 shrink-0"
+            >
+              Review Risks
+            </Button>
           </div>
-          <Button 
-            onClick={handleReviewRisks}
-            className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-black uppercase tracking-widest h-11 px-8 rounded-xl shadow-lg shadow-red-200 shrink-0"
-          >
-            Review Risks
-          </Button>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

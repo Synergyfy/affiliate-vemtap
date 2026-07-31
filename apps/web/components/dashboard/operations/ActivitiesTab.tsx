@@ -28,7 +28,8 @@ const activityIconMap: Record<string, any> = {
 
 export default function ActivitiesTab() {
   const { showToast } = useToast();
-  const { data: activities = [], isLoading } = useActivities();
+  const { data: activitiesData, isLoading } = useActivities();
+  const activities = Array.isArray(activitiesData) ? activitiesData : [];
 
   const handleAction = (action: string) => {
     showToast(`${action} action triggered`, 'info');

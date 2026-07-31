@@ -24,7 +24,7 @@ export default function KPIStrip() {
     { label: 'Total Leads', value: leadStats?.total ?? 0, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', trend: 'Total' },
     { label: 'Follow-ups', value: leadStats?.potential ?? 0, icon: PhoneCall, color: 'text-orange-600', bg: 'bg-orange-50', trend: 'Potential' },
     { label: 'Interested', value: leadStats?.interested ?? 0, icon: PlayCircle, color: 'text-purple-600', bg: 'bg-purple-50', trend: 'Warm' },
-    { label: 'Businesses Won', value: businessData?.meta.total ?? 0, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: 'Total' },
+    { label: 'Businesses Won', value: businessData?.meta?.total ?? 0, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: 'Total' },
     { label: 'Contacted', value: leadStats?.contacted ?? 0, icon: Rocket, color: 'text-blue-600', bg: 'bg-blue-50', trend: 'Active' },
     { label: 'Support Alerts', value: '0', icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', trend: 'None' },
     { label: 'Renewals Due', value: '0', icon: RefreshCw, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: '30 Days' },

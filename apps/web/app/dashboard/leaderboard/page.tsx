@@ -11,15 +11,16 @@ import {
   Star,
   Search,
   Filter,
-  ChevronRight
+  ChevronRight,
+  ArrowLeft,
+  Loader2
 } from 'lucide-react';
 import Image from 'next/image';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { useLeaderboard } from '@/services/useDashboardHooks';
-import { Loader2 } from 'lucide-react';
-import { LeaderboardEntry } from '@/types/api';
 
 export default function LeaderboardPage() {
   const { user } = useAuth();
@@ -37,7 +38,7 @@ export default function LeaderboardPage() {
     { label: 'All Time', value: 'all' },
   ];
 
-  const displayData = (leaderboardData || []).filter(item => 
+  const displayData = (Array.isArray(leaderboardData) ? leaderboardData : []).filter(item => 
     item.fullName.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
@@ -53,7 +54,7 @@ export default function LeaderboardPage() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
+          <Loader2 className="w-8 h-8 animate-pulse text-slate-300" />
         </div>
       </DashboardLayout>
     );
@@ -62,12 +63,15 @@ export default function LeaderboardPage() {
   return (
     <DashboardLayout>
       <div className="max-w-5xl mx-auto space-y-8">
-        {/* Header omitted for brevity */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div>
-            <h2 className="text-3xl font-bold text-slate-900">Affiliate Leaderboard</h2>
-            <p className="text-slate-500">See how you rank against the top earners in the network.</p>
-          </div>
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard" className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors shrink-0">
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <div className="flex-1 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div>
+              <h2 className="text-3xl font-bold text-slate-900">Affiliate Leaderboard</h2>
+              <p className="text-slate-500">See how you rank against the top earners in the network.</p>
+            </div>
           <div className="flex bg-slate-100 p-1 rounded-2xl w-full md:w-auto">
             {tabs.map((tab) => (
               <button
@@ -84,6 +88,7 @@ export default function LeaderboardPage() {
               </button>
             ))}
           </div>
+        </div>
         </div>
 
         {/* Podium Section */}
@@ -276,12 +281,12 @@ export default function LeaderboardPage() {
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600 rounded-full blur-[100px] opacity-20 -mr-32 -mt-32" />
           <div className="flex items-center gap-6 relative z-10 text-center md:text-left flex-col md:flex-row">
             <div className="w-20 h-20 rounded-full border-4 border-white/10 flex items-center justify-center text-3xl font-black bg-white/5">
-              {(leaderboardData || []).findIndex(item => item.fullName === user?.fullName) + 1 || '--'}
+              {(Array.isArray(leaderboardData) ? leaderboardData : []).findIndex(item => item.fullName === user?.fullName) + 1 || '--'}
             </div>
             <div>
               <h3 className="text-xl font-bold">Your Current Rank</h3>
               <p className="text-slate-400">
-                {(leaderboardData || []).findIndex(item => item.fullName === user?.fullName) !== -1 
+                {(Array.isArray(leaderboardData) ? leaderboardData : []).findIndex(item => item.fullName === user?.fullName) !== -1 
                   ? "You are doing great! Keep it up." 
                   : "Start referring more businesses to climb the board!"}
               </p>

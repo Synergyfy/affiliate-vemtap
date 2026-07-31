@@ -12,7 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 export default function AgreementSignModal() {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const { data: pendingAgreements, isLoading } = usePendingAgreements();
+  const { data: pendingAgreementsRaw, isLoading } = usePendingAgreements();
+  const pendingAgreements = Array.isArray(pendingAgreementsRaw) ? pendingAgreementsRaw : [];
   const signAgreement = useSignAgreement();
 
   const [currentIndex, setCurrentIndex] = useState(0);

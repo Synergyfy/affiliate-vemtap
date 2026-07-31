@@ -105,6 +105,55 @@ export interface PlatformSettings {
   reqSupervisorActiveAgents?: number;
   reqSupervisorActiveSupervisors?: number;
   reqSupervisorNetworkBusinesses?: number;
+  dailyTarget?: number;
+  weeklyTarget?: number;
+  monthlyTarget?: number;
+  recurringAgentCommission?: number;
+  recurringAffiliateCommission?: number;
+  recurringLineManagerCommission?: number;
+  recurringDurationMonths?: number;
+  recurringYear2Rate?: number;
+  marketMappingConfig?: MarketMappingConfig;
+}
+
+export interface PipelineStatusConfig {
+  id: string;
+  name: string;
+  color: string;
+  bg: string;
+  text: string;
+}
+
+export interface CustomerRangeConfig {
+  value: string;
+  label: string;
+  min: number;
+  max: number;
+}
+
+export interface BusinessSizeConfig {
+  value: string;
+  label: string;
+  minStaff: number;
+  maxStaff: number;
+}
+
+export interface MarketMappingConfig {
+  businessCategories: string[];
+  openingDays: string[];
+  customerRanges: CustomerRangeConfig[];
+  businessSizes: BusinessSizeConfig[];
+  contactPositions: string[];
+  pipelineStatuses: PipelineStatusConfig[];
+  interestOptions: { value: string; label: string }[];
+  planTypes: { value: string; label: string }[];
+  faqs: { id: string; question: string; answer: string; category: string }[];
+  ticketStatuses: { id: string; label: string; color: string; bg: string }[];
+  businessStatuses: { id: string; label: string; color: string; bg: string }[];
+  paymentStatuses: { id: string; label: string; color: string; bg: string }[];
+  dailyTarget: number;
+  weeklyTarget: number;
+  monthlyTarget: number;
 }
 
 export interface Agreement {
@@ -149,12 +198,16 @@ export interface Commission {
 export interface Withdrawal {
   id: string;
   amount: number;
+  fee?: number;
+  netAmount?: number;
   status: WithdrawalStatus;
   bankName: string;
   accountNumber: string;
   accountName: string;
-  createdAt: string;
+  adminNotes?: string;
   processedAt?: string;
+  processedBy?: string;
+  createdAt: string;
   userId: string;
   user?: User;
 }
@@ -191,6 +244,7 @@ export interface Quiz {
   options: string[];
   correctAnswer: number;
   explanation?: string;
+  audience?: string[];
   order: number;
 }
 
@@ -201,6 +255,7 @@ export interface Scenario {
   idealResponse: string;
   options?: string[];
   correctAnswerIndex?: number;
+  audience?: string[];
   order: number;
 }
 

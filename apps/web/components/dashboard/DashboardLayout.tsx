@@ -21,8 +21,8 @@ import {
   Target,
   Home,
   CheckSquare,
-  Star,
-  LineChart
+  FileText,
+  Map
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createContext, useContext } from 'react';
@@ -50,11 +50,10 @@ export const useDashboard = () => {
 
 const sidebarItems = [
   { name: 'Home', icon: Home, href: '/dashboard' },
-  { name: 'Leads', icon: Target, href: '/dashboard/leads' },
-  { name: 'Operations', icon: CheckSquare, href: '/dashboard/operations' },
+  { name: 'Market Mapping', icon: Map, href: '/dashboard/market-mapping' },
   { name: 'Referral Tools', icon: LinkIcon, href: '/dashboard/tools' },
   { name: 'Businesses', icon: Briefcase, href: '/dashboard/businesses' },
-  { name: 'Supervisor', icon: Users, href: '/dashboard/network' },
+  { name: 'Line Manager', icon: Users, href: '/dashboard/network' },
   { name: 'Leaderboard', icon: Trophy, href: '/dashboard/leaderboard' },
   { name: 'Wallet', icon: Wallet, href: '/dashboard/wallet' },
   { name: 'Sales Academy', icon: BookOpen, href: '/dashboard/training' },
@@ -63,9 +62,9 @@ const sidebarItems = [
 
 const mobileNavItems = [
   { name: 'Home', icon: Home, href: '/dashboard' },
-  { name: 'Leads', icon: Target, href: '/dashboard/leads' },
-  { name: 'VIP', icon: Star, href: '/dashboard/network' },
-  { name: 'Profit', icon: LineChart, href: '/dashboard/wallet' },
+  { name: 'Map', icon: Map, href: '/dashboard/market-mapping' },
+  { name: 'Report', icon: FileText, href: '/dashboard/market-mapping/insights/reports' },
+  { name: 'Manager', icon: Users, href: '/dashboard/network' },
   { name: 'My', icon: User, href: '/dashboard/profile' },
 ];
 
@@ -144,7 +143,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-pulse" />
           <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Verifying Session...</p>
         </div>
       </div>
@@ -177,10 +176,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <nav className="flex-grow px-4 space-y-2 mt-4">
             {sidebarItems
               .filter((item) => {
-                if (item.name === 'Operations') {
-                  return user?.role === 'AGENT' || user?.role === 'SUPERVISOR' || user?.role === 'MANAGER';
-                }
-                if (item.name === 'Supervisor') {
+                if (item.name === 'Line Manager') {
                   return user?.role === 'SUPERVISOR' || user?.role === 'MANAGER' || user?.isManagerMode;
                 }
                 if (item.name === 'Referral Tools') {
@@ -301,7 +297,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 >
                   <div className="text-right hidden sm:block">
                     <p className="text-xs font-black text-slate-900 group-hover:text-blue-600 transition-colors">{user?.fullName || 'User Profile'}</p>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user?.isManagerMode ? 'Supervisor' : user?.role || 'Affiliate'}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user?.isManagerMode ? 'Line Manager' : user?.role || 'Affiliate'}</p>
                   </div>
                   <div className="w-10 h-10 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
                     <User className="w-5 h-5" />
@@ -324,7 +320,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                            </div>
                            <div>
                               <p className="text-sm font-black text-slate-900">{user?.fullName}</p>
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user?.isManagerMode ? 'Supervisor' : user?.role || 'Affiliate'}</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user?.isManagerMode ? 'Line Manager' : user?.role || 'Affiliate'}</p>
                              </div>
                          </div>
                          <p className="text-[10px] font-medium text-slate-400 truncate mt-2">{user?.email}</p>

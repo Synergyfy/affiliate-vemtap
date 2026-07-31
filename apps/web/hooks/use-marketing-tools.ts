@@ -23,8 +23,10 @@ export function useMarketingTools() {
     async function fetchTools() {
       try {
         setIsLoading(true);
-        const response = await api.get<{ data: MarketingTool[] }>('/tools');
-        setTools(response.data);
+        const response = await api.get('/tools');
+        const raw = response as any;
+        const list = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : Array.isArray(raw?.data?.data) ? raw.data.data : [];
+        setTools(list);
         setError(null);
       } catch (err: any) {
         console.error('Failed to fetch marketing tools:', err);

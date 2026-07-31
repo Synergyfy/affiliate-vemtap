@@ -19,13 +19,15 @@ import {
   BookOpen,
   FileText,
   Target,
-  Activity
+  Activity,
+  Globe2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const adminSidebarItems = [
   { name: 'Admin Overview', icon: Shield, href: '/admin' },
   { name: 'Operations Command', icon: Target, href: '/admin/operations' },
+  { name: 'Market Mapping', icon: Globe2, href: '/admin/market-mapping' },
   { name: 'Affiliates', icon: Users, href: '/admin/affiliates' },
   { name: 'Businesses & Referrals', icon: Briefcase, href: '/admin/referrals' },
   { name: 'Commissions', icon: Percent, href: '/admin/commissions' },
@@ -80,12 +82,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-slate-50 flex overflow-hidden">
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 z-40 lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Admin Sidebar */}
       <aside 
         className={cn(
-          "hidden lg:flex flex-col bg-white border-r border-slate-200 transition-all duration-300 sticky top-0 h-screen",
-          isSidebarOpen ? "w-64" : "w-20"
+          "fixed inset-y-0 left-0 z-50 bg-white border-r border-slate-200 transition-all duration-300 flex flex-col",
+          "lg:relative lg:flex", // Always flex on desktop
+          !isSidebarOpen ? "-translate-x-full lg:translate-x-0 lg:w-20" : "translate-x-0 w-64"
         )}
       >
         <div className="p-6 flex items-center justify-between">
@@ -96,19 +107,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           )}
           <button 
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+            className="p-2 rounded-lg hover:bg-slate-100 transition-colors hidden lg:block"
           >
             <Menu className="w-5 h-5 text-slate-500" />
           </button>
+          <button 
+            onClick={() => setIsSidebarOpen(false)}
+            className="p-2 rounded-lg hover:bg-slate-100 transition-colors lg:hidden"
+          >
+            <X className="w-5 h-5 text-slate-500" />
+          </button>
         </div>
 
-        <nav className="flex-grow px-4 space-y-2 mt-4">
+        <nav className="flex-grow px-4 space-y-2 mt-4 overflow-y-auto">
           {adminSidebarItems.map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link
                 key={item.name}
                 href={item.href}
+                onClick={() => setIsSidebarOpen(false)}
                 className={cn(
                   "flex items-center gap-3 p-3 rounded-xl transition-all group",
                   isActive 
@@ -116,8 +134,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                 )}
               >
-                <item.icon className={cn("w-5 h-5", isActive ? "text-white" : "text-slate-400 group-hover:text-blue-600")} />
-                {isSidebarOpen && <span className="font-medium">{item.name}</span>}
+                <item.icon className={cn("w-5 h-5 shrink-0", isActive ? "text-white" : "text-slate-400 group-hover:text-blue-600")} />
+                {isSidebarOpen && <span className="font-medium whitespace-nowrap">{item.name}</span>}
               </Link>
             );
           })}
@@ -128,29 +146,37 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             onClick={handleLogout}
             className={cn(
               "flex items-center gap-3 p-3 rounded-xl w-full text-slate-600 hover:bg-red-50 hover:text-red-600 transition-all group",
-              !isSidebarOpen && "justify-center"
+              !isSidebarOpen && "lg:justify-center"
             )}
           >
-            <LogOut className="w-5 h-5 text-slate-400 group-hover:text-red-600" />
+            <LogOut className="w-5 h-5 shrink-0 text-slate-400 group-hover:text-red-600" />
             {isSidebarOpen && <span className="font-medium">Logout</span>}
           </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-grow flex flex-col min-w-0">
-        <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-30">
-          <h1 className="text-xl font-bold text-slate-900">
-            {adminSidebarItems.find(item => item.href === pathname)?.name || 'Admin Panel'}
-          </h1>
-          <div className="flex items-center gap-4">
+      <main className="flex-grow flex flex-col min-w-0 h-screen overflow-y-auto">
+        <header className="h-16 lg:h-20 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-30">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 -ml-2 rounded-lg hover:bg-slate-100 transition-colors lg:hidden"
+            >
+              <Menu className="w-5 h-5 text-slate-500" />
+            </button>
+            <h1 className="text-lg lg:text-xl font-bold text-slate-900 truncate max-w-[200px] sm:max-w-none">
+              {adminSidebarItems.find(item => item.href === pathname)?.name || 'Admin Panel'}
+            </h1>
+          </div>
+          <div className="flex items-center gap-4 shrink-0">
             <div className="bg-red-50 text-red-600 px-3 py-1 rounded-full text-xs font-bold border border-red-100">
               Admin Mode
             </div>
           </div>
         </header>
 
-        <div className="p-8">
+        <div className="p-4 lg:p-8">
           {children}
         </div>
       </main>
