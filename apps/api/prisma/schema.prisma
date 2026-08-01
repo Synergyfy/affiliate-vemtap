@@ -449,6 +449,13 @@ model PlatformSettings {
   reqSupervisorActiveAgents      Int      @default(10)
   reqSupervisorActiveSupervisors Int      @default(5)
   reqSupervisorNetworkBusinesses Int      @default(100)
+
+  // Recurring subscription commission configuration
+  recurringAgentCommission       Decimal  @default(5.0)
+  recurringAffiliateCommission   Decimal  @default(10.0)
+  recurringLineManagerCommission Decimal  @default(3.0)
+  recurringDurationMonths        Int      @default(12)
+  recurringYear2Rate             Decimal  @default(50.0)
   
   updatedAt               DateTime @updatedAt
 }

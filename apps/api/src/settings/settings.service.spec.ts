@@ -79,14 +79,16 @@ describe('SettingsService', () => {
     it('should update settings and evict platform settings cache', async () => {
       const mockSettings = { id: '1' };
       mockPrisma.platformSettings.findFirst.mockResolvedValue(mockSettings);
-      mockPrisma.platformSettings.update.mockResolvedValue({ ...mockSettings, reqAgentActiveDays: 45 });
+      mockPrisma.platformSettings.update.mockResolvedValue({ ...mockSettings, reqAgentActiveDays: 45, recurringAgentCommission: 8, recurringDurationMonths: 24 });
 
-      const result = await service.updateSettings({ reqAgentActiveDays: 45 });
+      const result = await service.updateSettings({ reqAgentActiveDays: 45, recurringAgentCommission: 8, recurringDurationMonths: 24 });
       expect(result.reqAgentActiveDays).toBe(45);
+      expect(result.recurringAgentCommission).toBe(8);
+      expect(result.recurringDurationMonths).toBe(24);
       expect(mockPrisma.platformSettings.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: '1' },
-          data: { reqAgentActiveDays: 45 },
+          data: { reqAgentActiveDays: 45, recurringAgentCommission: 8, recurringDurationMonths: 24 },
         }),
       );
       expect(mockCache.del).toHaveBeenCalledWith('platform_settings');

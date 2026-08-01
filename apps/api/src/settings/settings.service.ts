@@ -67,6 +67,11 @@ export class SettingsService implements OnModuleInit {
           reqSupervisorActiveAgents: 10,
           reqSupervisorActiveSupervisors: 5,
           reqSupervisorNetworkBusinesses: 100,
+          recurringAgentCommission: 5.0,
+          recurringAffiliateCommission: 10.0,
+          recurringLineManagerCommission: 3.0,
+          recurringDurationMonths: 12,
+          recurringYear2Rate: 50.0,
         },
       });
       await this.cacheManager.del(SETTINGS_CACHE_KEY);
@@ -93,6 +98,14 @@ export class SettingsService implements OnModuleInit {
           updateData.reqSupervisorActiveAgents = 10;
           updateData.reqSupervisorActiveSupervisors = 5;
           updateData.reqSupervisorNetworkBusinesses = 100;
+        }
+
+        if (settings.recurringAgentCommission === undefined || settings.recurringAgentCommission === null) {
+          updateData.recurringAgentCommission = 5.0;
+          updateData.recurringAffiliateCommission = 10.0;
+          updateData.recurringLineManagerCommission = 3.0;
+          updateData.recurringDurationMonths = 12;
+          updateData.recurringYear2Rate = 50.0;
         }
 
         if (Object.keys(updateData).length > 0) {
