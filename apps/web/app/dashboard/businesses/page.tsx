@@ -563,17 +563,17 @@ export default function BusinessesPage() {
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-3 gap-3">
-                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-center min-w-0">
                     <p className="text-[9px] font-black uppercase tracking-widest text-blue-500 mb-1">Status</p>
-                    <p className="text-sm font-black text-slate-900">{selectedBusiness.status}</p>
+                    <p className="text-sm font-black text-slate-900 break-words">{selectedBusiness.status}</p>
                   </div>
-                  <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-100 text-center">
+                  <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-100 text-center min-w-0">
                     <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600 mb-1">Total Earned</p>
-                    <p className="text-lg font-black text-emerald-700">{selectedBusiness.commission || '₦0'}</p>
+                    <p className="text-sm font-black text-emerald-700 break-words leading-tight">{selectedBusiness.commission || '₦0'}</p>
                   </div>
-                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-center min-w-0">
                     <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Started</p>
-                    <p className="text-sm font-black text-slate-900">{new Date(selectedBusiness.createdAt).toLocaleDateString()}</p>
+                    <p className="text-sm font-black text-slate-900 break-words leading-tight">{new Date(selectedBusiness.createdAt).toLocaleDateString()}</p>
                   </div>
                 </div>
 

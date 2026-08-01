@@ -221,11 +221,11 @@ function AffiliatesManagement() {
 
         {/* Tabs + Add Agent */}
         <div className="flex items-center justify-between border-b border-slate-200">
-          <div className="flex">
+          <div className="flex overflow-x-auto">
             <button 
               onClick={() => setActiveTab('All')}
               className={cn(
-                "px-8 py-4 text-sm font-bold transition-all border-b-2",
+                "px-4 sm:px-8 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap",
                 activeTab === 'All' ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"
               )}
             >
@@ -234,7 +234,7 @@ function AffiliatesManagement() {
             <button 
               onClick={() => setActiveTab('Line Managers')}
               className={cn(
-                "px-8 py-4 text-sm font-bold transition-all border-b-2 flex items-center gap-2",
+                "px-4 sm:px-8 py-4 text-sm font-bold transition-all border-b-2 flex items-center gap-2 whitespace-nowrap",
                  activeTab === 'Line Managers' ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"
               )}
             >
@@ -244,7 +244,7 @@ function AffiliatesManagement() {
             <button
               onClick={() => setActiveTab('Agents')}
               className={cn(
-                "px-8 py-4 text-sm font-bold transition-all border-b-2 flex items-center gap-2",
+                "px-4 sm:px-8 py-4 text-sm font-bold transition-all border-b-2 flex items-center gap-2 whitespace-nowrap",
                  activeTab === 'Agents' ? "border-violet-600 text-violet-600" : "border-transparent text-slate-500 hover:text-slate-700"
               )}
             >
@@ -259,7 +259,7 @@ function AffiliatesManagement() {
             <button
               onClick={() => setActiveTab('Managers')}
               className={cn(
-                "px-8 py-4 text-sm font-bold transition-all border-b-2",
+                "px-4 sm:px-8 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap",
                  activeTab === 'Managers' ? "border-emerald-600 text-emerald-600" : "border-transparent text-slate-500 hover:text-slate-700"
               )}
             >

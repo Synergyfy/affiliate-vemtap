@@ -73,3 +73,12 @@ body {
   animation: shimmer-sweep 1.5s ease-in-out infinite;
   pointer-events: none;
 }
+
+/* Hide scrollbars while keeping scrollability (used on tab bars and tables) */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
