@@ -6,12 +6,21 @@ import { useAuth } from '@/hooks/use-auth';
 import { motion } from 'framer-motion';
 import {
   BarChart3, Activity, TrendingUp, ArrowLeft, Target,
-  Building2, MessageSquare, Percent, CheckCircle2, Clock,
-  ChevronDown, ChevronUp, Share2, Download, FileText, Award,
-  Users, DollarSign, Star
+  Building2, Percent, MessageSquare, Clock,
+  ChevronDown, ChevronUp, Share2, Download, FileText,
+  Star
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+import {
+  buildReportText,
+  downloadReportAsPdf,
+  shareReport as exportShare,
+  ReportExportData,
+} from '@/lib/report-export';
+import { getReportComments } from '@/lib/report-comments';
+import ReportComments from '@/components/dashboard/ReportComments';
 
 const mockBusinesses = [
   { name: 'Greenfield Grocers', type: 'Supermarket', status: 'Visited', notes: 'Owner interested in partnership. Will follow up next week.', date: '2026-07-28', rating: 4 },
@@ -31,6 +40,7 @@ const mockComments = [
 
 export default function MyReportsPage() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [openReport, setOpenReport] = useState<'daily' | 'weekly' | 'monthly' | null>('daily');
 
   const bgGradient = 'from-blue-600 to-indigo-700';
@@ -78,23 +88,101 @@ export default function MyReportsPage() {
     return { label: 'D', color: 'text-red-500', bg: 'bg-red-100' };
   };
 
-  const shareReport = async (period: string) => {
-    const text = `My ${period} report: ${dailyStats.leads} leads, ${dailyStats.conversions} conversions, ${dailyStats.completionRate}% completion rate.`;
-    if (navigator.share) {
-      await navigator.share({ title: `${period} Report`, text });
-    } else {
-      await navigator.clipboard.writeText(text);
+  const getSectionSummary = (key: 'daily' | 'weekly' | 'monthly', s: any) => {
+    if (key === 'daily') {
+      return s.leads >= s.target * 0.8
+        ? `Strong day with ${s.leads} leads collected, reaching ${Math.round((s.leads / s.target) * 100)}% of your ${s.target}-lead target. You closed ${s.conversions} conversions from ${s.visits} visits at a ${s.completionRate}% completion rate. ${s.completionRate >= 80 ? 'Excellent consistency — keep up the great work!' : s.completionRate >= 60 ? 'Good effort — focus on converting more visits into leads.' : 'Room for improvement — try adjusting your approach during visits.'}`
+        : `You collected ${s.leads} leads today (target: ${s.target}). With ${s.conversions} conversions from ${s.visits} visits, your completion rate is ${s.completionRate}%. ${s.leads < s.target * 0.5 ? 'Let\'s push harder tomorrow — try visiting high-traffic areas.' : 'Keep pushing — a strong finish can still turn the week around.'}`;
+    }
+    if (key === 'weekly') {
+      return s.leads >= s.target * 0.9
+        ? `Excellent week! You generated ${s.leads} leads (${Math.round((s.leads / s.target) * 100)}% of target) with ${s.conversions} conversions and ${s.visits} visits. Your ${s.completionRate}% rate ${s.completionRate >= 80 ? 'shows you\'re in top form.' : 'indicates steady effort across the week.'}`
+        : s.leads >= s.target * 0.7
+        ? `Solid week with ${s.leads} leads (${Math.round((s.leads / s.target) * 100)}% of target). You had ${s.conversions} conversions from ${s.visits} visits at ${s.completionRate}% rate. ${s.completionRate >= 70 ? 'Consistent performance — aim higher next week!' : 'Focus on quality over quantity to improve conversion.'}`
+        : `Challenging week with ${s.leads} leads (${Math.round((s.leads / s.target) * 100)}% of target). ${s.conversions} conversions and ${s.visits} visits. ${s.leads < s.target * 0.5 ? 'Let\'s plan next week\'s route more strategically.' : 'Mid-week was better — replicate what worked.'}`;
+    }
+    return `Over the month, you've collected ${s.leads} leads against a ${s.target} target (${Math.round((s.leads / s.target) * 100)}% achievement), with ${s.conversions} conversions and ${s.visits} visits. Your average daily leads: ${s.avgLeadsPerDay}, conversion rate: ${s.avgConversionRate}%. ${s.leads >= s.target ? 'Congratulations on hitting your monthly target!' : 'Next month, focus on increasing daily visit volume to close the gap.'}`;
+  };
+
+  const buildExportData = (key: 'daily' | 'weekly' | 'monthly', s: any): ReportExportData => {
+    const businesses = mockBusinesses.slice(0, key === 'daily' ? 2 : key === 'weekly' ? 4 : 5);
+    const role = user?.role || 'AGENT';
+    const commentKey = `insights:${key}`;
+    const storedComments = getReportComments(commentKey);
+    const seedNotes = mockComments.slice(0, key === 'daily' ? 1 : key === 'weekly' ? 3 : 5).map((c) => ({
+      author: user?.fullName || 'Agent',
+      role,
+      text: c.text,
+      date: c.date,
+    }));
+    const comments = storedComments.map((c) => ({ author: c.author, role: c.role, text: c.text, date: c.date }));
+
+    return {
+      reportTitle: key === 'daily' ? 'Daily Report — Today' : key === 'weekly' ? 'Weekly Report — This Week' : 'Monthly Report — This Month',
+      author: user?.fullName || 'Agent',
+      role,
+      dateLabel: new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+      summaryCards: [
+        { label: 'Leads', value: `${s.leads}` },
+        { label: 'Target', value: `${s.target}` },
+        { label: 'Conversions', value: `${s.conversions}` },
+        { label: 'Visits', value: `${s.visits}` },
+        { label: 'Completion', value: `${s.completionRate}%` },
+        { label: 'Earnings', value: `₦${s.earnings.toLocaleString()}` },
+      ],
+      summary: getSectionSummary(key, s),
+      sections: [
+        {
+          title: 'Target Progress',
+          lines: [
+            `Leads Target: ${s.leads}/${s.target} (${Math.min(100, Math.round((s.leads / s.target) * 100))}%)`,
+            `Conversion Rate: ${Math.round((s.conversions / s.leads) * 100)}%`,
+            `Average Leads Per Day: ${s.avgLeadsPerDay}`,
+            `Average Conversion Rate: ${s.avgConversionRate}%`,
+          ],
+        },
+        {
+          title: 'Conversion Breakdown',
+          lines: [
+            `Total Conversions: ${s.conversions}`,
+            `Conversion Rate: ${Math.round((s.conversions / s.leads) * 100)}%`,
+            `Businesses Referred: ${s.businessesReferred}`,
+            `Earnings: ₦${s.earnings.toLocaleString()}`,
+          ],
+        },
+      ],
+      businesses: businesses.map((b) => ({
+        name: b.name,
+        type: b.type,
+        status: b.status,
+        notes: b.notes,
+        rating: b.rating,
+      })),
+      notes: seedNotes,
+      comments,
+    };
+  };
+
+  const shareReport = async (key: 'daily' | 'weekly' | 'monthly') => {
+    const s = key === 'daily' ? dailyStats : key === 'weekly' ? weeklyStats : monthlyStats;
+    try {
+      await exportShare(buildExportData(key, s));
+      showToast(`${key.charAt(0).toUpperCase() + key.slice(1)} report shared`, 'success');
+    } catch (e) {
+      const text = buildReportText(buildExportData(key, s));
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast('Report copied to clipboard', 'success');
+      } catch {
+        showToast('Sharing cancelled', 'info');
+      }
     }
   };
 
-  const downloadReport = (period: string) => {
-    const text = `${period.toUpperCase()} REPORT\n\nLeads: ${dailyStats.leads} (Target: ${dailyStats.target})\nConversions: ${dailyStats.conversions}\nVisits: ${dailyStats.visits}\nCompletion Rate: ${dailyStats.completionRate}%\nEarnings: ₦${dailyStats.earnings.toLocaleString()}\n\nNotes: ${mockComments[0]?.text || ''}`;
-    const blob = new Blob([text], { type: 'text/plain' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `${period}-report.txt`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+  const downloadReport = (key: 'daily' | 'weekly' | 'monthly') => {
+    const s = key === 'daily' ? dailyStats : key === 'weekly' ? weeklyStats : monthlyStats;
+    const ok = downloadReportAsPdf(buildExportData(key, s));
+    showToast(ok ? 'Opening PDF preview — choose "Save as PDF" to download' : 'Could not open PDF preview', ok ? 'success' : 'error');
   };
 
   const sections = [
@@ -278,11 +366,11 @@ export default function MyReportsPage() {
                         </div>
                       </div>
 
-                      {/* Comments / Notes */}
+                      {/* System-generated Notes */}
                       <div className="p-4 rounded-xl bg-white border border-slate-200">
                         <div className="flex items-center gap-2 mb-2">
                           <MessageSquare className="w-4 h-4 text-orange-600" />
-                          <span className="text-xs font-bold text-slate-900">Notes & Comments</span>
+                          <span className="text-xs font-bold text-slate-900">Notes</span>
                         </div>
                         <div className="space-y-2">
                           {mockComments.slice(0, section.key === 'daily' ? 1 : section.key === 'weekly' ? 3 : 5).map((c, i) => (
@@ -327,8 +415,15 @@ export default function MyReportsPage() {
                     {/* Share / Download Buttons */}
                     <div className="flex items-center gap-2 justify-end pt-2 border-t border-slate-100">
                       <button onClick={() => shareReport(section.key)} className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-${section.color}-50 hover:bg-${section.color}-100 text-${section.color}-600 font-bold text-xs transition-colors`}><Share2 className="w-3.5 h-3.5" /> Share</button>
-                      <button onClick={() => downloadReport(section.key)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold text-xs transition-colors"><Download className="w-3.5 h-3.5" /> Download</button>
+                      <button onClick={() => downloadReport(section.key)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold text-xs transition-colors"><Download className="w-3.5 h-3.5" /> Download PDF</button>
                     </div>
+
+                    {/* Comments */}
+                    <ReportComments
+                      reportKey={`insights:${section.key}`}
+                      currentUser={user ? { name: user.fullName, role: user?.role || 'AGENT' } : null}
+                      className="mt-4"
+                    />
                   </div>
                 )}
               </div>

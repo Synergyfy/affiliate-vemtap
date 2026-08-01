@@ -4,11 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { api } from '@/lib/api-client';
 import { motion } from 'framer-motion';
 import { 
-  ShieldCheck, CheckCircle2, Info, Trophy, Target, Gift,
-  Clock, ArrowRight, Lock, TrendingUp, Users, UserPlus,
+  ShieldCheck, CheckCircle2, Info, Target,
+  Clock, ArrowRight, Lock, TrendingUp, Users,
   BarChart3, DollarSign, Search, Loader2, Award, Star, BookOpen, Handshake,
-  ChevronRight, ChevronDown, ChevronUp, Activity, FileText, Eye,
-  Share2, Download, ArrowLeft, MoreHorizontal
+  ChevronRight, ChevronDown, ChevronUp, Activity, FileText,
+  Share2, Download, ArrowLeft
 } from 'lucide-react';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { Button } from '@/components/ui/Button';
@@ -18,6 +18,13 @@ import Link from 'next/link';
 import LineManagerGuideModal from '@/components/dashboard/LineManagerGuideModal';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/toast';
+import {
+  downloadReportAsPdf,
+  shareReport as exportShare,
+  ReportExportData,
+} from '@/lib/report-export';
+import { getReportComments } from '@/lib/report-comments';
+import ReportComments from '@/components/dashboard/ReportComments';
 
 const generateTeamActivities = (id: string, name: string) => [
   { id: `${id}-act-1`, type: 'report' as const, description: `${name} submitted daily performance report`, date: new Date(Date.now() - 2*3600000).toISOString() },
@@ -96,7 +103,6 @@ export default function NetworkPage() {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>(mockTeamMembers);
   const [commissionRate, setCommissionRate] = useState(10);
   const [openReportTeam, setOpenReportTeam] = useState<'daily' | 'weekly' | 'monthly' | null>(null);
-  const [openMenuMember, setOpenMenuMember] = useState<string | null>(null);
   const router = useRouter();
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -203,6 +209,65 @@ export default function NetworkPage() {
   const avgCompletion = Math.round(teamMembers.reduce((s, m) => s + m.completionRate, 0) / teamMembers.length);
 
   const openTeamReports = () => setViewTab('team-reports');
+
+  const buildTeamReportData = (key: 'daily' | 'weekly' | 'monthly', s: any): ReportExportData => {
+    const commentKey = `network:team:${key}`;
+    const storedComments = getReportComments(commentKey);
+    const comments = storedComments.map((c) => ({ author: c.author, role: c.role, text: c.text, date: c.date }));
+    const memberBreakdown = teamMembers.map((m) => {
+      const leads = key === 'daily' ? m.dailyLeads : key === 'weekly' ? m.weeklyLeads : Math.round(m.dailyLeads * 30);
+      const convs = key === 'daily' ? Math.round(m.dailyLeads * 0.4) : key === 'weekly' ? m.monthlyConversions : m.monthlyConversions;
+      return `${m.name} (${m.role === 'AGENT' ? 'Agent' : 'Affiliate'}): ${leads} leads, ${convs} convs, ${m.completionRate}%`;
+    });
+    const summary = s.leads >= s.target
+      ? `Your team of ${teamMembers.length} members generated ${s.leads} leads (${s.convs} conversions) during this period with an average completion rate of ${s.rate}%. The team is meeting overall targets.`
+      : `Your team of ${teamMembers.length} members generated ${s.leads} leads (${s.convs} conversions) during this period with an average completion rate of ${s.rate}%. The team is at ${Math.min(100, Math.round((s.leads / s.target) * 100))}% of the collective target.`;
+
+    return {
+      reportTitle: `Team ${key === 'daily' ? 'Daily' : key === 'weekly' ? 'Weekly' : 'Monthly'} Report — ${key === 'daily' ? 'Today' : key === 'weekly' ? 'This Week' : 'This Month'}`,
+      author: user?.fullName || 'Line Manager',
+      role: 'LINE MANAGER',
+      dateLabel: new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+      summaryCards: [
+        { label: 'Team Leads', value: `${s.leads}` },
+        { label: 'Conversions', value: `${s.convs}` },
+        { label: 'Visits', value: `${s.visits}` },
+        { label: 'Completion Rate', value: `${s.rate}%` },
+        { label: 'Team Earnings', value: `₦${s.earnings.toLocaleString()}` },
+      ],
+      summary,
+      sections: [
+        {
+          title: 'Target Progress',
+          lines: [
+            `Leads Target: ${s.leads}/${s.target} (${Math.min(100, Math.round((s.leads / s.target) * 100))}%)`,
+            `Conversion Rate: ${s.leads > 0 ? Math.round((s.convs / s.leads) * 100) : 0}%`,
+          ],
+        },
+        {
+          title: 'Member Breakdown',
+          lines: memberBreakdown,
+        },
+      ],
+      businesses: [],
+      notes: [],
+      comments,
+    };
+  };
+
+  const shareTeamReport = async (key: 'daily' | 'weekly' | 'monthly', s: any) => {
+    try {
+      await exportShare(buildTeamReportData(key, s));
+      showToast(`${key.charAt(0).toUpperCase() + key.slice(1)} team report shared`, 'success');
+    } catch {
+      showToast('Sharing cancelled', 'info');
+    }
+  };
+
+  const downloadTeamReport = (key: 'daily' | 'weekly' | 'monthly', s: any) => {
+    const ok = downloadReportAsPdf(buildTeamReportData(key, s));
+    showToast(ok ? 'Opening PDF preview — choose "Save as PDF" to download' : 'Could not open PDF preview', ok ? 'success' : 'error');
+  };
 
   return (
     <DashboardLayout>
@@ -477,42 +542,11 @@ export default function NetworkPage() {
                               </div>
                             </div>
                           </div>
-                          <div className="relative flex items-center gap-3">
-                            <div className="hidden sm:flex items-center gap-3 text-[10px] text-slate-400">
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className="hidden sm:flex items-center gap-3 text-[10px] text-slate-400">
                               <span className={cn("font-bold px-2 py-0.5 rounded-full", member.completionRate >= 80 ? "bg-emerald-50 text-emerald-600" : member.completionRate >= 60 ? "bg-amber-50 text-amber-600" : "bg-red-50 text-red-600")}>{member.completionRate}%</span>
-                            </div>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setOpenMenuMember(openMenuMember === member.id ? null : member.id); }}
-                              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all"
-                            >
-                              <MoreHorizontal className="w-5 h-5" />
-                            </button>
-                            {openMenuMember === member.id && (
-                              <>
-                                <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpenMenuMember(null); }} />
-                                <div className="absolute right-0 top-full mt-1 z-50 bg-white rounded-xl border border-slate-200 shadow-xl py-2 min-w-[200px]">
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); setOpenMenuMember(null); router.push(`/dashboard/network/${member.id}?tab=targets`); }}
-                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                                  >
-                                    <Target className="w-4 h-4" /> Target Adjustment
-                                  </button>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); setOpenMenuMember(null); router.push(`/dashboard/network/${member.id}?tab=reports`); }}
-                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-purple-50 hover:text-purple-600 transition-colors"
-                                  >
-                                    <FileText className="w-4 h-4" /> Report View
-                                  </button>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); setOpenMenuMember(null); router.push(`/dashboard/network/${member.id}?tab=history`); }}
-                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-amber-50 hover:text-amber-600 transition-colors"
-                                  >
-                                    <DollarSign className="w-4 h-4" /> Earnings
-                                  </button>
-                                </div>
-                              </>
-                            )}
-                            <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors hidden sm:block" />
+                            </span>
+                            <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-blue-600 transition-colors" />
                           </div>
                         </button>
                       ))}
@@ -544,19 +578,19 @@ export default function NetworkPage() {
                       <Award className="w-5 h-5 text-amber-500" />
                       <span className="text-xs font-black text-amber-700 uppercase tracking-wider">Top Performer</span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center font-bold text-white text-xl shadow-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center font-bold text-white text-xl shadow-lg shrink-0">
                           {topEarners[0]?.name.charAt(0)}
                         </div>
-                        <div>
-                          <p className="text-lg font-black text-slate-900">{topEarners[0]?.name}</p>
+                        <div className="min-w-0">
+                          <p className="text-lg font-black text-slate-900 truncate">{topEarners[0]?.name}</p>
                           <p className="text-xs text-slate-500">{topEarners[0]?.role} • {topEarners[0]?.completionRate}% completion rate</p>
                           <p className="text-xs text-slate-400 mt-0.5">{topEarners[0]?.businessesReferred} businesses referred, {topEarners[0]?.leadsSubmitted} leads submitted</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-black text-emerald-600">₦{topEarners[0]?.earnings.toLocaleString()}</p>
+                      <div className="sm:text-right shrink-0">
+                        <p className="text-xl sm:text-2xl font-black text-emerald-600">₦{topEarners[0]?.earnings.toLocaleString()}</p>
                         <p className="text-[10px] text-slate-400">current period earnings</p>
                       </div>
                     </div>
@@ -564,7 +598,7 @@ export default function NetworkPage() {
 
                   {/* Earnings Table */}
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left">
+                    <table className="w-full min-w-[680px] text-left">
                       <thead>
                         <tr className="border-b border-slate-100">
                           <th className="pb-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Member</th>
@@ -663,20 +697,20 @@ export default function NetworkPage() {
                   </div>
 
                   {/* Summary Cards */}
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 min-[480px]:grid-cols-3 gap-3">
                     <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-2xl border border-blue-100">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Daily Leads</p>
-                      <p className="text-2xl font-black text-blue-600">{totalTeamLeads > 0 ? Math.round(totalTeamLeads / 7) : 0}</p>
+                      <p className="text-xl sm:text-2xl font-black text-blue-600 truncate">{totalTeamLeads > 0 ? Math.round(totalTeamLeads / 7) : 0}</p>
                       <p className="text-[10px] text-slate-500">{teamMembers.length} members active</p>
                     </div>
                     <div className="bg-gradient-to-br from-emerald-50 to-teal-50 p-4 rounded-2xl border border-emerald-100">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Weekly Leads</p>
-                      <p className="text-2xl font-black text-emerald-600">{totalTeamLeads}</p>
+                      <p className="text-xl sm:text-2xl font-black text-emerald-600 truncate">{totalTeamLeads}</p>
                       <p className="text-[10px] text-slate-500">{avgCompletion}% avg rate</p>
                     </div>
                     <div className="bg-gradient-to-br from-purple-50 to-violet-50 p-4 rounded-2xl border border-purple-100">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Team Earnings</p>
-                      <p className="text-2xl font-black text-purple-600">₦{totalTeamEarnings.toLocaleString()}</p>
+                      <p className="text-xl sm:text-2xl font-black text-purple-600 truncate">₦{totalTeamEarnings.toLocaleString()}</p>
                       <p className="text-[10px] text-slate-500">{totalTeamConversions} conversions</p>
                     </div>
                   </div>
@@ -827,9 +861,16 @@ export default function NetworkPage() {
 
                             {/* Share / Download */}
                             <div className="flex items-center gap-2 justify-end pt-2 border-t border-slate-100">
-                              <button onClick={() => { const t = `Team ${section.key} report: ${s.leads} leads, ${s.convs} conversions, ${s.rate}% rate.`; if (navigator.share) navigator.share({ title: `Team ${section.key} Report`, text: t }); else navigator.clipboard.writeText(t); }} className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-xs transition-colors"><Share2 className="w-3.5 h-3.5" /> Share</button>
-                              <button onClick={() => { const t = `TEAM ${section.key.toUpperCase()} REPORT\n\nLeads: ${s.leads}\nConversions: ${s.convs}\nVisits: ${s.visits}\nRate: ${s.rate}%\nEarnings: ₦${s.earnings.toLocaleString()}`; const b = new Blob([t], {type:'text/plain'}); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `team-${section.key}-report.txt`; a.click(); URL.revokeObjectURL(a.href); }} className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold text-xs transition-colors"><Download className="w-3.5 h-3.5" /> Download</button>
+                              <button onClick={() => shareTeamReport(section.key, s)} className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-xs transition-colors"><Share2 className="w-3.5 h-3.5" /> Share</button>
+                              <button onClick={() => downloadTeamReport(section.key, s)} className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold text-xs transition-colors"><Download className="w-3.5 h-3.5" /> Download PDF</button>
                             </div>
+
+                            {/* Comments */}
+                            <ReportComments
+                              reportKey={`network:team:${section.key}`}
+                              currentUser={user ? { name: user.fullName, role: 'LINE MANAGER' } : null}
+                              className="mt-4"
+                            />
                           </div>
                         )}
                       </div>

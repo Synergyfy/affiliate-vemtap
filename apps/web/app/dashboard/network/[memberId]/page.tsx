@@ -1,15 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowLeft, User, Phone, Mail, TrendingUp, Target, Calendar,
-  Activity, Clock, CheckCircle2, AlertCircle, Shield,
+  ArrowLeft, User, Phone, Mail, TrendingUp, Target,
+  Activity, CheckCircle2, AlertCircle, Shield,
   BarChart3, History, FileText, DollarSign, ArrowUpDown,
   ChevronRight, ChevronDown, Loader2, Users,
-  Gift, ArrowUpCircle, ArrowDownCircle, Save, ArrowRight,
-  Share2, Download, ChevronUp, Award, Star, ExternalLink
+  ArrowUpCircle, ArrowDownCircle, Save, ArrowRight,
+  Share2, Download, ChevronUp, Award
 } from 'lucide-react';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { Button } from '@/components/ui/Button';
@@ -17,6 +17,13 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/toast';
 import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api-client';
+import {
+  downloadReportAsPdf,
+  shareReport as exportShare,
+  ReportExportData,
+} from '@/lib/report-export';
+import { getReportComments } from '@/lib/report-comments';
+import ReportComments from '@/components/dashboard/ReportComments';
 
 interface ActivityEntry {
   id: string; type: 'lead' | 'conversion' | 'report' | 'target_change' | 'referral' | 'business';
@@ -127,6 +134,7 @@ type Tab = 'overview' | 'activity' | 'history' | 'reports' | 'targets';
 export default function TeamMemberDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const memberId = params.memberId as string;
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -139,6 +147,13 @@ export default function TeamMemberDetailPage() {
   const [targetForm, setTargetForm] = useState({ dailyLeadTarget: 0, monthlyConversionTarget: 0, reason: '' });
 
   useEffect(() => {
+    const tab = searchParams.get('tab') as Tab | null;
+    if (tab && ['overview', 'activity', 'history', 'reports', 'targets'].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     const found = mockTeamMembers[memberId];
     if (found) setMember(found);
     else {
@@ -146,32 +161,74 @@ export default function TeamMemberDetailPage() {
     }
   }, [memberId]);
 
-  const getReportText = (type: 'daily' | 'weekly' | 'monthly', m: TeamMember): string => {
-    const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+  const buildMemberReportData = (type: 'daily' | 'weekly' | 'monthly', m: TeamMember): ReportExportData => {
+    const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const commentKey = `network:member:${m.id}:${type}`;
+    const storedComments = getReportComments(commentKey);
+    const comments = storedComments.map((c) => ({ author: c.author, role: c.role, text: c.text, date: c.date }));
+
+    let summary: string;
     if (type === 'daily') {
-      return `Daily Report for ${m.name} — ${dateStr}\n\nLeads Collected: ${m.dailyLeads}\nConversions: ${Math.round(m.dailyLeads * 0.4)}\nBusinesses Visited: ${Math.round(m.dailyLeads * 1.6)}\nCompletion Rate: ${m.completionRate}%\n\n${m.dailyLeads >= (m.dailyLeadTarget * 0.8) ? `${m.name} had a productive day.` : `${m.name} collected ${m.dailyLeads} leads, below target of ${m.dailyLeadTarget}.`}`;
+      summary = m.dailyLeads >= (m.dailyLeadTarget * 0.8)
+        ? `${m.name} had a productive day collecting ${m.dailyLeads} leads, surpassing ${Math.round((m.dailyLeads / m.dailyLeadTarget) * 100)}% of their daily target.`
+        : `${m.name} collected ${m.dailyLeads} leads today, below their target of ${m.dailyLeadTarget}.`;
+    } else if (type === 'weekly') {
+      summary = m.weeklyLeads >= 25 ? `Strong week with ${m.weeklyLeads} leads.` : m.weeklyLeads >= 15 ? `Moderate week with ${m.weeklyLeads} leads.` : `Slow week with ${m.weeklyLeads} leads.`;
+    } else {
+      const avgLeads = Math.round(mockEarningsHistory.reduce((s, r) => s + r.leads, 0) / mockEarningsHistory.length);
+      const total = mockEarningsHistory.reduce((s, r) => s + r.amount, 0);
+      summary = `Over 6 months, ${m.name} averaged ${avgLeads} leads/mo with total earnings of ₦${total.toLocaleString()}.`;
     }
-    if (type === 'weekly') {
-      return `Weekly Report for ${m.name} — Week of ${dateStr}\n\nTotal Leads: ${m.weeklyLeads}\nConversions: ${m.monthlyConversions}\nAvg Rate: ${m.completionRate}%\nEarnings: NGN${m.earnings.toLocaleString()}`;
-    }
-    const avgLeads = Math.round(mockEarningsHistory.reduce((s, r) => s + r.leads, 0) / mockEarningsHistory.length);
-    return `Monthly Performance Report for ${m.name}\n\n6-Month Avg Leads: ${avgLeads}\nCurrent Rate: ${m.completionRate}%\nTotal Earnings (6mo): NGN${mockEarningsHistory.reduce((s, r) => s + r.amount, 0).toLocaleString()}`;
+
+    return {
+      reportTitle: `${type === 'daily' ? 'Daily' : type === 'weekly' ? 'Weekly' : 'Monthly'} Report — ${m.name}`,
+      author: m.name,
+      role: m.role === 'AGENT' ? 'Agent' : 'Affiliate',
+      dateLabel: type === 'daily' ? dateStr : type === 'weekly' ? `Week of ${dateStr}` : dateStr,
+      summaryCards: [
+        { label: 'Daily Leads', value: `${m.dailyLeads}` },
+        { label: 'Weekly Leads', value: `${m.weeklyLeads}` },
+        { label: 'Conversions', value: `${m.monthlyConversions}` },
+        { label: 'Completion', value: `${m.completionRate}%` },
+        { label: 'Earnings', value: `₦${m.earnings.toLocaleString()}` },
+      ],
+      summary,
+      sections: [
+        {
+          title: 'Performance Details',
+          lines: [
+            `Daily Lead Target: ${m.dailyLeadTarget}`,
+            `Monthly Conversion Target: ${m.monthlyConversionTarget}`,
+            `Businesses Referred: ${m.businessesReferred}`,
+            `Leads Submitted: ${m.leadsSubmitted}`,
+            `Total Earnings: ₦${m.totalEarnings.toLocaleString()}`,
+            `Last Active: ${m.lastActive}`,
+            `Status: ${m.status}`,
+          ],
+        },
+        {
+          title: 'Earnings History',
+          lines: mockEarningsHistory.map((r) => `${r.month}: ${r.leads} leads, ${r.conversions} convs, ₦${r.amount.toLocaleString()}`),
+        },
+      ],
+      businesses: [],
+      notes: [],
+      comments,
+    };
   };
 
   const shareReport = async (type: 'daily' | 'weekly' | 'monthly', m: TeamMember) => {
-    const text = getReportText(type, m);
-    if (navigator.share) await navigator.share({ title: `${type} Report — ${m.name}`, text });
-    else { await navigator.clipboard.writeText(text); showToast('Report copied to clipboard', 'success'); }
+    try {
+      await exportShare(buildMemberReportData(type, m));
+      showToast(`${type} report shared`, 'success');
+    } catch {
+      showToast('Sharing cancelled', 'info');
+    }
   };
 
   const downloadReport = (type: 'daily' | 'weekly' | 'monthly', m: TeamMember) => {
-    const text = getReportText(type, m);
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `${m.name.replace(/\s+/g, '_')}_${type}_report.txt`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-    showToast(`${type} report downloaded`, 'success');
+    const ok = downloadReportAsPdf(buildMemberReportData(type, m));
+    showToast(ok ? 'Opening PDF preview — choose "Save as PDF" to download' : 'Could not open PDF preview', ok ? 'success' : 'error');
   };
 
   if (!member) {
@@ -186,9 +243,9 @@ export default function TeamMemberDetailPage() {
 
   const tabs: { key: Tab; label: string; icon: any }[] = [
     { key: 'overview', label: 'Overview', icon: User },
+    { key: 'reports', label: 'Reports', icon: BarChart3 },
     { key: 'activity', label: 'Activity', icon: Activity },
     { key: 'history', label: 'History', icon: History },
-    { key: 'reports', label: 'Reports', icon: BarChart3 },
     { key: 'targets', label: 'Targets', icon: Target },
   ];
 
@@ -242,58 +299,33 @@ export default function TeamMemberDetailPage() {
         </button>
 
         {/* Header */}
-        <div className="relative bg-gradient-to-r from-blue-600 to-indigo-600 rounded-[32px] p-8 text-white overflow-hidden">
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 left-0 w-48 h-48 bg-white rounded-full -ml-24 -mt-24" />
-            <div className="absolute bottom-0 right-0 w-64 h-64 bg-white rounded-full -mr-32 -mb-32" />
-          </div>
-          <div className="relative z-10 flex items-center gap-6">
-            <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/30">
-              <span className="text-3xl font-black">{member.name.charAt(0)}</span>
+          <div className="relative bg-gradient-to-r from-blue-600 to-indigo-600 rounded-[32px] p-6 sm:p-8 text-white overflow-hidden">
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute top-0 left-0 w-48 h-48 bg-white rounded-full -ml-24 -mt-24" />
+              <div className="absolute bottom-0 right-0 w-64 h-64 bg-white rounded-full -mr-32 -mb-32" />
             </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-2xl font-black">{member.name}</h1>
-                <span className={cn("text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-widest", member.role === 'AGENT' ? "bg-violet-400/30 text-violet-100" : "bg-blue-400/30 text-blue-100")}>{member.role}</span>
-                <span className={cn("text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-widest", member.status === 'ACTIVE' ? "bg-emerald-400/30 text-emerald-100" : "bg-slate-400/30 text-slate-100")}>{member.status}</span>
+            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/30 shrink-0">
+                <span className="text-2xl sm:text-3xl font-black">{member.name.charAt(0)}</span>
               </div>
-              <div className="flex items-center gap-4 mt-2 text-sm text-white/80">
-                <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5" /> {member.email}</span>
-                <span>|</span>
-                <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {member.phone}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-black truncate">{member.name}</h1>
+                  <span className={cn("text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-widest", member.role === 'AGENT' ? "bg-violet-400/30 text-violet-100" : "bg-blue-400/30 text-blue-100")}>{member.role}</span>
+                  <span className={cn("text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-widest", member.status === 'ACTIVE' ? "bg-emerald-400/30 text-emerald-100" : "bg-slate-400/30 text-slate-100")}>{member.status}</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs sm:text-sm text-white/80">
+                  <span className="flex items-center gap-1 min-w-0"><Mail className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">{member.email}</span></span>
+                  <span className="hidden sm:inline">|</span>
+                  <span className="flex items-center gap-1 min-w-0"><Phone className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">{member.phone}</span></span>
+                </div>
+              </div>
+              <div className="sm:text-right shrink-0">
+                <p className="text-xs sm:text-sm text-white/60">Total Earnings</p>
+                <p className="text-2xl sm:text-3xl font-black">₦{member.totalEarnings.toLocaleString()}</p>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-white/60">Total Earnings</p>
-              <p className="text-3xl font-black">₦{member.totalEarnings.toLocaleString()}</p>
-            </div>
           </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-3 gap-3">
-          <button onClick={handleOpenTargetForm} className="p-4 rounded-2xl bg-blue-50 border border-blue-100 hover:bg-blue-100 transition-colors text-left group">
-            <ArrowUpCircle className="w-5 h-5 text-blue-600 mb-2 group-hover:scale-110 transition-transform" />
-            <p className="text-xs font-bold text-slate-900">Adjust Targets</p>
-            <p className="text-[10px] text-slate-500">Increase or decrease</p>
-          </button>
-          <button
-            onClick={() => setActiveTab('reports')}
-            className="p-4 rounded-2xl bg-purple-50 border border-purple-100 hover:bg-purple-100 transition-colors text-left group"
-          >
-            <FileText className="w-5 h-5 text-purple-600 mb-2 group-hover:scale-110 transition-transform" />
-            <p className="text-xs font-bold text-slate-900">View Reports</p>
-            <p className="text-[10px] text-slate-500">Full performance reports</p>
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className="p-4 rounded-2xl bg-amber-50 border border-amber-100 hover:bg-amber-100 transition-colors text-left group"
-          >
-            <DollarSign className="w-5 h-5 text-amber-600 mb-2 group-hover:scale-110 transition-transform" />
-            <p className="text-xs font-bold text-slate-900">Earnings</p>
-            <p className="text-[10px] text-slate-500">Breakdown & history</p>
-          </button>
-        </div>
 
         {/* Tabs */}
         <div className="flex gap-1 bg-white rounded-2xl border border-slate-200 p-1.5 shadow-sm overflow-x-auto">
@@ -505,8 +537,13 @@ export default function TeamMemberDetailPage() {
                         </div>
                         <div className="mt-3 flex items-center gap-2 justify-end">
                           <button onClick={() => shareReport(section.key, member)} className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-${section.color}-50 hover:bg-${section.color}-100 text-${section.color}-600 font-bold text-xs transition-colors`}><Share2 className="w-3.5 h-3.5" /> Share</button>
-                          <button onClick={() => downloadReport(section.key, member)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold text-xs transition-colors"><Download className="w-3.5 h-3.5" /> Download</button>
+                          <button onClick={() => downloadReport(section.key, member)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold text-xs transition-colors"><Download className="w-3.5 h-3.5" /> Download PDF</button>
                         </div>
+                        <ReportComments
+                          reportKey={`network:member:${member.id}:${section.key}`}
+                          currentUser={user ? { name: user.fullName, role: 'LINE MANAGER' } : null}
+                          className="mt-3"
+                        />
                       </div>
                     )}
                   </div>
