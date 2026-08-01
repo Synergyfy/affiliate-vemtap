@@ -34,6 +34,7 @@ export function usePwaInstall() {
 
 const DISMISS_KEY = 'pwa-install-dismissed-at';
 const COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
+const SESSION_SHOWN_KEY = 'pwa-install-session-shown';
 const APP_NAME = 'Vemtap';
 const AUTO_SHOW_DELAY = 1200;
 const AUTO_HIDE_DELAY = 12000;
@@ -51,6 +52,11 @@ function wasDismissedRecently() {
   const stored = localStorage.getItem(DISMISS_KEY);
   if (!stored) return false;
   return Date.now() - Number(stored) < COOLDOWN_MS;
+}
+
+function wasShownThisSession() {
+  if (typeof window === 'undefined') return false;
+  return sessionStorage.getItem(SESSION_SHOWN_KEY) === 'true';
 }
 
 const FEATURES = [
@@ -91,12 +97,19 @@ export default function PwaInstallProvider({ children }: { children: ReactNode }
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
-  // After the event fires (or on iOS where it never fires), wait ~1.2s before animating the prompt in
+  // After the event fires (or on iOS where it never fires), wait ~1.2s before animating the prompt in.
+  // Auto-show only once per browser session so it never blocks page interactions on every navigation.
   useEffect(() => {
     if (!hasDeferred && !isIos) return;
     if (isStandalone()) return;
     if (wasDismissedRecently()) return;
+    if (wasShownThisSession()) return;
     const t = setTimeout(() => {
+      try {
+        sessionStorage.setItem(SESSION_SHOWN_KEY, 'true');
+      } catch {
+        /* ignore */
+      }
       setOpenCount((c) => c + 1);
       setIsOpen(true);
     }, AUTO_SHOW_DELAY);
@@ -171,7 +184,7 @@ export default function PwaInstallProvider({ children }: { children: ReactNode }
               animate={{ opacity: 1 }}
               exit={{ opacity: 0, transition: { duration: 0.2 } }}
               onClick={() => dismiss(true)}
-              className="fixed inset-0 z-[80] bg-black/20 backdrop-blur-sm"
+              className="fixed inset-0 z-[80] bg-black/20 pointer-events-none"
             />
             <motion.div
               key="pwa-sheet"

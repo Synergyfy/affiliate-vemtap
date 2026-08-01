@@ -164,7 +164,7 @@ export default function LandingPage() {
 
       <main className="flex-grow pt-20">
         {/* Hero Section - Split Layout */}
-        <section className="relative min-h-[90vh] flex items-center overflow-hidden">
+        <section className="relative min-h-[90svh] flex items-center overflow-hidden">
           <div className="absolute inset-0 -z-10">
             <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(37,99,235,0.03),transparent_70%)]" />
             <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-blue-50 rounded-full blur-[120px] opacity-50 -mr-64 -mb-64" />

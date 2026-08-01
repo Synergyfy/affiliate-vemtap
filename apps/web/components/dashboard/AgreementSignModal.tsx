@@ -102,7 +102,7 @@ export default function AgreementSignModal() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
             transition={{ type: 'spring', damping: 25, stiffness: 250 }}
-            className="relative w-full max-w-2xl bg-white rounded-[32px] shadow-2xl border border-slate-100 overflow-hidden my-auto max-h-[90vh] flex flex-col"
+            className="relative w-full max-w-2xl bg-white rounded-[32px] shadow-2xl border border-slate-100 overflow-hidden my-auto max-h-[90svh] flex flex-col"
           >
             {/* Sequential Progress Indicators */}
             {pendingAgreements && pendingAgreements.length > 1 && (
