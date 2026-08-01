@@ -193,6 +193,7 @@ export function buildReportHtml(data: ReportExportData): string {
 <html>
 <head>
 <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${esc(data.reportTitle)}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -257,27 +258,35 @@ export function buildReportHtml(data: ReportExportData): string {
     </div>
     <div class="footer">Generated via Vemtap</div>
   </div>
+  <script>
+    window.addEventListener('load', function () {
+      setTimeout(function () {
+        window.focus();
+        window.print();
+      }, 500);
+    });
+  </script>
 </body>
 </html>`;
 }
 
 export function downloadReportAsPdf(data: ReportExportData) {
   const html = buildReportHtml(data);
-  const title = `${data.reportTitle.replace(/[^a-z0-9]+/gi, '-').replace(/-+/g, '-').toLowerCase()}-report.pdf`;
-  const win = window.open('', '_blank', 'noopener');
-  if (!win) return false;
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
-  win.document.title = title;
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, '_blank');
+  if (!win) {
+    URL.revokeObjectURL(url);
+    return false;
+  }
   setTimeout(() => {
     try {
       win.focus();
-      win.print();
     } catch {
       /* ignore */
     }
-  }, 400);
+    URL.revokeObjectURL(url);
+  }, 1000);
   return true;
 }
 

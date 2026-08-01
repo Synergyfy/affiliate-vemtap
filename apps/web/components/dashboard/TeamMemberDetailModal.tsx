@@ -232,7 +232,7 @@ export default function TeamMemberDetailModal({ isOpen, onClose, member, onTarge
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-4xl bg-white rounded-[32px] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+            className="relative w-full max-w-4xl bg-white rounded-[32px] shadow-2xl overflow-hidden max-h-[90svh] flex flex-col"
           >
             {/* Header */}
             <div className="relative h-40 bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center overflow-hidden shrink-0">

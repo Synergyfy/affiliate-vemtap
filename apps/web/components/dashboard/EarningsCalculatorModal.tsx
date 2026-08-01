@@ -105,7 +105,7 @@ export default function EarningsCalculatorModal({ isOpen, onClose }: EarningsCal
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 30 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-[2rem] shadow-2xl"
+            className="relative w-full max-w-2xl max-h-[90svh] overflow-y-auto bg-white rounded-[2rem] shadow-2xl"
           >
             <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-slate-100 p-6 flex items-center justify-between">
               <div className="flex items-center gap-3">
