@@ -68,6 +68,20 @@ export class NotificationsController {
     };
   }
 
+  @Get("unread-count")
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Get current user unread notification count" })
+  getUnreadCount(@CurrentUser() user: { id: string }) {
+    return this.notificationsService.getUnreadCount(user.id);
+  }
+
+  @Patch("read-all")
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Mark all user notifications as read" })
+  markAllAsRead(@CurrentUser() user: { id: string }) {
+    return this.notificationsService.markAllAsRead(user.id);
+  }
+
   @Patch(":id/read")
   @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Mark notification as read" })

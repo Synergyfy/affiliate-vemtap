@@ -116,4 +116,19 @@ export class NotificationsService {
       data: { isRead: true, readAt: new Date() },
     });
   }
+
+  async getUnreadCount(userId: string) {
+    const unreadCount = await this.prisma.notification.count({
+      where: { userId, isRead: false },
+    });
+    return { unreadCount };
+  }
+
+  async markAllAsRead(userId: string) {
+    await this.prisma.notification.updateMany({
+      where: { userId, isRead: false },
+      data: { isRead: true, readAt: new Date() },
+    });
+    return { message: 'All notifications marked as read' };
+  }
 }

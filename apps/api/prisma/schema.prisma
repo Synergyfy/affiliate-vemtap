@@ -82,6 +82,17 @@ model User {
   territoryId              String?
   agreementSignatures      AgreementSignature[]
 
+  isTourCompleted          Boolean   @default(false)
+  isOnboardingCompleted    Boolean   @default(false)
+  driversLicense           String?
+  internationalPassport    String?
+  idType                   String?
+
+  marketMappingPlans       MarketMappingPlan[]
+  marketMappingNotes       MarketMappingNote[]
+  targetAdjustmentLogs     TargetAdjustmentHistory[] @relation("ManagerAdjustments")
+  targetAdjustmentsReceived TargetAdjustmentHistory[] @relation("MemberAdjustments")
+
   @@index([referralCode])
   @@index([referredBy])
   @@index([referrerId])
@@ -382,6 +393,7 @@ model TrainingProgress {
   
   status          ProgressStatus @default(NOT_STARTED)
   quizScore       Int?
+  practiceResults Json?
   completedAt     DateTime?
   
   startedAt       DateTime  @default(now())
@@ -771,4 +783,81 @@ model AgreementSignature {
   @@index([agreementId])
   @@index([userId])
 }
+
+model MarketMappingPlan {
+  id                String   @id @default(uuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetVisits      Int      @default(0)
+  targetLeads       Int      @default(0)
+  targetConversions Int      @default(0)
+  locationCluster   String?
+  status            String   @default("ACTIVE")
+  notes             String?
+  startDate         DateTime @default(now())
+  endDate           DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model MarketMappingNote {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessId    String?
+  leadId        String?
+  businessName  String
+  content       String    @db.Text
+  followUpDate  DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([businessId])
+  @@index([leadId])
+}
+
+model MarketMappingTerritoryConfig {
+  id                 String   @id @default(uuid())
+  territoryCode      String   @unique
+  name               String
+  country            String   @default("Nigeria")
+  state              String
+  city               String
+  area               String
+  cluster            String
+  totalAssigned      Int      @default(0)
+  anchorCount        Int      @default(0)
+  prospectCount      Int      @default(0)
+  anchorsJson        Json?
+  priorityVisitsJson Json?
+  partnershipsJson   Json?
+  maturityJson       Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([territoryCode])
+  @@index([cluster])
+}
+
+model TargetAdjustmentHistory {
+  id                          String   @id @default(uuid())
+  managerId                   String
+  manager                     User     @relation("ManagerAdjustments", fields: [managerId], references: [id], onDelete: Cascade)
+  memberId                    String
+  member                      User     @relation("MemberAdjustments", fields: [memberId], references: [id], onDelete: Cascade)
+  oldDailyLeadTarget          Int
+  newDailyLeadTarget          Int
+  oldMonthlyConversionTarget Int
+  newMonthlyConversionTarget Int
+  reason                      String?
+  createdAt                   DateTime @default(now())
+
+  @@index([managerId])
+  @@index([memberId])
+}
+
 

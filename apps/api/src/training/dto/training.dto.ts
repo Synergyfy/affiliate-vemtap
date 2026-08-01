@@ -123,6 +123,10 @@ export class UpdateTrainingProgressDto {
   @IsInt()
   quizScore?: number;
 
+  @ApiProperty({ required: false, description: "Practice scenario results JSON" })
+  @IsOptional()
+  practiceResults?: any;
+
   @ApiProperty({ required: false })
   @IsOptional()
   completedAt?: Date;
