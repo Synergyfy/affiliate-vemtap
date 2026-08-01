@@ -168,4 +168,12 @@ export class WithdrawalsController {
   triggerBulkWithdrawals(@CurrentUser() admin: { id: string }) {
     return this.withdrawalsService.triggerBulkWithdrawals(admin.id);
   }
+
+  @Get("stats")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Get withdrawal statistics (Admin only)" })
+  getStats() {
+    return this.withdrawalsService.getStats();
+  }
 }
+

@@ -340,4 +340,195 @@ export class MarketMappingService {
     const businessRows = report.visitedBusinesses.map((b) => `Business,${b.id},${escapeCsv(b.businessName)},${b.status},${b.date}`).join("\n");
     return header + leadRows + (leadRows && businessRows ? "\n" : "") + businessRows;
   }
+
+  // --- ADMIN MARKET MAPPING ---
+  async getHierarchyTree() {
+    return this.prisma.marketMappingHierarchy.findMany({
+      where: { parentId: null },
+      include: {
+        children: {
+          include: {
+            children: {
+              include: {
+                children: {
+                  include: {
+                    children: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async createHierarchyNode(dto: { name: string; type: "COUNTRY" | "STATE" | "CITY" | "AREA" | "CLUSTER"; parentId?: string }) {
+    return this.prisma.marketMappingHierarchy.create({
+      data: {
+        name: dto.name,
+        type: dto.type,
+        parentId: dto.parentId || null,
+      },
+    });
+  }
+
+  async updateHierarchyNode(id: string, dto: { name?: string; parentId?: string }) {
+    const node = await this.prisma.marketMappingHierarchy.findUnique({ where: { id } });
+    if (!node) throw new NotFoundException("Hierarchy node not found");
+
+    return this.prisma.marketMappingHierarchy.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
+  async deleteHierarchyNode(id: string) {
+    const node = await this.prisma.marketMappingHierarchy.findUnique({ where: { id } });
+    if (!node) throw new NotFoundException("Hierarchy node not found");
+
+    return this.prisma.marketMappingHierarchy.delete({ where: { id } });
+  }
+
+  async getLocationsList() {
+    return this.prisma.marketMappingHierarchy.findMany({
+      where: { type: { in: ["AREA", "CLUSTER"] } },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        totalBusinesses: true,
+        penetration: true,
+        parent: { select: { id: true, name: true } },
+      },
+    });
+  }
+
+  async getClusterDetail(clusterId: string) {
+    const cluster = await this.prisma.marketMappingHierarchy.findUnique({
+      where: { id: clusterId },
+      include: {
+        assignments: {
+          include: {
+            user: { select: { id: true, fullName: true, role: true, avatar: true } },
+          },
+        },
+      },
+    });
+
+    if (!cluster) {
+      throw new NotFoundException("Cluster not found");
+    }
+
+    const assignedBusinesses = await this.prisma.business.findMany({
+      take: 20,
+      select: { id: true, businessName: true, planType: true, status: true, ownerName: true, phone: true },
+    });
+
+    return {
+      cluster,
+      businesses: assignedBusinesses,
+    };
+  }
+
+  async getAssignments() {
+    return this.prisma.marketMappingAssignment.findMany({
+      include: {
+        user: { select: { id: true, fullName: true, role: true, email: true } },
+        cluster: { select: { id: true, name: true, type: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async createAssignment(dto: { userId: string; clusterId: string; dailyLeadTarget: number; weeklyLeadTarget: number; monthlyConversionTarget: number; allowUserEdit?: boolean }) {
+    return this.prisma.marketMappingAssignment.create({
+      data: {
+        userId: dto.userId,
+        clusterId: dto.clusterId,
+        dailyLeadTarget: dto.dailyLeadTarget,
+        weeklyLeadTarget: dto.weeklyLeadTarget,
+        monthlyConversionTarget: dto.monthlyConversionTarget,
+        allowUserEdit: dto.allowUserEdit ?? true,
+      },
+    });
+  }
+
+  async updateAssignment(id: string, dto: { dailyLeadTarget?: number; weeklyLeadTarget?: number; monthlyConversionTarget?: number; allowUserEdit?: boolean }) {
+    const assignment = await this.prisma.marketMappingAssignment.findUnique({ where: { id } });
+    if (!assignment) throw new NotFoundException("Assignment not found");
+
+    return this.prisma.marketMappingAssignment.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
+  async deleteAssignment(id: string) {
+    const assignment = await this.prisma.marketMappingAssignment.findUnique({ where: { id } });
+    if (!assignment) throw new NotFoundException("Assignment not found");
+
+    return this.prisma.marketMappingAssignment.delete({ where: { id } });
+  }
+
+  async getClusterSubmissions(clusterId: string) {
+    const [leads, businesses] = await Promise.all([
+      this.prisma.lead.findMany({
+        take: 15,
+        orderBy: { createdAt: "desc" },
+        include: { affiliate: { select: { fullName: true } } },
+      }),
+      this.prisma.business.findMany({
+        take: 15,
+        orderBy: { createdAt: "desc" },
+        include: { affiliate: { select: { fullName: true } } },
+      }),
+    ]);
+
+    return {
+      clusterId,
+      submissions: [
+        ...leads.map((l) => ({ type: "LEAD", id: l.id, name: l.businessName, submittedBy: l.affiliate?.fullName, date: l.createdAt })),
+        ...businesses.map((b) => ({ type: "BUSINESS", id: b.id, name: b.businessName, submittedBy: b.affiliate?.fullName, date: b.createdAt })),
+      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    };
+  }
+
+  async getGlobalStats() {
+    const [totalTerritories, totalBusinesses, activeClusters] = await Promise.all([
+      this.prisma.marketMappingHierarchy.count(),
+      this.prisma.business.count(),
+      this.prisma.marketMappingHierarchy.count({ where: { type: "CLUSTER" } }),
+    ]);
+
+    return {
+      totalTerritories,
+      totalBusinessesCaptured: totalBusinesses,
+      activeClusters,
+      overallPenetrationPercent: totalTerritories > 0 ? Math.round((totalBusinesses / (totalTerritories * 50)) * 100) : 0,
+    };
+  }
+
+  async getAdminConfig() {
+    let config = await this.prisma.marketMappingAdminConfig.findFirst();
+    if (!config) {
+      config = await this.prisma.marketMappingAdminConfig.create({
+        data: {
+          pipelineStatuses: ["POTENTIAL", "CONTACTED", "INTERESTED", "DEMO_SCHEDULED", "CONVERTED"],
+          categories: ["Retail", "Hospitality", "Corporate", "Healthcare", "Tech"],
+          fieldDefaults: { autoAssignLead: true, requireGps: true },
+        },
+      });
+    }
+    return config;
+  }
+
+  async updateAdminConfig(dto: { pipelineStatuses?: any; categories?: any; fieldDefaults?: any }) {
+    const config = await this.getAdminConfig();
+    return this.prisma.marketMappingAdminConfig.update({
+      where: { id: config.id },
+      data: dto,
+    });
+  }
 }
+

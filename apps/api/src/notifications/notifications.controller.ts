@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
@@ -94,7 +95,24 @@ export class NotificationsController {
     return this.notificationsService.markAsRead(id, user.id);
   }
 
-  @Get()
+  @Get("drafts")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Get draft notifications (Admin only)" })
+  getDrafts() {
+    return this.notificationsService.getDrafts();
+  }
+
+  @Post("drafts")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Save draft notification (Admin only)" })
+  saveDraft(
+    @CurrentUser() admin: { id: string },
+    @Body() data: { title: string; message: string; type: any; targetRoles?: any }
+  ) {
+    return this.notificationsService.saveDraft({ ...data, createdById: admin.id });
+  }
+
+  @Get("admin/list")
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "List all notifications sent (Admin only)" })
   @ApiOkResponse({ type: PaginatedNotificationResponseDto })
@@ -193,5 +211,19 @@ export class NotificationsController {
   @ApiResponse({ status: 404, description: "User not found" })
   create(@Body() dto: CreateNotificationDto) {
     return this.notificationsService.create(dto);
+  }
+
+  @Get(":id")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Get notification detail (Admin only)" })
+  getNotificationDetail(@Param("id") id: string) {
+    return this.notificationsService.getNotificationDetail(id);
+  }
+
+  @Delete(":id")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Delete notification (Admin only)" })
+  deleteNotification(@Param("id") id: string) {
+    return this.notificationsService.deleteNotification(id);
   }
 }

@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
@@ -18,6 +19,11 @@ import {
   CreateMissionPlanDto,
   UpdateMissionPlanDto,
   CreateMarketMappingNoteDto,
+  CreateHierarchyNodeDto,
+  UpdateHierarchyNodeDto,
+  CreateAssignmentDto,
+  UpdateAssignmentDto,
+  UpdateMarketMappingAdminConfigDto,
 } from "./dto/market-mapping.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
@@ -139,4 +145,105 @@ export class MarketMappingController {
     const csv = await this.marketMappingService.downloadReportCsv(user.id, period);
     return res.send(csv);
   }
+
+  // --- ADMIN ENDPOINTS ---
+
+  @Get("admin/hierarchy")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Get complete market mapping hierarchy tree (Admin only)" })
+  getHierarchyTree() {
+    return this.marketMappingService.getHierarchyTree();
+  }
+
+  @Post("admin/hierarchy")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Create a hierarchy node (Admin only)" })
+  createHierarchyNode(@Body() dto: CreateHierarchyNodeDto) {
+    return this.marketMappingService.createHierarchyNode(dto);
+  }
+
+  @Patch("admin/hierarchy/:id")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Update a hierarchy node (Admin only)" })
+  updateHierarchyNode(@Param("id") id: string, @Body() dto: UpdateHierarchyNodeDto) {
+    return this.marketMappingService.updateHierarchyNode(id, dto);
+  }
+
+  @Delete("admin/hierarchy/:id")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Delete a hierarchy node (Admin only)" })
+  deleteHierarchyNode(@Param("id") id: string) {
+    return this.marketMappingService.deleteHierarchyNode(id);
+  }
+
+  @Get("admin/locations")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "List all locations/clusters (Admin only)" })
+  getLocationsList() {
+    return this.marketMappingService.getLocationsList();
+  }
+
+  @Get("admin/cluster/:id")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Get cluster details (Admin only)" })
+  getClusterDetail(@Param("id") id: string) {
+    return this.marketMappingService.getClusterDetail(id);
+  }
+
+  @Get("admin/assignments")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "List affiliate cluster assignments (Admin only)" })
+  getAssignments() {
+    return this.marketMappingService.getAssignments();
+  }
+
+  @Post("admin/assignments")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Assign affiliate to cluster (Admin only)" })
+  createAssignment(@Body() dto: CreateAssignmentDto) {
+    return this.marketMappingService.createAssignment(dto);
+  }
+
+  @Patch("admin/assignments/:id")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Update affiliate assignment targets (Admin only)" })
+  updateAssignment(@Param("id") id: string, @Body() dto: UpdateAssignmentDto) {
+    return this.marketMappingService.updateAssignment(id, dto);
+  }
+
+  @Delete("admin/assignments/:id")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Remove affiliate assignment (Admin only)" })
+  deleteAssignment(@Param("id") id: string) {
+    return this.marketMappingService.deleteAssignment(id);
+  }
+
+  @Get("admin/cluster/:id/submissions")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Get cluster capture submissions history (Admin only)" })
+  getClusterSubmissions(@Param("id") id: string) {
+    return this.marketMappingService.getClusterSubmissions(id);
+  }
+
+  @Get("admin/stats")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Get overall market mapping stats (Admin only)" })
+  getGlobalStats() {
+    return this.marketMappingService.getGlobalStats();
+  }
+
+  @Get("admin/editor-config")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Get market mapping admin config (Admin only)" })
+  getAdminConfig() {
+    return this.marketMappingService.getAdminConfig();
+  }
+
+  @Patch("admin/editor-config")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Update market mapping admin config (Admin only)" })
+  updateAdminConfig(@Body() dto: UpdateMarketMappingAdminConfigDto) {
+    return this.marketMappingService.updateAdminConfig(dto);
+  }
 }
+

@@ -502,4 +502,157 @@ export class UsersService {
 
     return code!;
   }
+
+  // --- ADMIN AFFILIATE / USER EXTENSIONS ---
+  async getUserLocations(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, territoryId: true, marketMappingAssignments: { include: { cluster: true } } },
+    });
+    if (!user) throw new NotFoundException("User not found");
+    return user;
+  }
+
+  async updateUserLocations(userId: string, territoryId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException("User not found");
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { territoryId },
+    });
+  }
+
+  async sendEmailToUser(userId: string, subject: string, message: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException("User not found");
+
+    await this.resendService.sendBroadcastEmail([user.email], subject || "Notification from Vemtap Admin", message);
+
+    await this.prisma.notification.create({
+      data: {
+        userId,
+        type: "SYSTEM",
+        title: subject || "Admin Message",
+        message,
+      },
+    });
+
+    return { success: true, message: "Email sent successfully" };
+  }
+
+
+  async getUserPerformanceReport(userId: string, period: string = "monthly") {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException("User not found");
+
+    const [leads, businesses, commissions] = await Promise.all([
+      this.prisma.lead.findMany({ where: { affiliateId: userId } }),
+      this.prisma.business.findMany({ where: { affiliateId: userId } }),
+      this.prisma.commission.findMany({ where: { userId } }),
+    ]);
+
+    return {
+      userId,
+      period,
+      totalLeads: leads.length,
+      totalConversions: businesses.length,
+      totalEarnings: Number(user.totalEarnings || 0),
+      dailyTarget: user.dailyLeadTarget,
+      monthlyTarget: user.monthlyConversionTarget,
+      reportingScore: Number(user.reportingScore || 100),
+      attendanceRate: Number(user.attendanceRate || 100),
+      leads: leads.slice(0, 10),
+      businesses: businesses.slice(0, 10),
+      commissions: commissions.slice(0, 10),
+    };
+  }
+
+  async getUserActivityHistory(userId: string) {
+    const [activities, targetLogs, agreementSignatures] = await Promise.all([
+      this.prisma.activity.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: 20 }),
+      this.prisma.targetAdjustmentHistory.findMany({ where: { memberId: userId }, orderBy: { createdAt: "desc" } }),
+      this.prisma.agreementSignature.findMany({ where: { userId }, include: { agreement: true } }),
+    ]);
+
+    return {
+      userId,
+      activities,
+      targetAdjustmentLogs: targetLogs,
+      signatures: agreementSignatures,
+    };
+  }
+
+  async getUserTeamMembers(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException("User not found");
+
+    const downline = await this.prisma.user.findMany({
+      where: { referrerId: userId },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        role: true,
+        status: true,
+        dailyLeadTarget: true,
+        monthlyConversionTarget: true,
+        createdAt: true,
+      },
+    });
+
+    return {
+      managerId: userId,
+      teamMembers: downline,
+    };
+  }
+
+  async updateUserTargets(userId: string, managerId: string, dailyTarget: number, monthlyTarget: number, reason?: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException("User not found");
+
+    const oldDaily = user.dailyLeadTarget;
+    const oldMonthly = user.monthlyConversionTarget;
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        dailyLeadTarget: dailyTarget,
+        monthlyConversionTarget: monthlyTarget,
+      },
+    });
+
+    await this.prisma.targetAdjustmentHistory.create({
+      data: {
+        managerId,
+        memberId: userId,
+        oldDailyLeadTarget: oldDaily,
+        newDailyLeadTarget: dailyTarget,
+        oldMonthlyConversionTarget: oldMonthly,
+        newMonthlyConversionTarget: monthlyTarget,
+        reason: reason || "Admin update",
+      },
+    });
+
+    const { password: _, ...safe } = updatedUser;
+    return safe;
+  }
+
+  async assignUserManager(userId: string, managerId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException("User not found");
+
+    const manager = await this.prisma.user.findUnique({ where: { id: managerId } });
+    if (!manager) throw new NotFoundException("Manager not found");
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: { referrerId: managerId },
+    });
+
+    const { password: _, ...safe } = updatedUser;
+    return safe;
+  }
 }
+

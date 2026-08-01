@@ -43,6 +43,24 @@ export class FraudController {
     };
   }
 
+  @Get('stats')
+  @ApiOperation({ summary: 'Get global fraud stats' })
+  getStats() {
+    return this.fraudService.getGlobalStats();
+  }
+
+  @Get('guard-status')
+  @ApiOperation({ summary: 'Get global fraud guard configuration' })
+  getGuardStatus() {
+    return this.fraudService.getGuardStatus();
+  }
+
+  @Patch('guard-status')
+  @ApiOperation({ summary: 'Update global fraud guard threshold' })
+  updateGuardStatus(@Body() body: { thresholdScore: number }) {
+    return this.fraudService.updateGuardStatus(body.thresholdScore);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get fraud alert details' })
   @ApiOkResponse({ type: FraudAlertResponseDto })
@@ -61,3 +79,4 @@ export class FraudController {
     return this.fraudService.updateStatus(id, dto.status, dto.resolution, admin.id);
   }
 }
+

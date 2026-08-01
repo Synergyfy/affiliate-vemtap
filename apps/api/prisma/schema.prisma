@@ -92,6 +92,8 @@ model User {
   marketMappingNotes       MarketMappingNote[]
   targetAdjustmentLogs     TargetAdjustmentHistory[] @relation("ManagerAdjustments")
   targetAdjustmentsReceived TargetAdjustmentHistory[] @relation("MemberAdjustments")
+  marketMappingAssignments MarketMappingAssignment[]
+  createdNotificationDrafts NotificationDraft[]
 
   @@index([referralCode])
   @@index([referredBy])
@@ -859,5 +861,73 @@ model TargetAdjustmentHistory {
   @@index([managerId])
   @@index([memberId])
 }
+
+enum HierarchyType {
+  COUNTRY
+  STATE
+  CITY
+  AREA
+  CLUSTER
+}
+
+model MarketMappingHierarchy {
+  id              String                 @id @default(uuid())
+  name            String
+  type            HierarchyType
+  parentId        String?
+  parent          MarketMappingHierarchy?  @relation("HierarchyTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children        MarketMappingHierarchy[] @relation("HierarchyTree")
+  totalBusinesses Int                    @default(0)
+  penetration     Decimal                @default(0)
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  assignments     MarketMappingAssignment[]
+
+  @@index([parentId])
+  @@index([type])
+}
+
+model MarketMappingAssignment {
+  id                      String                 @id @default(uuid())
+  userId                  String
+  user                    User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clusterId               String
+  cluster                 MarketMappingHierarchy @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  dailyLeadTarget         Int                    @default(0)
+  weeklyLeadTarget        Int                    @default(0)
+  monthlyConversionTarget Int                    @default(0)
+  allowUserEdit           Boolean                @default(true)
+  assignedAt              DateTime               @default(now())
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
+
+  @@index([userId])
+  @@index([clusterId])
+}
+
+model MarketMappingAdminConfig {
+  id               String   @id @default(uuid())
+  pipelineStatuses Json
+  categories       Json
+  fieldDefaults    Json
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model NotificationDraft {
+  id          String           @id @default(uuid())
+  title       String
+  message     String
+  type        NotificationType
+  targetRoles Role[]
+  createdById String?
+  createdBy   User?            @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([createdById])
+}
+
 
 

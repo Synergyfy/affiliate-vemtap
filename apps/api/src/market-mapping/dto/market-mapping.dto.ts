@@ -92,3 +92,98 @@ export class CreateMarketMappingNoteDto {
   @IsDateString()
   followUpDate?: string;
 }
+
+export class CreateHierarchyNodeDto {
+  @ApiProperty({ example: "Lagos" })
+  @IsString()
+  name: string;
+
+  @ApiProperty({ example: "STATE", enum: ["COUNTRY", "STATE", "CITY", "AREA", "CLUSTER"] })
+  @IsString()
+  type: "COUNTRY" | "STATE" | "CITY" | "AREA" | "CLUSTER";
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  parentId?: string;
+}
+
+export class UpdateHierarchyNodeDto {
+  @ApiProperty({ required: false, example: "Lagos Mainland" })
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  parentId?: string;
+}
+
+export class CreateAssignmentDto {
+  @ApiProperty({ example: "uuid-user-id" })
+  @IsString()
+  userId: string;
+
+  @ApiProperty({ example: "uuid-cluster-id" })
+  @IsString()
+  clusterId: string;
+
+  @ApiProperty({ example: 10 })
+  @IsInt()
+  @Min(0)
+  dailyLeadTarget: number;
+
+  @ApiProperty({ example: 50 })
+  @IsInt()
+  @Min(0)
+  weeklyLeadTarget: number;
+
+  @ApiProperty({ example: 20 })
+  @IsInt()
+  @Min(0)
+  monthlyConversionTarget: number;
+
+  @ApiProperty({ example: true })
+  @IsOptional()
+  allowUserEdit?: boolean;
+}
+
+export class UpdateAssignmentDto {
+  @ApiProperty({ required: false, example: 12 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  dailyLeadTarget?: number;
+
+  @ApiProperty({ required: false, example: 60 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  weeklyLeadTarget?: number;
+
+  @ApiProperty({ required: false, example: 25 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  monthlyConversionTarget?: number;
+
+  @ApiProperty({ required: false, example: true })
+  @IsOptional()
+  allowUserEdit?: boolean;
+}
+
+export class UpdateMarketMappingAdminConfigDto {
+  @ApiProperty({ required: false })
+  @IsOptional()
+  pipelineStatuses?: any;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  categories?: any;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  fieldDefaults?: any;
+}
+
