@@ -174,10 +174,6 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
   const visitDateRef = useRef<HTMLInputElement>(null);
   const visitTimeRef = useRef<HTMLInputElement>(null);
 
-  const triggerPicker = (ref: React.RefObject<HTMLInputElement | null>) => {
-    try { ref.current?.showPicker?.(); } catch { ref.current?.click(); }
-  };
-
   useEffect(() => {
     if (visit && visit.id !== prevVisitId.current) {
       const data = { ...visit };
@@ -358,17 +354,21 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-[10px] text-slate-400 mb-1">Open</label>
-                        <button type="button" onClick={() => triggerPicker(openTimeRef)} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-left cursor-pointer hover:border-blue-300 transition-all">
-                          <span className="text-slate-700">{formData.openingHours?.split('-')[0] || 'Select time'}</span>
-                          <input ref={openTimeRef} type="time" value={formData.openingHours?.split('-')[0] || ''} onChange={e => { const close = formData.openingHours?.split('-')[1] || ''; setFormData({ ...formData, openingHours: `${e.target.value}-${close}` }); }} className="sr-only" />
-                        </button>
+                        <div className="relative">
+                          <div className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-left cursor-pointer">
+                            <span className="text-slate-700">{formData.openingHours?.split('-')[0] || 'Select time'}</span>
+                          </div>
+                          <input ref={openTimeRef} type="time" value={formData.openingHours?.split('-')[0] || ''} onChange={e => { const close = formData.openingHours?.split('-')[1] || ''; setFormData({ ...formData, openingHours: `${e.target.value}-${close}` }); }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                        </div>
                       </div>
                       <div>
                         <label className="block text-[10px] text-slate-400 mb-1">Close</label>
-                        <button type="button" onClick={() => triggerPicker(closeTimeRef)} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-left cursor-pointer hover:border-blue-300 transition-all">
-                          <span className="text-slate-700">{formData.openingHours?.split('-')[1] || 'Select time'}</span>
-                          <input ref={closeTimeRef} type="time" value={formData.openingHours?.split('-')[1] || ''} onChange={e => { const open = formData.openingHours?.split('-')[0] || ''; setFormData({ ...formData, openingHours: `${open}-${e.target.value}` }); }} className="sr-only" />
-                        </button>
+                        <div className="relative">
+                          <div className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-left cursor-pointer">
+                            <span className="text-slate-700">{formData.openingHours?.split('-')[1] || 'Select time'}</span>
+                          </div>
+                          <input ref={closeTimeRef} type="time" value={formData.openingHours?.split('-')[1] || ''} onChange={e => { const open = formData.openingHours?.split('-')[0] || ''; setFormData({ ...formData, openingHours: `${open}-${e.target.value}` }); }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -446,17 +446,21 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-[10px] text-slate-400 mb-1">Date</label>
-                        <button type="button" onClick={() => triggerPicker(visitDateRef)} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-left cursor-pointer hover:border-blue-300 transition-all">
-                          <span className="text-slate-700">{formData.nextVisitDate || 'Select date'}</span>
-                          <input ref={visitDateRef} type="date" value={formData.nextVisitDate || ''} onChange={e => setFormData({ ...formData, nextVisitDate: e.target.value })} className="sr-only" />
-                        </button>
+                        <div className="relative">
+                          <div className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-left cursor-pointer">
+                            <span className="text-slate-700">{formData.nextVisitDate || 'Select date'}</span>
+                          </div>
+                          <input ref={visitDateRef} type="date" value={formData.nextVisitDate || ''} onChange={e => setFormData({ ...formData, nextVisitDate: e.target.value })} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                        </div>
                       </div>
                       <div>
                         <label className="block text-[10px] text-slate-400 mb-1">Time</label>
-                        <button type="button" onClick={() => triggerPicker(visitTimeRef)} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-left cursor-pointer hover:border-blue-300 transition-all">
-                          <span className="text-slate-700">{formData.nextVisitTime || 'Select time'}</span>
-                          <input ref={visitTimeRef} type="time" value={formData.nextVisitTime || ''} onChange={e => setFormData({ ...formData, nextVisitTime: e.target.value })} className="sr-only" />
-                        </button>
+                        <div className="relative">
+                          <div className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-left cursor-pointer">
+                            <span className="text-slate-700">{formData.nextVisitTime || 'Select time'}</span>
+                          </div>
+                          <input ref={visitTimeRef} type="time" value={formData.nextVisitTime || ''} onChange={e => setFormData({ ...formData, nextVisitTime: e.target.value })} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                        </div>
                       </div>
                     </div>
                   </div>

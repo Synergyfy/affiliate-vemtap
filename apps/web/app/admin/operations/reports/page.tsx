@@ -1,14 +1,19 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import AdminLayout from '@/components/admin/AdminLayout';
 import {
-  ArrowLeft, BarChart3, TrendingUp, Users, UserCheck, Network,
-  DollarSign, Calendar, Phone, Mail, MapPin, Building2, Award, Target, FileText
+  ArrowLeft, BarChart3, TrendingUp, Users,
+  DollarSign, Calendar, MapPin, Building2, Award, Target, FileText,
+  MessageSquare, Share2, Download
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getAllReportComments } from '@/lib/report-comments';
+import { downloadReportAsPdf, shareReport as exportShare, ReportExportData } from '@/lib/report-export';
+import { useToast } from '@/hooks/use-toast';
+import ReportComments from '@/components/dashboard/ReportComments';
 
 const TYPE_LABELS: Record<string, { label: string; color: string }> = {
   agent: { label: 'Agent', color: 'bg-violet-100 text-violet-700' },
@@ -30,6 +35,7 @@ function hashNum(str: string) {
 
 function ReportInner() {
   const params = useSearchParams();
+  const { showToast } = useToast();
   const name = params.get('name') || 'Unknown';
   const type = params.get('type') || 'agent';
   const period = params.get('period') || 'monthly';
@@ -52,6 +58,73 @@ function ReportInner() {
     { title: 'Business won', desc: `Signed subscription for ${name}`, amount: formatCurrency(Math.round(earnings * 0.2)), date: '1 week ago', type: 'won' },
     { title: 'New lead captured', desc: `Added a prospect linked to ${name}`, amount: null, date: '1 week ago', type: 'lead' },
   ];
+
+  // Gather notes & comments attached to this report across all surfaces
+  const comments = useMemo(() => {
+    const all = getAllReportComments();
+    const keys = [
+      `insights:${period}`,
+      `network:team:${period}`,
+      `network:member:${name.toLowerCase()}:${period}`,
+      `admin:${name.toLowerCase()}:${period}`,
+    ];
+    const seen = new Set<string>();
+    const list: { author: string; role: string; text: string; date: string; source: string }[] = [];
+    for (const k of keys) {
+      for (const c of all[k] || []) {
+        if (seen.has(c.id)) continue;
+        seen.add(c.id);
+        list.push({ ...c, source: k });
+      }
+    }
+    // Fall back to the most relevant key if nothing matched yet
+    if (list.length === 0) {
+      const fallbackKey = `admin:${name.toLowerCase()}:${period}`;
+      for (const c of all[fallbackKey] || []) list.push({ ...c, source: fallbackKey });
+    }
+    return list.sort((a, b) => (a.date < b.date ? 1 : -1));
+  }, [name, period]);
+
+  const buildExport = (): ReportExportData => ({
+    reportTitle: `${period === 'daily' ? 'Daily' : period === 'weekly' ? 'Weekly' : 'Monthly'} Report — ${name}`,
+    author: name,
+    role: typeMeta.label,
+    dateLabel: periodLabel,
+    summaryCards: [
+      { label: 'Leads', value: `${leads.toLocaleString()}` },
+      { label: 'Conversions', value: `${conversions.toLocaleString()}` },
+      { label: 'Conversion Rate', value: `${rate}%` },
+      { label: 'Earnings', value: formatCurrency(earnings) },
+    ],
+    summary: `In ${periodLabel}, ${name} generated ${leads.toLocaleString()} leads and converted ${conversions.toLocaleString()} of them, hitting a ${rate}% conversion rate and earning ${formatCurrency(earnings)}.`,
+    sections: [
+      {
+        title: 'Lead Generation Trend',
+        lines: monthlyTrend.map((v, i) => `Period ${i + 1}: ${v.toLocaleString()} leads`),
+      },
+      {
+        title: 'Recent Activity',
+        lines: recentActivities.map((a) => `${a.title} — ${a.desc}${a.amount ? ` (${a.amount})` : ''} [${a.date}]`),
+      },
+    ],
+    businesses: [],
+    notes: [],
+    comments: comments.map((c) => ({ author: c.author, role: c.role, text: c.text, date: c.date })),
+  });
+
+  const handleShare = async () => {
+    try {
+      await exportShare(buildExport());
+      showToast('Report shared', 'success');
+    } catch {
+      showToast('Sharing cancelled', 'info');
+    }
+  };
+
+  const handleDownload = () => {
+    const ok = downloadReportAsPdf(buildExport());
+    showToast(ok ? 'Opening PDF preview — choose "Save as PDF" to download' : 'Could not open PDF preview', ok ? 'success' : 'error');
+  };
 
   return (
     <AdminLayout>
@@ -185,6 +258,49 @@ function ReportInner() {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* Notes & comments from reports */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-orange-600" /> Notes & Comments
+                </h3>
+                <div className="flex items-center gap-2">
+                  <button onClick={handleShare} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold text-xs transition-colors"><Share2 className="w-3.5 h-3.5" /> Share</button>
+                  <button onClick={handleDownload} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold text-xs transition-colors"><Download className="w-3.5 h-3.5" /> Download PDF</button>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {comments.length === 0 ? (
+                  <div className="p-6 bg-white rounded-2xl border border-slate-100 shadow-sm text-center">
+                    <MessageSquare className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                    <p className="text-xs font-bold text-slate-400">No notes or comments attached to this report yet.</p>
+                    <p className="text-[10px] text-slate-400 mt-1">Comments added by the agent, affiliate or line manager will appear here.</p>
+                  </div>
+                ) : (
+                  comments.map((c, i) => (
+                    <div key={i} className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                          <MessageSquare className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-slate-700 leading-relaxed">{c.text}</p>
+                          <p className="text-[10px] text-slate-400 mt-1">
+                            {c.author} · {c.role} · {new Date(c.date).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              <ReportComments
+                reportKey={`admin:${name.toLowerCase()}:${period}`}
+                currentUser={{ name: 'Admin', role: 'ADMIN' }}
+                placeholder="Add an admin note or feedback about this report..."
+              />
             </div>
 
             {/* Contact / role placeholder */}
