@@ -113,7 +113,7 @@ export default function EditAffiliateModal({ isOpen, onClose, affiliate, onUpdat
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+            className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[90svh] flex flex-col"
           >
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
               <h3 className="text-xl font-black text-slate-900">Edit Affiliate Profile</h3>

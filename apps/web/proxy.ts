@@ -49,6 +49,7 @@ export function proxy(request: NextRequest) {
     '/forgot-password',
     '/reset-password',
     '/verify-email',
+    '/earnings-calculator',
     '/manifest.json',
     '/sw.js',
     '/sw.js.map'
