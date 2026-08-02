@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { mockHierarchy } from '@/lib/market-mapping-mock';
 import { GeographicHierarchyNode } from '@/types/market-mapping';
+import { useOperationsReportsHierarchy, useOperationsReportsAggregates } from '@/services/useOperationsHooks';
 import {
   BarChart3,
   Users,
@@ -61,10 +62,6 @@ const MANAGER_ROWS = [
   { name: 'Chidi Okonkwo', region: 'Rivers Hub', leads: 98, conversions: 29, earnings: 398000 },
   { name: 'Halima Bello', region: 'Kano Corridor', leads: 85, conversions: 18, earnings: 210000 },
 ];
-
-const hierarchyNodes: GeographicHierarchyNode[] = mockHierarchy as GeographicHierarchyNode[];
-
-const hierarchyChildren = (parentId: string) => hierarchyNodes.filter(n => n.parentId === parentId);
 
 const LEVEL_LABEL: Record<string, string> = {
   COUNTRY: 'Country',

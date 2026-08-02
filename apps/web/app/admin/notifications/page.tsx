@@ -20,8 +20,14 @@ import { useToast } from '@/hooks/toast';
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api-client';
 
-import { useNotifications, useBroadcastNotification } from '@/services/useNotificationHooks';
-import { Loader2 } from 'lucide-react';
+import { 
+  useNotifications, 
+  useBroadcastNotification, 
+  useSaveNotificationDraft, 
+  useDeleteNotification, 
+  useNotificationDetail 
+} from '@/services/useNotificationHooks';
+import { Loader2, X } from 'lucide-react';
 import { Notification, NotificationType } from '@/types/api';
 
 export default function NotificationsManagement() {
@@ -30,6 +36,7 @@ export default function NotificationsManagement() {
   const [message, setMessage] = useState('');
   const [type, setType] = useState<NotificationType>('SYSTEM');
   const [selectedRecipients, setSelectedRecipients] = useState<string[]>(['AFFILIATE']);
+  const [selectedDetailId, setSelectedDetailId] = useState<string | null>(null);
 
   const recipientOptions = [
     { value: 'AFFILIATE', label: 'Affiliates' },
@@ -44,7 +51,10 @@ export default function NotificationsManagement() {
   };
 
   const { data: notificationsResponse, isLoading: isHistoryLoading } = useNotifications({ limit: 20 });
+  const { data: notificationDetail } = useNotificationDetail(selectedDetailId || undefined);
   const broadcast = useBroadcastNotification();
+  const saveDraft = useSaveNotificationDraft();
+  const deleteNotif = useDeleteNotification();
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +75,34 @@ export default function NotificationsManagement() {
     }
   };
 
+  const handleSaveDraft = async () => {
+    if (!title || !message) {
+      showToast("Please provide a title and message for the draft.", "error");
+      return;
+    }
+    try {
+      await saveDraft.mutateAsync({
+        title,
+        message,
+        type,
+        targetRoles: selectedRecipients,
+      });
+      showToast("Notification draft saved successfully.", "success");
+    } catch (error: any) {
+      showToast(error.message || "Failed to save draft.", "error");
+    }
+  };
+
+  const handleDelete = async (id: string, titleStr: string) => {
+    try {
+      await deleteNotif.mutateAsync(id);
+      showToast(`Notification "${titleStr}" deleted.`, "info");
+    } catch (error: any) {
+      showToast(error.message || "Failed to delete notification.", "error");
+    }
+  };
+
+
   const history = (notificationsResponse?.data || []).map(notif => ({
     id: notif.id,
     title: notif.title,
@@ -84,10 +122,6 @@ export default function NotificationsManagement() {
       </AdminLayout>
     );
   }
-
-  const handleDelete = (title: string) => {
-    showToast(`Notification "${title}" has been deleted.`, "info");
-  };
 
   return (
     <AdminLayout>
@@ -174,11 +208,11 @@ export default function NotificationsManagement() {
              <div className="flex justify-end gap-3">
                <button 
                  type="button" 
-                 disabled={broadcast.isPending}
-                 onClick={() => showToast("Draft saved successfully.", "success")}
+                 disabled={broadcast.isPending || saveDraft.isPending}
+                 onClick={handleSaveDraft}
                  className="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-all disabled:opacity-50"
                >
-                 Save Draft
+                 {saveDraft.isPending ? 'Saving...' : 'Save Draft'}
                </button>
                <button 
                  type="submit" 
@@ -227,14 +261,16 @@ export default function NotificationsManagement() {
                   </div>
                   <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button 
-                      onClick={() => handleDelete(notif.title)}
+                      onClick={() => handleDelete(notif.id, notif.title)}
                       className="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-all"
+                      title="Delete"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                     <button 
-                      onClick={() => showToast(`Viewing details for: ${notif.title}`, "info")}
+                      onClick={() => setSelectedDetailId(notif.id)}
                       className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-900 transition-all"
+                      title="View Details"
                     >
                       <MoreHorizontal className="w-4 h-4" />
                     </button>
@@ -245,6 +281,39 @@ export default function NotificationsManagement() {
           </div>
         </div>
       </div>
+
+      {/* Notification Detail Modal */}
+      {selectedDetailId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-xl">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+              <h3 className="text-lg font-bold text-slate-900">Notification Detail</h3>
+              <button onClick={() => setSelectedDetailId(null)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {notificationDetail ? (
+              <div className="space-y-3 text-sm">
+                <div>
+                  <h4 className="font-bold text-slate-900">{notificationDetail.title}</h4>
+                  <p className="text-xs text-blue-600 font-medium mt-1">{notificationDetail.type} • {new Date(notificationDetail.createdAt).toLocaleString()}</p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-700">
+                  {notificationDetail.message}
+                </div>
+                {notificationDetail.user && (
+                  <div className="text-xs text-slate-500">
+                    Recipient: <span className="font-bold text-slate-800">{notificationDetail.user.fullName} ({notificationDetail.user.email})</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="py-6 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-blue-600" /></div>
+            )}
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }
+

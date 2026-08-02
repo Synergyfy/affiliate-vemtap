@@ -14,6 +14,7 @@ import { getAllReportComments } from '@/lib/report-comments';
 import { downloadReportAsPdf, shareReport as exportShare, ReportExportData } from '@/lib/report-export';
 import { useToast } from '@/hooks/use-toast';
 import ReportComments from '@/components/dashboard/ReportComments';
+import { useOperationsReportsDetail } from '@/services/useOperationsHooks';
 
 const TYPE_LABELS: Record<string, { label: string; color: string }> = {
   agent: { label: 'Agent', color: 'bg-violet-100 text-violet-700' },
@@ -39,25 +40,30 @@ function ReportInner() {
   const name = params.get('name') || 'Unknown';
   const type = params.get('type') || 'agent';
   const period = params.get('period') || 'monthly';
-  const leads = Number(params.get('leads')) || 0;
-  const conversions = Number(params.get('conversions')) || 0;
-  const earnings = Number(params.get('earnings')) || 0;
+  const locationId = params.get('locationId') || undefined;
+
+  const { data: detailData } = useOperationsReportsDetail({ locationId, period });
+
+  const leads = Number(params.get('leads')) || detailData?.leads || 0;
+  const conversions = Number(params.get('conversions')) || detailData?.conversions || 0;
+  const earnings = Number(params.get('earnings')) || detailData?.earnings || 0;
 
   const rate = leads > 0 ? Math.round((conversions / leads) * 100) : 0;
   const typeMeta = TYPE_LABELS[type] || TYPE_LABELS.agent;
   const periodLabel = period === 'daily' ? 'this day' : period === 'weekly' ? 'this week' : 'this month';
 
-  const monthlyTrend = Array.from({ length: 6 }, (_, i) => {
+  const monthlyTrend = detailData?.trend || Array.from({ length: 6 }, (_, i) => {
     const factor = 0.5 + ((hashNum(`${name}-${i}`) % 50) / 100);
     return Math.round(leads * factor * (1 + i * 0.1));
   });
 
-  const recentActivities = [
+  const recentActivities = detailData?.recentActivities || [
     { title: 'Closed a new customer', desc: `Converted a prospect in the ${name} portfolio`, amount: formatCurrency(Math.round(earnings * 0.3)), date: '2 days ago', type: 'conversion' },
     { title: 'Follow-up completed', desc: `Called lead on ${name}'s active pipeline`, amount: null, date: '4 days ago', type: 'followup' },
     { title: 'Business won', desc: `Signed subscription for ${name}`, amount: formatCurrency(Math.round(earnings * 0.2)), date: '1 week ago', type: 'won' },
     { title: 'New lead captured', desc: `Added a prospect linked to ${name}`, amount: null, date: '1 week ago', type: 'lead' },
   ];
+
 
   // Gather notes & comments attached to this report across all surfaces
   const comments = useMemo(() => {

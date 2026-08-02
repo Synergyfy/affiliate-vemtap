@@ -21,6 +21,7 @@ import {
 } from '@/lib/report-export';
 import { getReportComments } from '@/lib/report-comments';
 import ReportComments from '@/components/dashboard/ReportComments';
+import { downloadMarketMappingReport } from '@/services/useMarketMappingHooks';
 
 const mockBusinesses = [
   { name: 'Greenfield Grocers', type: 'Supermarket', status: 'Visited', notes: 'Owner interested in partnership. Will follow up next week.', date: '2026-07-28', rating: 4 },
@@ -183,6 +184,15 @@ export default function MyReportsPage() {
     const s = key === 'daily' ? dailyStats : key === 'weekly' ? weeklyStats : monthlyStats;
     const ok = downloadReportAsPdf(buildExportData(key, s));
     showToast(ok ? 'Opening PDF preview — choose "Save as PDF" to download' : 'Could not open PDF preview', ok ? 'success' : 'error');
+  };
+
+  const downloadCsv = async (key: 'daily' | 'weekly' | 'monthly') => {
+    try {
+      await downloadMarketMappingReport(key);
+      showToast(`${key.toUpperCase()} CSV report downloaded`, 'success');
+    } catch {
+      showToast('Failed to download CSV report', 'error');
+    }
   };
 
   const sections = [
@@ -413,9 +423,10 @@ export default function MyReportsPage() {
                     </div>
 
                     {/* Share / Download Buttons */}
-                    <div className="flex items-center gap-2 justify-end pt-2 border-t border-slate-100">
+                    <div className="flex items-center gap-2 justify-end pt-2 border-t border-slate-100 flex-wrap">
                       <button onClick={() => shareReport(section.key)} className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-${section.color}-50 hover:bg-${section.color}-100 text-${section.color}-600 font-bold text-xs transition-colors`}><Share2 className="w-3.5 h-3.5" /> Share</button>
                       <button onClick={() => downloadReport(section.key)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 font-bold text-xs transition-colors"><Download className="w-3.5 h-3.5" /> Download PDF</button>
+                      <button onClick={() => downloadCsv(section.key)} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold text-xs transition-colors"><FileText className="w-3.5 h-3.5" /> Export CSV</button>
                     </div>
 
                     {/* Comments */}

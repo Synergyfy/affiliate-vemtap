@@ -8,6 +8,14 @@ import { ArrowLeft, Search, MapPin, Users, Target, CheckCircle2, Plus, X, Loader
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { mockClusterDetail } from '@/lib/market-mapping-mock';
+import {
+  useAdminClusterDetail,
+  useAdminAssignments,
+  useCreateAssignment,
+  useUpdateAssignment,
+  useDeleteAssignment,
+  useAdminSubmissions
+} from '@/services/useMarketMappingHooks';
 
 // --- Mock data ---
 
@@ -53,6 +61,7 @@ interface LocationRecord {
 }
 
 const defaultTargets: AffiliateTarget = { daily: 20, weekly: 100, monthly: 400 };
+
 
 const mockAffiliates: Affiliate[] = [
   {

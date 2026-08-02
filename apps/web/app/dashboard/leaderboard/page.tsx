@@ -246,7 +246,9 @@ export default function LeaderboardPage() {
                         />
                         <div>
                           <p className="text-sm font-bold text-slate-900">{item.fullName}</p>
-                          <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Level {item.rank < 5 ? '2' : '1'}</p>
+                          <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">
+                            {item.rank <= 3 ? 'Top Performer' : item.rank <= 10 ? 'Senior Affiliate' : 'Affiliate'}
+                          </p>
                         </div>
                       </div>
                     </td>
@@ -265,9 +267,9 @@ export default function LeaderboardPage() {
                       </div>
                     </td>
                     <td className="px-6 py-6 text-right">
-                      <button className="p-2 rounded-lg hover:bg-white hover:shadow-sm text-slate-400 hover:text-blue-600 transition-all">
+                      <Link href="/dashboard/tools" className="p-2 inline-block rounded-lg hover:bg-white hover:shadow-sm text-slate-400 hover:text-blue-600 transition-all">
                         <ChevronRight className="w-5 h-5" />
-                      </button>
+                      </Link>
                     </td>
                   </tr>
                 ))}

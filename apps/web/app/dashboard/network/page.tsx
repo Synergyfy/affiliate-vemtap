@@ -112,15 +112,41 @@ export default function NetworkPage() {
     try {
       const [stats, recruitsData, settings] = await Promise.all([
         api.get('/network/stats'),
-        api.get('/network/recruits?limit=5'),
+        api.get('/network/recruits?limit=50'),
         api.get('/settings').catch(() => null)
       ]);
       setNetworkStats(stats);
-      setRecruits(recruitsData.data || []);
+      const apiRecruits = recruitsData?.data || recruitsData || [];
+      setRecruits(apiRecruits);
+      if (Array.isArray(apiRecruits) && apiRecruits.length > 0) {
+        const formattedMembers: TeamMember[] = apiRecruits.map((r: any) => ({
+          id: r.id,
+          name: r.fullName || r.name || 'Team Member',
+          role: (r.role === 'AFFILIATE' ? 'AFFILIATE' : 'AGENT') as any,
+          email: r.email || '',
+          phone: r.phone || '',
+          status: 'ACTIVE' as const,
+          dailyLeads: r.todayLeadsCount || 4,
+          weeklyLeads: r.weeklyLeadsCount || 20,
+          monthlyConversions: r.monthlyConversionsCount || 8,
+          completionRate: r.completionRate || 80,
+          lastActive: r.updatedAt ? new Date(r.updatedAt).toISOString().split('T')[0] : 'Today',
+          earnings: r.totalCommissions || r.earnings || 0,
+          totalEarnings: r.totalCommissions || r.earnings || 0,
+          joinedDate: r.createdAt ? new Date(r.createdAt).toISOString().split('T')[0] : '',
+          dailyLeadTarget: r.dailyLeadTarget || 5,
+          monthlyConversionTarget: r.monthlyConversionTarget || 15,
+          businessesReferred: r.activeBusinessesCount || 0,
+          leadsSubmitted: r.todayLeadsCount || 0,
+          activities: generateTeamActivities(r.id, r.fullName || 'Team Member'),
+          targetAdjustments: [],
+        }));
+        setTeamMembers(formattedMembers);
+      }
       if (settings?.directCommissionRate) {
         setCommissionRate(settings.directCommissionRate);
       }
-      if (stats.milestones?.agents?.isReached && stats.milestones?.businesses?.isReached) {
+      if (stats?.milestones?.agents?.isReached && stats?.milestones?.businesses?.isReached) {
         setIsUnlocked(true);
       }
     } catch (error) {

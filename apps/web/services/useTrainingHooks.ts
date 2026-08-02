@@ -36,8 +36,8 @@ export const useTrainingModuleDetails = (id: string) => {
 export const useUpdateTrainingProgress = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, status, quizScore }: { id: string; status: ProgressStatus; quizScore?: number }) => {
-      const { data } = await api.patch(`/training/modules/${id}/progress`, { status, quizScore });
+    mutationFn: async ({ id, status, quizScore, practiceResults }: { id: string; status: ProgressStatus; quizScore?: number; practiceResults?: any }) => {
+      const { data } = await api.patch(`/training/modules/${id}/progress`, { status, quizScore, practiceResults });
       return data;
     },
     onSuccess: (_, { id }) => {
@@ -86,3 +86,16 @@ export const useDeleteTrainingModule = () => {
     },
   });
 };
+
+export const useAdminModulePreview = (id?: string) => {
+  return useQuery<any>({
+    queryKey: ['admin', 'training', 'module', id, 'preview'],
+    queryFn: async () => {
+      if (!id) return null;
+      const { data } = await api.get(`/training/admin/modules/${id}/preview`);
+      return data;
+    },
+    enabled: !!id,
+  });
+};
+
