@@ -4,8 +4,6 @@ import { useState, useMemo, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
-import { mockHierarchy } from '@/lib/market-mapping-mock';
 import { GeographicHierarchyNode } from '@/types/market-mapping';
 import { useOperationsReportsHierarchy, useOperationsReportsAggregates } from '@/services/useOperationsHooks';
 import {
@@ -16,7 +14,7 @@ import {
   MapPin,
   Layers,
   Globe,
-  Map,
+  Map as MapIcon,
   Building2,
   UserCheck,
   Network,
@@ -25,43 +23,6 @@ import {
   Sparkles,
   Filter,
 } from 'lucide-react';
-
-const BASE = {
-  teams: { leads: 245, conversions: 78, earnings: 1450000, members: 12 },
-  agents: { total: 48, active: 42, leads: 312, conversions: 95, earnings: 980000 },
-  affiliates: { total: 36, active: 31, leads: 198, conversions: 62, earnings: 720000 },
-  lineManagers: { total: 8, leads: 510, conversions: 157, earnings: 2170000 },
-};
-
-const TEAM_ROWS = [
-  { name: 'Alpha Squad', leads: 82, conversions: 28, earnings: 520000 },
-  { name: 'Bravo Force', leads: 67, conversions: 21, earnings: 410000 },
-  { name: 'Charlie Unit', leads: 53, conversions: 16, earnings: 298000 },
-  { name: 'Delta Crew', leads: 43, conversions: 13, earnings: 222000 },
-];
-
-const AGENT_ROWS = [
-  { name: 'Sarah Okafor', leads: 58, conversions: 21, earnings: 245000 },
-  { name: 'Amara Nwachukwu', leads: 52, conversions: 18, earnings: 215000 },
-  { name: 'Emeka Obi', leads: 47, conversions: 15, earnings: 189000 },
-  { name: 'Chioma Eze', leads: 44, conversions: 14, earnings: 175000 },
-  { name: 'Tunde Balogun', leads: 39, conversions: 12, earnings: 156000 },
-];
-
-const AFFILIATE_ROWS = [
-  { name: 'ConvertWave', leads: 54, conversions: 12, earnings: 115000 },
-  { name: 'AffiLink Pro', leads: 42, conversions: 16, earnings: 195000 },
-  { name: 'GrowthHive', leads: 38, conversions: 13, earnings: 158000 },
-  { name: 'MarketBridge', leads: 35, conversions: 11, earnings: 134000 },
-  { name: 'LeadStream', leads: 29, conversions: 10, earnings: 118000 },
-];
-
-const MANAGER_ROWS = [
-  { name: 'Emmanuel Nnamdi', region: 'Lagos Metro', leads: 185, conversions: 62, earnings: 890000 },
-  { name: 'Funke Adeyemi', region: 'Abuja Zone', leads: 142, conversions: 48, earnings: 672000 },
-  { name: 'Chidi Okonkwo', region: 'Rivers Hub', leads: 98, conversions: 29, earnings: 398000 },
-  { name: 'Halima Bello', region: 'Kano Corridor', leads: 85, conversions: 18, earnings: 210000 },
-];
 
 const LEVEL_LABEL: Record<string, string> = {
   COUNTRY: 'Country',
@@ -91,32 +52,12 @@ const sectionMeta: Record<Section, { label: string; icon: any }> = {
 };
 
 const periods: Period[] = ['daily', 'weekly', 'monthly'];
-const PERIOD_FACTORS: Record<Period, number> = { daily: 1 / 22, weekly: 1 / 4.33, monthly: 1 };
-
-function scale(n: number, f: number) {
-  return Math.max(0, Math.round(n * f));
-}
-
 function formatCurrency(val: number) {
   return `₦${val.toLocaleString()}`;
 }
 
 function rateOf(leads: number, conversions: number) {
   return leads > 0 ? Math.round((conversions / leads) * 100) : 0;
-}
-
-function hashNum(str: string) {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 997;
-  return h;
-}
-
-function locationMetrics(name: string, f: number) {
-  const h = hashNum(name);
-  const leads = scale(25 + (h % 90), f);
-  const conversions = Math.max(0, scale(5 + (h % 35), f));
-  const earnings = scale(60000 + (h % 400000), f);
-  return { leads, conversions, earnings };
 }
 
 function StatCard({ label, value, icon: Icon, trend }: { label: string; value: string; icon: any; trend?: string }) {
@@ -225,7 +166,6 @@ function BreakdownTable({ data, columns, renderDetail }: {
 }
 
 export default function ReportViewsTab() {
-  const { showToast } = useToast();
   const router = useRouter();
   const [period, setPeriod] = useState<Period>('monthly');
   const [activeSection, setActiveSection] = useState<Section>('teams');
@@ -237,47 +177,68 @@ export default function ReportViewsTab() {
   const [cluster, setCluster] = useState('all');
 
   const { data: realHierarchy } = useOperationsReportsHierarchy();
-  const hierarchyNodes: GeographicHierarchyNode[] = useMemo(() => (realHierarchy && realHierarchy.length > 0 ? realHierarchy : mockHierarchy), [realHierarchy]);
-  const hierarchyChildren = (parentId: string) => hierarchyNodes.filter((n) => n.parentId === parentId);
+  const hierarchyNodes: GeographicHierarchyNode[] = useMemo(() => realHierarchy || [], [realHierarchy]);
+  const childrenByParent = useMemo(() => {
+    const map = new Map<string, GeographicHierarchyNode[]>();
+    hierarchyNodes.forEach((node) => {
+      if (!node.parentId) return;
+      const children = map.get(node.parentId) || [];
+      children.push(node);
+      map.set(node.parentId, children);
+    });
+    return map;
+  }, [hierarchyNodes]);
 
-  const f = PERIOD_FACTORS[period];
+  const aggregateTab = activeSection === 'lineManagers' ? 'line-managers' : activeSection === 'locations' ? 'locations' : activeSection;
+  const { data: aggregateData, isLoading: aggregatesLoading, error: aggregatesError } = useOperationsReportsAggregates({
+    period,
+    tab: aggregateTab,
+    country: country !== 'all' ? country : undefined,
+    state: state !== 'all' ? state : undefined,
+    city: city !== 'all' ? city : undefined,
+    area: area !== 'all' ? area : undefined,
+    cluster: cluster !== 'all' ? cluster : undefined,
+  });
 
+  const emptySummary = { totalLeads: 0, conversions: 0, totalEarnings: 0, conversionRate: 0, totalMembers: 0, activeMembers: 0 };
+  const summary = aggregateData?.summary || emptySummary;
+  const rows = useMemo(() => aggregateData?.rows || [], [aggregateData?.rows]);
   const data = useMemo(() => ({
-    teams: { leads: scale(BASE.teams.leads, f), conversions: scale(BASE.teams.conversions, f), earnings: scale(BASE.teams.earnings, f), members: BASE.teams.members },
-    agents: { total: BASE.agents.total, active: BASE.agents.active, leads: scale(BASE.agents.leads, f), conversions: scale(BASE.agents.conversions, f), earnings: scale(BASE.agents.earnings, f) },
-    affiliates: { total: BASE.affiliates.total, active: BASE.affiliates.active, leads: scale(BASE.affiliates.leads, f), conversions: scale(BASE.affiliates.conversions, f), earnings: scale(BASE.affiliates.earnings, f) },
-    lineManagers: { total: BASE.lineManagers.total, leads: scale(BASE.lineManagers.leads, f), conversions: scale(BASE.lineManagers.conversions, f), earnings: scale(BASE.lineManagers.earnings, f) },
-    teamsRows: TEAM_ROWS.map((r) => ({ ...r, leads: scale(r.leads, f), conversions: scale(r.conversions, f), earnings: scale(r.earnings, f) })),
-    agentsRows: AGENT_ROWS.map((r) => ({ ...r, leads: scale(r.leads, f), conversions: scale(r.conversions, f), earnings: scale(r.earnings, f) })),
-    affiliatesRows: AFFILIATE_ROWS.map((r) => ({ ...r, leads: scale(r.leads, f), conversions: scale(r.conversions, f), earnings: scale(r.earnings, f) })),
-    managersRows: MANAGER_ROWS.map((r) => ({ ...r, leads: scale(r.leads, f), conversions: scale(r.conversions, f), earnings: scale(r.earnings, f) })),
-  }), [f]);
+    teams: { leads: summary.totalLeads, conversions: summary.conversions, earnings: summary.totalEarnings, members: summary.totalMembers },
+    agents: { total: summary.totalMembers, active: summary.activeMembers, leads: summary.totalLeads, conversions: summary.conversions, earnings: summary.totalEarnings },
+    affiliates: { total: summary.totalMembers, active: summary.activeMembers, leads: summary.totalLeads, conversions: summary.conversions, earnings: summary.totalEarnings },
+    lineManagers: { total: summary.totalMembers, leads: summary.totalLeads, conversions: summary.conversions, earnings: summary.totalEarnings },
+    teamsRows: rows,
+    agentsRows: rows,
+    affiliatesRows: rows,
+    managersRows: rows,
+  }), [rows, summary]);
 
   const periodLabel = period === 'daily' ? 'this day' : period === 'weekly' ? 'this week' : 'this month';
 
   const countryOptions = useMemo(() => hierarchyNodes.filter(n => n.type === 'COUNTRY'), [hierarchyNodes]);
   const stateOptions = useMemo(() => {
-    if (country !== 'all') return hierarchyChildren(country);
+    if (country !== 'all') return childrenByParent.get(country) || [];
     return hierarchyNodes.filter(n => n.type === 'STATE');
-  }, [country, hierarchyNodes]);
+  }, [country, hierarchyNodes, childrenByParent]);
   const cityOptions = useMemo(() => {
-    if (state !== 'all') return hierarchyChildren(state);
-    if (country !== 'all') return hierarchyChildren(country).flatMap(s => hierarchyChildren(s.id));
+    if (state !== 'all') return childrenByParent.get(state) || [];
+    if (country !== 'all') return (childrenByParent.get(country) || []).flatMap(s => childrenByParent.get(s.id) || []);
     return hierarchyNodes.filter(n => n.type === 'CITY');
-  }, [country, state, hierarchyNodes]);
+  }, [country, state, hierarchyNodes, childrenByParent]);
   const areaOptions = useMemo(() => {
-    if (city !== 'all') return hierarchyChildren(city);
-    if (state !== 'all') return hierarchyChildren(state).flatMap(c => hierarchyChildren(c.id));
-    if (country !== 'all') return hierarchyChildren(country).flatMap(s => hierarchyChildren(s.id)).flatMap(c => hierarchyChildren(c.id));
+    if (city !== 'all') return childrenByParent.get(city) || [];
+    if (state !== 'all') return (childrenByParent.get(state) || []).flatMap(c => childrenByParent.get(c.id) || []);
+    if (country !== 'all') return (childrenByParent.get(country) || []).flatMap(s => childrenByParent.get(s.id) || []).flatMap(c => childrenByParent.get(c.id) || []);
     return hierarchyNodes.filter(n => n.type === 'AREA');
-  }, [country, state, city, hierarchyNodes]);
+  }, [country, state, city, hierarchyNodes, childrenByParent]);
   const clusterOptions = useMemo(() => {
-    if (area !== 'all') return hierarchyChildren(area);
-    if (city !== 'all') return hierarchyChildren(city).flatMap(a => hierarchyChildren(a.id));
-    if (state !== 'all') return hierarchyChildren(state).flatMap(c => hierarchyChildren(c.id)).flatMap(a => hierarchyChildren(a.id));
-    if (country !== 'all') return hierarchyChildren(country).flatMap(s => hierarchyChildren(s.id)).flatMap(c => hierarchyChildren(c.id)).flatMap(a => hierarchyChildren(a.id));
+    if (area !== 'all') return childrenByParent.get(area) || [];
+    if (city !== 'all') return (childrenByParent.get(city) || []).flatMap(a => childrenByParent.get(a.id) || []);
+    if (state !== 'all') return (childrenByParent.get(state) || []).flatMap(c => childrenByParent.get(c.id) || []).flatMap(a => childrenByParent.get(a.id) || []);
+    if (country !== 'all') return (childrenByParent.get(country) || []).flatMap(s => childrenByParent.get(s.id) || []).flatMap(c => childrenByParent.get(c.id) || []).flatMap(a => childrenByParent.get(a.id) || []);
     return hierarchyNodes.filter(n => n.type === 'CLUSTER');
-  }, [country, state, city, area, hierarchyNodes]);
+  }, [country, state, city, area, hierarchyNodes, childrenByParent]);
 
   const handleCountryChange = (v: string) => {
     setCountry(v);
@@ -302,31 +263,10 @@ export default function ReportViewsTab() {
     setCluster('all');
   };
 
-  const locationRows = useMemo(() => {
-    const rows: { name: string; level: string; leads: number; conversions: number; earnings: number }[] = [];
-    const pushNode = (n: GeographicHierarchyNode) => {
-      const m = locationMetrics(n.name, f);
-      rows.push({ name: n.name, level: LEVEL_LABEL[n.type] || n.type, ...m });
-    };
-    if (cluster !== 'all') {
-      const n = hierarchyNodes.find(x => x.id === cluster);
-      if (n) pushNode(n);
-    } else if (area !== 'all') {
-      hierarchyChildren(area).forEach(pushNode);
-    } else if (city !== 'all') {
-      hierarchyChildren(city).forEach(pushNode);
-    } else if (state !== 'all') {
-      hierarchyChildren(state).forEach(pushNode);
-    } else if (country !== 'all') {
-      hierarchyChildren(country).forEach(pushNode);
-    } else {
-      ['Countries', 'States', 'Cities', 'Areas', 'Clusters'].forEach((level) => {
-        const m = locationMetrics(level, f);
-        rows.push({ name: level, level: 'Level', ...m });
-      });
-    }
-    return rows;
-  }, [country, state, city, area, cluster, f, hierarchyNodes]);
+  const locationRows = useMemo(() => rows.map((row) => ({
+    ...row,
+    level: row.level || 'Location',
+  })), [rows]);
 
   const locationTotal = useMemo(() => locationRows.reduce(
     (acc, r) => ({ leads: acc.leads + r.leads, conversions: acc.conversions + r.conversions, earnings: acc.earnings + r.earnings }),
@@ -343,7 +283,7 @@ export default function ReportViewsTab() {
             <p className="text-xs text-slate-500 font-medium">{row.region ? `${row.region} · ` : ''}{row.level || 'Team'}</p>
           </div>
           <button
-            onClick={() => router.push(`/admin/operations/reports?name=${encodeURIComponent(row.name)}&type=${sectionReportType[activeSection]}&leads=${row.leads}&conversions=${row.conversions}&earnings=${row.earnings}&period=${period}`)}
+            onClick={() => router.push(`/admin/operations/reports?name=${encodeURIComponent(row.name)}&subjectId=${encodeURIComponent(row.id)}&type=${sectionReportType[activeSection]}&period=${period}`)}
             className="px-4 py-2 text-xs font-bold text-blue-600 border border-blue-200 bg-white hover:bg-blue-50 rounded-xl transition-all"
           >
             Open Full Report
@@ -390,10 +330,10 @@ export default function ReportViewsTab() {
           ]}
         />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Total Leads" value={d.leads.toString()} icon={BarChart3} trend="+12%" />
-          <StatCard label="Conversions" value={d.conversions.toString()} icon={TrendingUp} trend="+8%" />
+          <StatCard label="Total Leads" value={d.leads.toString()} icon={BarChart3} />
+          <StatCard label="Conversions" value={d.conversions.toString()} icon={TrendingUp} />
           <StatCard label="Conversion Rate" value={`${rateOf(d.leads, d.conversions)}%`} icon={Users} />
-          <StatCard label="Total Earnings" value={formatCurrency(d.earnings)} icon={DollarSign} trend="+15%" />
+          <StatCard label="Total Earnings" value={formatCurrency(d.earnings)} icon={DollarSign} />
         </div>
         <BreakdownTable
           data={rows.map((r) => ({ ...r, rate: `${rateOf(r.leads, r.conversions)}%` }))}
@@ -427,8 +367,8 @@ export default function ReportViewsTab() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard label="Total Agents" value={d.total.toString()} icon={Users} />
           <StatCard label="Active Agents" value={d.active.toString()} icon={UserCheck} trend={`${Math.round((d.active / d.total) * 100)}% active`} />
-          <StatCard label="Total Leads" value={d.leads.toString()} icon={BarChart3} trend="+5%" />
-          <StatCard label="Total Earnings" value={formatCurrency(d.earnings)} icon={DollarSign} trend="+11%" />
+           <StatCard label="Total Leads" value={d.leads.toString()} icon={BarChart3} />
+           <StatCard label="Total Earnings" value={formatCurrency(d.earnings)} icon={DollarSign} />
         </div>
         <BreakdownTable
           data={rows.map((r) => ({ ...r, rate: `${rateOf(r.leads, r.conversions)}%` }))}
@@ -462,8 +402,8 @@ export default function ReportViewsTab() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard label="Total Affiliates" value={d.total.toString()} icon={Network} />
           <StatCard label="Active Affiliates" value={d.active.toString()} icon={Users} trend={`${Math.round((d.active / d.total) * 100)}% active`} />
-          <StatCard label="Total Leads" value={d.leads.toString()} icon={BarChart3} trend="+7%" />
-          <StatCard label="Total Earnings" value={formatCurrency(d.earnings)} icon={DollarSign} trend="+9%" />
+           <StatCard label="Total Leads" value={d.leads.toString()} icon={BarChart3} />
+           <StatCard label="Total Earnings" value={formatCurrency(d.earnings)} icon={DollarSign} />
         </div>
         <BreakdownTable
           data={rows.map((r) => ({ ...r, rate: `${rateOf(r.leads, r.conversions)}%` }))}
@@ -496,9 +436,9 @@ export default function ReportViewsTab() {
         />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard label="Total Managers" value={d.total.toString()} icon={Users} />
-          <StatCard label="Total Leads" value={d.leads.toString()} icon={BarChart3} trend="+18%" />
+           <StatCard label="Total Leads" value={d.leads.toString()} icon={BarChart3} />
           <StatCard label="Conversion Rate" value={`${rateOf(d.leads, d.conversions)}%`} icon={TrendingUp} />
-          <StatCard label="Total Earnings" value={formatCurrency(d.earnings)} icon={DollarSign} trend="+22%" />
+           <StatCard label="Total Earnings" value={formatCurrency(d.earnings)} icon={DollarSign} />
         </div>
         <BreakdownTable
           data={rows.map((r) => ({ ...r, rate: `${rateOf(r.leads, r.conversions)}%` }))}
@@ -549,7 +489,7 @@ export default function ReportViewsTab() {
               </select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1"><Map className="w-3 h-3" /> State</label>
+             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1"><MapIcon className="w-3 h-3" /> State</label>
               <select value={state} onChange={(e) => handleStateChange(e.target.value)} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
                 <option value="all">All States</option>
                 {stateOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -580,10 +520,10 @@ export default function ReportViewsTab() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Matched Leads" value={locationTotal.leads.toString()} icon={BarChart3} trend="+14%" />
-          <StatCard label="Matched Conversions" value={locationTotal.conversions.toString()} icon={TrendingUp} trend="+10%" />
+           <StatCard label="Matched Leads" value={locationTotal.leads.toString()} icon={BarChart3} />
+           <StatCard label="Matched Conversions" value={locationTotal.conversions.toString()} icon={TrendingUp} />
           <StatCard label="Overall Rate" value={`${rateOf(locationTotal.leads, locationTotal.conversions)}%`} icon={Globe} />
-          <StatCard label="Matched Earnings" value={formatCurrency(locationTotal.earnings)} icon={DollarSign} trend="+16%" />
+           <StatCard label="Matched Earnings" value={formatCurrency(locationTotal.earnings)} icon={DollarSign} />
         </div>
 
         <BreakdownTable
@@ -666,7 +606,7 @@ export default function ReportViewsTab() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              {renderSectionContent()}
+              {aggregatesLoading ? <p className="p-8 text-sm font-bold text-slate-500">Loading report data...</p> : aggregatesError ? <p className="p-8 text-sm font-bold text-red-600">Unable to load report data.</p> : rows.length === 0 ? <p className="p-8 text-sm font-bold text-slate-500">No report data is available for this period.</p> : renderSectionContent()}
             </motion.div>
           </AnimatePresence>
         </div>

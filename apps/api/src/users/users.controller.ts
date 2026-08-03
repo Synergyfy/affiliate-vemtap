@@ -31,7 +31,6 @@ import {
   RequestEmailUpdateDto,
   VerifyEmailUpdateDto,
 } from "./dto/email-update.dto";
-import { PaginationDto } from "../common/dto/pagination.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";

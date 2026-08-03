@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api-client';
+import type { Business, BusinessStatus, Role } from '@/types/api';
+import type { GeographicHierarchyNode } from '@/types/market-mapping';
 
 export interface OperationalTask {
   id: string;
@@ -160,15 +162,84 @@ export interface BusinessHealthResponse {
   };
 }
 
+export interface BusinessStatusHistoryEntry {
+  id: string;
+  fromStatus: BusinessStatus | null;
+  toStatus: BusinessStatus;
+  createdAt: string;
+  changedBy: { id: string; fullName: string };
+}
+
+export type AdminBusinessDetail = Business & {
+  name?: string;
+  priority?: 'HIGH' | 'MEDIUM' | 'LOW';
+  address?: string;
+  assignedAffiliateName?: string;
+  lastVisit?: string;
+  clusterName?: string;
+  nextVisit?: string;
+  notes?: string;
+  documents?: Array<{ id: string; title: string; type: string; uploadedAt: string }>;
+  statusHistory: BusinessStatusHistoryEntry[];
+};
+
+export interface OperationsReportRow {
+  id: string;
+  name: string;
+  role: Role | 'TEAM' | 'LOCATION';
+  region?: string;
+  level?: string;
+  leads: number;
+  conversions: number;
+  earnings: number;
+  conversionRate: number;
+}
+
+export interface OperationsReportAggregates {
+  summary: {
+    totalLeads: number;
+    conversions: number;
+    totalEarnings: number;
+    conversionRate: number;
+    totalMembers: number;
+    activeMembers: number;
+  };
+  rows: OperationsReportRow[];
+}
+
+export interface OperationsReportTrendPoint {
+  period: string;
+  leads: number;
+  conversions: number;
+  earnings: number;
+}
+
+export interface OperationsReportActivity {
+  id: string;
+  type: string;
+  title: string;
+  description: string | null;
+  createdAt: string;
+  user: { fullName: string; role: Role };
+}
+
+export interface OperationsReportDetail {
+  subjectId: string | null;
+  trend: OperationsReportTrendPoint[];
+  summary: {
+    leads: number;
+    conversions: number;
+    earnings: number;
+    conversionRate: number;
+  };
+  recentActivities: OperationsReportActivity[];
+}
+
 export function useBusinessHealth() {
   return useQuery<BusinessHealthResponse>({
     queryKey: ['operations-business-health'],
     queryFn: async () => {
-      const data = await api.get('/operations/business-health');
-      return data ?? {
-        businesses: [],
-        summary: { totalBusinesses: 0, highRisk: 0, mediumRisk: 0, lowRisk: 0, averageHealthScore: 100 },
-      };
+      return api.get<BusinessHealthResponse>('/operations/business-health');
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -195,23 +266,46 @@ export function useUpdateOnboarding() {
 }
 
 export function useOperationsReportsHierarchy() {
-  return useQuery<any>({
+  return useQuery<GeographicHierarchyNode[]>({
     queryKey: ['operations-reports-hierarchy'],
-    queryFn: () => api.get('/operations/reports/hierarchy'),
+    queryFn: () => api.get<GeographicHierarchyNode[]>('/operations/reports/hierarchy'),
   });
 }
 
-export function useOperationsReportsAggregates(params?: { period?: string; role?: string; locationId?: string }) {
-  return useQuery<any>({
+export function useOperationsBusiness(businessId?: string) {
+  return useQuery<AdminBusinessDetail>({
+    queryKey: ['operations-business', businessId],
+    queryFn: () => api.get<AdminBusinessDetail>(`/businesses/${businessId}`),
+    enabled: Boolean(businessId),
+  });
+}
+
+export interface OperationsReportFilters {
+  period: 'daily' | 'weekly' | 'monthly';
+  tab: 'teams' | 'agents' | 'affiliates' | 'line-managers' | 'locations';
+  country?: string;
+  state?: string;
+  city?: string;
+  area?: string;
+  cluster?: string;
+}
+
+export function useOperationsReportsAggregates(params: OperationsReportFilters) {
+  return useQuery<OperationsReportAggregates>({
     queryKey: ['operations-reports-aggregates', params],
-    queryFn: () => api.get('/operations/reports/aggregates', { params }),
+    queryFn: () => api.get<OperationsReportAggregates>('/operations/reports/aggregates', { params }),
   });
 }
 
-export function useOperationsReportsDetail(params?: { locationId?: string; period?: string }) {
-  return useQuery<any>({
+export function useOperationsReportsDetail(params: {
+  subjectId?: string;
+  type: 'agent' | 'affiliate' | 'line-manager' | 'team' | 'location';
+  period: 'daily' | 'weekly' | 'monthly';
+  locationId?: string;
+}) {
+  return useQuery<OperationsReportDetail>({
     queryKey: ['operations-reports-detail', params],
-    queryFn: () => api.get('/operations/reports/detail', { params }),
+    queryFn: () => api.get<OperationsReportDetail>('/operations/reports/detail', { params }),
   });
 }
 

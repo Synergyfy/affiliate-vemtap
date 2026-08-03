@@ -98,6 +98,13 @@ export class BusinessesController {
     };
   }
 
+  @Get(":id")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Get a business and its status history (Admin only)" })
+  findOne(@Param("id") id: string) {
+    return this.businessesService.findOne(id);
+  }
+
   @Get("stats")
   @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Get portfolio side-panel stats" })
@@ -159,7 +166,11 @@ export class BusinessesController {
     example: { id: "business-uuid", status: "PAID", commissionAmount: 450 },
   })
   @ApiResponse({ status: 400, description: "Invalid status" })
-  updateStatus(@Param("id") id: string, @Body() dto: UpdateBusinessStatusDto) {
-    return this.businessesService.updateStatus(id, dto);
+  updateStatus(
+    @Param("id") id: string,
+    @Body() dto: UpdateBusinessStatusDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.businessesService.updateStatus(id, dto, user.id);
   }
 }

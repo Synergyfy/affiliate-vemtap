@@ -17,6 +17,7 @@ interface BusinessCaptureDrawerProps {
 }
 
 type TabId = 'general' | 'profile' | 'sales';
+const EMPTY_CATEGORIES: string[] = [];
 
 const TAB_INFO: Record<TabId, { label: string; desc: string; icon: React.ReactNode }> = {
   general: { label: 'General', desc: 'Name, category, location & contact', icon: <MapPin className="w-3.5 h-3.5" /> },
@@ -123,40 +124,13 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
   const { missionPlans } = useMarketMapping();
   const { data: config } = useMarketMappingConfig();
 
-  const categories = config?.businessCategories ?? [
-    'Supermarket / Grocery', 'Pharmacy', 'Restaurant / Fast Food', 'Retail / Clothing',
-    'Electronics / Phone Accessories', 'Beauty / Salon / Barbing', 'Fuel / Gas Station',
-    'Hotel / Lodge', 'School / Training Center', 'Hospital / Clinic', 'Bakery / Confectionery',
-    'Water / Pure Water', 'POS / Bureau de Change', 'Printing / Cyber Cafe', 'Auto / Mechanic',
-    'Construction / Building Materials', 'Agriculture / Farm Supplies', 'Fashion / Tailoring',
-    'Entertainment / Event Center', 'Professional Services', 'Other',
-  ];
-  const customerRanges = config?.customerRanges ?? [
-    { value: 'LOW', label: 'Low (1–30)', min: 1, max: 30 },
-    { value: 'MEDIUM', label: 'Medium (31–100)', min: 31, max: 100 },
-    { value: 'HIGH', label: 'High (101–300)', min: 101, max: 300 },
-    { value: 'VERY_HIGH', label: 'Very High (300+)', min: 300, max: Infinity },
-  ];
-  const openingDays = config?.openingDays ?? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const contactPositions = config?.contactPositions ?? ['Owner', 'Manager', 'HR Manager', 'Sales Manager', 'Custom'];
-  const businessSizes = config?.businessSizes ?? [
-    { value: 'SMALL', label: 'Small (1–5 staff)', minStaff: 1, maxStaff: 5 },
-    { value: 'MEDIUM', label: 'Medium (6–20 staff)', minStaff: 6, maxStaff: 20 },
-    { value: 'LARGE', label: 'Large (21+ staff)', minStaff: 21, maxStaff: Infinity },
-  ];
-  const interestOptions = config?.interestOptions ?? [
-    { value: 'YES', label: 'Interested' },
-    { value: 'NO', label: 'Not Interested' },
-    { value: 'MAYBE', label: 'Maybe / Not decided' },
-  ];
-  const pipelineStatusOptions = config?.pipelineStatuses ?? [
-    { id: 'NOT_YET', name: 'Not yet' },
-    { id: 'VISITED', name: 'Visited' },
-    { id: 'CONTACTED', name: 'Contacted' },
-    { id: 'INTERESTED', name: 'Interested' },
-    { id: 'NOT_INTERESTED', name: 'Not Interested' },
-    { id: 'CUSTOMER', name: 'Customer' },
-  ];
+  const categories = config?.businessCategories ?? EMPTY_CATEGORIES;
+  const customerRanges = config?.customerRanges ?? [];
+  const openingDays = config?.openingDays ?? [];
+  const contactPositions = config?.contactPositions ?? [];
+  const businessSizes = config?.businessSizes ?? [];
+  const interestOptions = config?.interestOptions ?? [];
+  const pipelineStatusOptions = config?.pipelineStatuses ?? [];
 
   const activePlan = missionPlans[missionPlans.length - 1];
   const planLocation = activePlan?.location || '';
@@ -187,9 +161,11 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
     }
   }, [visit, planLocation]);
 
+  const isAnchor = formData.dailyCustomers === 'HIGH' || formData.dailyCustomers === 'VERY_HIGH';
+
   const handleSave = useCallback((skipToNext = false) => {
     const newStatus = formData.status === 'NOT_YET' ? 'VISITED' : (formData.status || 'VISITED');
-    const updated = { ...(formData as PlannedVisit), status: newStatus as any, isPlaceholder: false };
+    const updated = { ...(formData as PlannedVisit), status: newStatus as any, isPlaceholder: false, isAnchor };
     setSavedTabs(prev => new Set(prev).add(activeTab));
     onSave(updated, !skipToNext);
 
@@ -200,14 +176,13 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
         setTimeout(() => setActiveTab(tabs[currentIdx + 1]), 50);
       }
     }
-  }, [formData, activeTab, onSave]);
+  }, [formData, activeTab, onSave, isAnchor]);
 
   const filteredCategories = useMemo(() => {
     if (!categorySearch) return categories;
     return categories.filter(c => c.toLowerCase().includes(categorySearch.toLowerCase()));
   }, [categorySearch, categories]);
 
-  const isAnchor = formData.dailyCustomers === 'HIGH' || formData.dailyCustomers === 'VERY_HIGH';
   const { filled, total } = countFilledFields(formData);
   const starScore = (filled / total) * 5;
 

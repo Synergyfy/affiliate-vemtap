@@ -68,6 +68,7 @@ export const DAILY_CUSTOMER_RANGES = [
 export const OPENING_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export interface MissionPlan {
+  id?: string;
   horizon: MissionHorizon;
   location: string;
   targetCount: number;

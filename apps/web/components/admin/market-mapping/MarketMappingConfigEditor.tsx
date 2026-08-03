@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/toast';
 import { useState, useEffect } from 'react';
-import { api } from '@/lib/api-client';
 import {
   Save,
   Loader2,
@@ -17,13 +16,13 @@ import {
   ChevronDown,
   ChevronRight
 } from 'lucide-react';
-import { useSettings, useUpdateSettings } from '@/services/useAdminHooks';
+import { useAdminEditorConfig, useUpdateAdminEditorConfig } from '@/services/useMarketMappingHooks';
 import { PlatformSettings, MarketMappingConfig } from '@/types/api';
 
 export default function MarketMappingConfigEditor() {
   const { showToast } = useToast();
-  const { data: settings, isLoading } = useSettings();
-  const updateSettings = useUpdateSettings();
+  const { data: editorConfig, isLoading, isError, refetch } = useAdminEditorConfig();
+  const updateEditorConfig = useUpdateAdminEditorConfig();
   const [newCategory, setNewCategory] = useState('');
   const [newPosition, setNewPosition] = useState('');
   const [showCategories, setShowCategories] = useState(true);
@@ -41,16 +40,15 @@ export default function MarketMappingConfigEditor() {
   const [formData, setFormData] = useState<Partial<PlatformSettings>>({});
 
   useEffect(() => {
-    if (settings) {
+    if (editorConfig) {
       setFormData({
-        ...settings,
-        marketMappingConfig: settings.marketMappingConfig || {
-          businessCategories: [],
+        marketMappingConfig: {
+           businessCategories: editorConfig.categories,
           openingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
           customerRanges: [],
           businessSizes: [],
           contactPositions: [],
-          pipelineStatuses: [],
+           pipelineStatuses: editorConfig.pipelineStatuses.map((id) => ({ id, name: id, color: '', bg: '', text: '' })),
           interestOptions: [],
           planTypes: [],
           faqs: [],
@@ -63,11 +61,16 @@ export default function MarketMappingConfigEditor() {
         },
       });
     }
-  }, [settings]);
+  }, [editorConfig]);
 
   const handleSave = async () => {
     try {
-      await updateSettings.mutateAsync(formData);
+      const config = formData.marketMappingConfig;
+      if (!config) return;
+      await updateEditorConfig.mutateAsync({
+        categories: config.businessCategories,
+        pipelineStatuses: config.pipelineStatuses.map((status) => status.id),
+      });
       showToast('Market mapping configuration saved.', 'success');
     } catch (error: any) {
       showToast(error.message || 'Failed to save.', 'error');
@@ -144,6 +147,10 @@ export default function MarketMappingConfigEditor() {
         <Loader2 className="w-6 h-6 animate-pulse text-slate-300" />
       </div>
     );
+  }
+
+  if (isError || !editorConfig) {
+    return <div className="flex flex-col items-center justify-center py-20 gap-3"><p className="text-sm text-red-500">Unable to load market mapping editor configuration.</p><button onClick={() => refetch()} className="text-sm font-bold text-blue-600 hover:underline">Retry</button></div>;
   }
 
   if (!mmConfig) return null;
@@ -333,11 +340,11 @@ export default function MarketMappingConfigEditor() {
       <div className="flex justify-end pt-2">
         <button
           onClick={handleSave}
-          disabled={updateSettings.isPending}
+           disabled={updateEditorConfig.isPending}
           className="flex items-center gap-2 px-8 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg disabled:opacity-50"
         >
-          {updateSettings.isPending ? <Loader2 className="w-4 h-4 animate-pulse" /> : <Save className="w-4 h-4" />}
-          {updateSettings.isPending ? 'Saving...' : 'Save Configuration'}
+          {updateEditorConfig.isPending ? <Loader2 className="w-4 h-4 animate-pulse" /> : <Save className="w-4 h-4" />}
+          {updateEditorConfig.isPending ? 'Saving...' : 'Save Configuration'}
         </button>
       </div>
     </div>

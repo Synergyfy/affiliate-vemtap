@@ -11,7 +11,7 @@ import {
   Header,
   Res,
 } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiOkResponse, ApiResponse } from "@nestjs/swagger";
+import { ApiTags, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
 import { Response } from "express";
 import { Role } from "@prisma/client";
 import { MarketMappingService } from "./market-mapping.service";
@@ -24,6 +24,8 @@ import {
   CreateAssignmentDto,
   UpdateAssignmentDto,
   UpdateMarketMappingAdminConfigDto,
+  CreateMarketMappingVisitDto,
+  UpdateMarketMappingVisitDto,
 } from "./dto/market-mapping.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
@@ -76,6 +78,30 @@ export class MarketMappingController {
     return this.marketMappingService.updatePlan(id, user.id, dto);
   }
 
+  @Get("visits")
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  getVisits(@CurrentUser() user: { id: string }) {
+    return this.marketMappingService.getVisits(user.id);
+  }
+
+  @Post("visits")
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  createVisit(@CurrentUser() user: { id: string }, @Body() dto: CreateMarketMappingVisitDto) {
+    return this.marketMappingService.createVisit(user.id, dto);
+  }
+
+  @Patch("visits/:id")
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  updateVisit(@Param("id") id: string, @CurrentUser() user: { id: string }, @Body() dto: UpdateMarketMappingVisitDto) {
+    return this.marketMappingService.updateVisit(id, user.id, dto);
+  }
+
+  @Get("history")
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  getHistory(@CurrentUser() user: { id: string }) {
+    return this.marketMappingService.getHistory(user.id);
+  }
+
   @Get("anchors")
   @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Get anchor businesses for user cluster" })
@@ -107,8 +133,8 @@ export class MarketMappingController {
   @Get("notes")
   @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Get market mapping notes and follow-ups" })
-  getNotes(@CurrentUser() user: { id: string }, @Query("businessId") businessId?: string) {
-    return this.marketMappingService.getNotes(user.id, businessId);
+  getNotes(@CurrentUser() user: { id: string }, @Query("businessId") businessId?: string, @Query("reportKey") reportKey?: string) {
+    return this.marketMappingService.getNotes(user.id, businessId, reportKey);
   }
 
   @Post("notes")
@@ -246,4 +272,3 @@ export class MarketMappingController {
     return this.marketMappingService.updateAdminConfig(dto);
   }
 }
-

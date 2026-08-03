@@ -55,7 +55,7 @@ export default function WithdrawalsManagement() {
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const debouncedSearch = useDebounce(searchTerm, 500);
 
-  const { data: withdrawalsResponse, isLoading: isWithdrawalsLoading } = useWithdrawals({ 
+  const { data: withdrawalsResponse, isLoading: isWithdrawalsLoading, isError: isWithdrawalsError, refetch: refetchWithdrawals } = useWithdrawals({
     limit: 50,
     search: debouncedSearch || undefined,
     status: statusFilter === 'All' ? undefined : statusFilter as any
@@ -236,7 +236,9 @@ export default function WithdrawalsManagement() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {withdrawalsResponse?.data.map((wth, idx) => (
+                 {isWithdrawalsError ? (
+                   <tr><td colSpan={6} className="p-10 text-center"><p className="text-sm text-red-500">Unable to load withdrawals.</p><button onClick={() => refetchWithdrawals()} className="text-xs font-bold text-blue-600 hover:underline mt-2">Retry</button></td></tr>
+                 ) : withdrawalsResponse?.data?.length ? withdrawalsResponse.data.map((wth, idx) => (
                   <motion.tr 
                     key={wth.id}
                     initial={{ opacity: 0, y: 10 }}
@@ -274,6 +276,7 @@ export default function WithdrawalsManagement() {
                         {wth.status === 'APPROVED' && (
                           <button 
                             onClick={() => handleProcess(wth.id, wth.user?.fullName || 'User', 'PAID')}
+                            disabled={updateStatus.isPending}
                             className="flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700 transition-all"
                           >
                             Mark as Paid
@@ -327,7 +330,7 @@ export default function WithdrawalsManagement() {
                       </div>
                     </td>
                   </motion.tr>
-                ))}
+                 )) : !isWithdrawalsLoading ? <tr><td colSpan={6} className="p-10 text-center text-sm text-slate-400">No withdrawals match the current filters.</td></tr> : null}
               </tbody>
             </table>
           </div>
@@ -383,7 +386,7 @@ export default function WithdrawalsManagement() {
                 </div>
 
                 <div className="space-y-2 mb-6">
-                  <label className="text-sm font-bold text-slate-700">Type <span className="text-amber-600 font-black">"Bulk Payout"</span> to confirm</label>
+                   <label className="text-sm font-bold text-slate-700">Type <span className="text-amber-600 font-black">&quot;Bulk Payout&quot;</span> to confirm</label>
                   <input
                     type="text"
                     value={bulkConfirmText}
@@ -444,8 +447,8 @@ export default function WithdrawalsManagement() {
             </div>
             <div className="flex gap-3">
               <button onClick={() => setModal(null)} className="flex-1 px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-all">Cancel</button>
-              <button onClick={() => handleProcess(modal.withdrawal.id, modal.withdrawal.user?.fullName || 'User', 'APPROVED')} className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg">
-                <Check className="w-4 h-4" /> Approve Payout
+               <button onClick={() => handleProcess(modal.withdrawal.id, modal.withdrawal.user?.fullName || 'User', 'APPROVED')} disabled={updateStatus.isPending} className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50">
+                 {updateStatus.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Approve Payout
               </button>
             </div>
           </ModalShell>

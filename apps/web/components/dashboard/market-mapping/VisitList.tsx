@@ -38,7 +38,7 @@ export default function VisitList({ visits, onSelectVisit }: VisitListProps) {
       <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
         <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
           <MapPin className="w-5 h-5 text-emerald-600" />
-          Today's Field Execution
+          Today&apos;s Field Execution
         </h3>
         <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full">
           {completedVisits.length} / {visits.length} Done
@@ -52,7 +52,7 @@ export default function VisitList({ visits, onSelectVisit }: VisitListProps) {
               <MapPin className="w-8 h-8 text-slate-300" />
             </div>
             <p className="text-sm font-bold text-slate-900">No visits planned yet</p>
-            <p className="text-xs text-slate-500 mt-1">Use the "Plan My Day" tool above to add businesses to your list.</p>
+             <p className="text-xs text-slate-500 mt-1">Use the Plan My Day tool above to add businesses to your list.</p>
           </div>
         ) : (
           <>

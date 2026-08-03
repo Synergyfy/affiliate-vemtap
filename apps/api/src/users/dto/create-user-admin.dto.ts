@@ -5,6 +5,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsArray,
   Min,
   MinLength,
 } from 'class-validator';
@@ -47,4 +48,20 @@ export class CreateUserAdminDto {
   @IsInt()
   @Min(0)
   monthlyConversionTarget?: number;
+
+  @ApiProperty({ required: false, description: 'Supervisor user ID' })
+  @IsOptional()
+  @IsString()
+  supervisorId?: string;
+
+  @ApiProperty({ required: false, description: 'Manager user ID' })
+  @IsOptional()
+  @IsString()
+  managerId?: string;
+
+  @ApiProperty({ required: false, type: [String], example: ['MON', 'TUE', 'WED', 'THU', 'FRI'] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  workingDays?: string[];
 }

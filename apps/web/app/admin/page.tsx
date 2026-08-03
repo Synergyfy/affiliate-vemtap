@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Users, 
@@ -13,7 +12,6 @@ import {
   ShieldCheck,
   Clock
 } from 'lucide-react';
-import { api } from '@/lib/api-client';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/toast';
@@ -28,9 +26,9 @@ export default function AdminOverview() {
   const { showToast } = useToast();
   const router = useRouter();
   
-  const { data: stats, isLoading: isStatsLoading } = useAdminStats();
-  const { data: withdrawalsResponse, isLoading: isWithdrawalsLoading } = useWithdrawals({ limit: 5 });
-  const { data: fraudResponse, isLoading: isFraudLoading } = useFraudAlerts({ limit: 5 });
+  const { data: stats, isLoading: isStatsLoading, isError: isStatsError, refetch: refetchStats } = useAdminStats();
+  const { data: withdrawalsResponse, isLoading: isWithdrawalsLoading, isError: isWithdrawalsError, refetch: refetchWithdrawals } = useWithdrawals({ limit: 5 });
+  const { data: fraudResponse, isLoading: isFraudLoading, isError: isFraudError, refetch: refetchFraud } = useFraudAlerts({ limit: 5 });
   const updateWithdrawal = useUpdateWithdrawalStatus();
 
   const adminStats = [
@@ -100,6 +98,10 @@ export default function AdminOverview() {
     );
   }
 
+  if (isStatsError || !stats) {
+    return <AdminLayout><div className="flex flex-col items-center justify-center h-64 gap-3"><AlertTriangle className="w-8 h-8 text-red-500" /><p className="text-sm font-medium text-slate-600">Unable to load dashboard statistics.</p><button onClick={() => refetchStats()} className="text-sm font-bold text-blue-600 hover:underline">Retry</button></div></AdminLayout>;
+  }
+
   return (
     <AdminLayout>
       <div className="space-y-8">
@@ -146,7 +148,9 @@ export default function AdminOverview() {
               </button>
             </div>
             <div className="space-y-4">
-              {withdrawalsResponse?.data && withdrawalsResponse.data.length > 0 ? withdrawalsResponse.data.map((item, idx) => (
+              {isWithdrawalsLoading ? <Loader2 className="w-5 h-5 animate-spin text-slate-300 mx-auto" /> : isWithdrawalsError ? (
+                <div className="text-center py-8"><p className="text-sm text-red-500">Unable to load withdrawals.</p><button onClick={() => refetchWithdrawals()} className="text-xs font-bold text-blue-600 hover:underline mt-2">Retry</button></div>
+              ) : withdrawalsResponse?.data && withdrawalsResponse.data.length > 0 ? withdrawalsResponse.data.map((item) => (
                 <div key={item.id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-slate-200 transition-all">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 font-bold">
@@ -186,7 +190,9 @@ export default function AdminOverview() {
               </button>
             </div>
             <div className="space-y-4">
-              {fraudResponse?.data && fraudResponse.data.length > 0 ? fraudResponse.data.map((item, idx) => (
+              {isFraudLoading ? <Loader2 className="w-5 h-5 animate-spin text-slate-300 mx-auto" /> : isFraudError ? (
+                <div className="text-center py-8"><p className="text-sm text-red-500">Unable to load fraud alerts.</p><button onClick={() => refetchFraud()} className="text-xs font-bold text-blue-600 hover:underline mt-2">Retry</button></div>
+              ) : fraudResponse?.data && fraudResponse.data.length > 0 ? fraudResponse.data.map((item) => (
                 <div key={item.id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-slate-200 transition-all">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-600">

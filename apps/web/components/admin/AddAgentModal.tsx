@@ -8,7 +8,8 @@ import {
 import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/hooks/toast';
-import { useCreateUser } from '@/services/useAdminHooks';
+import { useCreateUser, useUsers } from '@/services/useAdminHooks';
+import type { User as ApiUser } from '@/types/api';
 
 interface AddAgentModalProps {
   isOpen: boolean;
@@ -23,14 +24,6 @@ const roleOptions: { value: RoleOption; label: string; desc: string; icon: React
   { value: 'AFFILIATE', label: 'Affiliate', desc: 'Can recruit agents and manage business relationships', icon: <Users className="w-4 h-4" /> },
   { value: 'SUPERVISOR', label: 'Line Manager', desc: 'Oversees agents/affiliates and reviews their work', icon: <ShieldCheck className="w-4 h-4" /> },
   { value: 'MANAGER', label: 'Manager', desc: 'Full management access over teams and operations', icon: <UserCog className="w-4 h-4" /> },
-];
-
-const mockUsers = [
-  { id: 'u-1', name: 'Adekunle Silver', role: 'SUPERVISOR' },
-  { id: 'u-2', name: 'Bisi Adeyemi', role: 'MANAGER' },
-  { id: 'u-3', name: 'Chioma Okafor', role: 'SUPERVISOR' },
-  { id: 'u-4', name: 'David Mark', role: 'MANAGER' },
-  { id: 'u-5', name: 'Emeka Nwosu', role: 'SUPERVISOR' },
 ];
 
 const validators = {
@@ -134,6 +127,7 @@ function NumberField({ label, icon, value, onChange, description, bg = 'bg-slate
 export default function AddAgentModal({ isOpen, onClose, onCreated }: AddAgentModalProps) {
   const { showToast } = useToast();
   const createUser = useCreateUser();
+  const { data: usersResponse } = useUsers({ limit: 100 });
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     fullName: '', email: '', phone: '', password: '',
@@ -185,10 +179,11 @@ export default function AddAgentModal({ isOpen, onClose, onCreated }: AddAgentMo
   };
 
   const pwStrength = passwordStrength(form.password);
-  const supervisors = mockUsers.filter(u => u.role === 'SUPERVISOR');
-  const managers = mockUsers.filter(u => u.role === 'MANAGER');
-  const filteredSupervisors = supervisors.filter(s => s.name.toLowerCase().includes(supervisorSearch.toLowerCase()));
-  const filteredManagers = managers.filter(m => m.name.toLowerCase().includes(managerSearch.toLowerCase()));
+  const users = usersResponse?.data ?? [];
+  const supervisors: ApiUser[] = users.filter(user => user.role === 'SUPERVISOR');
+  const managers: ApiUser[] = users.filter(user => user.role === 'MANAGER');
+  const filteredSupervisors = supervisors.filter(user => user.fullName.toLowerCase().includes(supervisorSearch.toLowerCase()));
+  const filteredManagers = managers.filter(user => user.fullName.toLowerCase().includes(managerSearch.toLowerCase()));
 
   return (
     <AnimatePresence>
@@ -372,7 +367,7 @@ export default function AddAgentModal({ isOpen, onClose, onCreated }: AddAgentMo
                           onClick={() => setOpenDropdown(openDropdown === 'supervisor' ? null : 'supervisor')}
                           className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-medium transition-all ${form.supervisorId ? 'border-violet-300 bg-violet-50 text-slate-900' : 'border-slate-200 bg-white text-slate-400'}`}
                         >
-                          {form.supervisorId ? supervisors.find(s => s.id === form.supervisorId)?.name || 'Select line manager' : 'Select line manager'}
+                          {form.supervisorId ? supervisors.find(s => s.id === form.supervisorId)?.fullName || 'Select line manager' : 'Select line manager'}
                           <ChevronRight className={`w-4 h-4 transition-transform ${openDropdown === 'supervisor' ? 'rotate-90' : ''}`} />
                         </button>
                         {openDropdown === 'supervisor' && (
@@ -397,9 +392,9 @@ export default function AddAgentModal({ isOpen, onClose, onCreated }: AddAgentMo
                                   onClick={() => { setForm(prev => ({ ...prev, supervisorId: sup.id })); setOpenDropdown(null); setSupervisorSearch(''); }}
                                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm transition-all ${form.supervisorId === sup.id ? 'bg-violet-50 text-violet-900' : 'hover:bg-slate-50 text-slate-700'}`}
                                 >
-                                  <div className="w-8 h-8 rounded-full bg-violet-100 text-violet-700 font-bold flex items-center justify-center text-xs">{sup.name.charAt(0)}</div>
+                                  <div className="w-8 h-8 rounded-full bg-violet-100 text-violet-700 font-bold flex items-center justify-center text-xs">{sup.fullName.charAt(0)}</div>
                                   <div>
-                                    <p className="font-bold text-sm">{sup.name}</p>
+                                    <p className="font-bold text-sm">{sup.fullName}</p>
                                     <p className="text-[10px] text-violet-500 font-semibold">Line Manager</p>
                                   </div>
                                 </button>
@@ -425,7 +420,7 @@ export default function AddAgentModal({ isOpen, onClose, onCreated }: AddAgentMo
                           onClick={() => setOpenDropdown(openDropdown === 'manager' ? null : 'manager')}
                           className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-medium transition-all ${form.managerId ? 'border-emerald-300 bg-emerald-50 text-slate-900' : 'border-slate-200 bg-white text-slate-400'}`}
                         >
-                          {form.managerId ? managers.find(m => m.id === form.managerId)?.name || 'Select manager' : 'Select manager'}
+                          {form.managerId ? managers.find(m => m.id === form.managerId)?.fullName || 'Select manager' : 'Select manager'}
                           <ChevronRight className={`w-4 h-4 transition-transform ${openDropdown === 'manager' ? 'rotate-90' : ''}`} />
                         </button>
                         {openDropdown === 'manager' && (
@@ -450,9 +445,9 @@ export default function AddAgentModal({ isOpen, onClose, onCreated }: AddAgentMo
                                   onClick={() => { setForm(prev => ({ ...prev, managerId: mgr.id })); setOpenDropdown(null); setManagerSearch(''); }}
                                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm transition-all ${form.managerId === mgr.id ? 'bg-emerald-50 text-emerald-900' : 'hover:bg-slate-50 text-slate-700'}`}
                                 >
-                                  <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 font-bold flex items-center justify-center text-xs">{mgr.name.charAt(0)}</div>
+                                  <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 font-bold flex items-center justify-center text-xs">{mgr.fullName.charAt(0)}</div>
                                   <div>
-                                    <p className="font-bold text-sm">{mgr.name}</p>
+                                    <p className="font-bold text-sm">{mgr.fullName}</p>
                                     <p className="text-[10px] text-emerald-500 font-semibold">Manager</p>
                                   </div>
                                 </button>
@@ -475,8 +470,8 @@ export default function AddAgentModal({ isOpen, onClose, onCreated }: AddAgentMo
                         <p><span className="font-semibold text-slate-500">Daily Target:</span> <span className="font-bold text-slate-900">{form.dailyLeadTarget}</span></p>
                         <p><span className="font-semibold text-slate-500">Monthly Target:</span> <span className="font-bold text-slate-900">{form.monthlyConversionTarget}</span></p>
                         <p><span className="font-semibold text-slate-500">Working Days:</span> <span className="font-bold text-slate-900">{form.workingDays.length} days</span></p>
-                        <p><span className="font-semibold text-slate-500">Line Manager:</span> <span className="font-bold text-slate-900">{supervisors.find(s => s.id === form.supervisorId)?.name || '—'}</span></p>
-                        <p className="col-span-2"><span className="font-semibold text-slate-500">Manager:</span> <span className="font-bold text-slate-900">{managers.find(m => m.id === form.managerId)?.name || '—'}</span></p>
+                        <p><span className="font-semibold text-slate-500">Line Manager:</span> <span className="font-bold text-slate-900">{supervisors.find(s => s.id === form.supervisorId)?.fullName || '—'}</span></p>
+                        <p className="col-span-2"><span className="font-semibold text-slate-500">Manager:</span> <span className="font-bold text-slate-900">{managers.find(m => m.id === form.managerId)?.fullName || '—'}</span></p>
                       </div>
                     </div>
                   </motion.div>

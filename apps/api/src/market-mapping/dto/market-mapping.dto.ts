@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsInt, Min, IsDateString } from "class-validator";
+import { IsString, IsOptional, IsInt, Min, IsDateString, IsBoolean, IsArray, IsIn } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 
 export class CreateMissionPlanDto {
@@ -37,6 +37,38 @@ export class CreateMissionPlanDto {
   @IsDateString()
   endDate?: string;
 }
+
+export class CreateMarketMappingVisitDto {
+  @IsString()
+  name: string;
+
+  @IsOptional() @IsString() category?: string;
+  @IsOptional() @IsIn(["NOT_YET", "VISITED", "CONTACTED", "INTERESTED", "NOT_INTERESTED", "CUSTOMER"]) status?: string;
+  @IsOptional() @IsBoolean() isPlaceholder?: boolean;
+  @IsOptional() @IsString() address?: string;
+  @IsOptional() @IsString() exactAddress?: string;
+  @IsOptional() @IsString() phone?: string;
+  @IsOptional() @IsString() ownerName?: string;
+  @IsOptional() @IsString() contactPosition?: string;
+  @IsOptional() @IsString() contactEmail?: string;
+  @IsOptional() @IsString() horizon?: string;
+  @IsOptional() @IsString() dailyCustomers?: string;
+  @IsOptional() @IsString() businessSize?: string;
+  @IsOptional() @IsString() openingHours?: string;
+  @IsOptional() @IsArray() openingDays?: string[];
+  @IsOptional() @IsString() gpsLat?: string;
+  @IsOptional() @IsString() gpsLng?: string;
+  @IsOptional() @IsString() nextVisitDate?: string;
+  @IsOptional() @IsString() nextVisitTime?: string;
+  @IsOptional() @IsBoolean() decisionMakerMet?: boolean;
+  @IsOptional() @IsString() interested?: string;
+  @IsOptional() @IsBoolean() demoDone?: boolean;
+  @IsOptional() @IsString() visitNotes?: string;
+  @IsOptional() @IsBoolean() isAnchor?: boolean;
+  @IsOptional() @IsString() planId?: string;
+}
+
+export class UpdateMarketMappingVisitDto extends CreateMarketMappingVisitDto {}
 
 export class UpdateMissionPlanDto {
   @ApiProperty({ required: false, example: 25 })
@@ -78,6 +110,11 @@ export class CreateMarketMappingNoteDto {
   @IsOptional()
   @IsString()
   leadId?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  reportKey?: string;
 
   @ApiProperty({ example: "Ace Electronics", description: "Business name" })
   @IsString()
@@ -186,4 +223,3 @@ export class UpdateMarketMappingAdminConfigDto {
   @IsOptional()
   fieldDefaults?: any;
 }
-

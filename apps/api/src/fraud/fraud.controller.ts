@@ -8,7 +8,6 @@ import { Role } from '@prisma/client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UpdateFraudStatusDto } from './dto/update-fraud.dto';
 import { FraudAlertResponseDto, PaginatedFraudAlertResponseDto } from './dto/fraud-response.dto';
-import { PaginationDto } from '../common/dto/pagination.dto';
 import { FraudFilterDto } from './dto/fraud-filter.dto';
 
 @ApiTags('fraud')

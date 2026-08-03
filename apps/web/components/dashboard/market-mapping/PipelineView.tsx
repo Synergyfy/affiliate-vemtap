@@ -9,15 +9,6 @@ import { useMarketMapping } from '@/components/dashboard/market-mapping/MarketMa
 import { useMarketMappingConfig } from '@/hooks/use-market-mapping-config';
 import { useToast } from '@/hooks/use-toast';
 
-const defaultPipelineStatuses = [
-  { id: 'NOT_YET' as const, name: 'To Visit', color: 'bg-slate-500', bg: 'bg-slate-50', text: 'text-slate-600' },
-  { id: 'VISITED' as const, name: 'Visited', color: 'bg-blue-500', bg: 'bg-blue-50', text: 'text-blue-600' },
-  { id: 'CONTACTED' as const, name: 'Contacted', color: 'bg-purple-500', bg: 'bg-purple-50', text: 'text-purple-600' },
-  { id: 'INTERESTED' as const, name: 'Interested', color: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-600' },
-  { id: 'NOT_INTERESTED' as const, name: 'Not Interested', color: 'bg-red-500', bg: 'bg-red-50', text: 'text-red-600' },
-  { id: 'CUSTOMER' as const, name: 'Customer', color: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-600' },
-];
-
 interface PipelineViewProps {
   visits: PlannedVisit[];
   onSelectVisit: (visit: PlannedVisit) => void;
@@ -27,7 +18,7 @@ export default function PipelineView({ visits, onSelectVisit }: PipelineViewProp
   const { saveCapture } = useMarketMapping();
   const { data: config } = useMarketMappingConfig();
   const { showToast } = useToast();
-  const pipelineStatuses = config?.pipelineStatuses ?? defaultPipelineStatuses;
+  const pipelineStatuses = config?.pipelineStatuses ?? [];
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   

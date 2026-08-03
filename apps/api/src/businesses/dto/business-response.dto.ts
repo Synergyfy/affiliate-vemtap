@@ -26,7 +26,7 @@ export class BusinessResponseDto {
   @ApiProperty({ example: 3000 })
   subscriptionAmount: number;
 
-  @ApiProperty({ example: 0.15 })
+  @ApiProperty({ example: 0.2 })
   commissionRate: number;
 
   @ApiProperty({ example: 450 })

@@ -73,7 +73,12 @@ export class UsersService {
   }
 
   async createUserByAdmin(dto: CreateUserAdminDto): Promise<Omit<User, 'password'>> {
-    const { email, phone, password, role, dailyLeadTarget, monthlyConversionTarget, ...rest } = dto;
+    const { email, phone, password, role, dailyLeadTarget, monthlyConversionTarget, supervisorId, managerId, workingDays, ...rest } = dto;
+    const targetRole = role ?? Role.AGENT;
+
+    if (targetRole === Role.AGENT && (!supervisorId || !managerId)) {
+      throw new BadRequestException('Agents require both a supervisor and a manager');
+    }
 
     const existingUser = await this.prisma.user.findFirst({
       where: { OR: [{ email }, { phone }] },
@@ -86,6 +91,21 @@ export class UsersService {
     const hashedPassword = await bcrypt.hash(password, 10);
     const uniqueReferralCode = await this.generateUniqueReferralCode();
 
+    const hierarchyIds = [supervisorId, managerId].filter((id): id is string => Boolean(id));
+    const hierarchyUsers = hierarchyIds.length > 0
+      ? await this.prisma.user.findMany({ where: { id: { in: hierarchyIds } }, select: { id: true, role: true } })
+      : [];
+    if (hierarchyUsers.length !== new Set(hierarchyIds).size) {
+      throw new NotFoundException('Supervisor or manager not found');
+    }
+    if (supervisorId && hierarchyUsers.find((user) => user.id === supervisorId)?.role !== Role.SUPERVISOR) {
+      throw new BadRequestException('Selected supervisor must have the SUPERVISOR role');
+    }
+    const managerRole = managerId ? hierarchyUsers.find((user) => user.id === managerId)?.role : undefined;
+    if (managerId && managerRole !== Role.MANAGER && managerRole !== Role.SUPERVISOR) {
+      throw new BadRequestException('Selected manager must have the MANAGER or SUPERVISOR role');
+    }
+
     const user = await this.prisma.user.create({
       data: {
         ...rest,
@@ -93,10 +113,13 @@ export class UsersService {
         phone,
         password: hashedPassword,
         referralCode: uniqueReferralCode,
-        role: role ?? Role.AGENT,
+        role: targetRole,
         tier: Tier.BRONZE,
         dailyLeadTarget: dailyLeadTarget ?? 0,
         monthlyConversionTarget: monthlyConversionTarget ?? 0,
+        supervisorId,
+        managerId,
+        workingDays: workingDays ?? [],
       },
     });
 

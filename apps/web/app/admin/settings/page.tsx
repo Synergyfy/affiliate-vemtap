@@ -25,7 +25,7 @@ import { PlatformSettings } from '@/types/api';
 
 export default function SettingsManagement() {
   const { showToast } = useToast();
-  const { data: settings, isLoading } = useSettings();
+  const { data: settings, isLoading, isError, refetch } = useSettings();
   const updateSettings = useUpdateSettings();
   
   const [formData, setFormData] = useState<Partial<PlatformSettings>>({
@@ -102,6 +102,10 @@ export default function SettingsManagement() {
         </div>
       </AdminLayout>
     );
+  }
+
+  if (isError || !settings) {
+    return <AdminLayout><div className="flex flex-col items-center justify-center h-64 gap-3"><Shield className="w-8 h-8 text-red-500" /><p className="text-sm text-slate-600">Unable to load platform settings.</p><button onClick={() => refetch()} className="text-sm font-bold text-blue-600 hover:underline">Retry</button></div></AdminLayout>;
   }
 
   return (
@@ -242,7 +246,7 @@ export default function SettingsManagement() {
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-bold" />
                   <Percent className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 </div>
-                <p className="text-xs text-slate-400">Recurring % Line Managers earn from their team's recurring subscriptions.</p>
+                 <p className="text-xs text-slate-400">Recurring % Line Managers earn from their team&apos;s recurring subscriptions.</p>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
@@ -499,6 +503,7 @@ export default function SettingsManagement() {
           <div className="flex justify-end gap-3 pt-4">
             <button 
               onClick={handleDiscard}
+              disabled={updateSettings.isPending}
               className="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-all"
             >
               Discard Changes

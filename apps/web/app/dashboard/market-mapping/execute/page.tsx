@@ -10,7 +10,7 @@ import { useState, useMemo, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { MissionHorizon, PlannedVisit } from '@/types/affiliate-market-mapping';
-import { mockAnchorBusinesses, mockPriorityVisits, mockPartnershipVisits } from '@/lib/affiliate-mock';
+import { useMarketMappingAnchors, usePriorityVisits, usePartnerships } from '@/services/useMarketMappingHooks';
 
 type ViewMode = 'default' | 'anchors' | 'priority' | 'partnership';
 
@@ -38,6 +38,9 @@ function ExecutePage() {
   const config = VIEW_CONFIG[activeView];
 
   const { stats, visits, selectedVisit, setSelectedVisit, saveCapture, missionPlans, performance, addVisits } = useMarketMapping();
+  const { data: anchors = [] } = useMarketMappingAnchors();
+  const { data: priorities = [] } = usePriorityVisits();
+  const { data: partnerships = [] } = usePartnerships();
   const { showToast } = useToast();
   const [horizonFilter, setHorizonFilter] = useState<MissionHorizon>('DAY');
 
@@ -57,12 +60,12 @@ function ExecutePage() {
   // Context-aware visit list
   const contextVisits = useMemo(() => {
     switch (activeView) {
-      case 'anchors': return mockAnchorBusinesses;
-      case 'priority': return mockPriorityVisits;
-      case 'partnership': return mockPartnershipVisits;
+      case 'anchors': return anchors;
+      case 'priority': return priorities;
+      case 'partnership': return partnerships;
       default: return visits.filter(v => v.horizon === activeHorizon);
     }
-  }, [activeView, visits, activeHorizon]);
+  }, [activeView, visits, activeHorizon, anchors, priorities, partnerships]);
 
   const addedCount = contextVisits.length;
   const targetCount = activeView === 'default' ? (activePlan?.targetCount || 20) : contextVisits.length;
@@ -77,7 +80,7 @@ function ExecutePage() {
   const addBusiness = () => {
     const newVisit: PlannedVisit = {
       id: `v-${activeHorizon.toLowerCase()}-${Date.now()}`,
-      name: `Business ${addedCount + 1}`,
+       name: '',
       category: '',
       status: 'NOT_YET',
       isPlaceholder: true,

@@ -39,7 +39,7 @@ export default function PlanMyDay({ onAddVisits, clusterName }: PlanMyDayProps) 
     } else if (mode === 'UNKNOWN' && unknownCount > 0) {
       const newVisits: PlannedVisit[] = Array.from({ length: unknownCount }).map((_, i) => ({
         id: `v-placeholder-${Date.now()}-${i}`,
-        name: `Business ${i + 1}`,
+        name: '',
         category: 'Unknown',
         status: 'NOT_YET',
         isPlaceholder: true
@@ -57,7 +57,7 @@ export default function PlanMyDay({ onAddVisits, clusterName }: PlanMyDayProps) 
           Plan My Day in {clusterName}
         </h3>
         <p className="text-xs text-slate-500 mt-1">
-          Add the businesses you intend to visit today, or generate placeholders if you don't know their names yet.
+           Add the businesses you intend to visit today, or leave names blank when they are not known yet.
         </p>
       </div>
 
@@ -81,7 +81,7 @@ export default function PlanMyDay({ onAddVisits, clusterName }: PlanMyDayProps) 
               mode === 'UNKNOWN' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
             )}
           >
-            I Don't Know Names
+             I Don&apos;t Know Names
           </button>
         </div>
 
@@ -127,7 +127,7 @@ export default function PlanMyDay({ onAddVisits, clusterName }: PlanMyDayProps) 
                 <span className="text-xl font-black text-blue-600 w-8">{unknownCount}</span>
               </div>
               <p className="text-xs text-slate-500 mt-2">
-                This will automatically create {unknownCount} placeholders (Business 1, Business 2...) inside {clusterName}.
+                 This will create {unknownCount} unnamed planned visits inside {clusterName}.
               </p>
             </div>
           )}
