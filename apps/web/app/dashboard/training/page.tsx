@@ -85,6 +85,18 @@ export default function AcademyPage() {
           .filter((m: any) => m.progress?.[0]?.status === 'COMPLETED')
           .map((m: any) => m.id);
         setCompletedModules(completed);
+
+        // Restore quiz score and practice results from first module if present
+        const firstProgress = modules[0]?.progress?.[0];
+        if (firstProgress?.quizScore) {
+          setQuizScore(firstProgress.quizScore);
+        }
+        if (firstProgress?.practiceResults) {
+          const pr = firstProgress.practiceResults;
+          if (pr.correct !== undefined) {
+            setPracticeStats({ correct: pr.correct || 0, failed: pr.failed || 0 });
+          }
+        }
       } catch (error) {
         console.error('Failed to fetch training data:', error);
       } finally {
@@ -151,6 +163,15 @@ export default function AcademyPage() {
     } else {
       setIsPracticeFinished(true);
       showToast('Practice session complete!', 'success');
+      if (courses[0]?.id) {
+        api.patch(`/training/modules/${courses[0].id}/progress`, {
+          practiceResults: {
+            correct: practiceStats.correct,
+            failed: practiceStats.failed,
+            attempts: 1,
+          }
+        }).catch(console.error);
+      }
     }
   };
 

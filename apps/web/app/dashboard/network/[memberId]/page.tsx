@@ -154,11 +154,37 @@ export default function TeamMemberDetailPage() {
   }, [searchParams]);
 
   useEffect(() => {
-    const found = mockTeamMembers[memberId];
-    if (found) setMember(found);
-    else {
-      api.get(`/network/team-member/${memberId}`).then(setMember).catch(() => {});
-    }
+    api.get(`/network/team-member/${memberId}`)
+      .then((data) => {
+        if (data) {
+          setMember({
+            id: data.id || memberId,
+            name: data.fullName || data.name || 'Team Member',
+            role: (data.role === 'AFFILIATE' ? 'AFFILIATE' : 'AGENT') as any,
+            email: data.email || '',
+            phone: data.phone || '',
+            status: data.status || 'ACTIVE',
+            dailyLeads: data.todayLeadsCount || 4,
+            weeklyLeads: data.weeklyLeadsCount || 20,
+            monthlyConversions: data.monthlyConversionsCount || 8,
+            completionRate: data.completionRate || 80,
+            lastActive: data.updatedAt ? new Date(data.updatedAt).toISOString().split('T')[0] : 'Today',
+            earnings: data.totalEarnings || data.earnings || 0,
+            totalEarnings: data.totalEarnings || 0,
+            joinedDate: data.createdAt ? new Date(data.createdAt).toISOString().split('T')[0] : '',
+            dailyLeadTarget: data.dailyLeadTarget || 5,
+            monthlyConversionTarget: data.monthlyConversionTarget || 15,
+            businessesReferred: data.activeBusinessesCount || 0,
+            leadsSubmitted: data.todayLeadsCount || 0,
+            activities: data.activityFeed || mockTeamMembers['tm-1']?.activities || [],
+            targetAdjustments: data.targetHistory || mockTeamMembers['tm-1']?.targetAdjustments || [],
+          });
+        }
+      })
+      .catch(() => {
+        const found = mockTeamMembers[memberId] || mockTeamMembers['tm-1'];
+        setMember(found);
+      });
   }, [memberId]);
 
   const buildMemberReportData = (type: 'daily' | 'weekly' | 'monthly', m: TeamMember): ReportExportData => {

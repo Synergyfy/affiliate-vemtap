@@ -14,6 +14,7 @@ import {
   Loader2, Eye, Star, AlertCircle, ArrowUp, ArrowDown,
   BarChart3, LineChart, PieChart, Download
 } from 'lucide-react';
+import { useUserReports, useUserHistory, useUserTeam, useUserLocations } from '@/services/useAdminHooks';
 import type { User as UserType } from '@/types/api';
 
 type Tab = 'overview' | 'daily' | 'weekly' | 'monthly' | 'locations' | 'history' | 'team';

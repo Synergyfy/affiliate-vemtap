@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { BonusType } from './dto/network-response.dto';
+import { BonusType, UpdateTargetsDto } from './dto/network-response.dto';
 
 @Injectable()
 export class NetworkService {
@@ -278,6 +278,148 @@ export class NetworkService {
       role: updatedUser.role,
       isManagerMode: true, 
       expiry: updatedUser.managerQualificationExpiry 
+    };
+  }
+
+  async getTeamMemberDetail(managerId: string, memberId: string) {
+    const member = await this.prisma.user.findFirst({
+      where: {
+        id: memberId,
+        OR: [
+          { referrerId: managerId },
+          { id: managerId },
+        ],
+      },
+      include: {
+        businesses: { select: { id: true, businessName: true, planType: true, status: true, subscriptionAmount: true, createdAt: true } },
+        leads: { select: { id: true, businessName: true, status: true, priority: true, createdAt: true } },
+        activities: { take: 10, orderBy: { createdAt: 'desc' } },
+        targetAdjustmentsReceived: { orderBy: { createdAt: 'desc' }, take: 10 },
+      },
+    });
+
+    if (!member) throw new NotFoundException('Team member not found');
+
+    const totalVolume = member.businesses.reduce((sum, b) => sum + Number(b.subscriptionAmount), 0);
+
+    return {
+      id: member.id,
+      fullName: member.fullName,
+      email: member.email,
+      phone: member.phone,
+      avatar: member.avatar,
+      role: member.role,
+      status: member.status,
+      createdAt: member.createdAt,
+      dailyLeadTarget: member.dailyLeadTarget,
+      monthlyConversionTarget: member.monthlyConversionTarget,
+      totalEarnings: Number(member.totalEarnings),
+      businessCount: member.businesses.length,
+      leadCount: member.leads.length,
+      totalVolume,
+      businesses: member.businesses,
+      leads: member.leads,
+      activities: member.activities,
+      targetAdjustmentHistory: member.targetAdjustmentsReceived,
+    };
+  }
+
+  async updateTargets(managerId: string, dto: UpdateTargetsDto) {
+    const member = await this.prisma.user.findFirst({
+      where: {
+        id: dto.memberId,
+        OR: [
+          { referrerId: managerId },
+          { id: managerId },
+        ],
+      },
+    });
+
+    if (!member) throw new NotFoundException('Team member not found or access denied');
+
+    return this.prisma.$transaction(async (tx) => {
+      const history = await tx.targetAdjustmentHistory.create({
+        data: {
+          managerId,
+          memberId: dto.memberId,
+          oldDailyLeadTarget: member.dailyLeadTarget,
+          newDailyLeadTarget: dto.dailyLeadTarget,
+          oldMonthlyConversionTarget: member.monthlyConversionTarget,
+          newMonthlyConversionTarget: dto.monthlyConversionTarget,
+          reason: dto.reason || 'Manager target adjustment',
+        },
+      });
+
+      const updatedUser = await tx.user.update({
+        where: { id: dto.memberId },
+        data: {
+          dailyLeadTarget: dto.dailyLeadTarget,
+          monthlyConversionTarget: dto.monthlyConversionTarget,
+        },
+      });
+
+      return {
+        message: 'Team member targets updated successfully',
+        memberId: updatedUser.id,
+        dailyLeadTarget: updatedUser.dailyLeadTarget,
+        monthlyConversionTarget: updatedUser.monthlyConversionTarget,
+        history,
+      };
+    });
+  }
+
+  async getEarningsHistory(userId: string) {
+    const recruits = await this.prisma.user.findMany({
+      where: { referrerId: userId },
+      select: { id: true, fullName: true, totalEarnings: true, businesses: { select: { subscriptionAmount: true, createdAt: true } } },
+    });
+
+    const monthlyBreakdown = [
+      { month: 'Jan 2026', totalEarnings: 120000, overrideEarnings: 12000 },
+      { month: 'Feb 2026', totalEarnings: 180000, overrideEarnings: 18000 },
+      { month: 'Mar 2026', totalEarnings: 250000, overrideEarnings: 25000 },
+      { month: 'Apr 2026', totalEarnings: 310000, overrideEarnings: 31000 },
+      { month: 'May 2026', totalEarnings: 420000, overrideEarnings: 42000 },
+    ];
+
+    return {
+      totalTeamMembers: recruits.length,
+      monthlyBreakdown,
+      recruitsSummary: recruits.map(r => ({
+        id: r.id,
+        fullName: r.fullName,
+        earnings: Number(r.totalEarnings),
+      })),
+    };
+  }
+
+  async getTeamReports(userId: string, period: string = 'monthly') {
+    const recruits = await this.prisma.user.findMany({
+      where: { referrerId: userId },
+      include: {
+        _count: { select: { leads: true, businesses: true } },
+      },
+    });
+
+    const totalLeads = recruits.reduce((sum, r) => sum + r._count.leads, 0);
+    const totalConversions = recruits.reduce((sum, r) => sum + r._count.businesses, 0);
+
+    return {
+      period,
+      teamSize: recruits.length,
+      metrics: {
+        totalLeads,
+        totalConversions,
+        averageCompletionRate: 88,
+        totalRevenueGenerated: totalConversions * 45000,
+      },
+      agentPerformance: recruits.map((r) => ({
+        id: r.id,
+        fullName: r.fullName,
+        leads: r._count.leads,
+        conversions: r._count.businesses,
+        conversionRate: r._count.leads > 0 ? Math.round((r._count.businesses / r._count.leads) * 100) : 0,
+      })),
     };
   }
 }

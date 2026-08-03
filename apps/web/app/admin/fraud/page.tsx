@@ -20,15 +20,18 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/toast';
 import { useDebounce } from '@/hooks/use-debounce';
 
-import { useFraudAlerts, useUpdateFraudStatus } from '@/services/useFraudHooks';
+import { useFraudAlerts, useUpdateFraudStatus, useFraudStats, useFraudGuardStatus, useUpdateFraudGuardStatus } from '@/services/useFraudHooks';
 import { useAdminStats } from '@/services/useAdminHooks';
-import { Loader2 } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import { FraudAlert, FraudStatus } from '@/types/api';
 
 export default function FraudMonitor() {
   const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
+  const [selectedAlert, setSelectedAlert] = useState<FraudAlert | null>(null);
+  const [isGuardModalOpen, setIsGuardModalOpen] = useState(false);
+  const [guardThreshold, setGuardThreshold] = useState<number>(75);
   const debouncedSearch = useDebounce(searchTerm, 500);
   
   const { data: fraudResponse, isLoading: isFraudLoading } = useFraudAlerts({ 
@@ -36,8 +39,17 @@ export default function FraudMonitor() {
     search: debouncedSearch || undefined,
     status: statusFilter === 'All' ? undefined : statusFilter as any
   });
-  const { data: stats, isLoading: isStatsLoading } = useAdminStats();
+  const { data: stats } = useAdminStats();
+  const { data: realFraudStats } = useFraudStats();
+  const { data: guardStatus } = useFraudGuardStatus();
+  const updateGuard = useUpdateFraudGuardStatus();
   const updateStatus = useUpdateFraudStatus();
+
+  useEffect(() => {
+    if (guardStatus?.thresholdScore) {
+      setGuardThreshold(guardStatus.thresholdScore);
+    }
+  }, [guardStatus]);
 
   const handleStatusChange = async (alertId: string, name: string, isResolving: boolean) => {
     try {
@@ -59,15 +71,25 @@ export default function FraudMonitor() {
     }
   };
 
+  const handleSaveGuardThreshold = async () => {
+    try {
+      await updateGuard.mutateAsync({ thresholdScore: guardThreshold });
+      showToast(`Global Fraud Guard sensitivity set to ${guardThreshold}%`, 'success');
+      setIsGuardModalOpen(false);
+    } catch (error: any) {
+      showToast(error.message || 'Failed to update guard threshold', 'error');
+    }
+  };
+
   const alertsList = fraudResponse?.data || [];
 
   const fraudStats = [
-    { label: 'High Risk Alerts', value: alertsList.filter(a => a.severity === 'HIGH' && a.status === 'OPEN').length.toString(), icon: ShieldAlert, color: 'text-red-600', bg: 'bg-red-50' },
-    { label: 'Pending Review', value: stats?.fraudAlerts?.toString() || '0', icon: Activity, color: 'text-orange-600', bg: 'bg-orange-50' },
-    { label: 'Global Guard', value: 'Active', icon: ShieldCheck, color: 'text-slate-600', bg: 'bg-slate-50' },
+    { label: 'High Risk Alerts', value: (realFraudStats?.highRiskCount ?? alertsList.filter(a => a.severity === 'HIGH' && a.status === 'OPEN').length).toString(), icon: ShieldAlert, color: 'text-red-600', bg: 'bg-red-50' },
+    { label: 'Pending Review', value: (realFraudStats?.pendingReviewCount ?? stats?.fraudAlerts ?? 0).toString(), icon: Activity, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { label: 'Global Guard', value: `Active (${guardStatus?.thresholdScore || guardThreshold}%)`, icon: ShieldCheck, color: 'text-slate-600', bg: 'bg-slate-50', onClick: () => setIsGuardModalOpen(true) },
   ];
 
-  if (isFraudLoading || isStatsLoading) {
+  if (isFraudLoading) {
     return (
       <AdminLayout>
         <div className="flex items-center justify-center h-64">
@@ -88,7 +110,11 @@ export default function FraudMonitor() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.1 }}
-              className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm"
+              onClick={stat.onClick}
+              className={cn(
+                "bg-white p-6 rounded-3xl border border-slate-200 shadow-sm",
+                stat.onClick && "cursor-pointer hover:border-slate-300 transition-all"
+              )}
             >
               <div className={cn("p-3 rounded-2xl w-fit mb-4", stat.bg)}>
                 <stat.icon className={cn("w-6 h-6", stat.color)} />
@@ -98,6 +124,7 @@ export default function FraudMonitor() {
             </motion.div>
           ))}
         </div>
+
 
         <FilterBar 
           searchQuery={searchTerm}
@@ -169,7 +196,7 @@ export default function FraudMonitor() {
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-2 transition-opacity">
                           <button 
-                            onClick={() => showToast(`Viewing investigation details...`, 'info')}
+                            onClick={() => setSelectedAlert(alert)}
                             className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-900 transition-all"
                             title="View Details"
                           >
@@ -206,6 +233,80 @@ export default function FraudMonitor() {
           </div>
         </div>
       </div>
+
+      {/* Investigation Details Modal */}
+      {selectedAlert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full space-y-4 shadow-xl">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+              <h3 className="text-lg font-bold text-slate-900">Fraud Alert Investigation</h3>
+              <button onClick={() => setSelectedAlert(null)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Target User:</span>
+                <span className="font-bold text-slate-900">{selectedAlert.user?.fullName || selectedAlert.userId}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Alert Type:</span>
+                <span className="font-bold text-slate-900">{selectedAlert.type}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Severity:</span>
+                <span className="font-bold text-red-600 uppercase">{selectedAlert.severity}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Status:</span>
+                <span className="font-bold text-slate-900">{selectedAlert.status}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Detected At:</span>
+                <span className="font-medium text-slate-700">{new Date(selectedAlert.createdAt).toLocaleString()}</span>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs font-mono whitespace-pre-wrap text-slate-700">
+                {selectedAlert.description || JSON.stringify(selectedAlert, null, 2)}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Global Guard Threshold Modal */}
+      {isGuardModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-xl">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+              <h3 className="text-lg font-bold text-slate-900">Global Guard Sensitivity</h3>
+              <button onClick={() => setIsGuardModalOpen(false)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <p className="text-xs text-slate-500">Set the threshold score for triggering automated high-risk fraud alerts (0-100).</p>
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Fraud Score Threshold: {guardThreshold}%</label>
+                <input
+                  type="range"
+                  min={1}
+                  max={100}
+                  value={guardThreshold}
+                  onChange={(e) => setGuardThreshold(Number(e.target.value))}
+                  className="w-full"
+                />
+              </div>
+              <button
+                onClick={handleSaveGuardThreshold}
+                className="w-full py-3 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all"
+              >
+                Save Threshold
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }
+

@@ -9,6 +9,8 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { mockBusinesses } from '@/lib/market-mapping-mock';
 import { MappedBusiness } from '@/types/market-mapping';
+import { useBusinesses } from '@/services/useAdminHooks';
+import { useDebounce } from '@/hooks/use-debounce';
 
 const statusColor: Record<string, string> = {
   CUSTOMER: 'text-emerald-700 bg-emerald-50 border-emerald-200',
@@ -52,11 +54,22 @@ export default function BusinessesPage() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedBusiness, setSelectedBusiness] = useState<MappedBusiness | null>(null);
 
-  const filtered = mockBusinesses.filter(b => {
-    if (search && !b.name.toLowerCase().includes(search.toLowerCase()) && !b.ownerName.toLowerCase().includes(search.toLowerCase())) return false;
+  const debouncedSearch = useDebounce(search, 400);
+  const { data: realBusinessesResp } = useBusinesses({
+    search: debouncedSearch || undefined,
+    status: statusFilter === 'ALL' ? undefined : statusFilter,
+  });
+
+  const businessesList: any[] = realBusinessesResp?.data || mockBusinesses;
+
+  const filtered = businessesList.filter(b => {
+    const nameStr = b.name || b.businessName || '';
+    const ownerStr = b.ownerName || b.user?.fullName || '';
+    if (search && !nameStr.toLowerCase().includes(search.toLowerCase()) && !ownerStr.toLowerCase().includes(search.toLowerCase())) return false;
     if (statusFilter !== 'ALL' && b.status !== statusFilter) return false;
     return true;
   });
+
 
   const statuses = ['ALL', ...new Set(mockBusinesses.map(b => b.status))];
 

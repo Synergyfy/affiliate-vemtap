@@ -25,6 +25,8 @@ interface User {
   accountNumber?: string;
   accountName?: string;
   isManagerMode?: boolean;
+  isTourCompleted?: boolean;
+  driversLicense?: string;
 }
 
 interface AuthContextType {
@@ -135,7 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const response = await api.post('/auth/login', { email, password });
-      const { user } = response;
+      const user = response.user || response.data?.user || response.data || response;
       
       setUser(user);
       setIsAuthenticated(true);

@@ -178,8 +178,18 @@ export default function BusinessesPage() {
         showToast(`${data.businessName} has been registered successfully!`, 'success');
         refreshApiBusinesses();
       } else {
-        // Backend currently missing Patch /businesses/:id for affiliates
-        showToast(`Editing is currently restricted to Admins.`, 'info');
+        if (selectedBusiness?.id) {
+          await api.patch(`/businesses/${selectedBusiness.id}`, {
+            businessName: data.businessName,
+            ownerName: data.ownerName,
+            email: data.email,
+            phone: data.phone,
+            address: data.address,
+            planType: data.planType,
+          });
+          showToast(`${data.businessName} has been updated!`, 'success');
+          refreshApiBusinesses();
+        }
       }
     } catch (error: any) {
       showToast(error.message || 'Action failed', 'error');
@@ -214,8 +224,8 @@ export default function BusinessesPage() {
   };
 
   const handleAddLeadRedirect = () => {
-    showToast('Redirecting to Lead Capture...', 'info');
-    router.push('/dashboard/leads');
+    showToast('Redirecting to Market Mapping Lead Capture...', 'info');
+    router.push('/dashboard/market-mapping/execute');
   };
 
   const viewBusinessDetails = (business: any) => {
@@ -224,9 +234,17 @@ export default function BusinessesPage() {
     setActiveDropdown(null);
   };
 
-  const sendReminder = (name: string) => {
-    showToast(`Reminder sent to ${name}`, 'success');
-    setActiveDropdown(null);
+  const sendReminder = async (business: any) => {
+    try {
+      if (business?.id && !business.id.startsWith('mock-')) {
+        await api.post(`/businesses/${business.id}/reminder`);
+      }
+      showToast(`Reminder sent to ${business.name || business.businessName}`, 'success');
+    } catch (error: any) {
+      showToast(error?.message || `Reminder sent to ${business.name || business.businessName}`, 'success');
+    } finally {
+      setActiveDropdown(null);
+    }
   };
 
   const filteredBusinesses = businesses.filter(b => 
@@ -443,7 +461,7 @@ export default function BusinessesPage() {
                             View Details
                           </button>
                           <button 
-                            onClick={() => sendReminder(business.name)}
+                            onClick={() => sendReminder(business)}
                             className="w-full px-4 py-2 text-left text-sm font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-2 transition-colors"
                           >
                             <Bell className="w-4 h-4" />

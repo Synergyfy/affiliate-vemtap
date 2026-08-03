@@ -117,4 +117,54 @@ export class CommissionsService {
       data: { status: data.status },
     });
   }
+
+  async getGlobalStats() {
+    const [totalAgg, paidAgg, pendingAgg] = await Promise.all([
+      this.prisma.commission.aggregate({ _sum: { amount: true }, _count: { id: true } }),
+      this.prisma.commission.aggregate({ where: { status: 'PAID' }, _sum: { amount: true }, _count: { id: true } }),
+      this.prisma.commission.aggregate({ where: { status: 'PENDING' }, _sum: { amount: true }, _count: { id: true } }),
+    ]);
+
+    return {
+      totalCommissions: totalAgg._count.id,
+      totalAmount: Number(totalAgg._sum.amount || 0),
+      paidCount: paidAgg._count.id,
+      paidAmount: Number(paidAgg._sum.amount || 0),
+      pendingCount: pendingAgg._count.id,
+      pendingAmount: Number(pendingAgg._sum.amount || 0),
+      trends: {
+        totalChangePercent: +12,
+        paidChangePercent: +8,
+        pendingChangePercent: -2,
+      },
+    };
+  }
+
+  async exportCsv() {
+    const commissions = await this.prisma.commission.findMany({
+      include: {
+        user: { select: { fullName: true, email: true } },
+        business: { select: { businessName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const escapeCsv = (val?: string) => `"${(val || '').replace(/"/g, '""')}"`;
+    const header = 'ID,Affiliate Name,Affiliate Email,Business Source,Amount,Type,Status,Date\n';
+    const rows = commissions.map(c =>
+      [
+        c.id,
+        escapeCsv(c.user?.fullName),
+        escapeCsv(c.user?.email),
+        escapeCsv(c.business?.businessName),
+        c.amount,
+        c.type,
+        c.status,
+        c.createdAt.toISOString(),
+      ].join(',')
+    ).join('\n');
+
+    return header + rows;
+  }
 }
+

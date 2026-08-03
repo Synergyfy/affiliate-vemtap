@@ -33,6 +33,7 @@ import { ObservabilityModule } from './observability/observability.module';
 import { RequestIdMiddleware } from './observability/request-id.middleware';
 import { MetricsMiddleware } from './observability/metrics.middleware';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
+import { MarketMappingModule } from './market-mapping/market-mapping.module';
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
     StorageModule,
     OtpModule,
     TrackingModule,
+    MarketMappingModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -84,4 +84,41 @@ export class FraudService {
       },
     });
   }
+
+  async getGlobalStats() {
+    const [highRisk, pendingReview, total] = await Promise.all([
+      this.prisma.fraudAlert.count({ where: { severity: { in: [Severity.HIGH, Severity.CRITICAL] } } }),
+      this.prisma.fraudAlert.count({ where: { status: { in: [FraudStatus.OPEN, FraudStatus.UNDER_REVIEW] } } }),
+      this.prisma.fraudAlert.count(),
+    ]);
+
+    return {
+      highRiskAlerts: highRisk,
+      pendingReview: pendingReview,
+      totalAlerts: total,
+      globalGuardActive: true,
+    };
+  }
+
+  async getGuardStatus() {
+    const settings = await this.prisma.platformSettings.findFirst();
+    return {
+      globalGuardActive: true,
+      fraudThresholdScore: settings?.fraudThresholdScore || 80,
+    };
+  }
+
+  async updateGuardStatus(thresholdScore: number) {
+    const settings = await this.prisma.platformSettings.findFirst();
+    if (settings) {
+      return this.prisma.platformSettings.update({
+        where: { id: settings.id },
+        data: { fraudThresholdScore: thresholdScore },
+      });
+    }
+    return this.prisma.platformSettings.create({
+      data: { fraudThresholdScore: thresholdScore },
+    });
+  }
 }
+

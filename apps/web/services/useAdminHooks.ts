@@ -223,3 +223,112 @@ export const useCreateUser = () => {
   });
 };
 
+export const useUserLocations = (userId?: string) => {
+  return useQuery<any>({
+    queryKey: ['admin', 'users', userId, 'locations'],
+    queryFn: async () => {
+      if (!userId) return null;
+      const { data } = await api.get(`/users/${userId}/locations`);
+      return data;
+    },
+    enabled: !!userId,
+  });
+};
+
+export const useUpdateUserLocations = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, territoryId }: { userId: string; territoryId: string }) => {
+      const { data } = await api.patch(`/users/${userId}/locations`, { territoryId });
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users', variables.userId, 'locations'] });
+    },
+  });
+};
+
+export const useSendUserEmail = () => {
+  return useMutation({
+    mutationFn: async ({ userId, subject, message }: { userId: string; subject: string; message: string }) => {
+      const { data } = await api.post(`/users/${userId}/send-email`, { subject, message });
+      return data;
+    },
+  });
+};
+
+export const useUserReports = (userId?: string) => {
+  return useQuery<any>({
+    queryKey: ['admin', 'users', userId, 'reports'],
+    queryFn: async () => {
+      if (!userId) return null;
+      const { data } = await api.get(`/users/${userId}/reports`);
+      return data;
+    },
+    enabled: !!userId,
+  });
+};
+
+export const useUserHistory = (userId?: string) => {
+  return useQuery<any[]>({
+    queryKey: ['admin', 'users', userId, 'history'],
+    queryFn: async () => {
+      if (!userId) return [];
+      const { data } = await api.get(`/users/${userId}/history`);
+      return data;
+    },
+    enabled: !!userId,
+  });
+};
+
+export const useUserTeam = (userId?: string) => {
+  return useQuery<any[]>({
+    queryKey: ['admin', 'users', userId, 'team'],
+    queryFn: async () => {
+      if (!userId) return [];
+      const { data } = await api.get(`/users/${userId}/team`);
+      return data;
+    },
+    enabled: !!userId,
+  });
+};
+
+export const useUpdateUserTargets = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, dailyLeadTarget, monthlyConversionTarget, reason }: { userId: string; dailyLeadTarget?: number; monthlyConversionTarget?: number; reason?: string }) => {
+      const { data } = await api.patch(`/users/${userId}/targets`, { dailyLeadTarget, monthlyConversionTarget, reason });
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users', variables.userId] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users', variables.userId, 'history'] });
+    },
+  });
+};
+
+export const useAssignUserManager = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, managerId }: { userId: string; managerId: string }) => {
+      const { data } = await api.patch(`/users/${userId}/assign-manager`, { managerId });
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users', variables.userId] });
+    },
+  });
+};
+
+export const downloadBusinessesExport = async () => {
+  const response = await api.get('/businesses/export', { responseType: 'blob' });
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `businesses_export_${new Date().toISOString().slice(0,10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+};
+
+

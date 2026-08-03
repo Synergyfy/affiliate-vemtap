@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { ArrowLeft, MapPin, Plus, Search, Users, Building2, TrendingUp, ChevronRight, Pencil, Trash2, CheckCircle2, X } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { useAdminLocations, useCreateHierarchyNode, useUpdateHierarchyNode, useDeleteHierarchyNode } from '@/services/useMarketMappingHooks';
 
 interface Location {
   id: string;
@@ -17,11 +18,35 @@ interface Location {
 }
 
 export default function AssignPage() {
-  const [locations, setLocations] = useState<Location[]>([
+  const { data: realLocations } = useAdminLocations();
+  const createNode = useCreateHierarchyNode();
+  const updateNode = useUpdateHierarchyNode();
+  const deleteNode = useDeleteHierarchyNode();
+
+  const mockLocations: Location[] = [
     { id: 'banex', name: 'Banex Plaza', area: 'Wuse', city: 'Abuja', businesses: 120, affiliates: 3, penetration: 40 },
     { id: 'wuse-mkt', name: 'Wuse Main Market', area: 'Wuse', city: 'Abuja', businesses: 85, affiliates: 2, penetration: 37.6 },
     { id: 'garki-mkt', name: 'Garki Model Market', area: 'Garki', city: 'Abuja', businesses: 90, affiliates: 1, penetration: 27.7 },
-  ]);
+  ];
+
+  const [locations, setLocations] = useState<Location[]>(mockLocations);
+
+  useEffect(() => {
+    if (realLocations && realLocations.length > 0) {
+      setLocations(
+        realLocations.map(item => ({
+          id: item.id,
+          name: item.name,
+          area: item.area || 'General',
+          city: item.city || 'Abuja',
+          businesses: item.totalBusinesses || item.businessCount || 0,
+          affiliates: item.assignedAffiliatesCount || 0,
+          penetration: item.penetrationRate || item.penetration || 0,
+        }))
+      );
+    }
+  }, [realLocations]);
+
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newName, setNewName] = useState('');
   const [newArea, setNewArea] = useState('');
@@ -42,15 +67,17 @@ export default function AssignPage() {
     l.area.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!newName.trim()) return;
-    const id = newName.toLowerCase().replace(/\s+/g, '-');
-    setLocations(prev => [...prev, { id, name: newName.trim(), area: newArea.trim() || 'Unknown', city: newCity.trim() || 'Unknown', businesses: 0, affiliates: 0, penetration: 0 }]);
-    setNewName('');
-    setNewArea('');
-    setNewCity('');
-    setShowCreateForm(false);
+    try {
+      await createNode.mutateAsync({ name: newName.trim(), type: 'CLUSTER' });
+      setNewName('');
+      setNewArea('');
+      setNewCity('');
+      setShowCreateForm(false);
+    } catch {}
   };
+
 
   const startEdit = (loc: Location) => {
     setEditingId(loc.id);
@@ -59,12 +86,18 @@ export default function AssignPage() {
     setEditCity(loc.city);
   };
 
-  const handleEdit = (id: string) => {
+  const handleEdit = async (id: string) => {
+    try {
+      await updateNode.mutateAsync({ id, name: editName.trim(), area: editArea.trim(), city: editCity.trim() });
+    } catch {}
     setLocations(prev => prev.map(l => l.id === id ? { ...l, name: editName.trim() || l.name, area: editArea.trim() || l.area, city: editCity.trim() || l.city } : l));
     setEditingId(null);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteNode.mutateAsync(id);
+    } catch {}
     setLocations(prev => prev.filter(l => l.id !== id));
     setDeletingId(null);
   };

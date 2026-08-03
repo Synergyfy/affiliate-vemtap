@@ -180,4 +180,38 @@ export class UpdateSettingsDto {
   @IsNumber()
   @Min(0)
   reqSupervisorNetworkBusinesses?: number;
+
+  @ApiProperty({ required: false, example: 5, description: "Recurring agent commission percentage (0-100)" })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  recurringAgentCommission?: number;
+
+  @ApiProperty({ required: false, example: 10, description: "Recurring affiliate commission percentage (0-100)" })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  recurringAffiliateCommission?: number;
+
+  @ApiProperty({ required: false, example: 3, description: "Recurring line manager commission percentage (0-100)" })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  recurringLineManagerCommission?: number;
+
+  @ApiProperty({ required: false, example: 12, description: "Recurring subscription commission duration in months" })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  recurringDurationMonths?: number;
+
+  @ApiProperty({ required: false, example: 50, description: "Recurring subscription commission year 2+ rate percentage (0-100)" })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  recurringYear2Rate?: number;
 }

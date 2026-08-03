@@ -340,4 +340,80 @@ export class UsersController {
   ) {
     return this.usersService.updateManagerMode(id, data.isManagerMode);
   }
+
+  @Get(":id/locations")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Get affiliate assigned territory locations (Admin only)" })
+  getUserLocations(@Param("id") id: string) {
+    return this.usersService.getUserLocations(id);
+  }
+
+  @Patch(":id/locations")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Update affiliate assigned territory (Admin only)" })
+  updateUserLocations(@Param("id") id: string, @Body() data: { territoryId: string }) {
+    return this.usersService.updateUserLocations(id, data.territoryId);
+  }
+
+  @Post(":id/send-email")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Send email to affiliate (Admin only)" })
+  sendEmailToUser(
+    @Param("id") id: string,
+    @Body() data: { subject: string; message: string }
+  ) {
+    return this.usersService.sendEmailToUser(id, data.subject, data.message);
+  }
+
+  @Get(":id/reports")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Get affiliate performance breakdown report (Admin only)" })
+  getUserPerformanceReport(
+    @Param("id") id: string,
+    @Query("period") period?: string
+  ) {
+    return this.usersService.getUserPerformanceReport(id, period);
+  }
+
+  @Get(":id/history")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Get affiliate activity & target adjustment history (Admin only)" })
+  getUserActivityHistory(@Param("id") id: string) {
+    return this.usersService.getUserActivityHistory(id);
+  }
+
+  @Get(":id/team")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Get downline team members for affiliate/manager (Admin only)" })
+  getUserTeamMembers(@Param("id") id: string) {
+    return this.usersService.getUserTeamMembers(id);
+  }
+
+  @Patch(":id/targets")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Update affiliate daily & monthly targets (Admin only)" })
+  updateUserTargets(
+    @Param("id") id: string,
+    @CurrentUser() admin: { id: string },
+    @Body() data: { dailyLeadTarget: number; monthlyConversionTarget: number; reason?: string }
+  ) {
+    return this.usersService.updateUserTargets(
+      id,
+      admin.id,
+      data.dailyLeadTarget,
+      data.monthlyConversionTarget,
+      data.reason
+    );
+  }
+
+  @Patch(":id/assign-manager")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Assign manager/supervisor to affiliate (Admin only)" })
+  assignUserManager(
+    @Param("id") id: string,
+    @Body() data: { managerId: string }
+  ) {
+    return this.usersService.assignUserManager(id, data.managerId);
+  }
 }
+

@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { mockHierarchy } from '@/lib/market-mapping-mock';
 import { GeographicHierarchyNode } from '@/types/market-mapping';
+import { useOperationsReportsHierarchy, useOperationsReportsAggregates } from '@/services/useOperationsHooks';
 import {
   BarChart3,
   Users,
@@ -61,10 +62,6 @@ const MANAGER_ROWS = [
   { name: 'Chidi Okonkwo', region: 'Rivers Hub', leads: 98, conversions: 29, earnings: 398000 },
   { name: 'Halima Bello', region: 'Kano Corridor', leads: 85, conversions: 18, earnings: 210000 },
 ];
-
-const hierarchyNodes: GeographicHierarchyNode[] = mockHierarchy as GeographicHierarchyNode[];
-
-const hierarchyChildren = (parentId: string) => hierarchyNodes.filter(n => n.parentId === parentId);
 
 const LEVEL_LABEL: Record<string, string> = {
   COUNTRY: 'Country',
@@ -239,6 +236,10 @@ export default function ReportViewsTab() {
   const [area, setArea] = useState('all');
   const [cluster, setCluster] = useState('all');
 
+  const { data: realHierarchy } = useOperationsReportsHierarchy();
+  const hierarchyNodes: GeographicHierarchyNode[] = useMemo(() => (realHierarchy && realHierarchy.length > 0 ? realHierarchy : mockHierarchy), [realHierarchy]);
+  const hierarchyChildren = (parentId: string) => hierarchyNodes.filter((n) => n.parentId === parentId);
+
   const f = PERIOD_FACTORS[period];
 
   const data = useMemo(() => ({
@@ -254,29 +255,29 @@ export default function ReportViewsTab() {
 
   const periodLabel = period === 'daily' ? 'this day' : period === 'weekly' ? 'this week' : 'this month';
 
-  const countryOptions = useMemo(() => hierarchyNodes.filter(n => n.type === 'COUNTRY'), []);
+  const countryOptions = useMemo(() => hierarchyNodes.filter(n => n.type === 'COUNTRY'), [hierarchyNodes]);
   const stateOptions = useMemo(() => {
     if (country !== 'all') return hierarchyChildren(country);
     return hierarchyNodes.filter(n => n.type === 'STATE');
-  }, [country]);
+  }, [country, hierarchyNodes]);
   const cityOptions = useMemo(() => {
     if (state !== 'all') return hierarchyChildren(state);
     if (country !== 'all') return hierarchyChildren(country).flatMap(s => hierarchyChildren(s.id));
     return hierarchyNodes.filter(n => n.type === 'CITY');
-  }, [country, state]);
+  }, [country, state, hierarchyNodes]);
   const areaOptions = useMemo(() => {
     if (city !== 'all') return hierarchyChildren(city);
     if (state !== 'all') return hierarchyChildren(state).flatMap(c => hierarchyChildren(c.id));
     if (country !== 'all') return hierarchyChildren(country).flatMap(s => hierarchyChildren(s.id)).flatMap(c => hierarchyChildren(c.id));
     return hierarchyNodes.filter(n => n.type === 'AREA');
-  }, [country, state, city]);
+  }, [country, state, city, hierarchyNodes]);
   const clusterOptions = useMemo(() => {
     if (area !== 'all') return hierarchyChildren(area);
     if (city !== 'all') return hierarchyChildren(city).flatMap(a => hierarchyChildren(a.id));
     if (state !== 'all') return hierarchyChildren(state).flatMap(c => hierarchyChildren(c.id)).flatMap(a => hierarchyChildren(a.id));
     if (country !== 'all') return hierarchyChildren(country).flatMap(s => hierarchyChildren(s.id)).flatMap(c => hierarchyChildren(c.id)).flatMap(a => hierarchyChildren(a.id));
     return hierarchyNodes.filter(n => n.type === 'CLUSTER');
-  }, [country, state, city, area]);
+  }, [country, state, city, area, hierarchyNodes]);
 
   const handleCountryChange = (v: string) => {
     setCountry(v);
@@ -325,7 +326,7 @@ export default function ReportViewsTab() {
       });
     }
     return rows;
-  }, [country, state, city, area, cluster, f]);
+  }, [country, state, city, area, cluster, f, hierarchyNodes]);
 
   const locationTotal = useMemo(() => locationRows.reduce(
     (acc, r) => ({ leads: acc.leads + r.leads, conversions: acc.conversions + r.conversions, earnings: acc.earnings + r.earnings }),

@@ -319,17 +319,35 @@ describe("Admin Backend (e2e)", () => {
         .expect(200);
 
       expect(res.body).toHaveProperty("directCommissionRate");
+      expect(res.body).toHaveProperty("recurringAgentCommission");
+      expect(res.body).toHaveProperty("recurringAffiliateCommission");
+      expect(res.body).toHaveProperty("recurringLineManagerCommission");
+      expect(res.body).toHaveProperty("recurringDurationMonths");
+      expect(res.body).toHaveProperty("recurringYear2Rate");
     });
 
     it("/settings (PATCH) - should update platform settings", async () => {
       const res = await request(app.getHttpServer())
         .patch("/settings")
         .set("Cookie", adminCookies)
-        .send({ directCommissionRate: 0.2, earningDurationMonths: 24 })
+        .send({ 
+          directCommissionRate: 0.2, 
+          earningDurationMonths: 24,
+          recurringAgentCommission: 7,
+          recurringAffiliateCommission: 12,
+          recurringLineManagerCommission: 4,
+          recurringDurationMonths: 18,
+          recurringYear2Rate: 40,
+        })
         .expect(200);
 
       expect(Number(res.body.directCommissionRate)).toBe(0.2);
       expect(res.body.earningDurationMonths).toBe(24);
+      expect(Number(res.body.recurringAgentCommission)).toBe(7);
+      expect(Number(res.body.recurringAffiliateCommission)).toBe(12);
+      expect(Number(res.body.recurringLineManagerCommission)).toBe(4);
+      expect(res.body.recurringDurationMonths).toBe(18);
+      expect(Number(res.body.recurringYear2Rate)).toBe(40);
     });
   });
 

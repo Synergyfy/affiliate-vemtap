@@ -35,3 +35,42 @@ export const useUpdateFraudStatus = () => {
   });
 };
 
+export const useFraudStats = () => {
+  return useQuery<{
+    alertCount?: number;
+    highRiskCount?: number;
+    pendingReviewCount?: number;
+    [key: string]: any;
+  }>({
+    queryKey: ['fraud', 'stats'],
+    queryFn: async () => {
+      const { data } = await api.get('/fraud/stats');
+      return data;
+    },
+  });
+};
+
+export const useFraudGuardStatus = () => {
+  return useQuery<{ thresholdScore: number }>({
+    queryKey: ['fraud', 'guard-status'],
+    queryFn: async () => {
+      const { data } = await api.get('/fraud/guard-status');
+      return data;
+    },
+  });
+};
+
+export const useUpdateFraudGuardStatus = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ thresholdScore }: { thresholdScore: number }) => {
+      const { data } = await api.patch('/fraud/guard-status', { thresholdScore });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fraud', 'guard-status'] });
+    },
+  });
+};
+
+

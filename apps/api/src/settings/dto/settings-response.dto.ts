@@ -51,6 +51,36 @@ export class PlatformSettingsResponseDto {
   earningDurationMonths: number;
 
   @ApiProperty({
+    description: "Recurring agent commission percentage",
+    example: 5,
+  })
+  recurringAgentCommission: number;
+
+  @ApiProperty({
+    description: "Recurring affiliate commission percentage",
+    example: 10,
+  })
+  recurringAffiliateCommission: number;
+
+  @ApiProperty({
+    description: "Recurring line manager commission percentage",
+    example: 3,
+  })
+  recurringLineManagerCommission: number;
+
+  @ApiProperty({
+    description: "Recurring subscription commission duration in months",
+    example: 12,
+  })
+  recurringDurationMonths: number;
+
+  @ApiProperty({
+    description: "Recurring subscription commission year 2+ reduction rate percentage",
+    example: 50,
+  })
+  recurringYear2Rate: number;
+
+  @ApiProperty({
     description: "Last settings update timestamp",
     example: "2026-05-01T10:00:00.000Z",
   })
