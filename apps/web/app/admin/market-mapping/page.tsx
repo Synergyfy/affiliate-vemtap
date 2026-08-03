@@ -14,6 +14,7 @@ import {
   mockClusterDetail,
   mockBusinesses,
 } from '@/lib/market-mapping-mock';
+import { useAdminMarketStats, useAdminMarketHierarchy, useCreateHierarchyNode } from '@/services/useMarketMappingHooks';
 import { Globe2, Settings2, UserPlus, Building2, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -55,7 +56,13 @@ export default function MarketMappingPage() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showHierarchy, setShowHierarchy] = useState(false);
 
-  const [nodes, setNodes] = useState<GeographicHierarchyNode[]>(mockHierarchy);
+  const { data: realStats } = useAdminMarketStats();
+  const { data: realHierarchy } = useAdminMarketHierarchy();
+  const createNode = useCreateHierarchyNode();
+
+  const marketStats = realStats || mockMarketStats;
+  const nodes: GeographicHierarchyNode[] = (realHierarchy && realHierarchy.length > 0) ? realHierarchy : mockHierarchy;
+
   const [addNodeModal, setAddNodeModal] = useState<{ isOpen: boolean, type: GeographicHierarchyNode['type'] | null, parentId?: string }>({ isOpen: false, type: null });
   const [newNodeName, setNewNodeName] = useState('');
 
@@ -67,20 +74,21 @@ export default function MarketMappingPage() {
     setAddNodeModal({ isOpen: true, type, parentId });
   };
 
-  const submitAddNode = () => {
+  const submitAddNode = async () => {
     if (!newNodeName.trim() || !addNodeModal.type) return;
-    const newNode: GeographicHierarchyNode = {
-      id: `node-${Date.now()}`,
-      name: newNodeName,
-      type: addNodeModal.type,
-      parentId: addNodeModal.parentId,
-      totalBusinesses: 0,
-      penetrationPercentage: addNodeModal.type === 'CLUSTER' ? 0 : undefined,
-    };
-    setNodes(prev => [...prev, newNode]);
-    setNewNodeName('');
-    setAddNodeModal({ isOpen: false, type: null });
+    try {
+      await createNode.mutateAsync({
+        name: newNodeName,
+        type: addNodeModal.type,
+        parentId: addNodeModal.parentId,
+      });
+      setNewNodeName('');
+      setAddNodeModal({ isOpen: false, type: null });
+    } catch {
+      // Handled by react query / toast
+    }
   };
+
 
   const handleSelectBusiness = (business: MappedBusiness) => {
     setSelectedBusiness(business);

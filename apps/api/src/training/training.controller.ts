@@ -127,35 +127,17 @@ export class TrainingController {
     summary:
       "Get full module details including quizzes and scenarios (Admin only)",
   })
-  @ApiOkResponse({
-    description: "Full module details",
-    example: {
-      id: "module-uuid",
-      title: "Sales Fundamentals",
-      description: "Learn the basics of sales",
-      content: "<h1>Welcome...</h1>",
-      videoUrl: "https://video.example.com/intro",
-      pdfUrl: "https://pdf.example.com/guide.pdf",
-      order: 1,
-      category: "Sales",
-      isPublished: true,
-      quizzes: [
-        { question: "What is...", options: ["A", "B", "C"], correctAnswer: 0 },
-      ],
-      scenarios: [
-        {
-          title: "Customer objection",
-          situation: "...",
-          objection: "Too expensive",
-          idealResponse: "...",
-        },
-      ],
-    },
-  })
-  @ApiResponse({ status: 404, description: "Module not found" })
   findOneAdmin(@Param("id") id: string) {
     return this.trainingService.findModuleDetailsAdmin(id);
   }
+
+  @Get("admin/modules/:id/preview")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Preview training module (Admin only)" })
+  previewModuleAdmin(@Param("id") id: string) {
+    return this.trainingService.findModuleDetailsAdmin(id);
+  }
+
 
   @Post("admin/modules")
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)

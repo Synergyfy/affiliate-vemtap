@@ -116,4 +116,57 @@ export class NotificationsService {
       data: { isRead: true, readAt: new Date() },
     });
   }
+
+  async getUnreadCount(userId: string) {
+    const unreadCount = await this.prisma.notification.count({
+      where: { userId, isRead: false },
+    });
+    return { unreadCount };
+  }
+
+  async markAllAsRead(userId: string) {
+    await this.prisma.notification.updateMany({
+      where: { userId, isRead: false },
+      data: { isRead: true, readAt: new Date() },
+    });
+    return { message: 'All notifications marked as read' };
+  }
+
+  // --- DRAFTS & MANAGEMENT ---
+  async saveDraft(data: { title: string; message: string; type: NotificationType; targetRoles?: any; createdById?: string }) {
+    return this.prisma.notificationDraft.create({
+      data: {
+        title: data.title,
+        message: data.message,
+        type: data.type,
+        targetRoles: data.targetRoles || [],
+        createdById: data.createdById || null,
+      },
+    });
+  }
+
+  async getDrafts() {
+    return this.prisma.notificationDraft.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: { createdBy: { select: { fullName: true, email: true } } },
+    });
+  }
+
+  async deleteNotification(id: string) {
+    const notification = await this.prisma.notification.findUnique({ where: { id } });
+    if (!notification) throw new NotFoundException('Notification not found');
+
+    return this.prisma.notification.delete({ where: { id } });
+  }
+
+  async getNotificationDetail(id: string) {
+    const notification = await this.prisma.notification.findUnique({
+      where: { id },
+      include: { user: { select: { id: true, fullName: true, email: true } } },
+    });
+    if (!notification) throw new NotFoundException('Notification not found');
+
+    return notification;
+  }
 }
+

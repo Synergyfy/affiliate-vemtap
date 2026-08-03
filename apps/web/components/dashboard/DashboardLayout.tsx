@@ -31,6 +31,8 @@ import { useToast } from '@/hooks/use-toast';
 import OnboardingModal from './OnboardingModal';
 import AgreementSignModal from './AgreementSignModal';
 import DashboardTour from './DashboardTour';
+import NotificationDropdown from './NotificationDropdown';
+import { useUnreadNotificationCount } from '@/services/useNotificationHooks';
 import Image from 'next/image';
 
 interface DashboardContextType {
@@ -38,6 +40,7 @@ interface DashboardContextType {
   setIsNotificationsOpen: (open: boolean) => void;
   isProfileOpen: boolean;
   setIsProfileOpen: (open: boolean) => void;
+  startTour: () => void;
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
@@ -47,6 +50,7 @@ export const useDashboard = () => {
   if (!context) throw new Error('useDashboard must be used within DashboardLayout');
   return context;
 };
+
 
 const sidebarItems = [
   { name: 'Home', icon: Home, href: '/dashboard' },
@@ -83,6 +87,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  const { data: unreadData } = useUnreadNotificationCount();
+  const unreadCount = unreadData?.unreadCount || 0;
+
+  const startTour = () => setIsTourOpen(true);
 
   useEffect(() => {
     if (!user?.createdAt) return;
@@ -129,16 +138,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [isLoading, user, router]);
 
-  // Middleware handles server-side redirection, but we keep the loading state
-  // and user check for UI consistency while client-side state is hydrating.
-
   const handleLogout = async () => {
     await logout();
     showToast('Logged out successfully', 'info');
     router.push('/login');
   };
 
-  // Show loading state or nothing while checking auth
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -154,9 +159,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return null;
   }
 
-
   return (
-    <DashboardContext.Provider value={{ isNotificationsOpen, setIsNotificationsOpen, isProfileOpen, setIsProfileOpen }}>
+    <DashboardContext.Provider value={{ isNotificationsOpen, setIsNotificationsOpen, isProfileOpen, setIsProfileOpen, startTour }}>
       <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
         
         {/* Desktop Sidebar */}
@@ -214,8 +218,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 className="relative p-2 text-slate-600"
               >
                 <Bell className="w-6 h-6" />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-2 right-2 min-w-2 min-h-2 px-1 bg-red-500 text-white text-[9px] font-bold rounded-full border-2 border-white flex items-center justify-center" />
+                )}
               </button>
+              <NotificationDropdown isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} />
             </div>
             
             <div className="relative profile-dropdown-container">
@@ -284,9 +291,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   className="relative p-2.5 bg-slate-50 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all"
                 >
                   <Bell className="w-5 h-5" />
-                  <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-2 right-2 min-w-2 min-h-2 px-1 bg-red-500 text-white text-[9px] font-bold rounded-full border-2 border-white flex items-center justify-center" />
+                  )}
                 </button>
+                <NotificationDropdown isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} />
               </div>
+
               
               <div className="h-8 w-px bg-slate-200" />
 

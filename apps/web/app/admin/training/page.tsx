@@ -31,7 +31,8 @@ import {
   useAdminTrainingModules, 
   useCreateTrainingModule, 
   useUpdateTrainingModule, 
-  useDeleteTrainingModule 
+  useDeleteTrainingModule,
+  useAdminModulePreview
 } from '@/services/useTrainingHooks';
 import { Loader2 } from 'lucide-react';
 import { TrainingModule, Quiz, Scenario } from '@/types/api';
@@ -174,11 +175,14 @@ export default function TrainingManagement() {
   const [isCreating, setIsCreating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<TrainingModule | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
   
   const { data: trainingResponse, isLoading: isTrainingLoading } = useAdminTrainingModules();
+  const { data: previewData } = useAdminModulePreview(previewId || undefined);
   const createModule = useCreateTrainingModule();
   const updateModule = useUpdateTrainingModule();
   const deleteModule = useDeleteTrainingModule();
+
 
   const [newModule, setNewModule] = useState<Partial<TrainingModule>>({
     title: '',
@@ -636,10 +640,10 @@ export default function TrainingManagement() {
                         {module.isPublished ? 'Published' : 'Draft'}
                       </span>
                     </td>
-                    <td className="p-4 text-right">
+                        <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button 
-                          onClick={() => showToast(`Preview coming soon...`, "info")}
+                          onClick={() => setPreviewId(module.id)}
                           className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-900 transition-all"
                           title="Preview"
                         >
@@ -675,6 +679,60 @@ export default function TrainingManagement() {
           </div>
         </div>
       </div>
+
+      {/* Module Preview Modal */}
+      {previewId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto space-y-4 shadow-xl">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+              <h3 className="text-lg font-bold text-slate-900">Module Preview</h3>
+              <button onClick={() => setPreviewId(null)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {previewData ? (
+              <div className="space-y-4 text-sm text-slate-700">
+                <div>
+                  <h4 className="text-xl font-bold text-slate-900">{previewData.title}</h4>
+                  <p className="text-xs text-slate-400">{previewData.category} • Order #{previewData.order}</p>
+                </div>
+                <p className="text-sm font-medium text-slate-600">{previewData.description}</p>
+                {previewData.content && (
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 prose text-xs text-slate-800" dangerouslySetInnerHTML={{ __html: previewData.content }} />
+                )}
+                {previewData.scenarios && previewData.scenarios.length > 0 && (
+                  <div>
+                    <h5 className="font-bold text-slate-900 mb-2">Practice Scenarios ({previewData.scenarios.length})</h5>
+                    <div className="space-y-2">
+                      {previewData.scenarios.map((s: any, idx: number) => (
+                        <div key={idx} className="p-3 bg-amber-50/50 rounded-xl border border-amber-100 text-xs">
+                          <p className="font-bold text-amber-900">{s.title || `Scenario ${idx + 1}`}</p>
+                          <p className="text-slate-600">{s.situation}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {previewData.quizzes && previewData.quizzes.length > 0 && (
+                  <div>
+                    <h5 className="font-bold text-slate-900 mb-2">Quizzes ({previewData.quizzes.length})</h5>
+                    <div className="space-y-2">
+                      {previewData.quizzes.map((q: any, idx: number) => (
+                        <div key={idx} className="p-3 bg-blue-50/50 rounded-xl border border-blue-100 text-xs">
+                          <p className="font-bold text-blue-900">{idx + 1}. {q.question}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="py-8 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-blue-600" /></div>
+            )}
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }
+

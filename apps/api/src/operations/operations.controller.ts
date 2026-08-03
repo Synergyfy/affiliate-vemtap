@@ -71,4 +71,20 @@ export class OperationsController {
   getOnboardingBonus() {
     return this.operationsService.getOnboardingBonus();
   }
+
+  @Get('reports/hierarchy')
+  getReportHierarchy() {
+    return this.operationsService.getReportHierarchy();
+  }
+
+  @Get('reports/aggregates')
+  getReportAggregates(@Req() req: any) {
+    return this.operationsService.getReportAggregates(req.query);
+  }
+
+  @Get('reports/detail')
+  getReportDetail(@Req() req: any) {
+    return this.operationsService.getReportDetail(req.query.locationId, req.query.period);
+  }
 }
+

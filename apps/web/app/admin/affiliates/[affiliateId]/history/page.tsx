@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { ArrowLeft, MapPin, Clock, Building2, Edit3, History, ChevronRight, Calendar, User, Search, Filter, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useUserHistory, useUsers } from '@/services/useAdminHooks';
 
 interface HistoryEntry {
   id: string;
@@ -81,7 +82,17 @@ export default function AffiliateHistoryPage() {
   const affiliateId = params.affiliateId as string;
   const locationIdParam = searchParams.get('locationId');
 
-  const affiliate = affiliatesData[affiliateId];
+  const { data: realUserHistory } = useUserHistory(affiliateId);
+  const { data: usersData } = useUsers({ limit: 100 });
+
+  const foundUser = usersData?.data?.find(u => u.id === affiliateId);
+
+  const affiliate = foundUser ? {
+    name: foundUser.fullName,
+    email: foundUser.email,
+    avatar: foundUser.fullName?.charAt(0) || 'A',
+  } : (affiliatesData[affiliateId] || (affiliateId ? { name: `Affiliate (${affiliateId.slice(0,8)})`, email: 'affiliate@vemtap.com', avatar: 'A' } : null));
+
   const locationIds = affiliateLocationMap[affiliateId] || [];
   const [selectedLocation, setSelectedLocation] = useState<string | null>(locationIdParam);
   const [search, setSearch] = useState('');
@@ -89,7 +100,21 @@ export default function AffiliateHistoryPage() {
   const locations = locationsSummary.filter(l => locationIds.includes(l.id));
 
   const filteredHistory = useMemo(() => {
-    let entries = allHistory[affiliateId] || [];
+    let entries: HistoryEntry[] = [];
+    if (realUserHistory && realUserHistory.length > 0) {
+      entries = realUserHistory.map((item, idx) => ({
+        id: item.id || `h-${idx}`,
+        businessName: item.businessName || item.action || 'Activity',
+        type: item.type === 'created' ? 'created' : 'updated',
+        timestamp: item.createdAt ? new Date(item.createdAt).toLocaleString() : 'Recently',
+        details: item.details || item.reason || 'User target adjustment / activity',
+        locationId: item.locationId || 'gen',
+        locationName: item.locationName || 'General',
+      }));
+    } else {
+      entries = allHistory[affiliateId] || [];
+    }
+
     if (selectedLocation) {
       entries = entries.filter(e => e.locationId === selectedLocation);
     }
@@ -100,7 +125,7 @@ export default function AffiliateHistoryPage() {
       );
     }
     return entries;
-  }, [affiliateId, selectedLocation, search]);
+  }, [affiliateId, selectedLocation, search, realUserHistory]);
 
   const locationStats = selectedLocation
     ? locationsSummary.find(l => l.id === selectedLocation)
@@ -108,6 +133,7 @@ export default function AffiliateHistoryPage() {
 
   if (!affiliate) {
     return (
+
       <AdminLayout>
         <div className="max-w-3xl mx-auto text-center py-20">
           <p className="text-lg font-bold text-slate-500">Affiliate not found</p>

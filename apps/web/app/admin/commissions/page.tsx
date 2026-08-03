@@ -17,29 +17,40 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/toast';
 import { useDebounce } from '@/hooks/use-debounce';
 
-import { useCommissions, useUpdateCommissionStatus } from '@/services/useCommissionsHooks';
-import { Loader2 } from 'lucide-react';
+import { useCommissions, useUpdateCommissionStatus, useCommissionAdminStats, downloadCommissionsExport } from '@/services/useCommissionsHooks';
+import { Loader2, Check, X, CreditCard } from 'lucide-react';
 import { Commission, CommissionStatus } from '@/types/api';
 
 export default function CommissionsManagement() {
   const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
+  const [page, setPage] = useState(1);
   const debouncedSearch = useDebounce(searchTerm, 500);
   
   const { data: commissionsResponse, isLoading: isCommissionsLoading } = useCommissions({ 
-    limit: 50,
+    limit: 20,
     search: debouncedSearch || undefined,
     status: statusFilter === 'All' ? undefined : statusFilter as any
   });
+  const { data: adminStats } = useCommissionAdminStats();
   const updateStatus = useUpdateCommissionStatus();
 
   const commissionsList = commissionsResponse?.data || [];
 
+  const handleStatusChange = async (id: string, status: CommissionStatus) => {
+    try {
+      await updateStatus.mutateAsync({ id, status });
+      showToast(`Commission marked as ${status}`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to update commission status', 'error');
+    }
+  };
+
   const commissionsStats = [
-    { label: 'Total Commissions', value: `₦${commissionsList.reduce((acc, curr) => acc + Number(curr.amount), 0).toLocaleString()}`, icon: Percent, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+12%', trendUp: true },
-    { label: 'Paid Commissions', value: `₦${commissionsList.filter(c => c.status === 'PAID').reduce((acc, curr) => acc + Number(curr.amount), 0).toLocaleString()}`, icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50', trend: '+8%', trendUp: true },
-    { label: 'Pending Approval', value: `₦${commissionsList.filter(c => c.status === 'PENDING').reduce((acc, curr) => acc + Number(curr.amount), 0).toLocaleString()}`, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50', trend: '-2%', trendUp: false },
+    { label: 'Total Commissions', value: `₦${Number(adminStats?.totalCommissions || commissionsList.reduce((acc, curr) => acc + Number(curr.amount), 0)).toLocaleString()}`, icon: Percent, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+12%', trendUp: true },
+    { label: 'Paid Commissions', value: `₦${Number(adminStats?.paidCommissions || commissionsList.filter(c => c.status === 'PAID').reduce((acc, curr) => acc + Number(curr.amount), 0)).toLocaleString()}`, icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50', trend: '+8%', trendUp: true },
+    { label: 'Pending Approval', value: `₦${Number(adminStats?.pendingCommissions || commissionsList.filter(c => c.status === 'PENDING').reduce((acc, curr) => acc + Number(curr.amount), 0)).toLocaleString()}`, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50', trend: '-2%', trendUp: false },
   ];
 
   if (isCommissionsLoading) {
@@ -100,8 +111,8 @@ export default function CommissionsManagement() {
             ]}
             extraActions={
               <button 
-                onClick={() => showToast("Exporting commissions to CSV...", "info")}
-                className="px-4 py-2 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all"
+                onClick={() => downloadCommissionsExport()}
+                className="px-4 py-2 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-all text-xs font-bold"
               >
                 Export CSV
               </button>
@@ -159,8 +170,16 @@ export default function CommissionsManagement() {
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          {comm.status === 'PENDING' && (
+                            <button
+                              onClick={() => handleStatusChange(comm.id, 'PAID')}
+                              className="px-2 py-1 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg text-xs font-bold"
+                            >
+                              Approve & Pay
+                            </button>
+                          )}
                           <button 
-                            onClick={() => showToast("Details coming soon", "info")}
+                            onClick={() => showToast(`Commission details for ${comm.user?.fullName || 'affiliate'}`, "info")}
                             className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-900 transition-all"
                           >
                             <MoreHorizontal className="w-4 h-4" />
@@ -173,6 +192,7 @@ export default function CommissionsManagement() {
               </table>
           </div>
         </div>
+
       </div>
     </AdminLayout>
   );

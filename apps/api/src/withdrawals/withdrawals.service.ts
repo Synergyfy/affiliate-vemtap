@@ -351,4 +351,25 @@ export class WithdrawalsService {
       `Withdrawal approved: ${withdrawal.id}`
     );
   }
+
+  async getStats() {
+    const [totalAgg, pendingAgg, approvedAgg, completedAgg] = await Promise.all([
+      this.prisma.withdrawal.aggregate({ _sum: { amount: true }, _count: { id: true } }),
+      this.prisma.withdrawal.aggregate({ where: { status: WithdrawalStatus.PENDING }, _sum: { amount: true }, _count: { id: true } }),
+      this.prisma.withdrawal.aggregate({ where: { status: WithdrawalStatus.APPROVED }, _sum: { amount: true }, _count: { id: true } }),
+      this.prisma.withdrawal.aggregate({ where: { status: WithdrawalStatus.PAID }, _sum: { amount: true }, _count: { id: true } }),
+    ]);
+
+    return {
+      totalPayouts: Number(totalAgg._sum.amount || 0),
+      totalCount: totalAgg._count.id,
+      pendingRequests: Number(pendingAgg._sum.amount || 0),
+      pendingCount: pendingAgg._count.id,
+      approvedPayouts: Number(approvedAgg._sum.amount || 0),
+      approvedCount: approvedAgg._count.id,
+      completedPayouts: Number(completedAgg._sum.amount || 0),
+      completedCount: completedAgg._count.id,
+    };
+  }
 }
+
