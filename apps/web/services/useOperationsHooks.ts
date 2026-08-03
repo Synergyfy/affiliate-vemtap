@@ -164,7 +164,7 @@ export function useBusinessHealth() {
   return useQuery<BusinessHealthResponse>({
     queryKey: ['operations-business-health'],
     queryFn: async () => {
-      const { data } = await api.get('/operations/business-health');
+      const data = await api.get('/operations/business-health');
       return data ?? {
         businesses: [],
         summary: { totalBusinesses: 0, highRisk: 0, mediumRisk: 0, lowRisk: 0, averageHealthScore: 100 },
@@ -197,30 +197,21 @@ export function useUpdateOnboarding() {
 export function useOperationsReportsHierarchy() {
   return useQuery<any>({
     queryKey: ['operations-reports-hierarchy'],
-    queryFn: async () => {
-      const { data } = await api.get('/operations/reports/hierarchy');
-      return data;
-    },
+    queryFn: () => api.get('/operations/reports/hierarchy'),
   });
 }
 
 export function useOperationsReportsAggregates(params?: { period?: string; role?: string; locationId?: string }) {
   return useQuery<any>({
     queryKey: ['operations-reports-aggregates', params],
-    queryFn: async () => {
-      const { data } = await api.get('/operations/reports/aggregates', { params });
-      return data;
-    },
+    queryFn: () => api.get('/operations/reports/aggregates', { params }),
   });
 }
 
 export function useOperationsReportsDetail(params?: { locationId?: string; period?: string }) {
   return useQuery<any>({
     queryKey: ['operations-reports-detail', params],
-    queryFn: async () => {
-      const { data } = await api.get('/operations/reports/detail', { params });
-      return data;
-    },
+    queryFn: () => api.get('/operations/reports/detail', { params }),
   });
 }
 

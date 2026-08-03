@@ -67,6 +67,7 @@ export default function WithdrawalsManagement() {
 
   const [modal, setModal] = useState<ModalState>(null);
   const [isBulkConfirmOpen, setIsBulkConfirmOpen] = useState(false);
+  const [bulkConfirmText, setBulkConfirmText] = useState('');
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
 
   const [editAmount, setEditAmount] = useState('');

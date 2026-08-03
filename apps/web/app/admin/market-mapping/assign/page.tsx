@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { ArrowLeft, MapPin, Plus, Search, Users, Building2, TrendingUp, ChevronRight, Pencil, Trash2, CheckCircle2, X } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { useAdminLocations, useCreateHierarchyNode, useDeleteHierarchyNode } from '@/services/useMarketMappingHooks';
+import { useAdminLocations, useCreateHierarchyNode, useUpdateHierarchyNode, useDeleteHierarchyNode } from '@/services/useMarketMappingHooks';
 
 interface Location {
   id: string;
@@ -20,6 +20,7 @@ interface Location {
 export default function AssignPage() {
   const { data: realLocations } = useAdminLocations();
   const createNode = useCreateHierarchyNode();
+  const updateNode = useUpdateHierarchyNode();
   const deleteNode = useDeleteHierarchyNode();
 
   const mockLocations: Location[] = [
@@ -28,17 +29,23 @@ export default function AssignPage() {
     { id: 'garki-mkt', name: 'Garki Model Market', area: 'Garki', city: 'Abuja', businesses: 90, affiliates: 1, penetration: 27.7 },
   ];
 
-  const locations: Location[] = (realLocations && realLocations.length > 0)
-    ? realLocations.map(item => ({
-        id: item.id,
-        name: item.name,
-        area: item.area || 'General',
-        city: item.city || 'Abuja',
-        businesses: item.totalBusinesses || item.businessCount || 0,
-        affiliates: item.assignedAffiliatesCount || 0,
-        penetration: item.penetrationRate || item.penetration || 0,
-      }))
-    : mockLocations;
+  const [locations, setLocations] = useState<Location[]>(mockLocations);
+
+  useEffect(() => {
+    if (realLocations && realLocations.length > 0) {
+      setLocations(
+        realLocations.map(item => ({
+          id: item.id,
+          name: item.name,
+          area: item.area || 'General',
+          city: item.city || 'Abuja',
+          businesses: item.totalBusinesses || item.businessCount || 0,
+          affiliates: item.assignedAffiliatesCount || 0,
+          penetration: item.penetrationRate || item.penetration || 0,
+        }))
+      );
+    }
+  }, [realLocations]);
 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newName, setNewName] = useState('');
@@ -79,12 +86,18 @@ export default function AssignPage() {
     setEditCity(loc.city);
   };
 
-  const handleEdit = (id: string) => {
+  const handleEdit = async (id: string) => {
+    try {
+      await updateNode.mutateAsync({ id, name: editName.trim(), area: editArea.trim(), city: editCity.trim() });
+    } catch {}
     setLocations(prev => prev.map(l => l.id === id ? { ...l, name: editName.trim() || l.name, area: editArea.trim() || l.area, city: editCity.trim() || l.city } : l));
     setEditingId(null);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteNode.mutateAsync(id);
+    } catch {}
     setLocations(prev => prev.filter(l => l.id !== id));
     setDeletingId(null);
   };

@@ -52,12 +52,12 @@ function ReportInner() {
   const typeMeta = TYPE_LABELS[type] || TYPE_LABELS.agent;
   const periodLabel = period === 'daily' ? 'this day' : period === 'weekly' ? 'this week' : 'this month';
 
-  const monthlyTrend = detailData?.trend || Array.from({ length: 6 }, (_, i) => {
+  const monthlyTrend: number[] = detailData?.trend || Array.from({ length: 6 }, (_, i) => {
     const factor = 0.5 + ((hashNum(`${name}-${i}`) % 50) / 100);
     return Math.round(leads * factor * (1 + i * 0.1));
   });
 
-  const recentActivities = detailData?.recentActivities || [
+  const recentActivities: Array<{ title: string; desc: string; amount: string | null; date: string; type: string }> = detailData?.recentActivities || [
     { title: 'Closed a new customer', desc: `Converted a prospect in the ${name} portfolio`, amount: formatCurrency(Math.round(earnings * 0.3)), date: '2 days ago', type: 'conversion' },
     { title: 'Follow-up completed', desc: `Called lead on ${name}'s active pipeline`, amount: null, date: '4 days ago', type: 'followup' },
     { title: 'Business won', desc: `Signed subscription for ${name}`, amount: formatCurrency(Math.round(earnings * 0.2)), date: '1 week ago', type: 'won' },
@@ -106,7 +106,7 @@ function ReportInner() {
     sections: [
       {
         title: 'Lead Generation Trend',
-        lines: monthlyTrend.map((v, i) => `Period ${i + 1}: ${v.toLocaleString()} leads`),
+        lines: monthlyTrend.map((v: number, i: number) => `Period ${i + 1}: ${v.toLocaleString()} leads`),
       },
       {
         title: 'Recent Activity',
