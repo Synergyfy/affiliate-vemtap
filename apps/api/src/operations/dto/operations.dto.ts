@@ -130,3 +130,19 @@ export class GetOperationsReportDto {
   tab?: string; // teams | agents | affiliates | line-managers
 }
 
+export class GetOperationsReportDetailDto {
+  @IsString()
+  @IsOptional()
+  subjectId?: string;
+
+  @IsString()
+  type!: string;
+
+  @IsString()
+  @IsOptional()
+  period?: string;
+
+  @IsString()
+  @IsOptional()
+  locationId?: string;
+}

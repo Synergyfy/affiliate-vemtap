@@ -91,16 +91,28 @@ export class BusinessesService {
   async findOne(id: string) {
     return this.prisma.business.findUnique({
       where: { id },
-      include: { affiliate: true },
+      include: {
+        affiliate: true,
+        statusHistory: {
+          orderBy: { createdAt: 'desc' },
+          include: { changedBy: { select: { id: true, fullName: true } } },
+        },
+      },
     });
   }
 
   async create(userId: string, dto: CreateBusinessDto) {
     const subscriptionAmount = this.getPlanPrice(dto.planType);
     
-    // Fetch platform settings for the rate (fallback to 0.15)
+    // Commission settings are required for financial calculations.
     const settings = await this.prisma.platformSettings.findFirst();
-    const commissionRate = settings?.directCommissionRate ? Number(settings.directCommissionRate) : 0.15;
+    if (settings?.directCommissionRate == null) {
+      throw new BadRequestException('Direct commission rate is not configured');
+    }
+    const commissionRate = Number(settings.directCommissionRate);
+    if (!Number.isFinite(commissionRate) || commissionRate < 0 || commissionRate > 1) {
+      throw new BadRequestException('Direct commission rate is invalid');
+    }
     const commissionAmount = subscriptionAmount * commissionRate;
 
     return this.prisma.business.create({
@@ -131,7 +143,7 @@ export class BusinessesService {
     });
   }
 
-  async updateStatus(id: string, dto: { status: BusinessStatus }) {
+  async updateStatus(id: string, dto: { status: BusinessStatus }, changedById: string) {
     const business = await this.findOne(id);
     if (!business) throw new NotFoundException('Business not found');
 
@@ -142,6 +154,17 @@ export class BusinessesService {
         paidAt: dto.status === 'ACTIVE' ? new Date() : business.paidAt,
       },
     });
+
+    if (business.status !== dto.status) {
+      await this.prisma.businessStatusHistory.create({
+        data: {
+          businessId: id,
+          fromStatus: business.status,
+          toStatus: dto.status,
+          changedById,
+        },
+      });
+    }
 
     // TRIGGER COMMISSION IF ACTIVE
     if (dto.status === 'ACTIVE' && business.status !== 'ACTIVE') {
@@ -223,10 +246,22 @@ export class BusinessesService {
     
     // Fetch current rates from settings
     const settings = await this.prisma.platformSettings.findFirst();
-    const directRate = settings?.directCommissionRate ? Number(settings.directCommissionRate) : 0.15;
+    if (settings?.directCommissionRate == null) {
+      throw new BadRequestException('Direct commission rate is not configured');
+    }
+    const directRate = Number(settings.directCommissionRate);
+    if (!Number.isFinite(directRate) || directRate < 0 || directRate > 1) {
+      throw new BadRequestException('Direct commission rate is invalid');
+    }
     
     // Default indirect rate is 5%, but boosted to 10% if Manager Mode is active
-    let indirectRate = settings?.indirectCommissionRate ? Number(settings.indirectCommissionRate) : 0.05;
+    if (settings?.indirectCommissionRate == null) {
+      throw new BadRequestException('Indirect commission rate is not configured');
+    }
+    let indirectRate = Number(settings.indirectCommissionRate);
+    if (!Number.isFinite(indirectRate) || indirectRate < 0 || indirectRate > 1) {
+      throw new BadRequestException('Indirect commission rate is invalid');
+    }
 
     return this.prisma.$transaction(async (tx) => {
       // Guard: Check if direct commission already exists for this business

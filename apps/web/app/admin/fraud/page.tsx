@@ -34,7 +34,7 @@ export default function FraudMonitor() {
   const [guardThreshold, setGuardThreshold] = useState<number>(75);
   const debouncedSearch = useDebounce(searchTerm, 500);
   
-  const { data: fraudResponse, isLoading: isFraudLoading } = useFraudAlerts({ 
+  const { data: fraudResponse, isLoading: isFraudLoading, isError: isFraudError, refetch: refetchFraud } = useFraudAlerts({
     limit: 50,
     search: debouncedSearch || undefined,
     status: statusFilter === 'All' ? undefined : statusFilter as any
@@ -84,9 +84,9 @@ export default function FraudMonitor() {
   const alertsList = fraudResponse?.data || [];
 
   const fraudStats = [
-    { label: 'High Risk Alerts', value: (realFraudStats?.highRiskCount ?? alertsList.filter(a => a.severity === 'HIGH' && a.status === 'OPEN').length).toString(), icon: ShieldAlert, color: 'text-red-600', bg: 'bg-red-50' },
-    { label: 'Pending Review', value: (realFraudStats?.pendingReviewCount ?? stats?.fraudAlerts ?? 0).toString(), icon: Activity, color: 'text-orange-600', bg: 'bg-orange-50' },
-    { label: 'Global Guard', value: `Active (${guardStatus?.thresholdScore || guardThreshold}%)`, icon: ShieldCheck, color: 'text-slate-600', bg: 'bg-slate-50', onClick: () => setIsGuardModalOpen(true) },
+    { label: 'High Risk Alerts', value: realFraudStats?.highRiskCount?.toString() ?? '—', icon: ShieldAlert, color: 'text-red-600', bg: 'bg-red-50' },
+    { label: 'Pending Review', value: stats?.fraudAlerts?.toString() ?? '—', icon: Activity, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { label: 'Global Guard', value: guardStatus ? `Active (${guardStatus.thresholdScore}%)` : '—', icon: ShieldCheck, color: 'text-slate-600', bg: 'bg-slate-50', onClick: () => setIsGuardModalOpen(true) },
   ];
 
   if (isFraudLoading) {
@@ -97,6 +97,10 @@ export default function FraudMonitor() {
         </div>
       </AdminLayout>
     );
+  }
+
+  if (isFraudError) {
+    return <AdminLayout><div className="flex flex-col items-center justify-center h-64 gap-3"><AlertTriangle className="w-8 h-8 text-red-500" /><p className="text-sm text-slate-600">Unable to load fraud alerts.</p><button onClick={() => refetchFraud()} className="text-sm font-bold text-blue-600 hover:underline">Retry</button></div></AdminLayout>;
   }
 
   return (
@@ -298,9 +302,10 @@ export default function FraudMonitor() {
               </div>
               <button
                 onClick={handleSaveGuardThreshold}
+                disabled={updateGuard.isPending}
                 className="w-full py-3 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all"
               >
-                Save Threshold
+                {updateGuard.isPending ? 'Saving...' : 'Save Threshold'}
               </button>
             </div>
           </div>

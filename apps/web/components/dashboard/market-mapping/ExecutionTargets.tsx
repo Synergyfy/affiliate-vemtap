@@ -20,7 +20,7 @@ export default function ExecutionTargets({ stats }: ExecutionTargetsProps) {
         </div>
         <h3 className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
           <Target className="w-4 h-4 text-blue-500" />
-          Today's Target
+          Today&apos;s Target
         </h3>
         
         <div className="grid grid-cols-2 gap-4 mb-4">

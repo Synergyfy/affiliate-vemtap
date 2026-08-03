@@ -1,30 +1,15 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Send, MessageCircle, Clock, CheckCircle2,
   ChevronDown, HelpCircle, Loader2, CircleDot, XCircle
 } from 'lucide-react';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
-import { useAuth } from '@/hooks/use-auth';
-import { api } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
-import { useMarketMappingConfig } from '@/hooks/use-market-mapping-config';
-
-interface SupportTicket {
-  id: string;
-  subject: string;
-  message: string;
-  status: 'PENDING' | 'IN_PROGRESS' | 'RESOLVED';
-  createdAt: string;
-}
-
-const FALLBACK_STATUSES = [
-  { id: 'PENDING', label: 'Pending', color: 'text-amber-600' },
-  { id: 'IN_PROGRESS', label: 'In Progress', color: 'text-blue-600' },
-  { id: 'RESOLVED', label: 'Resolved', color: 'text-emerald-600' },
-];
+import { useToast } from '@/hooks/use-toast';
+import { useCreateSupportTicket, useFaqs, useSupportTickets } from '@/services/useSupportHooks';
 
 const statusIconMap: Record<string, typeof Clock> = {
   PENDING: Clock,
@@ -32,57 +17,16 @@ const statusIconMap: Record<string, typeof Clock> = {
   RESOLVED: CheckCircle2,
 };
 
-const FALLBACK_FAQ = [
-  { q: 'How do I start a new market mapping mission?', a: 'Go to Market Mapping > Plan Mission. Set your start date, choose Day or Week, enter a location and target number, then save. You can then go to Execute Visits to start adding businesses.' },
-  { q: 'How do I add a business after visiting?', a: 'In Execute Visits, tap "Add Business" to create a placeholder, then tap the business card to open the capture drawer. Fill in the details across General, Profile, and Sales tabs, then save.' },
-  { q: 'What does "Subscribed" mean?', a: 'A business is marked as Subscribed (Customer) when they sign up on VemTap through your referral. This counts toward your monthly subscription target.' },
-  { q: 'How do I track my progress?', a: 'Your dashboard shows daily and weekly targets with progress bars. The Pipeline page shows all businesses you captured and their current status.' },
-  { q: 'How do I contact support?', a: 'Use the contact form on this page. Fill in the subject and message, then submit. Our team will respond to you via the platform.' },
-  { q: 'How are commissions calculated?', a: 'Commissions are based on the plan type of each subscribed business. Premium and Enterprise plans earn higher commissions. Check your Wallet & Earnings for details.' },
-];
-
 export default function SupportPage() {
-  const { user } = useAuth();
-  const { data: config } = useMarketMappingConfig();
+  const { showToast } = useToast();
+  const { data: tickets = [], isLoading: isLoadingTickets } = useSupportTickets();
+  const { data: faqItems = [] } = useFaqs();
+  const createTicket = useCreateSupportTicket();
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [tickets, setTickets] = useState<SupportTicket[]>([]);
-  const [isLoadingTickets, setIsLoadingTickets] = useState(true);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
-
-  const statusList = (config?.ticketStatuses as { id: string; label: string; color: string }[] | undefined) ?? FALLBACK_STATUSES;
-  const faqItems = (config?.faqs as { id: string; question: string; answer: string }[] | undefined) ?? FALLBACK_FAQ;
-  const statusConfig = useMemo(() => {
-    const map: Record<string, { label: string; color: string; bg: string; icon: typeof Clock }> = {};
-    for (const s of statusList) {
-      map[s.id] = {
-        label: s.label,
-        color: s.color || 'text-slate-600',
-        bg: 'bg-slate-50',
-        icon: statusIconMap[s.id] || Clock,
-      };
-    }
-    return map;
-  }, [statusList]);
-
-  useEffect(() => {
-    fetchTickets();
-  }, []);
-
-  const fetchTickets = async () => {
-    setIsLoadingTickets(true);
-    try {
-      const res = await api.get('/support/tickets');
-      const data = res as any;
-      setTickets(Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : []);
-    } catch {
-      setTickets([]);
-    } finally {
-      setIsLoadingTickets(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,14 +34,13 @@ export default function SupportPage() {
 
     setIsSubmitting(true);
     try {
-      await api.post('/support/tickets', { subject: subject.trim(), message: message.trim() });
+      await createTicket.mutateAsync({ subject: subject.trim(), message: message.trim() });
       setSubmitted(true);
       setSubject('');
       setMessage('');
-      fetchTickets();
       setTimeout(() => setSubmitted(false), 3000);
     } catch (err) {
-      console.error(err);
+      showToast('Unable to submit your ticket.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -180,7 +123,12 @@ export default function SupportPage() {
           ) : tickets.length > 0 ? (
             <div className="space-y-3">
               {tickets.map(ticket => {
-                const st = statusConfig[ticket.status] || statusConfig.PENDING;
+                 const st = {
+                   label: ticket.status.replace('_', ' '),
+                   color: ticket.status === 'RESOLVED' || ticket.status === 'CLOSED' ? 'text-emerald-600' : ticket.status === 'IN_PROGRESS' ? 'text-blue-600' : 'text-amber-600',
+                   bg: 'bg-slate-50',
+                   icon: statusIconMap[ticket.status] || Clock,
+                 };
                 const StatusIcon = st.icon;
                 return (
                   <div key={ticket.id} className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 space-y-2">
@@ -216,13 +164,13 @@ export default function SupportPage() {
             <a href="/dashboard/faq" className="text-[10px] font-bold text-blue-600 hover:underline">Read More</a>
           </div>
 
-          {faqItems.map((item: any, idx: number) => (
-            <div key={idx} className="border border-slate-100 rounded-xl overflow-hidden">
+           {faqItems.map((item, idx) => (
+             <div key={item.id} className="border border-slate-100 rounded-xl overflow-hidden">
               <button
                 onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
                 className="w-full flex items-center justify-between p-3.5 text-left hover:bg-slate-50 transition-colors"
               >
-                <span className="text-xs font-bold text-slate-700 pr-2">{item.question || item.q}</span>
+                 <span className="text-xs font-bold text-slate-700 pr-2">{item.question}</span>
                 <ChevronDown className={cn("w-4 h-4 text-slate-400 shrink-0 transition-transform", openFaq === idx && "rotate-180")} />
               </button>
               <AnimatePresence>
@@ -235,7 +183,7 @@ export default function SupportPage() {
                     className="overflow-hidden"
                   >
                     <div className="px-3.5 pb-3.5 text-xs text-slate-500 font-medium leading-relaxed border-t border-slate-50 pt-3">
-                      {item.answer || item.a}
+                       {item.answer}
                     </div>
                   </motion.div>
                 )}

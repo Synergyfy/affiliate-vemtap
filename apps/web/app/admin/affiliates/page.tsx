@@ -161,7 +161,7 @@ function AffiliatesManagement() {
     if (affiliateIdParam) {
       router.push(`/admin/affiliates/${affiliateIdParam}`);
     }
-  }, [affiliateIdParam]);
+  }, [affiliateIdParam, router]);
 
   const executeAction = async () => {
     const { id, isManagerMode, currentStatus, type } = confirmModal;
@@ -309,7 +309,7 @@ function AffiliatesManagement() {
                             <UserCog className="w-8 h-8 text-violet-400" />
                           </div>
                           <p className="font-bold text-slate-600">No agents yet</p>
-                          <p className="text-sm text-slate-400">Click "Add Agent" to create a marketer account</p>
+                           <p className="text-sm text-slate-400">Click &quot;Add Agent&quot; to create a marketer account</p>
                           <button
                             onClick={() => setIsAddAgentOpen(true)}
                             className="mt-2 px-6 py-2.5 bg-violet-600 text-white rounded-xl text-sm font-bold hover:bg-violet-700 transition-all"

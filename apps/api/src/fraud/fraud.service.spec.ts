@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { FraudService } from './fraud.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { FraudStatus, Severity, UserStatus } from '@prisma/client';
-import { NotFoundException } from '@nestjs/common';
 
 describe('FraudService', () => {
   let service: FraudService;

@@ -129,3 +129,41 @@ export interface MarketMappingStats {
   todayVisits: number;
   todayNewCustomers: number;
 }
+
+export interface AdminLocation {
+  id: string;
+  name: string;
+  type: GeographicHierarchyNode['type'];
+  parent?: { id: string; name: string } | null;
+  totalBusinesses: number;
+  penetration: number;
+}
+
+export interface AdminAssignment {
+  id: string;
+  userId: string;
+  clusterId: string;
+  dailyLeadTarget: number;
+  weeklyLeadTarget: number;
+  monthlyConversionTarget: number;
+  allowUserEdit: boolean;
+  createdAt?: string;
+  user?: { id: string; fullName: string; role: string; email?: string; avatar?: string };
+  cluster?: { id: string; name: string; type: GeographicHierarchyNode['type'] };
+}
+
+export interface AdminSubmission {
+  id: string;
+  type: 'LEAD' | 'BUSINESS';
+  name: string;
+  submittedBy?: string;
+  date: string;
+}
+
+export interface AdminClusterResponse {
+  cluster: ClusterDetail & {
+    parent?: { name: string } | null;
+    assignments?: AdminAssignment[];
+  };
+  businesses: Array<Partial<MappedBusiness> & { businessName?: string }>;
+}

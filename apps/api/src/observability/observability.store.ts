@@ -9,65 +9,6 @@ export class ObservabilityStoreService {
   private buffer: LogEntryDto[] = [];
   private subject = new Subject<LogEntryDto>();
 
-  constructor() {
-    this.seedInitialLogs();
-  }
-
-  private seedInitialLogs(): void {
-    const now = Date.now();
-    const systemLogs: LogEntryDto[] = [
-      {
-        id: 'sys_' + Math.random().toString(36).substring(2, 9),
-        timestamp: new Date(now - 120000).toISOString(),
-        method: 'POST',
-        url: '/api/v1/auth/system-bootstrap',
-        statusCode: 201,
-        responseTime: 145,
-        headers: { host: 'api.vemtap.com', 'user-agent': 'VemtapCore/1.0.0' },
-        body: { service: 'AffiliateAPI', action: 'BOOTSTRAP', version: '0.1.0' },
-        responseBody: { success: true, servicesInitialized: ['Prisma', 'Redis', 'Observability', 'Storage'] },
-        traceId: 'trace_boot_' + Math.random().toString(16).substring(2, 10),
-      },
-      {
-        id: 'sys_' + Math.random().toString(36).substring(2, 9),
-        timestamp: new Date(now - 90000).toISOString(),
-        method: 'GET',
-        url: '/api/health',
-        statusCode: 200,
-        responseTime: 8,
-        headers: { host: 'api.vemtap.com', 'user-agent': 'VemtapHealthMonitor/1.0' },
-        responseBody: { status: 'ok', database: 'connected', redis: 'connected' },
-        traceId: 'trace_health_' + Math.random().toString(16).substring(2, 10),
-      },
-      {
-        id: 'sys_' + Math.random().toString(36).substring(2, 9),
-        timestamp: new Date(now - 60000).toISOString(),
-        method: 'GET',
-        url: '/api/v1/settings',
-        statusCode: 200,
-        responseTime: 18,
-        headers: { host: 'api.vemtap.com', 'user-agent': 'Mozilla/5.0' },
-        responseBody: { currency: 'NGN', referralRate: 0.1, payoutMin: 5000 },
-        traceId: 'trace_settings_' + Math.random().toString(16).substring(2, 10),
-      },
-      {
-        id: 'sys_' + Math.random().toString(36).substring(2, 9),
-        timestamp: new Date(now - 30000).toISOString(),
-        method: 'GET',
-        url: '/api/v1/dashboard/stats',
-        statusCode: 200,
-        responseTime: 54,
-        headers: { host: 'api.vemtap.com', 'user-agent': 'Mozilla/5.0' },
-        responseBody: { activeAffiliates: 142, pendingWithdrawals: 4, monthlyRevenue: 1250000 },
-        traceId: 'trace_dash_' + Math.random().toString(16).substring(2, 10),
-      }
-    ];
-
-    for (const log of systemLogs) {
-      this.buffer.push(log);
-    }
-  }
-
   addLog(entry: LogEntryDto): void {
     this.buffer.push(entry);
     if (this.buffer.length > MAX_ENTRIES) {
@@ -80,7 +21,10 @@ export class ObservabilityStoreService {
     return this.subject.asObservable();
   }
 
-  getLogs(query: QueryLogsDto) {
+  getLogs(query: QueryLogsDto): {
+    data: LogEntryDto[];
+    meta: { total: number; page: number; limit: number; totalPages: number };
+  } {
     let filtered = [...this.buffer];
 
     if (query.search) {
@@ -176,7 +120,10 @@ export class ObservabilityStoreService {
 
       // Capture recent traffic for the last 20 entries in the single pass
       if (i >= recentStartIndex) {
-        const minute = new Date(e.timestamp).toISOString().slice(0, 16);
+        const parsedTimestamp = new Date(e.timestamp);
+        if (Number.isNaN(parsedTimestamp.getTime())) continue;
+
+        const minute = parsedTimestamp.toISOString().slice(0, 16);
         if (!buckets[minute]) buckets[minute] = { count: 0, totalLatency: 0 };
         buckets[minute].count++;
         buckets[minute].totalLatency += e.responseTime;
