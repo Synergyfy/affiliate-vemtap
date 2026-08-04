@@ -152,7 +152,23 @@ export function MarketMappingProvider({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     if (!apiPerformance) return;
-    setPerformance((prev) => ({ ...prev, todayVisits: apiPerformance.dailyVisits, weekVisits: apiPerformance.weeklyVisits, monthVisits: apiPerformance.monthlyVisits, todayMeetings: apiPerformance.meetingsCompleted, todayCustomers: apiPerformance.customersAcquired, completionRate: apiPerformance.conversionRatePercent }));
+    setPerformance((prev) => ({
+      ...prev,
+      todayVisits: apiPerformance.dailyVisits ?? prev.todayVisits,
+      weekVisits: apiPerformance.weeklyVisits ?? prev.weekVisits,
+      monthVisits: apiPerformance.monthlyVisits ?? prev.monthVisits,
+      todayMeetings: apiPerformance.meetingsCompleted ?? prev.todayMeetings,
+      todayCustomers: apiPerformance.customersAcquired ?? prev.todayCustomers,
+      completionRate: apiPerformance.conversionRatePercent ?? prev.completionRate,
+      monthRevenue: apiPerformance.monthRevenue ?? prev.monthRevenue,
+      dailyTarget: apiPerformance.dailyTarget ?? prev.dailyTarget,
+      weeklyTarget: apiPerformance.weeklyTarget ?? prev.weeklyTarget,
+      monthlyTarget: apiPerformance.monthlyTarget ?? prev.monthlyTarget,
+      dailyProgress: apiPerformance.dailyProgress ?? prev.dailyProgress,
+      weeklyProgress: apiPerformance.weeklyProgress ?? prev.weeklyProgress,
+      monthlyProgress: apiPerformance.monthlyProgress ?? prev.monthlyProgress,
+      proposalsSent: apiPerformance.proposalsSent ?? prev.proposalsSent,
+    }));
   }, [apiPerformance]);
 
   useEffect(() => {

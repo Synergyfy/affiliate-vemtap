@@ -23,7 +23,6 @@ import {
   shareReport as exportShare,
   ReportExportData,
 } from '@/lib/report-export';
-import { getReportComments } from '@/lib/report-comments';
 import ReportComments from '@/components/dashboard/ReportComments';
 
 type TeamMember = {
@@ -185,9 +184,7 @@ export default function NetworkPage() {
   const openTeamReports = () => setViewTab('team-reports');
 
   const buildTeamReportData = (key: 'daily' | 'weekly' | 'monthly', s: any): ReportExportData => {
-    const commentKey = `network:team:${key}`;
-    const storedComments = getReportComments(commentKey);
-    const comments = storedComments.map((c) => ({ author: c.author, role: c.role, text: c.text, date: c.date }));
+    const comments: { author: string; role: string; text: string; date: string }[] = [];
     const memberBreakdown = (teamReports[key]?.agentPerformance || []).map((m: any) => `${m.fullName}: ${m.leads} leads, ${m.conversions} convs, ${m.conversionRate}%`);
     const summary = s.leads >= s.target
       ? `Your team of ${teamMembers.length} members generated ${s.leads} leads (${s.convs} conversions) during this period with an average completion rate of ${s.rate}%. The team is meeting overall targets.`

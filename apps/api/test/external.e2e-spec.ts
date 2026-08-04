@@ -252,8 +252,9 @@ describe('External Endpoints (e2e)', () => {
           businessName: 'Acme Ventures Ltd',
           ownerName: 'Alice Smith',
           email: 'alice@acmeventures.com',
-          phone: '+2348098765432',
-          planType: PlanType.PROFESSIONAL,
+           phone: '+2348098765432',
+           amount: 10000,
+           planType: PlanType.PROFESSIONAL,
           address: '456 Corporate Boulevard, Lagos',
           businessType: 'Technology',
         })
@@ -280,8 +281,9 @@ describe('External Endpoints (e2e)', () => {
           businessName: 'Acme Ventures Ltd',
           ownerName: 'Alice Smith',
           email: 'alice@acmeventures.com',
-          phone: '+2348098765432',
-          planType: PlanType.PROFESSIONAL,
+           phone: '+2348098765432',
+           amount: 10000,
+           planType: PlanType.PROFESSIONAL,
           address: '456 Corporate Boulevard, Lagos',
           businessType: 'Technology',
         })
@@ -297,8 +299,9 @@ describe('External Endpoints (e2e)', () => {
           businessName: 'Acme Ventures Ltd',
           ownerName: 'Alice Smith',
           email: 'alice@acmeventures.com',
-          phone: '+2348098765432',
-          planType: PlanType.PROFESSIONAL,
+           phone: '+2348098765432',
+           amount: 10000,
+           planType: PlanType.PROFESSIONAL,
           address: '456 Corporate Boulevard, Lagos',
           businessType: 'Technology',
         })
@@ -314,8 +317,9 @@ describe('External Endpoints (e2e)', () => {
           businessName: 'Acme Ventures Ltd',
           ownerName: 'Alice Smith',
           email: 'alice@acmeventures.com',
-          phone: '+2348098765432',
-          planType: PlanType.PROFESSIONAL,
+           phone: '+2348098765432',
+           amount: 10000,
+           planType: PlanType.PROFESSIONAL,
           address: '456 Corporate Boulevard, Lagos',
           businessType: 'Technology',
         })
@@ -347,7 +351,7 @@ describe('External Endpoints (e2e)', () => {
       expect(commissions.length).toBeGreaterThan(0);
       const directComm = commissions.find((c) => c.userId === affiliateId);
       expect(directComm).toBeDefined();
-      expect(Number(directComm!.amount)).toBe(1500); // 15% of 10000 plan
+       expect(Number(directComm!.amount)).toBe(1500); // 15% of 10000 plan
     });
 
     it('should fail with 409 Conflict if business email is already registered', async () => {
@@ -359,8 +363,9 @@ describe('External Endpoints (e2e)', () => {
           businessName: 'Another Business',
           ownerName: 'Alice Smith',
           email: 'alice@acmeventures.com', // Duplicate email
-          phone: '+2348098765432',
-          planType: PlanType.BASIC,
+           phone: '+2348098765432',
+           amount: 10000,
+           planType: PlanType.BASIC,
           address: '456 Corporate Boulevard, Lagos',
           businessType: 'Technology',
         })

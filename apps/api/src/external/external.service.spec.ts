@@ -97,6 +97,7 @@ describe('ExternalService', () => {
       ownerName: 'Owner Name',
       email: 'owner@business.com',
       phone: '08123456789',
+      amount: 5000,
       planType: PlanType.STARTER,
       address: '123 Test St',
       businessType: 'SaaS',

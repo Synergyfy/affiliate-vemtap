@@ -5,20 +5,23 @@ import {
   Users, 
   PhoneCall, 
   PlayCircle, 
-  CheckCircle2, 
-  Rocket, 
-  AlertCircle, 
-  RefreshCw,
+  Rocket,
+  ListTodo,
+  CalendarClock,
   TrendingUp
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 import { useLeadStats } from '@/services/useLeadsHooks';
 import { useMyBusinesses } from '@/services/useBusinessHooks';
+import { useOperationsStats } from '@/services/useOperationsHooks';
 
 export default function KPIStrip() {
   const { data: leadStats, isLoading: isLoadingLeads } = useLeadStats();
   const { data: businessData, isLoading: isLoadingBusinesses } = useMyBusinesses({ limit: 1 });
+  const { data: operationsStats, isLoading: isLoadingOperations } = useOperationsStats();
+
+  const isLoading = isLoadingLeads || isLoadingBusinesses || isLoadingOperations;
 
   const stats = [
     { label: 'Total Leads', value: leadStats?.total ?? 0, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', trend: 'Total' },
@@ -26,8 +29,8 @@ export default function KPIStrip() {
     { label: 'Interested', value: leadStats?.interested ?? 0, icon: PlayCircle, color: 'text-purple-600', bg: 'bg-purple-50', trend: 'Warm' },
     { label: 'Businesses Won', value: businessData?.meta?.total ?? 0, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: 'Total' },
     { label: 'Contacted', value: leadStats?.contacted ?? 0, icon: Rocket, color: 'text-blue-600', bg: 'bg-blue-50', trend: 'Active' },
-    { label: 'Support Alerts', value: '0', icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', trend: 'None' },
-    { label: 'Renewals Due', value: '0', icon: RefreshCw, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: '30 Days' },
+    { label: 'Pending Tasks', value: operationsStats?.pendingTasks ?? 0, icon: ListTodo, color: 'text-orange-600', bg: 'bg-orange-50', trend: 'Open' },
+    { label: 'Upcoming Demos', value: operationsStats?.upcomingDemos ?? 0, icon: CalendarClock, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: 'Scheduled' },
   ];
 
   return (
@@ -47,7 +50,7 @@ export default function KPIStrip() {
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{kpi.trend}</span>
           </div>
           <div>
-            {isLoadingLeads || isLoadingBusinesses ? (
+            {isLoading ? (
               <div className="h-8 w-12 bg-slate-100 animate-pulse rounded-lg mb-1" />
             ) : (
               <h4 className="text-2xl font-black text-slate-900">{kpi.value}</h4>

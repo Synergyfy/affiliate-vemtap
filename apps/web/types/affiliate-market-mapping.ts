@@ -127,6 +127,7 @@ export interface AffiliatePerformance {
   dailyProgress: number;
   weeklyProgress: number;
   monthlyProgress: number;
+  proposalsSent?: number;
 }
 
 export interface TerritoryStats {

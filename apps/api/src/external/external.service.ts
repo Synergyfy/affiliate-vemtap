@@ -85,13 +85,9 @@ export class ExternalService {
 
     // 3. Determine plan & amounts
     const planType = dto.planType ?? PlanType.BASIC;
-    const planPrices: Record<PlanType, number> = {
-      [PlanType.BASIC]: 3000,
-      [PlanType.STARTER]: 5000,
-      [PlanType.PROFESSIONAL]: 10000,
-      [PlanType.ENTERPRISE]: 15000,
-    };
-    const subscriptionAmount = planPrices[planType];
+    // The subscription amount is owned by the Vemtap backend and sent in the
+    // payload — the affiliate system never derives prices from planType.
+    const subscriptionAmount = dto.amount;
 
     const settings = await this.prisma.platformSettings.findFirst();
     const commissionRate = settings?.directCommissionRate
@@ -269,13 +265,9 @@ export class ExternalService {
 
     // 3. Determine plan & amounts
     const planType = dto.planType ?? PlanType.BASIC;
-    const planPrices: Record<PlanType, number> = {
-      [PlanType.BASIC]: 3000,
-      [PlanType.STARTER]: 5000,
-      [PlanType.PROFESSIONAL]: 10000,
-      [PlanType.ENTERPRISE]: 15000,
-    };
-    const subscriptionAmount = planPrices[planType];
+    // The subscription amount is owned by the Vemtap backend and sent in the
+    // payload — the affiliate system never derives prices from planType.
+    const subscriptionAmount = dto.amount;
 
     const settings = await this.prisma.platformSettings.findFirst();
     const commissionRate = settings?.directCommissionRate

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsEmail, IsEnum, IsOptional, IsNotEmpty } from 'class-validator';
+import { IsString, IsEmail, IsEnum, IsOptional, IsNotEmpty, IsNumber, Min } from 'class-validator';
 import { PlanType } from '@prisma/client';
 
 export class AttachBusinessDto {
@@ -27,6 +27,14 @@ export class AttachBusinessDto {
   @IsString()
   @IsNotEmpty()
   phone: string;
+
+  @ApiProperty({
+    description: 'The actual monthly subscription amount Vemtap charged the business',
+    example: 10000,
+  })
+  @IsNumber({}, { message: 'amount must be a number' })
+  @Min(0)
+  amount: number;
 
   @ApiProperty({
     description: 'Subscription plan the business signed up for',

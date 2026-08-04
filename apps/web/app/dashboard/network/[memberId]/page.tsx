@@ -22,7 +22,6 @@ import {
   shareReport as exportShare,
   ReportExportData,
 } from '@/lib/report-export';
-import { getReportComments } from '@/lib/report-comments';
 import ReportComments from '@/components/dashboard/ReportComments';
 
 interface ActivityEntry {
@@ -112,9 +111,7 @@ export default function TeamMemberDetailPage() {
 
   const buildMemberReportData = (type: 'daily' | 'weekly' | 'monthly', m: TeamMember): ReportExportData => {
     const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    const commentKey = `network:member:${m.id}:${type}`;
-    const storedComments = getReportComments(commentKey);
-    const comments = storedComments.map((c) => ({ author: c.author, role: c.role, text: c.text, date: c.date }));
+    const comments: { author: string; role: string; text: string; date: string }[] = [];
 
     let summary: string;
     if (type === 'daily') {

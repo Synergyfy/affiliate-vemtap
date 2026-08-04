@@ -10,7 +10,6 @@ import {
   MessageSquare, Share2, Download
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getAllReportComments } from '@/lib/report-comments';
 import { downloadReportAsPdf, shareReport as exportShare, ReportExportData } from '@/lib/report-export';
 import { useToast } from '@/hooks/use-toast';
 import ReportComments from '@/components/dashboard/ReportComments';
@@ -52,31 +51,9 @@ function ReportInner() {
   const recentActivities = detailData?.recentActivities || [];
 
 
-  // Gather notes & comments attached to this report across all surfaces
-  const comments = useMemo(() => {
-    const all = getAllReportComments();
-    const keys = [
-      `insights:${period}`,
-      `network:team:${period}`,
-      `network:member:${name.toLowerCase()}:${period}`,
-      `admin:${name.toLowerCase()}:${period}`,
-    ];
-    const seen = new Set<string>();
-    const list: { author: string; role: string; text: string; date: string; source: string }[] = [];
-    for (const k of keys) {
-      for (const c of all[k] || []) {
-        if (seen.has(c.id)) continue;
-        seen.add(c.id);
-        list.push({ ...c, source: k });
-      }
-    }
-    // Fall back to the most relevant key if nothing matched yet
-    if (list.length === 0) {
-      const fallbackKey = `admin:${name.toLowerCase()}:${period}`;
-      for (const c of all[fallbackKey] || []) list.push({ ...c, source: fallbackKey });
-    }
-    return list.sort((a, b) => (a.date < b.date ? 1 : -1));
-  }, [name, period]);
+  // Comments are now persisted via the market-mapping notes API and rendered
+  // by the ReportComments component; the legacy in-browser map is gone.
+  const comments = useMemo(() => [] as { author: string; role: string; text: string; date: string; source: string }[], []);
 
   const buildExport = (): ReportExportData => ({
     reportTitle: `${period === 'daily' ? 'Daily' : period === 'weekly' ? 'Weekly' : 'Monthly'} Report — ${name}`,

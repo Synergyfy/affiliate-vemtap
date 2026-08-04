@@ -68,7 +68,7 @@ function ExecutePage() {
   }, [activeView, visits, activeHorizon, anchors, priorities, partnerships]);
 
   const addedCount = contextVisits.length;
-  const targetCount = activeView === 'default' ? (activePlan?.targetCount || 20) : contextVisits.length;
+  const targetCount = activeView === 'default' ? (activePlan?.targetCount || 0) : contextVisits.length;
   const remaining = Math.max(0, targetCount - addedCount);
 
   const handleSave = (updatedVisit: any, closeDrawer = true) => {
@@ -197,7 +197,7 @@ function ExecutePage() {
 
           {/* Progress bar */}
           <div className="w-full bg-slate-100 rounded-full h-2.5 mb-3">
-            <div className="bg-blue-600 h-2.5 rounded-full transition-all" style={{ width: `${Math.min(100, (addedCount / targetCount) * 100)}%` }} />
+            <div className="bg-blue-600 h-2.5 rounded-full transition-all" style={{ width: `${targetCount > 0 ? Math.min(100, (addedCount / targetCount) * 100) : 0}%` }} />
           </div>
 
           <div className="flex items-center justify-between text-xs">

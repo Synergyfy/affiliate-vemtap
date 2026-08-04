@@ -1,10 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, CheckCheck, Info, CheckCircle2, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { Bell, CheckCheck, Info, CheckCircle2, AlertTriangle, ShieldAlert, BellRing } from 'lucide-react';
 import { useMyNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '@/services/useNotificationHooks';
 import { Notification } from '@/types/api';
+import { enablePushNotifications, getPushPermission } from '@/lib/push-notifications';
+import { useToast } from '@/hooks/use-toast';
 
 interface NotificationDropdownProps {
   isOpen: boolean;
@@ -15,6 +17,26 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
   const { data: notificationData, isLoading } = useMyNotifications({ limit: 10 });
   const markAsRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
+  const { showToast } = useToast();
+  const [isEnabling, setIsEnabling] = useState(false);
+
+  const pushPermission = typeof window !== 'undefined' ? getPushPermission() : 'denied';
+
+  const handleEnablePush = async () => {
+    setIsEnabling(true);
+    try {
+      const enabled = await enablePushNotifications();
+      if (enabled) {
+        showToast('Notifications enabled. You will receive push updates.', 'success');
+      } else if (pushPermission === 'denied') {
+        showToast('Notifications are blocked. Allow them in your browser site settings, then retry.', 'error');
+      } else {
+        showToast('Permission not granted. Click again to allow notifications.', 'info');
+      }
+    } finally {
+      setIsEnabling(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -53,16 +75,28 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
               </span>
             )}
           </div>
-          {unreadCount > 0 && (
-            <button
-              onClick={() => markAllRead.mutate()}
-              disabled={markAllRead.isPending}
-              className="flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-700 transition-colors"
-            >
-              <CheckCheck className="w-3.5 h-3.5" />
-              Mark all read
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {pushPermission !== 'granted' && (
+              <button
+                onClick={handleEnablePush}
+                disabled={isEnabling}
+                className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 hover:text-emerald-700 transition-colors disabled:opacity-50"
+              >
+                <BellRing className="w-3.5 h-3.5" />
+                {isEnabling ? 'Enabling…' : pushPermission === 'denied' ? 'Notifications blocked' : 'Enable push'}
+              </button>
+            )}
+            {unreadCount > 0 && (
+              <button
+                onClick={() => markAllRead.mutate()}
+                disabled={markAllRead.isPending}
+                className="flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-700 transition-colors"
+              >
+                <CheckCheck className="w-3.5 h-3.5" />
+                Mark all read
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
