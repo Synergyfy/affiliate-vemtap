@@ -86,6 +86,96 @@ export interface User {
   };
 }
 
+export interface AdminPerformanceReport {
+  userId: string;
+  period: string;
+  totalLeads: number;
+  totalConversions: number;
+  totalEarnings: number;
+  dailyTarget?: number | null;
+  monthlyTarget?: number | null;
+  reportingScore: number;
+  attendanceRate: number;
+  leads: Lead[];
+  businesses: Business[];
+  commissions: Commission[];
+}
+
+export interface AdminLocationAssignment {
+  id: string;
+  clusterId: string;
+  assignedAt: string;
+  dailyLeadTarget: number;
+  weeklyLeadTarget: number;
+  monthlyConversionTarget: number;
+  cluster: {
+    id: string;
+    name: string;
+    type: string;
+    parentId?: string | null;
+    totalBusinesses?: number;
+  };
+}
+
+export interface AdminUserLocations {
+  id: string;
+  territoryId?: string | null;
+  marketMappingAssignments: AdminLocationAssignment[];
+}
+
+export interface AdminActivity {
+  id: string;
+  type: string;
+  title: string;
+  description?: string | null;
+  businessName?: string | null;
+  createdAt: string;
+}
+
+export interface AdminTargetAdjustmentLog {
+  id: string;
+  managerId: string;
+  memberId: string;
+  oldDailyLeadTarget: number;
+  newDailyLeadTarget: number;
+  oldMonthlyConversionTarget: number;
+  newMonthlyConversionTarget: number;
+  reason?: string | null;
+  createdAt: string;
+}
+
+export interface AdminAgreementSignature {
+  id: string;
+  agreementId: string;
+  version: number;
+  signedAt: string;
+  agreement?: { id: string; title: string };
+}
+
+export interface AdminUserHistory {
+  userId: string;
+  activities: AdminActivity[];
+  targetAdjustmentLogs: AdminTargetAdjustmentLog[];
+  signatures: AdminAgreementSignature[];
+}
+
+export interface AdminTeamMember {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  role: Role;
+  status: 'ACTIVE' | 'SUSPENDED';
+  dailyLeadTarget?: number | null;
+  monthlyConversionTarget?: number | null;
+  createdAt: string;
+}
+
+export interface AdminUserTeam {
+  managerId: string;
+  teamMembers: AdminTeamMember[];
+}
+
 export interface PlatformSettings {
   id: string;
   directCommissionRate: number;

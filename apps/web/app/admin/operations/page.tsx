@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdminLayout from '@/components/admin/AdminLayout';
@@ -14,41 +14,13 @@ import BusinessesTab from '@/components/dashboard/operations/BusinessesTab';
 import ReportViewsTab from '@/components/dashboard/operations/ReportViewsTab';
 import { X, Building2, Crown, MapPin, Phone, Mail, User, Clock, Calendar, CheckCircle2, BarChart3, ArrowLeft, Users, Star, FileText, ExternalLink, Search, Filter, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { mockBusinesses } from '@/lib/market-mapping-mock';
-import { MappedBusiness } from '@/types/market-mapping';
+import { useOperationsBusiness } from '@/services/useOperationsHooks';
 
 const statusColor: Record<string, string> = {
-  CUSTOMER: 'text-emerald-700 bg-emerald-50 border-emerald-200',
-  MEETING: 'text-blue-700 bg-blue-50 border-blue-200',
-  NEGOTIATING: 'text-amber-700 bg-amber-50 border-amber-200',
-  PROSPECT: 'text-slate-700 bg-slate-50 border-slate-200',
-  LOST: 'text-red-700 bg-red-50 border-red-200',
-};
-
-const sizeLabel: Record<string, string> = {
-  SMALL: 'Small',
-  MEDIUM: 'Medium',
-  LARGE: 'Large',
-  ENTERPRISE: 'Enterprise',
-};
-
-const movementHistory: Record<string, { from: string; to: string; date: string; by: string }[]> = {
-  'b-101': [
-    { from: 'PROSPECT', to: 'MEETING', date: '2026-06-01', by: 'Emmanuel Nnamdi' },
-    { from: 'MEETING', to: 'NEGOTIATING', date: '2026-06-10', by: 'Emmanuel Nnamdi' },
-    { from: 'NEGOTIATING', to: 'CUSTOMER', date: '2026-06-25', by: 'Emmanuel Nnamdi' },
-  ],
-  'b-102': [
-    { from: 'PROSPECT', to: 'MEETING', date: '2026-05-20', by: 'Emmanuel Nnamdi' },
-    { from: 'MEETING', to: 'CUSTOMER', date: '2026-06-05', by: 'Emmanuel Nnamdi' },
-  ],
-  'b-103': [
-    { from: 'PROSPECT', to: 'MEETING', date: '2026-06-10', by: 'Sarah Okafor' },
-  ],
-  'b-104': [
-    { from: 'PROSPECT', to: 'MEETING', date: '2026-07-01', by: 'Sarah Okafor' },
-    { from: 'MEETING', to: 'NEGOTIATING', date: '2026-07-15', by: 'Sarah Okafor' },
-  ],
+  ACTIVE: 'text-emerald-700 bg-emerald-50 border-emerald-200',
+  TRIAL: 'text-blue-700 bg-blue-50 border-blue-200',
+  EXPIRED: 'text-amber-700 bg-amber-50 border-amber-200',
+  CANCELLED: 'text-red-700 bg-red-50 border-red-200',
 };
 
 function AdminOperationsPage() {
@@ -56,17 +28,7 @@ function AdminOperationsPage() {
   const router = useRouter();
   const businessId = searchParams.get('businessId');
   const [activeTab, setActiveTab] = useState('overview');
-  const [selectedBusiness, setSelectedBusiness] = useState<MappedBusiness | null>(null);
-
-  useEffect(() => {
-    if (businessId) {
-      const biz = mockBusinesses.find(b => b.id === businessId);
-      if (biz) {
-        setSelectedBusiness(biz);
-        setActiveTab('businesses');
-      }
-    }
-  }, [businessId]);
+  const { data: selectedBusiness, isLoading: isBusinessLoading, error: businessError } = useOperationsBusiness(businessId || undefined);
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -88,7 +50,6 @@ function AdminOperationsPage() {
   };
 
   const closeBusinessModal = () => {
-    setSelectedBusiness(null);
     router.replace('/admin/operations');
   };
 
@@ -121,6 +82,9 @@ function AdminOperationsPage() {
         </div>
       </div>
 
+      {businessId && isBusinessLoading && <p className="text-sm text-slate-500">Loading business details...</p>}
+      {businessId && businessError && <p className="text-sm text-red-600">Unable to load this business.</p>}
+
       {/* Business Detail Modal */}
       <AnimatePresence>
         {selectedBusiness && (
@@ -145,16 +109,15 @@ function AdminOperationsPage() {
                   <div className="flex items-center gap-3">
                     <div className={cn(
                       "w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold",
-                      selectedBusiness.isAnchor ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"
+                       "bg-slate-100 text-slate-600"
                     )}>
-                      {selectedBusiness.name.charAt(0)}
+                       {selectedBusiness.businessName.charAt(0)}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-xl font-bold text-slate-900">{selectedBusiness.name}</h3>
-                        {selectedBusiness.isAnchor && <Crown className="w-4 h-4 text-amber-500" />}
+                        <h3 className="text-xl font-bold text-slate-900">{selectedBusiness.businessName}</h3>
                       </div>
-                      <p className="text-xs text-slate-500">{selectedBusiness.category} • {selectedBusiness.industry}</p>
+                      <p className="text-xs text-slate-500">{selectedBusiness.category || 'Business'} • {selectedBusiness.planType}</p>
                     </div>
                   </div>
                   <button onClick={closeBusinessModal} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
@@ -172,54 +135,49 @@ function AdminOperationsPage() {
                     selectedBusiness.priority === 'HIGH' ? "bg-red-50 text-red-700" :
                     selectedBusiness.priority === 'MEDIUM' ? "bg-amber-50 text-amber-700" : "bg-slate-50 text-slate-500"
                   )}>
-                    {selectedBusiness.priority} PRIORITY
+                     {selectedBusiness.status} STATUS
                   </span>
-                  {selectedBusiness.isVerified && (
-                    <span className="text-[10px] flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
-                      <CheckCircle2 className="w-3 h-3" /> Verified
-                    </span>
-                  )}
                 </div>
 
                 {/* Quick Stats */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Anchor Score</p>
-                    <p className="text-xl font-black text-slate-900">{selectedBusiness.anchorScore}/100</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Subscription</p>
+                    <p className="text-xl font-black text-slate-900">₦{selectedBusiness.subscriptionAmount.toLocaleString()}</p>
                   </div>
                   <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Influence Score</p>
-                    <p className="text-xl font-black text-slate-900">{selectedBusiness.influenceScore}/100</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Commission</p>
+                    <p className="text-xl font-black text-slate-900">₦{selectedBusiness.commissionAmount.toLocaleString()}</p>
                   </div>
                   <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Daily Customers</p>
-                    <p className="text-xl font-black text-slate-900">{selectedBusiness.dailyCustomers?.toLocaleString()}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Created</p>
+                    <p className="text-xl font-black text-slate-900">{new Date(selectedBusiness.createdAt).toLocaleDateString()}</p>
                   </div>
                   <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Size</p>
-                    <p className="text-xl font-black text-slate-900">{sizeLabel[selectedBusiness.size]}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Affiliate</p>
+                    <p className="text-xl font-black text-slate-900">{selectedBusiness.affiliate?.fullName || 'Unassigned'}</p>
                   </div>
                 </div>
 
                 {/* Status Movement History */}
-                {movementHistory[selectedBusiness.id] && movementHistory[selectedBusiness.id].length > 0 && (
+                {selectedBusiness.statusHistory.length > 0 && (
                   <div className="space-y-3">
                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                       <BarChart3 className="w-3.5 h-3.5 text-blue-500" /> Lifecycle Movement
                     </h4>
                     <div className="relative pl-6 space-y-3 before:absolute before:left-[9px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
-                      {movementHistory[selectedBusiness.id].map((move, idx) => (
-                        <div key={idx} className="relative">
+                      {selectedBusiness.statusHistory.map((move) => (
+                        <div key={move.id} className="relative">
                           <div className="absolute -left-[18px] top-1 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white shadow" />
                           <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100 ml-2">
                             <div className="flex flex-col gap-0.5">
-                              <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded text-center", statusColor[move.from] || '')}>{move.from}</span>
+                              <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded text-center", statusColor[move.fromStatus || ''] || '')}>{move.fromStatus || 'NEW'}</span>
                               <span className="text-[8px] text-slate-400 text-center">→</span>
-                              <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded text-center", statusColor[move.to] || '')}>{move.to}</span>
+                              <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded text-center", statusColor[move.toStatus] || '')}>{move.toStatus}</span>
                             </div>
                             <div className="text-[10px] text-slate-500 ml-3">
-                              <p>by <span className="font-bold text-slate-700">{move.by}</span></p>
-                              <p className="flex items-center gap-1 mt-0.5"><Calendar className="w-3 h-3" /> {move.date}</p>
+                              <p>by <span className="font-bold text-slate-700">{move.changedBy.fullName}</span></p>
+                              <p className="flex items-center gap-1 mt-0.5"><Calendar className="w-3 h-3" /> {new Date(move.createdAt).toLocaleDateString()}</p>
                             </div>
                           </div>
                         </div>
@@ -243,7 +201,7 @@ function AdminOperationsPage() {
                       <Star className="w-4 h-4 text-amber-500" />
                       <div>
                         <p className="text-[10px] font-bold text-slate-400">Decision Maker</p>
-                        <p className="text-sm font-bold text-slate-900">{selectedBusiness.decisionMaker}</p>
+                         <p className="text-sm font-bold text-slate-900">{selectedBusiness.affiliate?.fullName || 'Unassigned'}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">

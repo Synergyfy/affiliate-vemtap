@@ -34,6 +34,8 @@ import { RequestIdMiddleware } from './observability/request-id.middleware';
 import { MetricsMiddleware } from './observability/metrics.middleware';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { MarketMappingModule } from './market-mapping/market-mapping.module';
+import { SupportModule } from './support/support.module';
+import { FaqsModule } from './faqs/faqs.module';
 
 @Module({
   imports: [
@@ -70,6 +72,8 @@ import { MarketMappingModule } from './market-mapping/market-mapping.module';
     OtpModule,
     TrackingModule,
     MarketMappingModule,
+    SupportModule,
+    FaqsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

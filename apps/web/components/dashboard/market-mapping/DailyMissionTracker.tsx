@@ -36,7 +36,7 @@ export default function DailyMissionTracker({ stats }: DailyMissionTrackerProps)
           <div className="flex items-center justify-between">
             <h3 className="font-black text-xl flex items-center gap-2">
               <Target className="w-6 h-6 text-blue-400" />
-              Today's Mission Progress
+              Today&apos;s Mission Progress
             </h3>
             <span className="text-3xl font-black text-emerald-400">{completionRate}%</span>
           </div>

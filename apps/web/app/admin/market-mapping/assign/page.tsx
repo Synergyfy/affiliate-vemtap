@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { ArrowLeft, MapPin, Plus, Search, Users, Building2, TrendingUp, ChevronRight, Pencil, Trash2, CheckCircle2, X } from 'lucide-react';
 import Link from 'next/link';
@@ -18,49 +18,27 @@ interface Location {
 }
 
 export default function AssignPage() {
-  const { data: realLocations } = useAdminLocations();
+  const locationsQuery = useAdminLocations();
   const createNode = useCreateHierarchyNode();
   const updateNode = useUpdateHierarchyNode();
   const deleteNode = useDeleteHierarchyNode();
 
-  const mockLocations: Location[] = [
-    { id: 'banex', name: 'Banex Plaza', area: 'Wuse', city: 'Abuja', businesses: 120, affiliates: 3, penetration: 40 },
-    { id: 'wuse-mkt', name: 'Wuse Main Market', area: 'Wuse', city: 'Abuja', businesses: 85, affiliates: 2, penetration: 37.6 },
-    { id: 'garki-mkt', name: 'Garki Model Market', area: 'Garki', city: 'Abuja', businesses: 90, affiliates: 1, penetration: 27.7 },
-  ];
-
-  const [locations, setLocations] = useState<Location[]>(mockLocations);
-
-  useEffect(() => {
-    if (realLocations && realLocations.length > 0) {
-      setLocations(
-        realLocations.map(item => ({
-          id: item.id,
-          name: item.name,
-          area: item.area || 'General',
-          city: item.city || 'Abuja',
-          businesses: item.totalBusinesses || item.businessCount || 0,
-          affiliates: item.assignedAffiliatesCount || 0,
-          penetration: item.penetrationRate || item.penetration || 0,
-        }))
-      );
-    }
-  }, [realLocations]);
+  const locations: Location[] = (locationsQuery.data ?? []).map(item => ({
+    id: item.id, name: item.name, area: item.parent?.name ?? 'General', city: 'Unknown',
+    businesses: item.totalBusinesses, affiliates: 0, penetration: item.penetration,
+  }));
 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newName, setNewName] = useState('');
-  const [newArea, setNewArea] = useState('');
-  const [newCity, setNewCity] = useState('');
   const [search, setSearch] = useState('');
 
   // Edit state
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
-  const [editArea, setEditArea] = useState('');
-  const [editCity, setEditCity] = useState('');
 
   // Delete state
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [mutationError, setMutationError] = useState<string | null>(null);
 
   const filtered = locations.filter(l =>
     l.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -72,34 +50,28 @@ export default function AssignPage() {
     try {
       await createNode.mutateAsync({ name: newName.trim(), type: 'CLUSTER' });
       setNewName('');
-      setNewArea('');
-      setNewCity('');
-      setShowCreateForm(false);
-    } catch {}
+       setShowCreateForm(false);
+    } catch { setMutationError('Unable to create location. Please retry.'); }
   };
 
 
   const startEdit = (loc: Location) => {
     setEditingId(loc.id);
     setEditName(loc.name);
-    setEditArea(loc.area);
-    setEditCity(loc.city);
   };
 
   const handleEdit = async (id: string) => {
     try {
-      await updateNode.mutateAsync({ id, name: editName.trim(), area: editArea.trim(), city: editCity.trim() });
-    } catch {}
-    setLocations(prev => prev.map(l => l.id === id ? { ...l, name: editName.trim() || l.name, area: editArea.trim() || l.area, city: editCity.trim() || l.city } : l));
-    setEditingId(null);
+      await updateNode.mutateAsync({ id, name: editName.trim() });
+       setEditingId(null);
+    } catch { setMutationError('Unable to update location. Please retry.'); }
   };
 
   const handleDelete = async (id: string) => {
     try {
       await deleteNode.mutateAsync(id);
-    } catch {}
-    setLocations(prev => prev.filter(l => l.id !== id));
-    setDeletingId(null);
+       setDeletingId(null);
+    } catch { setMutationError('Unable to delete location. Please retry.'); }
   };
 
   return (
@@ -131,8 +103,6 @@ export default function AssignPage() {
             <p className="text-xs font-bold text-blue-800">New Location</p>
             <div className="grid grid-cols-3 gap-3">
               <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Name (e.g. Banex Plaza)" className="col-span-3 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
-              <input value={newArea} onChange={e => setNewArea(e.target.value)} placeholder="Area (e.g. Wuse)" className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
-              <input value={newCity} onChange={e => setNewCity(e.target.value)} placeholder="City (e.g. Abuja)" className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
             </div>
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowCreateForm(false)} className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900">Cancel</button>
@@ -142,11 +112,14 @@ export default function AssignPage() {
         )}
 
         {/* Search */}
+        {locationsQuery.isLoading && <p className="text-sm text-slate-500">Loading locations...</p>}
+        {locationsQuery.isError && <div className="text-sm text-red-600">Unable to load locations. <button onClick={() => locationsQuery.refetch()} className="font-bold underline">Retry</button></div>}
         <div className="relative">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search locations..." className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 transition-all" />
         </div>
 
+        {mutationError && <div className="text-sm text-red-600">{mutationError}</div>}
         {/* Location list */}
         <div className="space-y-3">
           {filtered.map(loc => (
@@ -156,8 +129,6 @@ export default function AssignPage() {
                   <p className="text-xs font-bold text-blue-800">Edit Location</p>
                   <div className="grid grid-cols-3 gap-3">
                     <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Name" className="col-span-3 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
-                    <input value={editArea} onChange={e => setEditArea(e.target.value)} placeholder="Area" className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
-                    <input value={editCity} onChange={e => setEditCity(e.target.value)} placeholder="City" className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
                   </div>
                   <div className="flex justify-end gap-2">
                     <button onClick={() => setEditingId(null)} className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900">Cancel</button>

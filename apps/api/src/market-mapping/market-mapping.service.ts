@@ -4,6 +4,8 @@ import {
   CreateMissionPlanDto,
   UpdateMissionPlanDto,
   CreateMarketMappingNoteDto,
+  CreateMarketMappingVisitDto,
+  UpdateMarketMappingVisitDto,
 } from "./dto/market-mapping.dto";
 
 @Injectable()
@@ -25,28 +27,58 @@ export class MarketMappingService {
       config = await this.prisma.marketMappingTerritoryConfig.create({
         data: {
           territoryCode,
-          name: "Ikeja Central Business District",
-          country: "Nigeria",
-          state: "Lagos",
-          city: "Ikeja",
-          area: "Allen / Opebi",
-          cluster: "Tech & Retail Cluster 1",
-          totalAssigned: 120,
-          anchorCount: 15,
-          prospectCount: 85,
+          name: territoryCode,
+          country: "",
+          state: "",
+          city: "",
+          area: "",
+          cluster: "",
+          totalAssigned: 0,
+          anchorCount: 0,
+          prospectCount: 0,
           maturityJson: {
-            anchorDensity: 82,
-            coverageRate: 68,
-            conversionRate: 45,
-            followUpScore: 90,
-            retentionRate: 85,
-            overallMaturity: 74,
+            anchorDensity: 0,
+            coverageRate: 0,
+            conversionRate: 0,
+            followUpScore: 0,
+            retentionRate: 0,
+            overallMaturity: 0,
           },
         },
       });
     }
 
+    const dailyTarget = user?.dailyLeadTarget || 5;
+    const monthlyTarget = user?.monthlyConversionTarget || 20;
     return {
+      businessCategories: ["Supermarket / Grocery", "Pharmacy", "Restaurant / Fast Food", "Retail / Clothing", "Electronics / Phone Accessories", "Beauty / Salon / Barbing", "Fuel / Gas Station", "Hotel / Lodge", "School / Training Center", "Hospital / Clinic", "Bakery / Confectionery", "Professional Services", "Other"],
+      openingDays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+      customerRanges: [
+        { value: "LOW", label: "Low (1-30)", min: 1, max: 30 },
+        { value: "MEDIUM", label: "Medium (31-100)", min: 31, max: 100 },
+        { value: "HIGH", label: "High (101-300)", min: 101, max: 300 },
+        { value: "VERY_HIGH", label: "Very High (300+)", min: 300, max: 999999 },
+      ],
+      businessSizes: [
+        { value: "SMALL", label: "Small (1-5 staff)", minStaff: 1, maxStaff: 5 },
+        { value: "MEDIUM", label: "Medium (6-20 staff)", minStaff: 6, maxStaff: 20 },
+        { value: "LARGE", label: "Large (21+ staff)", minStaff: 21, maxStaff: 999999 },
+      ],
+      contactPositions: ["Owner", "Manager", "HR Manager", "Sales Manager", "Custom"],
+      pipelineStatuses: [
+        { id: "NOT_YET", name: "Not yet", color: "bg-slate-500", bg: "bg-slate-50", text: "text-slate-600" },
+        { id: "VISITED", name: "Visited", color: "bg-blue-500", bg: "bg-blue-50", text: "text-blue-600" },
+        { id: "CONTACTED", name: "Contacted", color: "bg-purple-500", bg: "bg-purple-50", text: "text-purple-600" },
+        { id: "INTERESTED", name: "Interested", color: "bg-emerald-500", bg: "bg-emerald-50", text: "text-emerald-600" },
+        { id: "NOT_INTERESTED", name: "Not Interested", color: "bg-red-500", bg: "bg-red-50", text: "text-red-600" },
+        { id: "CUSTOMER", name: "Customer", color: "bg-amber-500", bg: "bg-amber-50", text: "text-amber-600" },
+      ],
+      interestOptions: [{ value: "YES", label: "Interested" }, { value: "NO", label: "Not Interested" }, { value: "MAYBE", label: "Maybe / Not decided" }],
+      planTypes: [{ value: "BASIC", label: "Basic" }, { value: "PROFESSIONAL", label: "Professional" }, { value: "ENTERPRISE", label: "Enterprise" }],
+      faqs: [], ticketStatuses: [], businessStatuses: [], paymentStatuses: [],
+      dailyTarget,
+      weeklyTarget: dailyTarget * 5,
+      monthlyTarget,
       territory: config,
       userTargets: {
         dailyLeadTarget: user?.dailyLeadTarget || 5,
@@ -58,6 +90,44 @@ export class MarketMappingService {
         aiRecommendationsEnabled: true,
       },
     };
+  }
+
+  async getVisits(userId: string) {
+    return this.prisma.marketMappingVisit.findMany({
+      where: { userId },
+      orderBy: [{ createdAt: "desc" }],
+    });
+  }
+
+  async createVisit(userId: string, dto: CreateMarketMappingVisitDto) {
+    const { openingDays, ...data } = dto;
+    return this.prisma.marketMappingVisit.create({
+      data: {
+        ...data,
+        userId,
+        openingDays,
+        visitedAt: data.status && data.status !== "NOT_YET" ? new Date() : undefined,
+      },
+    });
+  }
+
+  async updateVisit(id: string, userId: string, dto: UpdateMarketMappingVisitDto) {
+    const existing = await this.prisma.marketMappingVisit.findFirst({ where: { id, userId } });
+    if (!existing) throw new NotFoundException("Market mapping visit not found");
+    const { openingDays, ...data } = dto;
+    const becameVisited = data.status && data.status !== "NOT_YET" && !existing.visitedAt;
+    return this.prisma.marketMappingVisit.update({
+      where: { id },
+      data: { ...data, openingDays, visitedAt: becameVisited ? new Date() : undefined },
+    });
+  }
+
+  async getHistory(userId: string) {
+    return this.prisma.marketMappingPlan.findMany({
+      where: { userId },
+      orderBy: { updatedAt: "desc" },
+      include: { visits: { select: { status: true } } },
+    });
   }
 
   async getTerritoryStats(userId: string) {
@@ -132,125 +202,59 @@ export class MarketMappingService {
   }
 
   async getAnchors(userId: string) {
-    const configData = await this.getConfig(userId);
-    const anchors = (configData.territory.anchorsJson as any[]) || [
-      {
-        id: "anchor-1",
-        name: "Mega Retail Mall",
-        category: "Supermarket & Retail",
-        address: "12 Allen Avenue, Ikeja",
-        contactPerson: "Chief Operations Officer",
-        phone: "+2348011112222",
-        status: "ANCHOR_PARTNER",
-        tier: "Platinum",
-        potentialVolume: "High",
-      },
-      {
-        id: "anchor-2",
-        name: "Lagos Tech Hub Plaza",
-        category: "Corporate & Tech",
-        address: "45 Opebi Road, Ikeja",
-        contactPerson: "Facilities Manager",
-        phone: "+2348033334444",
-        status: "TARGET_ANCHOR",
-        tier: "Gold",
-        potentialVolume: "High",
-      },
-    ];
-    return anchors;
+    return this.prisma.marketMappingVisit.findMany({
+      where: { userId, isAnchor: true, status: "NOT_YET" },
+      orderBy: { updatedAt: "desc" },
+    });
   }
 
   async getPriorityVisits(userId: string) {
-    return [
-      {
-        id: "prio-1",
-        businessName: "Prime Logistics Ltd",
-        category: "Logistics & Transport",
-        address: "7 Toyin Street, Ikeja",
-        opportunityScore: 94,
-        recommendedAction: "Pitch Enterprise Subscription Plan",
-        distanceKm: 0.8,
-        priority: "HIGH",
-      },
-      {
-        id: "prio-2",
-        businessName: "Greenfield Pharmacy Chain",
-        category: "Healthcare & Retail",
-        address: "22 Isaac John Street, Ikeja",
-        opportunityScore: 88,
-        recommendedAction: "Schedule In-Person POS Demo",
-        distanceKm: 1.4,
-        priority: "HIGH",
-      },
-      {
-        id: "prio-3",
-        businessName: "Apex Restaurant & Lounge",
-        category: "Hospitality",
-        address: "15 Adeniyi Jones Avenue, Ikeja",
-        opportunityScore: 82,
-        recommendedAction: "Follow up on trial setup",
-        distanceKm: 2.1,
-        priority: "MEDIUM",
-      },
-    ];
+    return this.prisma.marketMappingVisit.findMany({
+      where: { userId, status: { in: ["NOT_YET", "INTERESTED"] } },
+      orderBy: [{ isAnchor: "desc" }, { updatedAt: "desc" }],
+      take: 50,
+    });
   }
 
   async getPartnerships(userId: string) {
-    return [
-      {
-        id: "partner-1",
-        name: "Lagos Chamber of Commerce Network",
-        type: "Association",
-        memberCount: 450,
-        opportunity: "Bulk Onboarding Discount Program",
-        status: "EXPLORING",
-      },
-      {
-        id: "partner-2",
-        name: "Ikeja Traders Co-operative",
-        type: "Cooperative Union",
-        memberCount: 280,
-        opportunity: "Sub-Affiliate Partnership Model",
-        status: "PROPOSAL_SENT",
-      },
-    ];
+    return this.prisma.marketMappingVisit.findMany({
+      where: { userId, interested: "YES", status: { not: "CUSTOMER" } },
+      orderBy: { updatedAt: "desc" },
+      take: 50,
+    });
   }
 
   async getInsights(userId: string) {
     const configData = await this.getConfig(userId);
     const territory = configData.territory;
 
+    const visits = await this.getVisits(userId);
+    const total = visits.length;
+    const visited = visits.filter((visit) => visit.status !== "NOT_YET").length;
+    const interested = visits.filter((visit) => visit.status === "INTERESTED" || visit.interested === "YES").length;
+    const anchors = visits.filter((visit) => visit.isAnchor).length;
+    const maturity = {
+      discovery: Math.min(100, total * 5), verification: total ? Math.round((visited / total) * 100) : 0,
+      sales: total ? Math.round((interested / total) * 100) : 0, customers: total ? Math.round((visits.filter((v) => v.status === "CUSTOMER").length / total) * 100) : 0,
+      partnerships: total ? Math.round((visits.filter((v) => v.interested === "YES").length / total) * 100) : 0,
+      overall: total ? Math.round(((visited + interested + anchors) / (total * 3)) * 100) : 0,
+    };
     return {
-      aiRecommendations: [
-        {
-          id: "rec-1",
-          title: "High Conversion Window",
-          description: "Retail businesses along Allen Avenue have an 85% conversion rate on Tuesday mornings.",
-          impact: "High",
-          category: "Timing",
-        },
-        {
-          id: "rec-2",
-          title: "Upsell Opportunity",
-          description: "3 trial businesses in your cluster are reaching 80% transaction limits — ideal for Professional tier upgrade.",
-          impact: "High",
-          category: "Growth",
-        },
+      maturity,
+      recommendations: [
+        ...(visits.filter((visit) => visit.isAnchor && visit.status === "NOT_YET").slice(0, 3).map((visit) => ({ id: visit.id, type: "UNTOUCHED_ANCHOR", title: visit.name, description: "Anchor business still requires a first visit.", rating: 5 }))),
+        ...(visits.filter((visit) => visit.status === "INTERESTED").slice(0, 3).map((visit) => ({ id: visit.id, type: "PRIORITY_VISIT", title: visit.name, description: "Interested business requires follow-up.", rating: 4 }))),
       ],
-      clusterMaturity: territory.maturityJson || {
-        anchorDensity: 82,
-        coverageRate: 68,
-        conversionRate: 45,
-        followUpScore: 90,
-        retentionRate: 85,
-        overallMaturity: 74,
-      },
+      clusterMaturity: maturity,
+      aiRecommendations: [],
+      territory,
     };
   }
 
-  async getNotes(userId: string, businessId?: string) {
+  async getNotes(userId: string, businessId?: string, reportKey?: string) {
     const where: any = { userId };
     if (businessId) where.businessId = businessId;
+    if (reportKey) where.reportKey = reportKey;
 
     return this.prisma.marketMappingNote.findMany({
       where,
@@ -265,6 +269,7 @@ export class MarketMappingService {
         businessId: dto.businessId,
         leadId: dto.leadId,
         businessName: dto.businessName,
+        reportKey: dto.reportKey,
         content: dto.content,
         followUpDate: dto.followUpDate ? new Date(dto.followUpDate) : undefined,
       },
@@ -272,39 +277,36 @@ export class MarketMappingService {
   }
 
   async getPerformance(userId: string) {
-    const [leads, businesses] = await Promise.all([
-      this.prisma.lead.findMany({ where: { affiliateId: userId } }),
-      this.prisma.business.findMany({ where: { affiliateId: userId } }),
-    ]);
-
-    const totalLeads = leads.length;
-    const totalConversions = businesses.length;
-
-    return {
-      dailyVisits: 6,
-      weeklyVisits: 32,
-      monthlyVisits: 128,
-      meetingsCompleted: totalLeads,
-      customersAcquired: totalConversions,
-      conversionRatePercent: totalLeads > 0 ? Math.round((totalConversions / totalLeads) * 100) : 0,
-      reportingScore: 96,
-      attendanceRate: 98,
-    };
+    const now = new Date();
+    const day = new Date(now); day.setHours(0, 0, 0, 0);
+    const week = new Date(day); week.setDate(day.getDate() - 6);
+    const month = new Date(day); month.setDate(day.getDate() - 29);
+    const visits = await this.prisma.marketMappingVisit.findMany({ where: { userId } });
+    const countSince = (date: Date) => visits.filter((visit) => (visit.visitedAt || visit.updatedAt) >= date).length;
+    const completed = visits.filter((visit) => visit.status !== "NOT_YET").length;
+    const customers = visits.filter((visit) => visit.status === "CUSTOMER").length;
+    return { dailyVisits: countSince(day), weeklyVisits: countSince(week), monthlyVisits: countSince(month), meetingsCompleted: completed, customersAcquired: customers, conversionRatePercent: completed ? Math.round((customers / completed) * 100) : 0, reportingScore: completed ? 100 : 0, attendanceRate: visits.length ? Math.round((completed / visits.length) * 100) : 0 };
   }
 
   async getReports(userId: string, period: string = "monthly") {
+    const now = new Date();
+    const start = new Date(now);
+    if (period === "daily") start.setHours(0, 0, 0, 0);
+    else if (period === "weekly") start.setDate(start.getDate() - 6);
+    else start.setDate(start.getDate() - 29);
     const [leads, businesses, notes] = await Promise.all([
-      this.prisma.lead.findMany({ where: { affiliateId: userId }, orderBy: { createdAt: "desc" } }),
-      this.prisma.business.findMany({ where: { affiliateId: userId }, orderBy: { createdAt: "desc" } }),
-      this.prisma.marketMappingNote.findMany({ where: { userId }, orderBy: { createdAt: "desc" } }),
+      this.prisma.lead.findMany({ where: { affiliateId: userId, createdAt: { gte: start } }, orderBy: { createdAt: "desc" } }),
+      this.prisma.business.findMany({ where: { affiliateId: userId, createdAt: { gte: start } }, orderBy: { createdAt: "desc" } }),
+      this.prisma.marketMappingNote.findMany({ where: { userId, createdAt: { gte: start } }, orderBy: { createdAt: "desc" } }),
     ]);
+    const visits = await this.prisma.marketMappingVisit.findMany({ where: { userId, OR: [{ visitedAt: { gte: start } }, { visitedAt: null, updatedAt: { gte: start } }] }, orderBy: { updatedAt: "desc" } });
 
     return {
       period,
       summary: {
         totalLeads: leads.length,
         totalConversions: businesses.length,
-        totalVisits: leads.length + businesses.length + 15,
+        totalVisits: visits.length,
         totalEarnings: businesses.reduce((acc, b) => acc + Number(b.commissionAmount || 0), 0),
       },
       leads: leads.map((l) => ({
@@ -329,6 +331,7 @@ export class MarketMappingService {
         followUpDate: n.followUpDate,
         createdAt: n.createdAt,
       })),
+      visits: visits.map((visit) => ({ id: visit.id, businessName: visit.name, category: visit.category, status: visit.status, date: visit.visitedAt || visit.updatedAt, notes: visit.visitNotes })),
     };
   }
 
@@ -338,7 +341,8 @@ export class MarketMappingService {
     const header = "Type,ID,Business Name,Status,Date\n";
     const leadRows = report.leads.map((l) => `Lead,${l.id},${escapeCsv(l.businessName)},${l.status},${l.date}`).join("\n");
     const businessRows = report.visitedBusinesses.map((b) => `Business,${b.id},${escapeCsv(b.businessName)},${b.status},${b.date}`).join("\n");
-    return header + leadRows + (leadRows && businessRows ? "\n" : "") + businessRows;
+    const visitRows = report.visits.map((v) => `Visit,${v.id},${escapeCsv(v.businessName)},${v.status},${v.date}`).join("\n");
+    return header + [leadRows, businessRows, visitRows].filter(Boolean).join("\n");
   }
 
   // --- ADMIN MARKET MAPPING ---
@@ -420,10 +424,15 @@ export class MarketMappingService {
       throw new NotFoundException("Cluster not found");
     }
 
-    const assignedBusinesses = await this.prisma.business.findMany({
-      take: 20,
-      select: { id: true, businessName: true, planType: true, status: true, ownerName: true, phone: true },
-    });
+    const assignedAffiliateIds = cluster.assignments.map((assignment) => assignment.userId);
+    const assignedBusinesses = assignedAffiliateIds.length === 0
+      ? []
+      : await this.prisma.business.findMany({
+          where: { affiliateId: { in: assignedAffiliateIds } },
+          take: 20,
+          orderBy: { createdAt: "desc" },
+          select: { id: true, businessName: true, planType: true, status: true, ownerName: true, phone: true, affiliateId: true },
+        });
 
     return {
       cluster,
@@ -472,13 +481,25 @@ export class MarketMappingService {
   }
 
   async getClusterSubmissions(clusterId: string) {
+    const assignments = await this.prisma.marketMappingAssignment.findMany({
+      where: { clusterId },
+      select: { userId: true },
+    });
+    const assignedAffiliateIds = assignments.map((assignment) => assignment.userId);
+
+    if (assignedAffiliateIds.length === 0) {
+      return { clusterId, submissions: [] };
+    }
+
     const [leads, businesses] = await Promise.all([
       this.prisma.lead.findMany({
+        where: { affiliateId: { in: assignedAffiliateIds } },
         take: 15,
         orderBy: { createdAt: "desc" },
         include: { affiliate: { select: { fullName: true } } },
       }),
       this.prisma.business.findMany({
+        where: { affiliateId: { in: assignedAffiliateIds } },
         take: 15,
         orderBy: { createdAt: "desc" },
         include: { affiliate: { select: { fullName: true } } },
@@ -531,4 +552,3 @@ export class MarketMappingService {
     });
   }
 }
-

@@ -21,6 +21,13 @@ model User {
   referrerId      String?
   referrer        User?     @relation("Referrals", fields: [referrerId], references: [id])
   referrals       User[]    @relation("Referrals")
+  supervisorId    String?
+  supervisor      User?     @relation("SupervisorMembers", fields: [supervisorId], references: [id], onDelete: SetNull)
+  supervisedUsers User[]    @relation("SupervisorMembers")
+  managerId       String?
+  manager         User?     @relation("ManagedMembers", fields: [managerId], references: [id], onDelete: SetNull)
+  managedUsers    User[]    @relation("ManagedMembers")
+  workingDays     String[]  @default([])
   
   nin             String?
   bvn             String?
@@ -56,6 +63,7 @@ model User {
   assignedTasks   Task[]       @relation("AssignedTasks")
   agentDemos      Demo[]       @relation("AgentDemos")
   activities      Activity[]
+  businessStatusChanges BusinessStatusHistory[]
   
   tokenVersion    Int       @default(0)
   paystackSubaccountId String?
@@ -89,15 +97,19 @@ model User {
   idType                   String?
 
   marketMappingPlans       MarketMappingPlan[]
+  marketMappingVisits      MarketMappingVisit[]
   marketMappingNotes       MarketMappingNote[]
   targetAdjustmentLogs     TargetAdjustmentHistory[] @relation("ManagerAdjustments")
   targetAdjustmentsReceived TargetAdjustmentHistory[] @relation("MemberAdjustments")
   marketMappingAssignments MarketMappingAssignment[]
   createdNotificationDrafts NotificationDraft[]
+  supportTickets            SupportTicket[]
 
   @@index([referralCode])
   @@index([referredBy])
   @@index([referrerId])
+  @@index([supervisorId])
+  @@index([managerId])
   @@index([paystackRecipientCode])
   @@index([lastLoginIp])
 }
@@ -160,6 +172,7 @@ model Business {
   
   commissions     Commission[]
   onboarding      Onboarding?
+  statusHistory   BusinessStatusHistory[]
   
   @@index([affiliateId])
   @@index([referralCode])
@@ -808,8 +821,99 @@ model MarketMappingPlan {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
+  visits            MarketMappingVisit[]
+
   @@index([userId])
   @@index([status])
+}
+
+model BusinessStatusHistory {
+  id          String         @id @default(uuid())
+  businessId  String
+  business    Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  fromStatus  BusinessStatus?
+  toStatus    BusinessStatus
+  changedById String
+  changedBy   User           @relation(fields: [changedById], references: [id])
+  createdAt   DateTime       @default(now())
+
+  @@index([businessId, createdAt])
+  @@index([changedById])
+}
+
+enum SupportTicketStatus {
+  PENDING
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model SupportTicket {
+  id        String              @id @default(uuid())
+  userId    String
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject   String
+  message   String              @db.Text
+  status    SupportTicketStatus @default(PENDING)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
+model FAQ {
+  id          String   @id @default(uuid())
+  question    String
+  answer      String   @db.Text
+  category    String
+  sortOrder   Int      @default(0)
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isPublished, sortOrder])
+  @@index([category])
+}
+
+model MarketMappingVisit {
+  id                 String   @id @default(uuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId             String?
+  plan               MarketMappingPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+  name               String
+  category           String   @default("")
+  status             String   @default("NOT_YET")
+  isPlaceholder      Boolean  @default(false)
+  address            String?
+  exactAddress       String?
+  phone              String?
+  ownerName          String?
+  contactPosition    String?
+  contactEmail       String?
+  horizon            String?
+  dailyCustomers     String?
+  businessSize       String?
+  openingHours       String?
+  openingDays       Json?
+  gpsLat             String?
+  gpsLng             String?
+  nextVisitDate      String?
+  nextVisitTime      String?
+  decisionMakerMet   Boolean?
+  interested         String?
+  demoDone           Boolean?
+  visitNotes         String?
+  isAnchor           Boolean  @default(false)
+  visitedAt          DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([userId])
+  @@index([planId])
+  @@index([status])
+  @@index([userId, createdAt])
 }
 
 model MarketMappingNote {
@@ -819,6 +923,7 @@ model MarketMappingNote {
   businessId    String?
   leadId        String?
   businessName  String
+  reportKey     String?
   content       String    @db.Text
   followUpDate  DateTime?
   createdAt     DateTime  @default(now())
@@ -827,6 +932,7 @@ model MarketMappingNote {
   @@index([userId])
   @@index([businessId])
   @@index([leadId])
+  @@index([reportKey])
 }
 
 model MarketMappingTerritoryConfig {

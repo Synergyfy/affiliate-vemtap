@@ -4,7 +4,7 @@ import { PrismaService } from "../prisma/prisma.service";
 
 describe("MarketMappingService", () => {
   let service: MarketMappingService;
-  let prisma: PrismaService;
+  let _prisma: PrismaService;
 
   const mockPrismaService = {
     user: {
@@ -43,7 +43,7 @@ describe("MarketMappingService", () => {
     }).compile();
 
     service = module.get<MarketMappingService>(MarketMappingService);
-    prisma = module.get<PrismaService>(PrismaService);
+    _prisma = module.get<PrismaService>(PrismaService);
   });
 
   it("should be defined", () => {

@@ -26,81 +26,25 @@ import {
 import { getReportComments } from '@/lib/report-comments';
 import ReportComments from '@/components/dashboard/ReportComments';
 
-const generateTeamActivities = (id: string, name: string) => [
-  { id: `${id}-act-1`, type: 'report' as const, description: `${name} submitted daily performance report`, date: new Date(Date.now() - 2*3600000).toISOString() },
-  { id: `${id}-act-2`, type: 'lead' as const, description: `${name} captured new lead: Alhaji Enterprises`, date: new Date(Date.now() - 5*3600000).toISOString(), amount: 1 },
-  { id: `${id}-act-3`, type: 'conversion' as const, description: `${name} closed deal: Mama Cass Kitchen`, date: new Date(Date.now() - 24*3600000).toISOString(), amount: 15000 },
-  { id: `${id}-act-4`, type: 'business' as const, description: `${name} registered business: De-Royal Choice Supermarket`, date: new Date(Date.now() - 48*3600000).toISOString() },
-  { id: `${id}-act-5`, type: 'target_change' as const, description: `Target adjusted by you`, date: new Date(Date.now() - 120*3600000).toISOString(), changedBy: 'You' },
-];
-
-const mockTeamMembers = [
-  {
-    id: 'tm-1', name: 'Chioma Okafor', role: 'AGENT' as const, email: 'chioma.o@example.com',
-    phone: '+234 801 234 5678', status: 'ACTIVE' as const, dailyLeads: 5, weeklyLeads: 28,
-    monthlyConversions: 12, completionRate: 85, lastActive: '2026-07-28', earnings: 125000,
-    totalEarnings: 540000, joinedDate: '2025-11-15', dailyLeadTarget: 6, monthlyConversionTarget: 15,
-    businessesReferred: 8, leadsSubmitted: 34,
-    activities: generateTeamActivities('tm-1', 'Chioma Okafor'),
-    targetAdjustments: [
-      { id: 'ta-1', field: 'dailyLeadTarget' as const, oldValue: 5, newValue: 6, changedBy: 'You', changedById: 'current-user', changedAt: '2026-06-15T10:00:00Z', reason: 'Increased due to strong performance' },
-      { id: 'ta-2', field: 'monthlyConversionTarget' as const, oldValue: 12, newValue: 15, changedBy: 'You', changedById: 'current-user', changedAt: '2026-06-15T10:00:00Z', reason: 'Aligning with growth trajectory' },
-    ]
-  },
-  {
-    id: 'tm-2', name: 'Emeka Nwosu', role: 'AGENT' as const, email: 'emeka.n@example.com',
-    phone: '+234 802 345 6789', status: 'ACTIVE' as const, dailyLeads: 3, weeklyLeads: 18,
-    monthlyConversions: 8, completionRate: 72, lastActive: '2026-07-27', earnings: 85000,
-    totalEarnings: 310000, joinedDate: '2025-12-01', dailyLeadTarget: 5, monthlyConversionTarget: 12,
-    businessesReferred: 5, leadsSubmitted: 22,
-    activities: generateTeamActivities('tm-2', 'Emeka Nwosu'),
-    targetAdjustments: []
-  },
-  {
-    id: 'tm-3', name: 'Bisi Adeyemi', role: 'AFFILIATE' as const, email: 'bisi.a@example.com',
-    phone: '+234 803 456 7890', status: 'ACTIVE' as const, dailyLeads: 7, weeklyLeads: 35,
-    monthlyConversions: 15, completionRate: 90, lastActive: '2026-07-28', earnings: 210000,
-    totalEarnings: 890000, joinedDate: '2025-10-20', dailyLeadTarget: 8, monthlyConversionTarget: 18,
-    businessesReferred: 12, leadsSubmitted: 45,
-    activities: generateTeamActivities('tm-3', 'Bisi Adeyemi'),
-    targetAdjustments: [
-      { id: 'ta-3', field: 'dailyLeadTarget' as const, oldValue: 7, newValue: 8, changedBy: 'System', changedById: 'system', changedAt: '2026-05-01T08:00:00Z', reason: '' },
-    ]
-  },
-  {
-    id: 'tm-4', name: 'David Mark', role: 'AGENT' as const, email: 'david.m@example.com',
-    phone: '+234 804 567 8901', status: 'ACTIVE' as const, dailyLeads: 4, weeklyLeads: 22,
-    monthlyConversions: 10, completionRate: 78, lastActive: '2026-07-26', earnings: 98000,
-    totalEarnings: 425000, joinedDate: '2026-01-10', dailyLeadTarget: 5, monthlyConversionTarget: 12,
-    businessesReferred: 6, leadsSubmitted: 28,
-    activities: generateTeamActivities('tm-4', 'David Mark'),
-    targetAdjustments: []
-  },
-  {
-    id: 'tm-5', name: 'Fatima Usman', role: 'AFFILIATE' as const, email: 'fatima.u@example.com',
-    phone: '+234 805 678 9012', status: 'ACTIVE' as const, dailyLeads: 6, weeklyLeads: 30,
-    monthlyConversions: 14, completionRate: 88, lastActive: '2026-07-28', earnings: 175000,
-    totalEarnings: 720000, joinedDate: '2025-11-01', dailyLeadTarget: 7, monthlyConversionTarget: 15,
-    businessesReferred: 10, leadsSubmitted: 38,
-    activities: generateTeamActivities('tm-5', 'Fatima Usman'),
-    targetAdjustments: [
-      { id: 'ta-4', field: 'monthlyConversionTarget' as const, oldValue: 12, newValue: 15, changedBy: 'You', changedById: 'current-user', changedAt: '2026-07-01T09:00:00Z', reason: 'Top performer, increasing challenge' },
-    ]
-  },
-];
-
-type TeamMember = typeof mockTeamMembers[0];
+type TeamMember = {
+  id: string; name: string; role: 'AGENT' | 'AFFILIATE'; email: string; phone: string;
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED'; dailyLeads: number; weeklyLeads: number;
+  monthlyConversions: number; completionRate: number; lastActive: string; earnings: number;
+  totalEarnings: number; joinedDate: string; dailyLeadTarget: number; monthlyConversionTarget: number;
+  businessesReferred: number; leadsSubmitted: number; activities: any[]; targetAdjustments: any[];
+};
 
 export default function NetworkPage() {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [networkStats, setNetworkStats] = useState<any>(null);
+  const [teamReports, setTeamReports] = useState<Record<string, any>>({});
   const [recruits, setRecruits] = useState<any[]>([]);
   const [teamTab, setTeamTab] = useState<'agents' | 'affiliates'>('agents');
   const [viewTab, setViewTab] = useState<'team' | 'earnings' | 'referrals' | 'team-reports'>('team');
   const [searchQuery, setSearchQuery] = useState('');
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>(mockTeamMembers);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [commissionRate, setCommissionRate] = useState(10);
   const [openReportTeam, setOpenReportTeam] = useState<'daily' | 'weekly' | 'monthly' | null>(null);
   const router = useRouter();
@@ -110,35 +54,39 @@ export default function NetworkPage() {
   const fetchNetworkData = async () => {
     setIsLoading(true);
     try {
-      const [stats, recruitsData, settings] = await Promise.all([
+      const [stats, recruitsData, settings, dailyReport, weeklyReport, monthlyReport] = await Promise.all([
         api.get('/network/stats'),
         api.get('/network/recruits?limit=50'),
-        api.get('/settings').catch(() => null)
+        api.get('/settings').catch(() => null),
+        api.get('/network/team-reports?period=daily'),
+        api.get('/network/team-reports?period=weekly'),
+        api.get('/network/team-reports?period=monthly'),
       ]);
       setNetworkStats(stats);
       const apiRecruits = recruitsData?.data || recruitsData || [];
       setRecruits(apiRecruits);
-      if (Array.isArray(apiRecruits) && apiRecruits.length > 0) {
+      setTeamReports({ daily: dailyReport, weekly: weeklyReport, monthly: monthlyReport });
+      if (Array.isArray(apiRecruits)) {
         const formattedMembers: TeamMember[] = apiRecruits.map((r: any) => ({
           id: r.id,
           name: r.fullName || r.name || 'Team Member',
-          role: (r.role === 'AFFILIATE' ? 'AFFILIATE' : 'AGENT') as any,
+           role: (r.role === 'AFFILIATE' ? 'AFFILIATE' : 'AGENT') as TeamMember['role'],
           email: r.email || '',
           phone: r.phone || '',
           status: 'ACTIVE' as const,
-          dailyLeads: r.todayLeadsCount || 4,
-          weeklyLeads: r.weeklyLeadsCount || 20,
-          monthlyConversions: r.monthlyConversionsCount || 8,
-          completionRate: r.completionRate || 80,
-          lastActive: r.updatedAt ? new Date(r.updatedAt).toISOString().split('T')[0] : 'Today',
-          earnings: r.totalCommissions || r.earnings || 0,
-          totalEarnings: r.totalCommissions || r.earnings || 0,
+           dailyLeads: r.dailyLeadsCount ?? 0,
+           weeklyLeads: r.weeklyLeadsCount ?? 0,
+           monthlyConversions: r.monthlyConversionsCount ?? 0,
+           completionRate: r.completionRate ?? 0,
+           lastActive: r.updatedAt ? new Date(r.updatedAt).toISOString().split('T')[0] : '',
+           earnings: r.totalEarnings ?? 0,
+           totalEarnings: r.totalEarnings ?? 0,
           joinedDate: r.createdAt ? new Date(r.createdAt).toISOString().split('T')[0] : '',
-          dailyLeadTarget: r.dailyLeadTarget || 5,
-          monthlyConversionTarget: r.monthlyConversionTarget || 15,
-          businessesReferred: r.activeBusinessesCount || 0,
-          leadsSubmitted: r.todayLeadsCount || 0,
-          activities: generateTeamActivities(r.id, r.fullName || 'Team Member'),
+           dailyLeadTarget: r.dailyLeadTarget ?? 0,
+           monthlyConversionTarget: r.monthlyConversionTarget ?? 0,
+           businessesReferred: r.businessCount ?? 0,
+           leadsSubmitted: r.leadCount ?? 0,
+           activities: [],
           targetAdjustments: [],
         }));
         setTeamMembers(formattedMembers);
@@ -159,13 +107,14 @@ export default function NetworkPage() {
   useEffect(() => { fetchNetworkData(); }, []);
 
   const [timeLeft, setTimeLeft] = useState<{days: number, hours: number, minutes: number, seconds: number}>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-  const timeLimitDays = 90;
+  const qualificationDays = networkStats?.managerQualificationExpiry && user?.createdAt
+    ? Math.max(0, Math.round((new Date(networkStats.managerQualificationExpiry).getTime() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24)))
+    : 0;
 
   useEffect(() => {
     if (!user?.createdAt) return;
-    const NINETY_DAYS_MS = timeLimitDays * 24 * 60 * 60 * 1000;
-    const signupDate = new Date(user.createdAt);
-    const targetDate = new Date(signupDate.getTime() + NINETY_DAYS_MS);
+    const targetDate = networkStats?.managerQualificationExpiry ? new Date(networkStats.managerQualificationExpiry) : null;
+    if (!targetDate) return;
     const timer = setInterval(() => {
       const now = new Date();
       const difference = targetDate.getTime() - now.getTime();
@@ -182,7 +131,7 @@ export default function NetworkPage() {
       }
     }, 1000);
     return () => clearInterval(timer);
-  }, [user?.createdAt]);
+  }, [user?.createdAt, networkStats?.managerQualificationExpiry]);
 
   useEffect(() => {
     const hasSeenGuide = localStorage.getItem('vemtap_network_guide');
@@ -207,8 +156,7 @@ export default function NetworkPage() {
   const businessesCount = isAgent ? (networkStats?.personalActiveBusinesses || 0) : (networkStats?.totalNetworkBusinesses || 0);
   const targetBusinesses = networkStats?.milestones?.businesses?.target || (isAgent ? 40 : 100);
   const totalRecruits = networkStats?.totalRecruitsCount || 0;
-  const rewardDuration: string = '1year';
-  const rewardDurationLabel = rewardDuration === '3months' ? '3-Month' : rewardDuration === '6months' ? '6-Month' : rewardDuration === '1year' ? '12-Month' : rewardDuration === '2years' ? '24-Month' : 'Lifetime';
+  const rewardDurationLabel = networkStats?.isManagerMode ? 'Extended' : 'Standard';
   const affiliateProgress = Math.min((affiliateCount / targetAffiliates) * 100, 100);
   const businessProgress = Math.min((businessesCount / targetBusinesses) * 100, 100);
   const isAffiliateMilestoneReached = networkStats?.milestones?.agents?.isReached || false;
@@ -232,7 +180,7 @@ export default function NetworkPage() {
   const topEarners = [...teamMembers].sort((a, b) => b.earnings - a.earnings);
   const totalTeamLeads = teamMembers.reduce((s, m) => s + m.weeklyLeads, 0);
   const totalTeamConversions = teamMembers.reduce((s, m) => s + m.monthlyConversions, 0);
-  const avgCompletion = Math.round(teamMembers.reduce((s, m) => s + m.completionRate, 0) / teamMembers.length);
+  const avgCompletion = teamMembers.length ? Math.round(teamMembers.reduce((s, m) => s + m.completionRate, 0) / teamMembers.length) : 0;
 
   const openTeamReports = () => setViewTab('team-reports');
 
@@ -240,11 +188,7 @@ export default function NetworkPage() {
     const commentKey = `network:team:${key}`;
     const storedComments = getReportComments(commentKey);
     const comments = storedComments.map((c) => ({ author: c.author, role: c.role, text: c.text, date: c.date }));
-    const memberBreakdown = teamMembers.map((m) => {
-      const leads = key === 'daily' ? m.dailyLeads : key === 'weekly' ? m.weeklyLeads : Math.round(m.dailyLeads * 30);
-      const convs = key === 'daily' ? Math.round(m.dailyLeads * 0.4) : key === 'weekly' ? m.monthlyConversions : m.monthlyConversions;
-      return `${m.name} (${m.role === 'AGENT' ? 'Agent' : 'Affiliate'}): ${leads} leads, ${convs} convs, ${m.completionRate}%`;
-    });
+    const memberBreakdown = (teamReports[key]?.agentPerformance || []).map((m: any) => `${m.fullName}: ${m.leads} leads, ${m.conversions} convs, ${m.conversionRate}%`);
     const summary = s.leads >= s.target
       ? `Your team of ${teamMembers.length} members generated ${s.leads} leads (${s.convs} conversions) during this period with an average completion rate of ${s.rate}%. The team is meeting overall targets.`
       : `Your team of ${teamMembers.length} members generated ${s.leads} leads (${s.convs} conversions) during this period with an average completion rate of ${s.rate}%. The team is at ${Math.min(100, Math.round((s.leads / s.target) * 100))}% of the collective target.`;
@@ -343,7 +287,7 @@ export default function NetworkPage() {
               </p>
             ) : (
               <p className="text-sm sm:text-base text-slate-500 max-w-lg mx-auto mb-8 sm:mb-12">
-                Build your team and hit the targets <span className="text-orange-600 font-bold">within {timeLimitDays} days</span> to unlock your <span className="font-bold text-blue-600">Line Manager Network</span> and earn <span className="font-bold text-blue-600">{commissionRate}% of affiliate earnings</span>.
+                 Build your team and hit the targets <span className="text-orange-600 font-bold">within {qualificationDays} days</span> to unlock your <span className="font-bold text-blue-600">Line Manager Network</span> and earn <span className="font-bold text-blue-600">{commissionRate}% of affiliate earnings</span>.
               </p>
             )}
             <div className="max-w-2xl mx-auto space-y-8">
@@ -744,11 +688,11 @@ export default function NetworkPage() {
                   {/* Accordion Reports */}
                   {[
                     { key: 'daily' as const, icon: BarChart3, color: 'blue', title: 'Daily Report — Today',
-                      stats: { leads: Math.round(totalTeamLeads / 7) || 0, target: teamMembers.length * 5, convs: Math.round(totalTeamConversions / 30) || 0, visits: Math.round(totalTeamLeads * 1.6 / 7) || 0, rate: avgCompletion, earnings: Math.round(totalTeamEarnings / 26) || 0 } },
+                       stats: { leads: teamReports.daily?.metrics?.totalLeads ?? 0, target: teamMembers.reduce((sum, member) => sum + member.dailyLeadTarget, 0), convs: teamReports.daily?.metrics?.totalConversions ?? 0, visits: teamReports.daily?.metrics?.totalVisits ?? 0, rate: teamReports.daily?.metrics?.averageCompletionRate ?? 0, earnings: teamReports.daily?.metrics?.totalRevenueGenerated ?? 0 } },
                     { key: 'weekly' as const, icon: Activity, color: 'indigo', title: 'Weekly Report — This Week',
-                      stats: { leads: totalTeamLeads, target: teamMembers.length * 25, convs: Math.round(totalTeamConversions / 4) || 0, visits: Math.round(totalTeamLeads * 1.6) || 0, rate: avgCompletion, earnings: Math.round(totalTeamEarnings / 4) || 0 } },
+                       stats: { leads: teamReports.weekly?.metrics?.totalLeads ?? 0, target: teamMembers.reduce((sum, member) => sum + member.dailyLeadTarget, 0) * 7, convs: teamReports.weekly?.metrics?.totalConversions ?? 0, visits: teamReports.weekly?.metrics?.totalVisits ?? 0, rate: teamReports.weekly?.metrics?.averageCompletionRate ?? 0, earnings: teamReports.weekly?.metrics?.totalRevenueGenerated ?? 0 } },
                     { key: 'monthly' as const, icon: TrendingUp, color: 'emerald', title: 'Monthly Report — This Month',
-                      stats: { leads: totalTeamLeads * 4, target: teamMembers.length * 100, convs: totalTeamConversions, visits: Math.round(totalTeamLeads * 1.6 * 4) || 0, rate: avgCompletion, earnings: totalTeamEarnings } },
+                       stats: { leads: teamReports.monthly?.metrics?.totalLeads ?? 0, target: teamMembers.reduce((sum, member) => sum + member.dailyLeadTarget, 0) * 30, convs: teamReports.monthly?.metrics?.totalConversions ?? 0, visits: teamReports.monthly?.metrics?.totalVisits ?? 0, rate: teamReports.monthly?.metrics?.averageCompletionRate ?? 0, earnings: teamReports.monthly?.metrics?.totalRevenueGenerated ?? 0 } },
                   ].map(section => {
                     const s = section.stats;
                     const isOpen = openReportTeam === section.key;

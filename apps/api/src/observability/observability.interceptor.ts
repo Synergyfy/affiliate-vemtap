@@ -8,18 +8,24 @@ import { Observable } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 import { throwError } from 'rxjs';
 import { randomUUID } from 'crypto';
+import type { Request, Response } from 'express';
 import { ObservabilityStoreService } from './observability.store';
 import { LogEntryDto } from './dto/observability.dto';
 
 const EXCLUDED_PATHS = ['/api/v1/observability', '/api/health', '/api/metrics'];
 
+interface AuthenticatedRequest extends Request {
+  traceId?: string;
+  user?: { id: string; email: string; role: string };
+}
+
 @Injectable()
 export class ObservabilityLoggingInterceptor implements NestInterceptor {
   constructor(private readonly store: ObservabilityStoreService) {}
 
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    const request = context.switchToHttp().getRequest();
-    const response = context.switchToHttp().getResponse();
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+    const response = context.switchToHttp().getResponse<Response>();
 
     const path = request.route?.path || request.path || request.url;
     if (EXCLUDED_PATHS.some((p) => path.startsWith(p))) {
@@ -27,9 +33,9 @@ export class ObservabilityLoggingInterceptor implements NestInterceptor {
     }
 
     const start = Date.now();
-    const traceId =
-      (request as any).traceId ||
-      request.headers['x-request-id'] ||
+    const requestId = request.headers['x-request-id'];
+    const traceId = request.traceId ??
+      (Array.isArray(requestId) ? requestId[0] : requestId) ??
       randomUUID();
     const method = request.method;
     const url = request.originalUrl || request.url;
@@ -69,16 +75,16 @@ export class ObservabilityLoggingInterceptor implements NestInterceptor {
 
         this.store.addLog(entry);
       }),
-      catchError((err) => {
+      catchError((err: unknown) => {
         const responseTime = Date.now() - start;
-        const statusCode = err.status || err.statusCode || 500;
+        const error = this.getErrorDetails(err);
 
         const entry: LogEntryDto = {
           id: randomUUID(),
           timestamp: new Date().toISOString(),
           method,
           url,
-          statusCode,
+          statusCode: error.statusCode,
           responseTime,
           headers: this.sanitizeHeaders(headers),
           query:
@@ -92,11 +98,11 @@ export class ObservabilityLoggingInterceptor implements NestInterceptor {
             : undefined,
           traceId,
           error: {
-            message: err.message || 'Internal server error',
-            name: err.name || 'Error',
+            message: error.message,
+            name: error.name,
             stack:
               process.env.NODE_ENV !== 'production'
-                ? err.stack
+                ? error.stack
                 : undefined,
           },
         };
@@ -107,8 +113,13 @@ export class ObservabilityLoggingInterceptor implements NestInterceptor {
     );
   }
 
-  private sanitizeHeaders(headers: Record<string, any>): Record<string, any> {
-    const sanitized = { ...headers };
+  private sanitizeHeaders(
+    headers: Record<string, string | string[] | undefined>,
+  ): Record<string, string | string[]> {
+    const sanitized: Record<string, string | string[]> = {};
+    for (const [key, value] of Object.entries(headers)) {
+      if (value !== undefined) sanitized[key] = value;
+    }
     const sensitive = [
       'authorization',
       'cookie',
@@ -122,16 +133,16 @@ export class ObservabilityLoggingInterceptor implements NestInterceptor {
     return sanitized;
   }
 
-  private truncate(obj: any): any {
+  private truncate(obj: unknown): unknown {
     if (typeof obj !== 'object' || obj === null) return obj;
     try {
       const str = JSON.stringify(obj);
       if (str.length > 1000) {
         if (Array.isArray(obj)) {
-          const truncatedArray: any[] = [];
+          const truncatedArray: unknown[] = [];
           let currentLength = 2; // "[]"
           for (const item of obj) {
-            const itemStr = JSON.stringify(item);
+            const itemStr = JSON.stringify(item) ?? 'null';
             if (currentLength + itemStr.length + 1 > 800) {
               break;
             }
@@ -145,10 +156,10 @@ export class ObservabilityLoggingInterceptor implements NestInterceptor {
           return truncatedArray;
         }
 
-        const truncatedObj: Record<string, any> = {};
+        const truncatedObj: Record<string, unknown> = {};
         let currentLength = 2; // "{}"
-        for (const [key, value] of Object.entries(obj)) {
-          const valStr = JSON.stringify({ [key]: value });
+        for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+          const valStr = JSON.stringify({ [key]: value }) ?? 'null';
           if (currentLength + valStr.length > 800) {
             break;
           }
@@ -167,5 +178,42 @@ export class ObservabilityLoggingInterceptor implements NestInterceptor {
       };
     }
     return obj;
+  }
+
+  private getErrorDetails(error: unknown): {
+    statusCode: number;
+    message: string;
+    name: string;
+    stack?: string;
+  } {
+    if (error instanceof Error) {
+      const statusCode = this.getStatusCode(error);
+      return {
+        statusCode,
+        message: error.message || 'Internal server error',
+        name: error.name || 'Error',
+        stack: error.stack,
+      };
+    }
+
+    const details = typeof error === 'object' && error !== null
+      ? error as { status?: unknown; statusCode?: unknown; message?: unknown; name?: unknown; stack?: unknown }
+      : {};
+
+    return {
+      statusCode: this.getStatusCode(details),
+      message: typeof details.message === 'string' ? details.message : 'Internal server error',
+      name: typeof details.name === 'string' ? details.name : 'Error',
+      stack: typeof details.stack === 'string' ? details.stack : undefined,
+    };
+  }
+
+  private getStatusCode(error: unknown): number {
+    if (typeof error !== 'object' || error === null) return 500;
+
+    const details = error as { status?: unknown; statusCode?: unknown };
+    if (typeof details.status === 'number') return details.status;
+    if (typeof details.statusCode === 'number') return details.statusCode;
+    return 500;
   }
 }

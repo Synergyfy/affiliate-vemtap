@@ -32,11 +32,22 @@ export interface TeamMemberDetail {
   monthlyConversionTarget: number;
   totalEarnings: number;
   activeBusinessesCount: number;
+  createdAt: string;
+  businessCount: number;
+  leadCount: number;
+  dailyLeadsCount?: number;
+  weeklyLeadsCount?: number;
+  dailyConversionsCount?: number;
   todayLeadsCount?: number;
   monthlyConversionsCount?: number;
-  activityFeed?: any[];
-  targetHistory?: any[];
-  earningsBreakdown?: any[];
+  activities: Array<{ id: string; type: string; title: string; description?: string | null; businessName?: string | null; createdAt: string }>;
+  targetAdjustmentHistory: Array<Record<string, unknown>>;
+  monthlyBreakdown: Array<{ month: string; amount: number; leads: number; conversions: number; businesses: number }>;
+  referralHistory: Array<{ id: string; businessName: string; type: string; date: string; status: string }>;
+  businesses: Array<{ id: string; businessName: string; status: string; createdAt: string; subscriptionAmount: number; commissionAmount: number }>;
+  leads: Array<{ id: string; businessName: string; status: string; createdAt: string }>;
+  dailyVisitsCount?: number;
+  weeklyVisitsCount?: number;
 }
 
 export interface UpdateTargetsPayload {

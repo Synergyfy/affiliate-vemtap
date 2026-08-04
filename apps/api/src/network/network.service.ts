@@ -15,16 +15,21 @@ export class NetworkService {
         select: {
           id: true,
           fullName: true,
-          email: true,
-          status: true,
-          createdAt: true,
+           email: true,
+           role: true,
+           status: true,
+           createdAt: true,
+           updatedAt: true,
+           dailyLeadTarget: true,
+           monthlyConversionTarget: true,
           totalEarnings: true,
-          _count: {
-            select: { referrals: true, businesses: true },
+           _count: {
+             select: { referrals: true, businesses: true, leads: true },
           },
-          businesses: {
-            select: { subscriptionAmount: true },
-          },
+           businesses: {
+             select: { subscriptionAmount: true, createdAt: true },
+           },
+           leads: { select: { createdAt: true } },
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -33,15 +38,31 @@ export class NetworkService {
 
     const recruits = data.map(r => {
       const totalVolume = r.businesses.reduce((sum, b) => sum + Number(b.subscriptionAmount), 0);
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const week = new Date(today); week.setDate(today.getDate() - 6);
+      const month = new Date(today); month.setDate(today.getDate() - 29);
+      const dailyLeadsCount = r.leads.filter((lead) => lead.createdAt >= today).length;
+      const weeklyLeadsCount = r.leads.filter((lead) => lead.createdAt >= week).length;
+      const monthlyLeadsCount = r.leads.filter((lead) => lead.createdAt >= month).length;
       return {
         id: r.id,
         fullName: r.fullName,
         email: r.email,
         status: r.status,
         createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+        role: r.role,
+        dailyLeadTarget: r.dailyLeadTarget,
+        monthlyConversionTarget: r.monthlyConversionTarget,
         totalEarnings: Number(r.totalEarnings),
         referralCount: r._count.referrals,
         businessCount: r._count.businesses,
+        leadCount: r._count.leads,
+        dailyLeadsCount,
+        weeklyLeadsCount,
+        monthlyLeadsCount,
+        monthlyConversionsCount: r.businesses.filter((business) => business.createdAt >= month).length,
+        completionRate: r.leads.length ? Math.round((r.businesses.length / r.leads.length) * 100) : 0,
         managerShare: totalVolume * 0.10, // 10% of their total closed business volume
       };
     });
@@ -291,9 +312,10 @@ export class NetworkService {
         ],
       },
       include: {
-        businesses: { select: { id: true, businessName: true, planType: true, status: true, subscriptionAmount: true, createdAt: true } },
+        businesses: { select: { id: true, businessName: true, planType: true, status: true, subscriptionAmount: true, commissionAmount: true, createdAt: true } },
         leads: { select: { id: true, businessName: true, status: true, priority: true, createdAt: true } },
         activities: { take: 10, orderBy: { createdAt: 'desc' } },
+        agentDemos: { select: { id: true, date: true, status: true } },
         targetAdjustmentsReceived: { orderBy: { createdAt: 'desc' }, take: 10 },
       },
     });
@@ -301,6 +323,33 @@ export class NetworkService {
     if (!member) throw new NotFoundException('Team member not found');
 
     const totalVolume = member.businesses.reduce((sum, b) => sum + Number(b.subscriptionAmount), 0);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const week = new Date(today); week.setDate(today.getDate() - 6);
+    const month = new Date(today); month.setDate(today.getDate() - 29);
+    const dailyLeadsCount = member.leads.filter((lead) => lead.createdAt >= today).length;
+    const weeklyLeadsCount = member.leads.filter((lead) => lead.createdAt >= week).length;
+    const dailyConversionsCount = member.businesses.filter((business) => business.createdAt >= today && business.status === 'ACTIVE').length;
+    const weeklyConversionsCount = member.businesses.filter((business) => business.createdAt >= week && business.status === 'ACTIVE').length;
+    const monthlyConversionsCount = member.businesses.filter((business) => business.createdAt >= month && business.status === 'ACTIVE').length;
+    const dailyVisitsCount = member.agentDemos.filter((demo) => demo.date >= today && demo.status === 'COMPLETED').length;
+    const weeklyVisitsCount = member.agentDemos.filter((demo) => demo.date >= week && demo.status === 'COMPLETED').length;
+    const monthlyBreakdown = Array.from({ length: 6 }, (_, index) => {
+      const monthStart = new Date(today.getFullYear(), today.getMonth() - (5 - index), 1);
+      const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
+      const businesses = member.businesses.filter((business) => business.createdAt >= monthStart && business.createdAt < monthEnd);
+      const leads = member.leads.filter((lead) => lead.createdAt >= monthStart && lead.createdAt < monthEnd);
+      return {
+        month: monthStart.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        amount: businesses.reduce((sum, business) => sum + Number(business.commissionAmount), 0),
+        leads: leads.length,
+        conversions: businesses.filter((business) => business.status === 'ACTIVE').length,
+        businesses: businesses.length,
+      };
+    });
+    const referralHistory = [
+      ...member.leads.map((lead) => ({ id: lead.id, businessName: lead.businessName, type: 'lead', date: lead.createdAt, status: lead.status })),
+      ...member.businesses.map((business) => ({ id: business.id, businessName: business.businessName, type: 'business', date: business.createdAt, status: business.status })),
+    ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
     return {
       id: member.id,
@@ -316,11 +365,20 @@ export class NetworkService {
       totalEarnings: Number(member.totalEarnings),
       businessCount: member.businesses.length,
       leadCount: member.leads.length,
+      dailyLeadsCount,
+      weeklyLeadsCount,
+      dailyConversionsCount,
+      weeklyConversionsCount,
+      monthlyConversionsCount,
+       dailyVisitsCount,
+       weeklyVisitsCount,
       totalVolume,
       businesses: member.businesses,
       leads: member.leads,
-      activities: member.activities,
-      targetAdjustmentHistory: member.targetAdjustmentsReceived,
+       activities: member.activities,
+       targetAdjustmentHistory: member.targetAdjustmentsReceived,
+       monthlyBreakdown,
+       referralHistory,
     };
   }
 
@@ -371,16 +429,17 @@ export class NetworkService {
   async getEarningsHistory(userId: string) {
     const recruits = await this.prisma.user.findMany({
       where: { referrerId: userId },
-      select: { id: true, fullName: true, totalEarnings: true, businesses: { select: { subscriptionAmount: true, createdAt: true } } },
+      select: { id: true, fullName: true, totalEarnings: true, businesses: { select: { commissionAmount: true, createdAt: true } } },
     });
 
-    const monthlyBreakdown = [
-      { month: 'Jan 2026', totalEarnings: 120000, overrideEarnings: 12000 },
-      { month: 'Feb 2026', totalEarnings: 180000, overrideEarnings: 18000 },
-      { month: 'Mar 2026', totalEarnings: 250000, overrideEarnings: 25000 },
-      { month: 'Apr 2026', totalEarnings: 310000, overrideEarnings: 31000 },
-      { month: 'May 2026', totalEarnings: 420000, overrideEarnings: 42000 },
-    ];
+    const now = new Date();
+    const monthlyBreakdown = Array.from({ length: 6 }, (_, index) => {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
+      const nextMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1);
+      const businesses = recruits.flatMap((recruit) => recruit.businesses).filter((business) => business.createdAt >= monthDate && business.createdAt < nextMonth);
+      const totalEarnings = businesses.reduce((sum, business) => sum + Number(business.commissionAmount || 0), 0);
+      return { month: monthDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }), totalEarnings, overrideEarnings: totalEarnings * 0.1 };
+    });
 
     return {
       totalTeamMembers: recruits.length,
@@ -394,15 +453,21 @@ export class NetworkService {
   }
 
   async getTeamReports(userId: string, period: string = 'monthly') {
+    const start = new Date();
+    if (period === 'daily') start.setHours(0, 0, 0, 0);
+    else if (period === 'weekly') start.setDate(start.getDate() - 6);
+    else start.setDate(start.getDate() - 29);
     const recruits = await this.prisma.user.findMany({
       where: { referrerId: userId },
       include: {
-        _count: { select: { leads: true, businesses: true } },
+        leads: { where: { createdAt: { gte: start } }, select: { id: true } },
+        businesses: { where: { createdAt: { gte: start } }, select: { commissionAmount: true } },
       },
     });
 
-    const totalLeads = recruits.reduce((sum, r) => sum + r._count.leads, 0);
-    const totalConversions = recruits.reduce((sum, r) => sum + r._count.businesses, 0);
+    const totalLeads = recruits.reduce((sum, r) => sum + r.leads.length, 0);
+    const totalConversions = recruits.reduce((sum, r) => sum + r.businesses.length, 0);
+    const totalRevenueGenerated = recruits.reduce((sum, r) => sum + r.businesses.reduce((inner, business) => inner + Number(business.commissionAmount || 0), 0), 0);
 
     return {
       period,
@@ -410,15 +475,15 @@ export class NetworkService {
       metrics: {
         totalLeads,
         totalConversions,
-        averageCompletionRate: 88,
-        totalRevenueGenerated: totalConversions * 45000,
+        averageCompletionRate: totalLeads > 0 ? Math.round((totalConversions / totalLeads) * 100) : 0,
+        totalRevenueGenerated,
       },
       agentPerformance: recruits.map((r) => ({
         id: r.id,
         fullName: r.fullName,
-        leads: r._count.leads,
-        conversions: r._count.businesses,
-        conversionRate: r._count.leads > 0 ? Math.round((r._count.businesses / r._count.leads) * 100) : 0,
+        leads: r.leads.length,
+        conversions: r.businesses.length,
+        conversionRate: r.leads.length > 0 ? Math.round((r.businesses.length / r.leads.length) * 100) : 0,
       })),
     };
   }

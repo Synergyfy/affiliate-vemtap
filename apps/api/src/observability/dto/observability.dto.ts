@@ -2,6 +2,9 @@ import { IsOptional, IsString, IsEnum, IsInt, Min, Max } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
+export type JsonPrimitive = string | number | boolean | null;
+export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
+
 export enum HttpMethod {
   GET = 'GET',
   POST = 'POST',
@@ -81,16 +84,16 @@ export class LogEntryDto {
   responseTime: number;
 
   @ApiPropertyOptional()
-  headers?: Record<string, any>;
+  headers?: Record<string, string | string[]>;
 
   @ApiPropertyOptional()
-  query?: Record<string, any>;
+  query?: Record<string, unknown>;
 
   @ApiPropertyOptional()
-  body?: any;
+  body?: unknown;
 
   @ApiPropertyOptional()
-  responseBody?: any;
+  responseBody?: unknown;
 
   @ApiPropertyOptional()
   user?: { id: string; email: string; role: string };

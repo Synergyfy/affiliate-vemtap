@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Activity, 
   Terminal, 
-  Database, 
   Server, 
   RefreshCw, 
   Trash2, 
@@ -18,13 +17,9 @@ import {
   AlertTriangle, 
   ShieldCheck, 
   CheckCircle2, 
-  ChevronRight, 
   Copy, 
   Check,
-  ToggleLeft,
-  ToggleRight,
   TrendingUp,
-  ArrowUpRight
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
@@ -44,6 +39,9 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/toast';
 
 // Types matching Backend Observability module
+type JsonPrimitive = string | number | boolean | null;
+type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
+
 interface LogEntry {
   id: string;
   timestamp: string;
@@ -51,10 +49,10 @@ interface LogEntry {
   url: string;
   statusCode: number;
   responseTime: number;
-  headers?: Record<string, any>;
-  query?: Record<string, any>;
-  body?: any;
-  responseBody?: any;
+  headers?: Record<string, string | string[]>;
+  query?: Record<string, unknown>;
+  body?: JsonValue;
+  responseBody?: JsonValue;
   user?: { id: string; email: string; role: string };
   traceId?: string;
   error?: { message: string; name?: string; stack?: string };
@@ -71,119 +69,40 @@ interface ObservabilityStats {
   recentTraffic: { timestamp: string; count: number; avgLatency: number }[];
 }
 
-// Generate unique trace IDs
-const generateTraceId = () => Math.random().toString(16).substring(2, 10) + Math.random().toString(16).substring(2, 10);
-
-// Realistic mock URLs and actions for Sandbox mode
-const MOCK_ENDPOINTS = [
-  { method: 'GET' as const, url: '/api/v1/affiliates', weight: 4 },
-  { method: 'GET' as const, url: '/api/v1/referrals', weight: 3 },
-  { method: 'POST' as const, url: '/api/v1/commissions/calculate', weight: 2 },
-  { method: 'POST' as const, url: '/api/v1/withdrawals/request', weight: 2 },
-  { method: 'GET' as const, url: '/api/v1/fraud/alerts', weight: 1.5 },
-  { method: 'GET' as const, url: '/api/v1/dashboard/stats', weight: 4.5 },
-  { method: 'PATCH' as const, url: '/api/v1/users/status', weight: 1 },
-  { method: 'PUT' as const, url: '/api/v1/settings', weight: 0.5 },
-];
-
-const MOCK_EMAILS = [
-  'admin@vemtap.com',
-  'affiliate.star@gmail.com',
-  'grow.partner@outlook.com',
-  'supervisor.john@vemtap.com',
-  'lead.builder@yahoo.com'
-];
-
-// Generate single random realistic log entry
-const generateMockLog = (): LogEntry => {
-  const endpoint = MOCK_ENDPOINTS[Math.floor(Math.random() * MOCK_ENDPOINTS.length)];
-  const durationRandom = Math.random();
-  
-  // Latency profiles: 85% fast, 12% slow, 3% critical/timeout
-  let responseTime = Math.round(50 + Math.random() * 200);
-  if (durationRandom > 0.85 && durationRandom <= 0.97) {
-    responseTime = Math.round(1000 + Math.random() * 800); // SLOW (1s - 1.8s)
-  } else if (durationRandom > 0.97) {
-    responseTime = Math.round(3000 + Math.random() * 2500); // CRITICAL (3s - 5.5s)
-  }
-
-  // Error profiles: 94% success (2xx/3xx), 4% client error (4xx), 2% server error (5xx)
-  const statusRandom = Math.random();
-  let statusCode = 200;
-  if (endpoint.method === 'POST') statusCode = 210; // Created
-  
-  if (statusRandom > 0.94 && statusRandom <= 0.98) {
-    statusCode = [400, 401, 403, 404][Math.floor(Math.random() * 4)];
-  } else if (statusRandom > 0.98) {
-    statusCode = [500, 502, 503][Math.floor(Math.random() * 3)];
-  }
-
-  // Details
-  const userRandom = Math.random();
-  const user = userRandom > 0.3 ? {
-    id: 'usr_' + Math.random().toString(36).substring(2, 9),
-    email: MOCK_EMAILS[Math.floor(Math.random() * MOCK_EMAILS.length)],
-    role: userRandom > 0.85 ? 'ADMIN' : 'AFFILIATE'
-  } : undefined;
-
-  let error: LogEntry['error'];
-  if (statusCode >= 400) {
-    const errorMessages: Record<number, string> = {
-      400: 'Validation failed: Amount exceeds maximum daily payout limit',
-      401: 'Authentication credentials expired or invalid',
-      403: 'Access denied: Insufficient role permissions for this operation',
-      404: 'The requested resource could not be located',
-      500: 'Database connection pools depleted under peak system load',
-      502: 'Gateway timeout: Upstream application server unresponsive',
-      503: 'Service unavailable: Temporary rate-limit throttling engaged'
-    };
-    error = {
-      name: statusCode >= 500 ? 'SystemCriticalException' : 'BadRequestException',
-      message: errorMessages[statusCode] || 'An unexpected API exception occurred',
-      stack: `Error: ${errorMessages[statusCode] || 'API Error'}\n    at processRequest (/app/dist/main.js:142:25)\n    at dispatch (/app/node_modules/nestjs/core.js:42:12)\n    at next (/app/node_modules/express/router.js:18:2)\n    at systemRun (/app/dist/main.js:88:5)`
-    };
-  }
-
-  const queryParams = endpoint.method === 'GET' && Math.random() > 0.5 
-    ? { limit: '50', page: '1', search: 'payout', status: 'ACTIVE' }
-    : undefined;
-
-  const payload = endpoint.method !== 'GET' && Math.random() > 0.3
-    ? { 
-        amount: Math.round(5000 + Math.random() * 150000), 
-        currency: 'NGN', 
-        bankCode: '058', 
-        accountNumber: Math.floor(1000000000 + Math.random() * 9000000000).toString(),
-        description: 'Vemtap payouts program batch execution' 
-      }
-    : undefined;
-
-  const responsePayload = statusCode < 400 
-    ? { success: true, timestamp: new Date().toISOString(), payload: { count: Math.round(Math.random() * 100), items: [] } }
-    : { success: false, statusCode, message: error?.message };
-
-  return {
-    id: 'log_' + Math.random().toString(36).substring(2, 9),
-    timestamp: new Date().toISOString(),
-    method: endpoint.method,
-    url: endpoint.url,
-    statusCode,
-    responseTime,
-    headers: {
-      'host': 'api.vemtap.com',
-      'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0',
-      'accept': 'application/json',
-      'x-request-id': generateTraceId(),
-      'x-forwarded-for': `197.210.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`
-    },
-    query: queryParams,
-    body: payload,
-    responseBody: responsePayload,
-    user,
-    traceId: generateTraceId(),
-    error
+interface PaginatedLogsResponse {
+  data: LogEntry[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
   };
+}
+
+const emptyStats: ObservabilityStats = {
+  totalRequests: 0,
+  avgResponseTime: 0,
+  errorRate: 0,
+  slowCount: 0,
+  criticalCount: 0,
+  methodDistribution: {},
+  statusDistribution: {},
+  recentTraffic: [],
 };
+
+function isLogEntry(value: unknown): value is LogEntry {
+  if (typeof value !== 'object' || value === null) return false;
+
+  const entry = value as Partial<LogEntry>;
+  return (
+    typeof entry.id === 'string' &&
+    typeof entry.timestamp === 'string' &&
+    typeof entry.method === 'string' &&
+    typeof entry.url === 'string' &&
+    typeof entry.statusCode === 'number' &&
+    typeof entry.responseTime === 'number'
+  );
+}
 
 export default function ObservabilityDashboard() {
   const { showToast } = useToast();
@@ -194,8 +113,6 @@ export default function ObservabilityDashboard() {
     setIsMounted(true);
   }, []);
 
-  // Mode: LIVE or SANDBOX
-  const [sandboxMode, setSandboxMode] = useState<boolean>(false);
   const [liveStreamActive, setLiveStreamActive] = useState<boolean>(true);
 
   // Filters State
@@ -212,120 +129,8 @@ export default function ObservabilityDashboard() {
   // Copy support state
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  // Local sandbox data store
-  const [sandboxLogs, setSandboxLogs] = useState<LogEntry[]>([]);
-  const sandboxStatsRef = useRef<ObservabilityStats>({
-    totalRequests: 0,
-    avgResponseTime: 0,
-    errorRate: 0,
-    slowCount: 0,
-    criticalCount: 0,
-    methodDistribution: {},
-    statusDistribution: {},
-    recentTraffic: [],
-  });
-
-  // Load initial sandbox dataset
-  useEffect(() => {
-    if (sandboxMode && sandboxLogs.length === 0) {
-      const logsList: LogEntry[] = [];
-      const now = Date.now();
-      // Backfill 80 logs with simulated past timestamps
-      for (let i = 80; i > 0; i--) {
-        const mock = generateMockLog();
-        mock.timestamp = new Date(now - i * 30000).toISOString();
-        logsList.push(mock);
-      }
-      setSandboxLogs(logsList);
-    }
-  }, [sandboxMode, sandboxLogs.length]);
-
-  // Periodic sandbox ticker to simulate incoming real-time requests (every 2.5s)
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (sandboxMode && liveStreamActive) {
-      interval = setInterval(() => {
-        const newLog = generateMockLog();
-        setSandboxLogs((prev) => {
-          const next = [newLog, ...prev];
-          if (next.length > 500) next.pop(); // Keep within circular buffer limit
-          return next;
-        });
-      }, 2500);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [sandboxMode, liveStreamActive]);
-
-  // Computes Stats dynamically from local Sandbox logs
-  const getComputedSandboxStats = (): ObservabilityStats => {
-    const entries = sandboxLogs;
-    const totalRequests = entries.length;
-
-    if (totalRequests === 0) {
-      return {
-        totalRequests: 0,
-        avgResponseTime: 0,
-        errorRate: 0,
-        slowCount: 0,
-        criticalCount: 0,
-        methodDistribution: {},
-        statusDistribution: {},
-        recentTraffic: [],
-      };
-    }
-
-    const totalTime = entries.reduce((sum, e) => sum + e.responseTime, 0);
-    const avgResponseTime = Math.round(totalTime / totalRequests);
-    
-    const errors = entries.filter((e) => e.statusCode >= 400).length;
-    const errorRate = Math.round((errors / totalRequests) * 100);
-    
-    const slowCount = entries.filter((e) => e.responseTime >= 1000).length;
-    const criticalCount = entries.filter((e) => e.responseTime >= 3000).length;
-
-    const methodDistribution: Record<string, number> = {};
-    const statusDistribution: Record<string, number> = {};
-    
-    for (const e of entries) {
-      methodDistribution[e.method] = (methodDistribution[e.method] || 0) + 1;
-      const statusClass = String(e.statusCode).charAt(0) + 'XX';
-      statusDistribution[statusClass] = (statusDistribution[statusClass] || 0) + 1;
-    }
-
-    // Bucket into minute segments for Recharts AreaChart (last 10 buckets)
-    const buckets: Record<string, { count: number; totalLatency: number }> = {};
-    const recent = [...entries].reverse().slice(-50); // Take chronological order of last 50
-    
-    for (const e of recent) {
-      const date = new Date(e.timestamp);
-      const timeStr = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${(Math.floor(date.getSeconds() / 15) * 15).toString().padStart(2, '0')}`;
-      if (!buckets[timeStr]) buckets[timeStr] = { count: 0, totalLatency: 0 };
-      buckets[timeStr].count++;
-      buckets[timeStr].totalLatency += e.responseTime;
-    }
-
-    const recentTraffic = Object.entries(buckets).map(([timestamp, d]) => ({
-      timestamp,
-      count: d.count,
-      avgLatency: Math.round(d.totalLatency / d.count),
-    })).slice(-15); // Show latest 15 segments
-
-    return {
-      totalRequests,
-      avgResponseTime,
-      errorRate,
-      slowCount,
-      criticalCount,
-      methodDistribution,
-      statusDistribution,
-      recentTraffic,
-    };
-  };
-
   // Real API Data fetching queries via React Query
-  const { data: serverLogsResponse, isLoading: isLogsLoading } = useQuery({
+  const { data: serverLogsResponse, isLoading: isLogsLoading, isError: isLogsError } = useQuery<PaginatedLogsResponse>({
     queryKey: ['observability', 'logs', searchTerm, selectedMethod, selectedStatus, selectedSpeed, page],
     queryFn: () => {
       const qp = new URLSearchParams();
@@ -335,21 +140,19 @@ export default function ObservabilityDashboard() {
       if (selectedSpeed !== 'ALL') qp.append('speed', selectedSpeed);
       qp.append('page', String(page));
       qp.append('limit', '50');
-      return api.get(`/v1/observability/logs?${qp.toString()}`);
+       return api.get<PaginatedLogsResponse>(`/v1/observability/logs?${qp.toString()}`);
     },
-    enabled: !sandboxMode
   });
 
-  const { data: serverStats, isLoading: isStatsLoading } = useQuery({
+  const { data: serverStats, isError: isStatsError } = useQuery<ObservabilityStats>({
     queryKey: ['observability', 'stats'],
     queryFn: () => api.get<ObservabilityStats>('/v1/observability/stats'),
-    refetchInterval: liveStreamActive && !sandboxMode ? 5000 : false, // Poll stats every 5s if active
-    enabled: !sandboxMode
+    refetchInterval: liveStreamActive ? 5000 : false,
   });
 
   // Real-time EventSource connection for live stream
   useEffect(() => {
-    if (sandboxMode || !liveStreamActive) return;
+    if (!liveStreamActive) return;
 
     let eventSource: EventSource | null = null;
     try {
@@ -360,27 +163,23 @@ export default function ObservabilityDashboard() {
 
       eventSource.onmessage = (event) => {
         try {
-          const newLog: LogEntry = JSON.parse(event.data);
-          // Manually update log cache in query client to show new log instantly
-          queryClient.setQueryData(['observability', 'logs', searchTerm, selectedMethod, selectedStatus, selectedSpeed, page], (oldData: any) => {
-            if (!oldData || !oldData.data) return oldData;
-            return {
-              ...oldData,
-              data: [newLog, ...oldData.data.slice(0, 49)] // Prepend and slice to maintain length
-            };
-          });
-          // Stats are fetched periodically (every 5s) by React Query's refetchInterval when active.
-          // Invalidation here is disabled to avoid flooding the server with HTTP requests on every SSE event.
-        } catch (err) {
-          console.error('Failed to parse SSE payload', err);
+          const parsed: unknown = JSON.parse(event.data);
+          if (!isLogEntry(parsed)) {
+            throw new Error('Invalid observability log payload');
+          }
+          // Refresh server-filtered data so the event cannot bypass active filters or pagination.
+          queryClient.invalidateQueries({ queryKey: ['observability', 'logs'] });
+          queryClient.invalidateQueries({ queryKey: ['observability', 'stats'] });
+        } catch {
+          showToast('Received an invalid observability stream event.', 'error');
         }
       };
 
-      eventSource.onerror = (err) => {
-        console.error('SSE Connection failed. Will automatically retry...', err);
+      eventSource.onerror = () => {
+        showToast('Live observability stream disconnected. Retrying...', 'error');
       };
-    } catch (err) {
-      console.error('EventSource connection error:', err);
+    } catch {
+      showToast('Unable to connect to the live observability stream.', 'error');
     }
 
     return () => {
@@ -388,7 +187,7 @@ export default function ObservabilityDashboard() {
         eventSource.close();
       }
     };
-  }, [sandboxMode, liveStreamActive, queryClient, searchTerm, selectedMethod, selectedStatus, selectedSpeed, page]);
+  }, [liveStreamActive, queryClient, searchTerm, selectedMethod, selectedStatus, selectedSpeed, page, showToast]);
 
   // Clear in-memory logs mutation
   const clearLogsMutation = useMutation({
@@ -404,74 +203,14 @@ export default function ObservabilityDashboard() {
 
   // Handle clear triggers
   const handleClearBuffer = () => {
-    if (sandboxMode) {
-      setSandboxLogs([]);
-      showToast('Sandbox circular buffer cleared.', 'info');
-    } else {
-      clearLogsMutation.mutate();
-    }
+    clearLogsMutation.mutate();
   };
 
   // Compile Active Logs
-  let logs: LogEntry[] = [];
-  let stats: ObservabilityStats = {
-    totalRequests: 0,
-    avgResponseTime: 0,
-    errorRate: 0,
-    slowCount: 0,
-    criticalCount: 0,
-    methodDistribution: {},
-    statusDistribution: {},
-    recentTraffic: [],
-  };
-  let totalLogsCount = 0;
-  let totalPagesCount = 1;
-
-  if (sandboxMode) {
-    // Filter locally
-    let filtered = [...sandboxLogs];
-
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (e) =>
-          e.url.toLowerCase().includes(term) ||
-          e.method.toLowerCase().includes(term) ||
-          String(e.statusCode).includes(term) ||
-          e.traceId?.toLowerCase().includes(term) ||
-          (e.error && e.error.message.toLowerCase().includes(term))
-      );
-    }
-
-    if (selectedMethod !== 'ALL') {
-      filtered = filtered.filter((e) => e.method === selectedMethod);
-    }
-
-    if (selectedStatus !== 'ALL') {
-      const prefix = selectedStatus.charAt(0);
-      filtered = filtered.filter((e) => String(e.statusCode).startsWith(prefix));
-    }
-
-    if (selectedSpeed !== 'ALL') {
-      filtered = filtered.filter((e) => {
-        if (selectedSpeed === 'SLOW') return e.responseTime >= 1000;
-        if (selectedSpeed === 'CRITICAL') return e.responseTime >= 3000;
-        return true;
-      });
-    }
-
-    totalLogsCount = filtered.length;
-    totalPagesCount = Math.ceil(totalLogsCount / 20);
-    const startIdx = (page - 1) * 20;
-    logs = filtered.slice(startIdx, startIdx + 20);
-    stats = getComputedSandboxStats();
-  } else {
-    // Read from queries
-    logs = serverLogsResponse?.data || [];
-    stats = serverStats || stats;
-    totalLogsCount = serverLogsResponse?.meta?.total || 0;
-    totalPagesCount = serverLogsResponse?.meta?.totalPages || 1;
-  }
+  const logs = serverLogsResponse?.data ?? [];
+  const stats = serverStats ?? emptyStats;
+  const totalLogsCount = serverLogsResponse?.meta.total ?? 0;
+  const totalPagesCount = serverLogsResponse?.meta.totalPages ?? 1;
 
   // Helpers to color HTTP Methods
   const getMethodStyles = (method: string) => {
@@ -499,11 +238,15 @@ export default function ObservabilityDashboard() {
     return { text: 'Critical Latency', color: 'text-rose-600 bg-rose-50 border border-rose-100 animate-pulse' };
   };
 
-  const handleCopy = (field: string, text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedField(field);
-    showToast(`${field} copied to clipboard`, 'success');
-    setTimeout(() => setCopiedField(null), 2000);
+  const handleCopy = async (field: string, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      showToast(`${field} copied to clipboard`, 'success');
+      window.setTimeout(() => setCopiedField(null), 2000);
+    } catch {
+      showToast(`Unable to copy ${field.toLowerCase()}.`, 'error');
+    }
   };
 
   return (
@@ -525,7 +268,7 @@ export default function ObservabilityDashboard() {
                 )}></span>
               </span>
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                {sandboxMode ? 'Offline Sandbox Mode' : liveStreamActive ? 'Connected Live SSE Stream' : 'Live Stream Suspended'}
+                {liveStreamActive ? 'Connected Live SSE Stream' : 'Live Stream Suspended'}
               </p>
             </div>
             <h2 className="text-xl font-black text-slate-900 tracking-tight mt-1 flex items-center gap-2">
@@ -535,38 +278,6 @@ export default function ObservabilityDashboard() {
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
-            {/* Real / Sandbox Toggle */}
-            <div className="bg-slate-50 p-1.5 rounded-2xl border border-slate-200 flex items-center gap-1.5">
-              <button
-                onClick={() => {
-                  setSandboxMode(false);
-                  showToast('Switched to live backend observability data.', 'info');
-                }}
-                className={cn(
-                  "px-4 py-2 text-xs font-black uppercase tracking-widest rounded-xl transition-all",
-                  !sandboxMode 
-                    ? "bg-blue-600 text-white shadow-sm shadow-blue-500/20" 
-                    : "text-slate-500 hover:text-slate-900"
-                )}
-              >
-                Live Production
-              </button>
-              <button
-                onClick={() => {
-                  setSandboxMode(true);
-                  showToast('Switched to high-traffic sandbox simulation.', 'info');
-                }}
-                className={cn(
-                  "px-4 py-2 text-xs font-black uppercase tracking-widest rounded-xl transition-all",
-                  sandboxMode 
-                    ? "bg-slate-900 text-white shadow-sm" 
-                    : "text-slate-500 hover:text-slate-900"
-                )}
-              >
-                Sandbox
-              </button>
-            </div>
-
             {/* Stream Active Toggle */}
             <button
               onClick={() => setLiveStreamActive(!liveStreamActive)}
@@ -593,6 +304,12 @@ export default function ObservabilityDashboard() {
             </button>
           </div>
         </div>
+
+        {(isLogsError || isStatsError) && (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">
+            Live observability data is temporarily unavailable. Check the API connection and try again.
+          </div>
+        )}
 
         {/* 4 STAGGERED KPI STAT CARDS */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -831,7 +548,7 @@ export default function ObservabilityDashboard() {
         {/* LIVE LOGS TABLE */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto min-h-[300px] relative">
-            {(!sandboxMode && isLogsLoading) && (
+            {isLogsLoading && (
               <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex flex-col items-center justify-center z-10 gap-3">
                 <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
                 <p className="text-xs font-black uppercase tracking-widest text-slate-400">Loading stream logs...</p>

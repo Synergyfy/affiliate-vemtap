@@ -7,8 +7,8 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { ArrowLeft, Search, MapPin, Phone, Mail, Building2, User, Crown, CheckCircle2, Clock, AlertCircle, ChevronRight, FileText, ExternalLink, X, Globe, Users, Star, Calendar, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { mockBusinesses } from '@/lib/market-mapping-mock';
 import { MappedBusiness } from '@/types/market-mapping';
+import { Business } from '@/types/api';
 import { useBusinesses } from '@/services/useAdminHooks';
 import { useDebounce } from '@/hooks/use-debounce';
 
@@ -27,27 +27,6 @@ const sizeLabel: Record<string, string> = {
   ENTERPRISE: 'Enterprise',
 };
 
-const movementHistory: Record<string, { from: string; to: string; date: string; by: string }[]> = {
-  'b-101': [
-    { from: 'PROSPECT', to: 'MEETING', date: '2026-06-01', by: 'Emmanuel Nnamdi' },
-    { from: 'MEETING', to: 'NEGOTIATING', date: '2026-06-10', by: 'Emmanuel Nnamdi' },
-    { from: 'NEGOTIATING', to: 'CUSTOMER', date: '2026-06-25', by: 'Emmanuel Nnamdi' },
-  ],
-  'b-102': [
-    { from: 'PROSPECT', to: 'MEETING', date: '2026-05-20', by: 'Emmanuel Nnamdi' },
-    { from: 'MEETING', to: 'CUSTOMER', date: '2026-06-05', by: 'Emmanuel Nnamdi' },
-  ],
-  'b-103': [
-    { from: 'PROSPECT', to: 'MEETING', date: '2026-06-10', by: 'Sarah Okafor' },
-  ],
-  'b-104': [
-    { from: 'PROSPECT', to: 'MEETING', date: '2026-07-01', by: 'Sarah Okafor' },
-    { from: 'MEETING', to: 'NEGOTIATING', date: '2026-07-15', by: 'Sarah Okafor' },
-  ],
-  'b-105': [],
-  'b-106': [],
-};
-
 export default function BusinessesPage() {
   const router = useRouter();
   const [search, setSearch] = useState('');
@@ -55,23 +34,23 @@ export default function BusinessesPage() {
   const [selectedBusiness, setSelectedBusiness] = useState<MappedBusiness | null>(null);
 
   const debouncedSearch = useDebounce(search, 400);
-  const { data: realBusinessesResp } = useBusinesses({
+  const businessesQuery = useBusinesses({
     search: debouncedSearch || undefined,
-    status: statusFilter === 'ALL' ? undefined : statusFilter,
+    status: statusFilter === 'CUSTOMER' ? 'ACTIVE' : statusFilter === 'LOST' ? 'EXPIRED' : statusFilter === 'PROSPECT' ? 'TRIAL' : undefined,
   });
 
-  const businessesList: any[] = realBusinessesResp?.data || mockBusinesses;
+  const businessesList: MappedBusiness[] = (businessesQuery.data?.data ?? []).map(normalizeBusiness);
 
   const filtered = businessesList.filter(b => {
-    const nameStr = b.name || b.businessName || '';
-    const ownerStr = b.ownerName || b.user?.fullName || '';
+    const nameStr = b.name;
+    const ownerStr = b.ownerName;
     if (search && !nameStr.toLowerCase().includes(search.toLowerCase()) && !ownerStr.toLowerCase().includes(search.toLowerCase())) return false;
     if (statusFilter !== 'ALL' && b.status !== statusFilter) return false;
     return true;
   });
 
 
-  const statuses = ['ALL', ...new Set(mockBusinesses.map(b => b.status))];
+  const statuses = ['ALL', ...new Set(businessesList.map(b => b.status))];
 
   const openInOps = (biz: MappedBusiness) => {
     router.push(`/admin/operations?businessId=${biz.id}`);
@@ -91,7 +70,7 @@ export default function BusinessesPage() {
               Captured Businesses
             </h1>
             <p className="text-xs text-slate-500 font-medium">
-              {mockBusinesses.length} businesses captured by affiliates — click a business to see full details
+              {businessesQuery.data?.meta.total ?? 0} businesses captured by affiliates — click a business to see full details
             </p>
           </div>
         </div>
@@ -124,6 +103,8 @@ export default function BusinessesPage() {
           </div>
         </div>
 
+        {businessesQuery.isLoading && <p className="text-sm text-slate-500">Loading businesses...</p>}
+        {businessesQuery.isError && <div className="text-sm text-red-600">Unable to load businesses. <button onClick={() => businessesQuery.refetch()} className="font-bold underline">Retry</button></div>}
         {/* Business List */}
         <div className="space-y-3">
           {filtered.map(biz => (
@@ -251,25 +232,13 @@ export default function BusinessesPage() {
                 </div>
 
                 {/* Movement/Status History */}
-                {movementHistory[selectedBusiness.id] && movementHistory[selectedBusiness.id].length > 0 && (
+                 {selectedBusiness.lastVisit && (
                   <div className="space-y-3">
                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                       <BarChart3 className="w-3.5 h-3.5 text-blue-500" /> Status Movement History
                     </h4>
                     <div className="space-y-2">
-                      {movementHistory[selectedBusiness.id].map((move, idx) => (
-                        <div key={idx} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                          <div className="flex flex-col items-center gap-1">
-                            <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded", statusColor[move.from] || '')}>{move.from}</span>
-                            <ArrowLeft className="w-3 h-3 text-slate-400 rotate-180" />
-                            <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded", statusColor[move.to] || '')}>{move.to}</span>
-                          </div>
-                          <div className="text-[10px] text-slate-500 ml-2">
-                            <p>by <span className="font-bold text-slate-700">{move.by}</span></p>
-                            <p className="flex items-center gap-1 mt-0.5"><Calendar className="w-3 h-3" /> {move.date}</p>
-                          </div>
-                        </div>
-                      ))}
+                       <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-600"><Clock className="w-4 h-4 text-blue-500" /> Last visited {selectedBusiness.lastVisit}</div>
                     </div>
                   </div>
                 )}
@@ -398,4 +367,15 @@ export default function BusinessesPage() {
       </AnimatePresence>
     </AdminLayout>
   );
+}
+
+function normalizeBusiness(business: Business): MappedBusiness {
+  const status: MappedBusiness['status'] = business.status === 'ACTIVE' ? 'CUSTOMER' : business.status === 'EXPIRED' || business.status === 'CANCELLED' ? 'LOST' : 'PROSPECT';
+  return {
+    id: business.id, name: business.businessName, category: business.category ?? 'Business', industry: business.category ?? '', size: 'SMALL', status,
+    isAnchor: false, anchorScore: 0, influenceScore: 0, isVerified: business.status === 'ACTIVE', ownerName: business.ownerName, decisionMaker: business.ownerName,
+    phone: business.phone, email: business.email, website: undefined, address: '', clusterId: '', clusterName: '', latitude: 0, longitude: 0,
+    dailyCustomers: 0, monthlyCustomers: 0, assignedAffiliateId: business.affiliateId, assignedAffiliateName: business.affiliate?.fullName,
+    priority: 'LOW', lastVisit: undefined, nextVisit: undefined, notes: undefined,
+  };
 }

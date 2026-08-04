@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateLeadDto, UpdateLeadDto, LeadFilterDto } from './dto/leads.dto';
-import { LeadStatus, Priority } from '@prisma/client';
+import { LeadStatus } from '@prisma/client';
 
 @Injectable()
 export class LeadsService {
