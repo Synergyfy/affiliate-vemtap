@@ -47,10 +47,19 @@ export default function CommissionsManagement() {
     }
   };
 
+  const trendFor = (pct: number | undefined) =>
+    pct === undefined || pct === null
+      ? null
+      : { value: `${pct > 0 ? '+' : ''}${pct}%`, up: pct >= 0 };
+
+  const totalTrend = trendFor(adminStats?.trends?.totalChangePercent);
+  const paidTrend = trendFor(adminStats?.trends?.paidChangePercent);
+  const pendingTrend = trendFor(adminStats?.trends?.pendingChangePercent);
+
   const commissionsStats = [
-    { label: 'Total Commissions', value: `₦${Number(adminStats?.totalCommissions || commissionsList.reduce((acc, curr) => acc + Number(curr.amount), 0)).toLocaleString()}`, icon: Percent, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+12%', trendUp: true },
-    { label: 'Paid Commissions', value: `₦${Number(adminStats?.paidCommissions || commissionsList.filter(c => c.status === 'PAID').reduce((acc, curr) => acc + Number(curr.amount), 0)).toLocaleString()}`, icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50', trend: '+8%', trendUp: true },
-    { label: 'Pending Approval', value: `₦${Number(adminStats?.pendingCommissions || commissionsList.filter(c => c.status === 'PENDING').reduce((acc, curr) => acc + Number(curr.amount), 0)).toLocaleString()}`, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50', trend: '-2%', trendUp: false },
+    { label: 'Total Commissions', value: `₦${Number(adminStats?.totalAmount ?? commissionsList.reduce((acc, curr) => acc + Number(curr.amount), 0)).toLocaleString()}`, icon: Percent, color: 'text-blue-600', bg: 'bg-blue-50', trend: totalTrend?.value ?? '—', trendUp: totalTrend?.up ?? true },
+    { label: 'Paid Commissions', value: `₦${Number(adminStats?.paidAmount ?? commissionsList.filter(c => c.status === 'PAID').reduce((acc, curr) => acc + Number(curr.amount), 0)).toLocaleString()}`, icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50', trend: paidTrend?.value ?? '—', trendUp: paidTrend?.up ?? true },
+    { label: 'Pending Approval', value: `₦${Number(adminStats?.pendingAmount ?? commissionsList.filter(c => c.status === 'PENDING').reduce((acc, curr) => acc + Number(curr.amount), 0)).toLocaleString()}`, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50', trend: pendingTrend?.value ?? '—', trendUp: pendingTrend?.up ?? false },
   ];
 
   if (isCommissionsLoading) {

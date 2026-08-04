@@ -18,7 +18,7 @@ export class CommissionsService {
       ];
     }
 
-    const [commissions, total] = await Promise.all([
+    const [commissions, total, settings] = await Promise.all([
       this.prisma.commission.findMany({
         where,
         skip: pagination.skip,
@@ -40,7 +40,10 @@ export class CommissionsService {
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.commission.count({ where }),
+      this.prisma.platformSettings.findFirst(),
     ]);
+
+    const totalMonths = settings?.earningDurationMonths || settings?.recurringDurationMonths || 12;
 
     const data = commissions.map(c => {
       if (c.business) {
@@ -50,7 +53,7 @@ export class CommissionsService {
           business: {
             ...restBusiness,
             paidMonths: _count?.commissions || 0,
-            totalMonths: 12, // Placeholder for total subscription duration
+            totalMonths,
           },
         };
       }
@@ -119,11 +122,36 @@ export class CommissionsService {
   }
 
   async getGlobalStats() {
-    const [totalAgg, paidAgg, pendingAgg] = await Promise.all([
+    const monthAgo = new Date();
+    monthAgo.setDate(monthAgo.getDate() - 30);
+    const twoMonthsAgo = new Date();
+    twoMonthsAgo.setDate(twoMonthsAgo.getDate() - 60);
+
+    const [totalAgg, paidAgg, pendingAgg, prevTotalAgg, prevPaidAgg, prevPendingAgg] = await Promise.all([
       this.prisma.commission.aggregate({ _sum: { amount: true }, _count: { id: true } }),
       this.prisma.commission.aggregate({ where: { status: 'PAID' }, _sum: { amount: true }, _count: { id: true } }),
       this.prisma.commission.aggregate({ where: { status: 'PENDING' }, _sum: { amount: true }, _count: { id: true } }),
+      this.prisma.commission.aggregate({
+        where: { createdAt: { gte: twoMonthsAgo, lt: monthAgo } },
+        _sum: { amount: true },
+        _count: { id: true },
+      }),
+      this.prisma.commission.aggregate({
+        where: { status: 'PAID', createdAt: { gte: twoMonthsAgo, lt: monthAgo } },
+        _sum: { amount: true },
+        _count: { id: true },
+      }),
+      this.prisma.commission.aggregate({
+        where: { status: 'PENDING', createdAt: { gte: twoMonthsAgo, lt: monthAgo } },
+        _sum: { amount: true },
+        _count: { id: true },
+      }),
     ]);
+
+    const pctChange = (current: number, previous: number) => {
+      if (previous === 0) return current > 0 ? 100 : 0;
+      return Math.round(((current - previous) / previous) * 100);
+    };
 
     return {
       totalCommissions: totalAgg._count.id,
@@ -133,9 +161,9 @@ export class CommissionsService {
       pendingCount: pendingAgg._count.id,
       pendingAmount: Number(pendingAgg._sum.amount || 0),
       trends: {
-        totalChangePercent: +12,
-        paidChangePercent: +8,
-        pendingChangePercent: -2,
+        totalChangePercent: pctChange(totalAgg._count.id, prevTotalAgg._count.id),
+        paidChangePercent: pctChange(paidAgg._count.id, prevPaidAgg._count.id),
+        pendingChangePercent: pctChange(pendingAgg._count.id, prevPendingAgg._count.id),
       },
     };
   }

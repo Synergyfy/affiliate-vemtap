@@ -4,6 +4,7 @@ import { NotificationType, Prisma } from '@prisma/client';
 import { BroadcastRecipientType, NotificationChannel } from './dto/notification.dto';
 import { ResendService } from '../otp/resend.service';
 import { PushService } from './push.service';
+import { NotificationsGateway } from './notifications.gateway';
 
 @Injectable()
 export class NotificationsService {
@@ -11,6 +12,7 @@ export class NotificationsService {
     private readonly prisma: PrismaService,
     private readonly resendService: ResendService,
     private readonly pushService: PushService,
+    private readonly gateway: NotificationsGateway,
   ) { }
 
   async findAllAdmin(pagination: { skip?: number; take?: number }) {
@@ -27,9 +29,14 @@ export class NotificationsService {
   }
 
   async create(data: { userId?: string; type: NotificationType; title: string; message: string; data?: Record<string, any> }) {
-    return this.prisma.notification.create({
+    const notification = await this.prisma.notification.create({
       data,
     });
+    if (data.userId) {
+      this.gateway.emitToUser(data.userId, 'notification:new', notification);
+      this.gateway.emitToUser(data.userId, 'notification:unread', { unreadCount: await this.prisma.notification.count({ where: { userId: data.userId, isRead: false } }) });
+    }
+    return notification;
   }
 
   async broadcast(
@@ -76,6 +83,9 @@ export class NotificationsService {
         data,
       }));
       results.inApp = await this.prisma.notification.createMany({ data: notifications });
+      for (const userId of userIds) {
+        this.gateway.emitToUser(userId, 'notification:new', { type, title, message, data });
+      }
     }
 
     if (channels.includes(NotificationChannel.EMAIL)) {
@@ -90,6 +100,43 @@ export class NotificationsService {
       recipientCount: users.length,
       results,
     };
+  }
+
+  async savePushSubscription(
+    userId: string,
+    subscription: { endpoint: string; p256dh: string; auth: string; userAgent?: string },
+  ) {
+    const existing = await this.prisma.pushSubscription.findUnique({
+      where: { endpoint: subscription.endpoint },
+    });
+    if (existing) {
+      return this.prisma.pushSubscription.update({
+        where: { id: existing.id },
+        data: {
+          userId,
+          p256dh: subscription.p256dh,
+          auth: subscription.auth,
+          userAgent: subscription.userAgent,
+        },
+      });
+    }
+    return this.prisma.pushSubscription.create({
+      data: {
+        userId,
+        endpoint: subscription.endpoint,
+        p256dh: subscription.p256dh,
+        auth: subscription.auth,
+        userAgent: subscription.userAgent,
+      },
+    });
+  }
+
+  async removePushSubscription(userId: string, endpoint: string) {
+    return this.prisma.pushSubscription.deleteMany({ where: { userId, endpoint } });
+  }
+
+  getVapidPublicKey() {
+    return { publicKey: process.env.VAPID_PUBLIC_KEY || '' };
   }
 
   async findUserNotifications(userId: string, pagination: { skip?: number; take?: number }) {

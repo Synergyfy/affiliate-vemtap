@@ -113,7 +113,9 @@ export default function BusinessesTab() {
                     No businesses found in your portfolio
                   </td>
                 </tr>
-              ) : businesses.map((business) => (
+              ) : businesses.map((business) => {
+                const healthScore = healthMap.get(business.id)?.healthScore ?? business.healthScore ?? null;
+                return (
                 <tr key={business.id} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="px-6 py-5">
                     <div className="flex items-center gap-3">
@@ -143,23 +145,27 @@ export default function BusinessesTab() {
                     </div>
                   </td>
                   <td className="px-6 py-5">
+                    {healthScore === null ? (
+                      <span className="text-xs font-bold text-slate-400">—</span>
+                    ) : (
                     <div className="flex items-center gap-3 max-w-[120px]">
                       <div className="flex-grow h-1.5 bg-slate-100 rounded-full overflow-hidden">
                         <div 
                           className={cn(
                             "h-full rounded-full transition-all duration-1000",
-                            (healthMap.get(business.id)?.healthScore ?? 85) >= 70 ? "bg-emerald-500" :
-                            (healthMap.get(business.id)?.healthScore ?? 85) >= 40 ? "bg-orange-500" : "bg-red-500"
+                            healthScore >= 70 ? "bg-emerald-500" :
+                            healthScore >= 40 ? "bg-orange-500" : "bg-red-500"
                           )}
-                          style={{ width: `${healthMap.get(business.id)?.healthScore ?? 85}%` }}
+                          style={{ width: `${healthScore}%` }}
                         />
                       </div>
                       <span className={cn(
                         "text-[10px] font-black",
-                        (healthMap.get(business.id)?.healthScore ?? 85) >= 70 ? "text-emerald-600" :
-                        (healthMap.get(business.id)?.healthScore ?? 85) >= 40 ? "text-orange-600" : "text-red-600"
-                      )}>{healthMap.get(business.id)?.healthScore ?? 85}%</span>
+                        healthScore >= 70 ? "text-emerald-600" :
+                        healthScore >= 40 ? "text-orange-600" : "text-red-600"
+                      )}>{healthScore}%</span>
                     </div>
+                    )}
                   </td>
                   <td className="px-6 py-5">
                     <div className="flex items-center gap-2">
@@ -190,7 +196,8 @@ export default function BusinessesTab() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

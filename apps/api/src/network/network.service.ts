@@ -7,7 +7,8 @@ export class NetworkService {
   constructor(private prisma: PrismaService) {}
 
   async getRecruits(userId: string, pagination: { skip?: number; take?: number }) {
-    const [data, total] = await Promise.all([
+    const [settings, data, total] = await Promise.all([
+      this.prisma.platformSettings.findFirst(),
       this.prisma.user.findMany({
         where: { referrerId: userId },
         skip: pagination.skip,
@@ -36,6 +37,8 @@ export class NetworkService {
       this.prisma.user.count({ where: { referrerId: userId } }),
     ]);
 
+    const managerShareRate = Number(settings?.managerOverrideRate ?? 0.10);
+
     const recruits = data.map(r => {
       const totalVolume = r.businesses.reduce((sum, b) => sum + Number(b.subscriptionAmount), 0);
       const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -63,7 +66,7 @@ export class NetworkService {
         monthlyLeadsCount,
         monthlyConversionsCount: r.businesses.filter((business) => business.createdAt >= month).length,
         completionRate: r.leads.length ? Math.round((r.businesses.length / r.leads.length) * 100) : 0,
-        managerShare: totalVolume * 0.10, // 10% of their total closed business volume
+        managerShare: totalVolume * managerShareRate,
       };
     });
 
@@ -87,8 +90,10 @@ export class NetworkService {
 
     if (!user) throw new NotFoundException('User not found');
 
-    const reportingScoreVal = Number(user.reportingScore || 100);
-    const attendanceRateVal = Number(user.attendanceRate || 100);
+    const reportingScoreVal = Number(user.reportingScore ?? 0);
+    const attendanceRateVal = Number(user.attendanceRate ?? 0);
+
+    const settings = await this.prisma.platformSettings.findFirst();
 
     // 1. Calculate Personal Performance Metrics (for AGENT -> SUPERVISOR promotion)
     const personalActiveBusinesses = await this.prisma.business.count({
@@ -144,35 +149,35 @@ export class NetworkService {
 
     // 3. Determine Promotion Eligibility
     const isEligibleForSupervisor = 
-      personalActiveBusinesses >= 40 &&
-      daysActive >= 90 &&
-      reportingScoreVal >= 85 &&
-      attendanceRateVal >= 90 &&
+      personalActiveBusinesses >= Number(settings?.reqAgentActiveBusinesses ?? 40) &&
+      daysActive >= Number(settings?.reqAgentActiveDays ?? 90) &&
+      reportingScoreVal >= Number(settings?.reqAgentMinReportingScore ?? 85) &&
+      attendanceRateVal >= Number(settings?.reqAgentMinAttendanceRate ?? 90) &&
       openFraudAlertsCount === 0;
 
     const isEligibleForManager =
-      activeAgentsCount >= 10 &&
-      supervisorsCount >= 5 &&
-      totalNetworkBusinesses >= 100;
+      activeAgentsCount >= Number(settings?.reqSupervisorActiveAgents ?? 10) &&
+      supervisorsCount >= Number(settings?.reqSupervisorActiveSupervisors ?? 5) &&
+      totalNetworkBusinesses >= Number(settings?.reqSupervisorNetworkBusinesses ?? 100);
 
     // 4. Structure dynamic milestone targets (backward compatible with the frontend)
     let milestoneAgentsCurrent = activeAgentsCount;
-    let milestoneAgentsTarget = 30;
+    let milestoneAgentsTarget = Number(settings?.reqAffiliateActiveAgents ?? 30);
     let milestoneBusinessesCurrent = totalNetworkBusinesses;
-    let milestoneBusinessesTarget = 100;
+    let milestoneBusinessesTarget = Number(settings?.reqAffiliateNetworkBusinesses ?? 100);
 
     if (user.role === 'AGENT') {
       // Trying to unlock SUPERVISOR: milestones map to Active Days (Agents) and Personal Businesses (Businesses)
       milestoneAgentsCurrent = daysActive;
-      milestoneAgentsTarget = 90;
+      milestoneAgentsTarget = Number(settings?.reqAgentActiveDays ?? 90);
       milestoneBusinessesCurrent = personalActiveBusinesses;
-      milestoneBusinessesTarget = 40;
+      milestoneBusinessesTarget = Number(settings?.reqAgentActiveBusinesses ?? 40);
     } else {
       // Trying to unlock MANAGER (for SUPERVISOR -> MANAGER) OR unlock SUPERVISOR (for AFFILIATE -> SUPERVISOR)
       milestoneAgentsCurrent = activeAgentsCount;
-      milestoneAgentsTarget = user.role === 'AFFILIATE' ? 30 : 10;
+      milestoneAgentsTarget = user.role === 'AFFILIATE' ? Number(settings?.reqAffiliateActiveAgents ?? 30) : Number(settings?.reqSupervisorActiveAgents ?? 10);
       milestoneBusinessesCurrent = totalNetworkBusinesses;
-      milestoneBusinessesTarget = 100;
+      milestoneBusinessesTarget = Number(settings?.reqSupervisorNetworkBusinesses ?? 100);
     }
 
     return {
@@ -215,16 +220,18 @@ export class NetworkService {
     let amount = 0;
     let description = '';
 
+    const settings = await this.prisma.platformSettings.findFirst();
+
     if (type === BonusType.AGENT) {
       if (user.hasClaimedAgentBonus) throw new BadRequestException('Agent bonus already claimed');
       if (!stats.milestones.agents.isReached) throw new BadRequestException('Target for agent bonus not reached');
-      amount = 5000;
-      description = 'Agent milestone bonus (30 active agents)';
+      amount = Number(settings?.agentMilestoneBonusAmount ?? 5000);
+      description = 'Agent milestone bonus';
     } else if (type === BonusType.BUSINESS) {
       if (user.hasClaimedBusinessBonus) throw new BadRequestException('Business bonus already claimed');
       if (!stats.milestones.businesses.isReached) throw new BadRequestException('Target for business bonus not reached');
-      amount = 10000;
-      description = 'Business milestone bonus (100 network businesses)';
+      amount = Number(settings?.businessMilestoneBonusAmount ?? 10000);
+      description = 'Business milestone bonus';
     } else {
       throw new BadRequestException('Invalid bonus type');
     }
@@ -432,13 +439,15 @@ export class NetworkService {
       select: { id: true, fullName: true, totalEarnings: true, businesses: { select: { commissionAmount: true, createdAt: true } } },
     });
 
+    const settings = await this.prisma.platformSettings.findFirst();
+    const overrideRate = Number(settings?.managerOverrideRate ?? 0.10);
     const now = new Date();
     const monthlyBreakdown = Array.from({ length: 6 }, (_, index) => {
       const monthDate = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
       const nextMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1);
       const businesses = recruits.flatMap((recruit) => recruit.businesses).filter((business) => business.createdAt >= monthDate && business.createdAt < nextMonth);
       const totalEarnings = businesses.reduce((sum, business) => sum + Number(business.commissionAmount || 0), 0);
-      return { month: monthDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }), totalEarnings, overrideEarnings: totalEarnings * 0.1 };
+      return { month: monthDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }), totalEarnings, overrideEarnings: totalEarnings * overrideRate };
     });
 
     return {

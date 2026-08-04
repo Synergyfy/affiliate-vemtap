@@ -123,7 +123,10 @@ This file tracks what is built, what is in progress, and what is planned. Update
 |---|---|---|
 | Get notifications | ✅ | `GET /api/notifications/me` |
 | Mark as read | ✅ | `PATCH /api/notifications/:id/read` |
-| Mark all as read | 📋 | `PATCH /api/notifications/read-all` |
+| Mark all as read | ✅ | `PATCH /api/notifications/read-all` |
+| Real-time in-app notifications (WebSocket) | ✅ | `NotificationsGateway` on `/notifications` namespace |
+| Push notifications (Web Push / VAPID) | ✅ | `PushService` + `PushSubscription` model + SW handler |
+| Email notifications (Resend) | ✅ | Broadcast EMAIL channel + business reminders |
 | Trigger notification on commission approval | 📋 | Planned in `CommissionsService` |
 
 ---

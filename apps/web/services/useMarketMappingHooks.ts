@@ -64,9 +64,17 @@ export interface MarketMappingPerformanceResponse {
   monthlyVisits: number;
   meetingsCompleted: number;
   customersAcquired: number;
+  proposalsSent?: number;
   conversionRatePercent: number;
   reportingScore: number;
   attendanceRate: number;
+  monthRevenue?: number;
+  dailyTarget?: number;
+  weeklyTarget?: number;
+  monthlyTarget?: number;
+  dailyProgress?: number;
+  weeklyProgress?: number;
+  monthlyProgress?: number;
 }
 
 export interface MarketMappingHistoryResponse {
