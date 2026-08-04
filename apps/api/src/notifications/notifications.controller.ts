@@ -21,6 +21,7 @@ import { NotificationsService } from "./notifications.service";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
+import { Public } from "../auth/decorators/public.decorator";
 import { Role } from "@prisma/client";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import {
@@ -81,6 +82,45 @@ export class NotificationsController {
   @ApiOperation({ summary: "Mark all user notifications as read" })
   markAllAsRead(@CurrentUser() user: { id: string }) {
     return this.notificationsService.markAllAsRead(user.id);
+  }
+
+  @Get("push-vapid-public-key")
+  @Public()
+  @ApiOperation({ summary: "Get the VAPID public key for browser push subscriptions" })
+  getVapidPublicKey() {
+    return this.notificationsService.getVapidPublicKey();
+  }
+
+  @Post("push-subscription")
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Register a browser push subscription for the current user" })
+  @ApiBody({
+    schema: {
+      type: "object",
+      required: ["endpoint", "p256dh", "auth"],
+      properties: {
+        endpoint: { type: "string" },
+        p256dh: { type: "string" },
+        auth: { type: "string" },
+        userAgent: { type: "string" },
+      },
+    },
+  })
+  savePushSubscription(
+    @CurrentUser() user: { id: string },
+    @Body() body: { endpoint: string; p256dh: string; auth: string; userAgent?: string },
+  ) {
+    return this.notificationsService.savePushSubscription(user.id, body);
+  }
+
+  @Delete("push-subscription")
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Remove a browser push subscription for the current user" })
+  removePushSubscription(
+    @CurrentUser() user: { id: string },
+    @Body() body: { endpoint: string },
+  ) {
+    return this.notificationsService.removePushSubscription(user.id, body.endpoint);
   }
 
   @Patch(":id/read")

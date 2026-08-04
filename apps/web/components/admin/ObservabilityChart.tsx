@@ -46,10 +46,21 @@ export default function ObservabilityChart({ data }: ObservabilityChartProps) {
   const chartWidth = Math.max(0, width - paddingLeft - paddingRight);
   const chartHeight = Math.max(0, height - paddingTop - paddingBottom);
 
-  // Fallback for empty or minimal data to prevent calculations breaking
-  const chartData = data && data.length > 0 ? data : [
-    { timestamp: 'System Idle', count: 0, avgLatency: 0 }
-  ];
+  if (!data || data.length === 0) {
+    return (
+      <div
+        ref={containerRef}
+        className="w-full h-[256px] relative flex items-center justify-center bg-slate-50 rounded-2xl border border-slate-100"
+      >
+        <div className="text-center">
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No traffic yet</p>
+          <p className="text-[10px] text-slate-400 mt-1">Chart will appear once requests are recorded.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const chartData = data;
 
   // Get raw max and min values
   const counts = chartData.map(d => d.count);

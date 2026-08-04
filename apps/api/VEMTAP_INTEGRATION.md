@@ -51,11 +51,12 @@ Use this when a referred business successfully pays for a plan on Vemtap. This t
   "ownerName": "Alice Smith",
   "email": "alice@techsolutions.com",
   "phone": "+2348012345678",
+  "amount": 10000,
   "planType": "PROFESSIONAL",
   "address": "123 Business Way, Lagos"
 }
 ```
-*Valid `planType` values: `BASIC`, `STARTER`, `PROFESSIONAL`, `ENTERPRISE`*
+*`amount` is the actual subscription amount charged by Vemtap and is required. The affiliate backend does not derive pricing from `planType`. Valid `planType` values: `BASIC`, `STARTER`, `PROFESSIONAL`, `ENTERPRISE`.*
 
 ---
 
@@ -125,12 +126,13 @@ Use this inside the Vemtap Admin dashboard when an admin manually attaches a bus
   "ownerName": "Alice Smith",
   "email": "alice@acmeventures.com",
   "phone": "+2348098765432",
+  "amount": 10000,
   "planType": "PROFESSIONAL",
   "address": "456 Corporate Boulevard, Lagos",
   "businessType": "Technology"
 }
 ```
-*Valid `planType` values: `BASIC`, `STARTER`, `PROFESSIONAL`, `ENTERPRISE`*
+*`amount` is the actual subscription amount charged by Vemtap and is required. The affiliate backend does not derive pricing from `planType`. Valid `planType` values: `BASIC`, `STARTER`, `PROFESSIONAL`, `ENTERPRISE`.*
 
 ### Response (Success)
 ```json

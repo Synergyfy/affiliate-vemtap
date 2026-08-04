@@ -54,7 +54,7 @@ describe("BusinessesController (e2e)", () => {
     await app.close();
   });
 
-  it("/businesses (POST) - should register a business and calculate 15% commission", async () => {
+  it("/businesses (POST) - should register a business without inventing pricing", async () => {
     const res = await request(app.getHttpServer())
       .post("/businesses")
       .set("Cookie", cookies)
@@ -69,8 +69,8 @@ describe("BusinessesController (e2e)", () => {
       .expect(201);
 
     expect(res.body.businessName).toBe("Test Biz");
-    expect(Number(res.body.subscriptionAmount)).toBe(3000);
-    expect(Number(res.body.commissionAmount)).toBe(450); // 15% of 3000
+    expect(Number(res.body.subscriptionAmount)).toBe(0);
+    expect(Number(res.body.commissionAmount)).toBe(0);
   });
 
   it("/businesses/me (GET) - should return user businesses", async () => {

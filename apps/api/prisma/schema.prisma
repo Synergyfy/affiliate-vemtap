@@ -53,6 +53,7 @@ model User {
   withdrawals     Withdrawal[]
   transactions    Transaction[]
   notifications   Notification[]
+  pushSubscriptions PushSubscription[]
   trainingProgress TrainingProgress[]
   shortLinks      ShortLink[]
   linkClicks      LinkClick[]
@@ -330,6 +331,23 @@ model Notification {
   @@index([isRead])
 }
 
+model PushSubscription {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  endpoint  String
+  p256dh    String
+  auth      String
+  userAgent String?
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([endpoint])
+  @@index([userId])
+}
+
 enum NotificationType {
   SYSTEM
   COMMISSION
@@ -469,7 +487,18 @@ model PlatformSettings {
   recurringLineManagerCommission Decimal  @default(3.0)
   recurringDurationMonths        Int      @default(12)
   recurringYear2Rate             Decimal  @default(50.0)
-  
+
+  // Commission override rates
+  managerOverrideRate     Decimal @default(0.10)
+  supervisorOverrideRate  Decimal @default(0.05)
+
+  // Network milestone bonuses
+  agentMilestoneBonusAmount     Decimal @default(5000)
+  businessMilestoneBonusAmount  Decimal @default(10000)
+
+  // Fraud guard toggle
+  fraudGuardActive        Boolean @default(false)
+
   updatedAt               DateTime @updatedAt
 }
 

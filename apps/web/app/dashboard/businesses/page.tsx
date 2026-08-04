@@ -178,9 +178,7 @@ export default function BusinessesPage() {
 
   const sendReminder = async (business: any) => {
     try {
-      if (business?.id && !business.id.startsWith('mock-')) {
-        await api.post(`/businesses/${business.id}/reminder`);
-      }
+      await api.post(`/businesses/${business.id}/reminder`);
       showToast(`Reminder sent to ${business.name || business.businessName}`, 'success');
     } catch (error: any) {
       showToast(error?.message || `Reminder sent to ${business.name || business.businessName}`, 'success');

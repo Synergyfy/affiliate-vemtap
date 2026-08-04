@@ -57,6 +57,7 @@ describe("NotificationsController (e2e)", () => {
   });
 
   afterAll(async () => {
+    await prismaService.pushSubscription.deleteMany({});
     await app.close();
   });
 
@@ -121,6 +122,58 @@ describe("NotificationsController (e2e)", () => {
 
       expect(response.status).toBe(201);
       expect(response.body.recipientCount).toBe(1);
+    });
+  });
+
+  describe("push subscription endpoints", () => {
+    const endpoint = "https://push.example/endpoint-1";
+
+    it("GET /notifications/push-vapid-public-key returns the public key", async () => {
+      const response = await request(app.getHttpServer())
+        .get("/notifications/push-vapid-public-key");
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty("publicKey");
+    });
+
+    it("POST /notifications/push-subscription stores a subscription", async () => {
+      const response = await request(app.getHttpServer())
+        .post("/notifications/push-subscription")
+        .set("Cookie", adminCookies)
+        .send({ endpoint, p256dh: "p256dh-1", auth: "auth-1", userAgent: "jest" });
+
+      expect(response.status).toBe(201);
+      expect(response.body.endpoint).toBe(endpoint);
+
+      const stored = await prismaService.pushSubscription.findUnique({ where: { endpoint } });
+      expect(stored).toBeDefined();
+      expect(stored!.p256dh).toBe("p256dh-1");
+    });
+
+    it("POST /notifications/push-subscription updates an existing subscription", async () => {
+      const response = await request(app.getHttpServer())
+        .post("/notifications/push-subscription")
+        .set("Cookie", adminCookies)
+        .send({ endpoint, p256dh: "p256dh-2", auth: "auth-2", userAgent: "jest" });
+
+      expect(response.status).toBe(201);
+      expect(response.body.p256dh).toBe("p256dh-2");
+
+      const stored = await prismaService.pushSubscription.findUnique({ where: { endpoint } });
+      expect(stored!.p256dh).toBe("p256dh-2");
+    });
+
+    it("DELETE /notifications/push-subscription removes the subscription", async () => {
+      const response = await request(app.getHttpServer())
+        .delete("/notifications/push-subscription")
+        .set("Cookie", adminCookies)
+        .send({ endpoint });
+
+      expect(response.status).toBe(200);
+      expect(response.body.count).toBe(1);
+
+      const stored = await prismaService.pushSubscription.findUnique({ where: { endpoint } });
+      expect(stored).toBeNull();
     });
   });
 });

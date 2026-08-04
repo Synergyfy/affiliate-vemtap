@@ -3,7 +3,9 @@ import withSerwistInit from "@serwist/next";
 const withSerwist = withSerwistInit({
   swSrc: "sw.ts",
   swDest: "public/sw.js",
-  disable: process.env.NODE_ENV !== "production",
+  // Service workers are required for web push. Build the SW in dev too when
+  // NEXT_PUBLIC_ENABLE_DEV_PUSH=true (used for testing push locally).
+  disable: process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_ENABLE_DEV_PUSH !== "true",
 });
 
 /** @type {import('next').NextConfig} */

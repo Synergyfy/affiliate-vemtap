@@ -239,14 +239,15 @@ export class MarketMappingService {
       partnerships: total ? Math.round((visits.filter((v) => v.interested === "YES").length / total) * 100) : 0,
       overall: total ? Math.round(((visited + interested + anchors) / (total * 3)) * 100) : 0,
     };
+    const recommendations = [
+      ...(visits.filter((visit) => visit.isAnchor && visit.status === "NOT_YET").slice(0, 3).map((visit) => ({ id: visit.id, type: "UNTOUCHED_ANCHOR", title: visit.name, description: "Anchor business still requires a first visit.", rating: 5 }))),
+      ...(visits.filter((visit) => visit.status === "INTERESTED").slice(0, 3).map((visit) => ({ id: visit.id, type: "PRIORITY_VISIT", title: visit.name, description: "Interested business requires follow-up.", rating: 4 }))),
+    ];
     return {
       maturity,
-      recommendations: [
-        ...(visits.filter((visit) => visit.isAnchor && visit.status === "NOT_YET").slice(0, 3).map((visit) => ({ id: visit.id, type: "UNTOUCHED_ANCHOR", title: visit.name, description: "Anchor business still requires a first visit.", rating: 5 }))),
-        ...(visits.filter((visit) => visit.status === "INTERESTED").slice(0, 3).map((visit) => ({ id: visit.id, type: "PRIORITY_VISIT", title: visit.name, description: "Interested business requires follow-up.", rating: 4 }))),
-      ],
+      recommendations,
       clusterMaturity: maturity,
-      aiRecommendations: [],
+      aiRecommendations: recommendations,
       territory,
     };
   }
@@ -281,11 +282,44 @@ export class MarketMappingService {
     const day = new Date(now); day.setHours(0, 0, 0, 0);
     const week = new Date(day); week.setDate(day.getDate() - 6);
     const month = new Date(day); month.setDate(day.getDate() - 29);
-    const visits = await this.prisma.marketMappingVisit.findMany({ where: { userId } });
+    const [visits, user, monthBusinesses] = await Promise.all([
+      this.prisma.marketMappingVisit.findMany({ where: { userId } }),
+      this.prisma.user.findUnique({ where: { id: userId }, select: { dailyLeadTarget: true, monthlyConversionTarget: true } }),
+      this.prisma.business.findMany({ where: { affiliateId: userId, createdAt: { gte: month } }, select: { commissionAmount: true } }),
+    ]);
     const countSince = (date: Date) => visits.filter((visit) => (visit.visitedAt || visit.updatedAt) >= date).length;
     const completed = visits.filter((visit) => visit.status !== "NOT_YET").length;
     const customers = visits.filter((visit) => visit.status === "CUSTOMER").length;
-    return { dailyVisits: countSince(day), weeklyVisits: countSince(week), monthlyVisits: countSince(month), meetingsCompleted: completed, customersAcquired: customers, conversionRatePercent: completed ? Math.round((customers / completed) * 100) : 0, reportingScore: completed ? 100 : 0, attendanceRate: visits.length ? Math.round((completed / visits.length) * 100) : 0 };
+    const proposalsSent = visits.filter((visit) => ["CONTACTED", "INTERESTED", "CUSTOMER"].includes(visit.status)).length;
+    const dayVisits = countSince(day);
+    const weekVisits = countSince(week);
+    const monthVisits = countSince(month);
+
+    const dailyTarget = user?.dailyLeadTarget || 0;
+    const weeklyTarget = dailyTarget * 5;
+    const monthlyTarget = user?.monthlyConversionTarget || 0;
+
+    const monthRevenue = monthBusinesses.reduce((sum, business) => sum + Number(business.commissionAmount || 0), 0);
+    const pct = (value: number, target: number) => target > 0 ? Math.min(100, Math.round((value / target) * 100)) : 0;
+
+    return {
+      dailyVisits: dayVisits,
+      weeklyVisits: weekVisits,
+      monthlyVisits: monthVisits,
+      meetingsCompleted: completed,
+      customersAcquired: customers,
+      proposalsSent,
+      conversionRatePercent: completed ? Math.round((customers / completed) * 100) : 0,
+      reportingScore: visits.length ? Math.round((completed / visits.length) * 100) : 0,
+      attendanceRate: visits.length ? Math.round((completed / visits.length) * 100) : 0,
+      monthRevenue,
+      dailyTarget,
+      weeklyTarget,
+      monthlyTarget,
+      dailyProgress: pct(dayVisits, dailyTarget),
+      weeklyProgress: pct(weekVisits, weeklyTarget),
+      monthlyProgress: pct(monthVisits, monthlyTarget),
+    };
   }
 
   async getReports(userId: string, period: string = "monthly") {

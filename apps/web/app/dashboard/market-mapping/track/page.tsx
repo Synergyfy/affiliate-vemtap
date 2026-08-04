@@ -41,7 +41,7 @@ export default function TrackPage() {
         </div>
 
         {/* Daily Mission Progress */}
-        <DailyMissionTracker stats={stats} />
+        <DailyMissionTracker stats={stats} performance={performance} />
 
         {/* Performance Snapshot */}
         <PerformanceMetrics performance={performance} />
