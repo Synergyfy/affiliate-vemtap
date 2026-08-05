@@ -209,6 +209,13 @@ export class MarketMappingController {
     return this.marketMappingService.getLocationsList();
   }
 
+  @Get("admin/captured-visits")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Get all affiliate-captured visits with GPS (Admin only)" })
+  getAdminCapturedVisits() {
+    return this.marketMappingService.getAdminCapturedVisits();
+  }
+
   @Get("admin/cluster/:id")
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Get cluster details (Admin only)" })

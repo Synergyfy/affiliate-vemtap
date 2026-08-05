@@ -12,6 +12,7 @@ interface VectorMapProps {
   onSelectBusiness: (business: MappedBusiness) => void;
   onSelectNode?: (nodeId: string) => void;
   showAnchorsOnly: boolean;
+  forceCluster?: boolean;
 }
 
 export default function VectorMap({
@@ -21,14 +22,15 @@ export default function VectorMap({
   selectedBusinessId,
   onSelectBusiness,
   onSelectNode,
-  showAnchorsOnly
+  showAnchorsOnly,
+  forceCluster = false
 }: VectorMapProps) {
 
   const displayedBusinesses = showAnchorsOnly 
     ? businesses.filter(b => b.isAnchor) 
     : businesses;
 
-  const isCluster = !selectedNode || selectedNode.type === 'CLUSTER';
+  const isCluster = forceCluster || !selectedNode || selectedNode.type === 'CLUSTER';
 
   const computeBounds = (values: Array<number | undefined>) => {
     const valid = values.filter((v): v is number => typeof v === 'number' && isFinite(v));
