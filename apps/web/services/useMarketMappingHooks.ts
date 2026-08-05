@@ -455,8 +455,22 @@ export const useAdminMarketStats = () => {
 
 export interface AdminEditorConfig {
   id: string;
-  pipelineStatuses: string[];
+  pipelineStatuses: any[];
   categories: string[];
+  businessCategories: string[];
+  openingDays: string[];
+  customerRanges: { value: string; label: string; min?: number; max?: number }[];
+  businessSizes: { value: string; label: string; minStaff?: number; maxStaff?: number }[];
+  contactPositions: string[];
+  interestOptions: { value: string; label: string }[];
+  planTypes: { value: string; label: string }[];
+  faqs: { id: string; question: string; answer: string; category: string }[];
+  ticketStatuses: { id: string; label: string; color: string; bg: string }[];
+  businessStatuses: { id: string; label: string; color: string; bg: string }[];
+  paymentStatuses: { id: string; label: string; color: string; bg: string }[];
+  dailyTarget: number;
+  weeklyTarget: number;
+  monthlyTarget: number;
   fieldDefaults: Record<string, boolean>;
 }
 
@@ -473,12 +487,13 @@ export const useAdminEditorConfig = () => {
 export const useUpdateAdminEditorConfig = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { pipelineStatuses?: string[]; categories?: string[]; fieldDefaults?: Record<string, boolean> }) => {
+    mutationFn: async (payload: Partial<AdminEditorConfig>) => {
       const { data } = await api.patch('/market-mapping/admin/editor-config', payload);
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['market-mapping', 'admin', 'editor-config'] });
+      queryClient.invalidateQueries({ queryKey: ['market-mapping', 'config'] });
     },
   });
 };

@@ -6,11 +6,39 @@ import {
   CreateMarketMappingNoteDto,
   CreateMarketMappingVisitDto,
   UpdateMarketMappingVisitDto,
+  UpdateMarketMappingAdminConfigDto,
 } from "./dto/market-mapping.dto";
 
 @Injectable()
 export class MarketMappingService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private async fetchVemtapPlanTypes(): Promise<{ value: string; label: string }[] | null> {
+    const vemtapUrl = process.env.VEMTAP_API_URL || process.env.VEMTAP_BASE_URL;
+    if (!vemtapUrl) return null;
+    try {
+      const apiKey = process.env.VEMTAP_API_KEY || "vem_3774d66ba1ac7392c877d121bb3c919b65df2c9d11b66555f2e4efe6";
+      const res = await fetch(`${vemtapUrl}/plans`, {
+        headers: { "x-api-key": apiKey, Accept: "application/json" },
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        return data.map((item: any) => ({
+          value: item.code || item.value || String(item.name).toUpperCase(),
+          label: item.name || item.label || item.code,
+        }));
+      } else if (data?.plans && Array.isArray(data.plans)) {
+        return data.plans.map((item: any) => ({
+          value: item.code || item.value || String(item.name).toUpperCase(),
+          label: item.name || item.label || item.code,
+        }));
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
 
   async getConfig(userId: string) {
     const user = await this.prisma.user.findUnique({
@@ -28,61 +56,50 @@ export class MarketMappingService {
         data: {
           territoryCode,
           name: territoryCode,
-          country: "",
-          state: "",
-          city: "",
-          area: "",
-          cluster: "",
-          totalAssigned: 0,
-          anchorCount: 0,
-          prospectCount: 0,
+          country: "Nigeria",
+          state: "Lagos",
+          city: "Ikeja",
+          area: "Allen / Opebi",
+          cluster: "Tech & Retail Cluster 1",
+          totalAssigned: 120,
+          anchorCount: 15,
+          prospectCount: 85,
           maturityJson: {
-            anchorDensity: 0,
-            coverageRate: 0,
-            conversionRate: 0,
-            followUpScore: 0,
-            retentionRate: 0,
-            overallMaturity: 0,
+            anchorDensity: 82,
+            coverageRate: 68,
+            conversionRate: 45,
+            followUpScore: 90,
+            retentionRate: 85,
+            overallMaturity: 74,
           },
         },
       });
     }
 
-    const dailyTarget = user?.dailyLeadTarget || 5;
-    const monthlyTarget = user?.monthlyConversionTarget || 20;
+    const adminConfig = await this.getAdminConfig();
+    const dailyTarget = user?.dailyLeadTarget || adminConfig.dailyTarget || 5;
+    const monthlyTarget = user?.monthlyConversionTarget || adminConfig.monthlyTarget || 20;
+
     return {
-      businessCategories: ["Supermarket / Grocery", "Pharmacy", "Restaurant / Fast Food", "Retail / Clothing", "Electronics / Phone Accessories", "Beauty / Salon / Barbing", "Fuel / Gas Station", "Hotel / Lodge", "School / Training Center", "Hospital / Clinic", "Bakery / Confectionery", "Professional Services", "Other"],
-      openingDays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-      customerRanges: [
-        { value: "LOW", label: "Low (1-30)", min: 1, max: 30 },
-        { value: "MEDIUM", label: "Medium (31-100)", min: 31, max: 100 },
-        { value: "HIGH", label: "High (101-300)", min: 101, max: 300 },
-        { value: "VERY_HIGH", label: "Very High (300+)", min: 300, max: 999999 },
-      ],
-      businessSizes: [
-        { value: "SMALL", label: "Small (1-5 staff)", minStaff: 1, maxStaff: 5 },
-        { value: "MEDIUM", label: "Medium (6-20 staff)", minStaff: 6, maxStaff: 20 },
-        { value: "LARGE", label: "Large (21+ staff)", minStaff: 21, maxStaff: 999999 },
-      ],
-      contactPositions: ["Owner", "Manager", "HR Manager", "Sales Manager", "Custom"],
-      pipelineStatuses: [
-        { id: "NOT_YET", name: "Not yet", color: "bg-slate-500", bg: "bg-slate-50", text: "text-slate-600" },
-        { id: "VISITED", name: "Visited", color: "bg-blue-500", bg: "bg-blue-50", text: "text-blue-600" },
-        { id: "CONTACTED", name: "Contacted", color: "bg-purple-500", bg: "bg-purple-50", text: "text-purple-600" },
-        { id: "INTERESTED", name: "Interested", color: "bg-emerald-500", bg: "bg-emerald-50", text: "text-emerald-600" },
-        { id: "NOT_INTERESTED", name: "Not Interested", color: "bg-red-500", bg: "bg-red-50", text: "text-red-600" },
-        { id: "CUSTOMER", name: "Customer", color: "bg-amber-500", bg: "bg-amber-50", text: "text-amber-600" },
-      ],
-      interestOptions: [{ value: "YES", label: "Interested" }, { value: "NO", label: "Not Interested" }, { value: "MAYBE", label: "Maybe / Not decided" }],
-      planTypes: [{ value: "BASIC", label: "Basic" }, { value: "PROFESSIONAL", label: "Professional" }, { value: "ENTERPRISE", label: "Enterprise" }],
-      faqs: [], ticketStatuses: [], businessStatuses: [], paymentStatuses: [],
+      businessCategories: adminConfig.businessCategories,
+      openingDays: adminConfig.openingDays,
+      customerRanges: adminConfig.customerRanges,
+      businessSizes: adminConfig.businessSizes,
+      contactPositions: adminConfig.contactPositions,
+      pipelineStatuses: adminConfig.pipelineStatuses,
+      interestOptions: adminConfig.interestOptions,
+      planTypes: adminConfig.planTypes,
+      faqs: adminConfig.faqs,
+      ticketStatuses: adminConfig.ticketStatuses,
+      businessStatuses: adminConfig.businessStatuses,
+      paymentStatuses: adminConfig.paymentStatuses,
       dailyTarget,
       weeklyTarget: dailyTarget * 5,
       monthlyTarget,
       territory: config,
       userTargets: {
-        dailyLeadTarget: user?.dailyLeadTarget || 5,
-        monthlyConversionTarget: user?.monthlyConversionTarget || 20,
+        dailyLeadTarget: dailyTarget,
+        monthlyConversionTarget: monthlyTarget,
       },
       settings: {
         autoRefreshVisits: true,
@@ -565,24 +582,141 @@ export class MarketMappingService {
   }
 
   async getAdminConfig() {
+    const DEFAULT_BUSINESS_CATEGORIES = [
+      "Supermarket / Grocery", "Pharmacy", "Restaurant / Fast Food", "Retail / Clothing",
+      "Electronics / Phone Accessories", "Beauty / Salon / Barbing", "Fuel / Gas Station",
+      "Hotel / Lodge", "School / Training Center", "Hospital / Clinic", "Bakery / Confectionery",
+      "Professional Services", "Other",
+    ];
+    const DEFAULT_OPENING_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const DEFAULT_CUSTOMER_RANGES = [
+      { value: "LOW", label: "Low (1-30)", min: 1, max: 30 },
+      { value: "MEDIUM", label: "Medium (31-100)", min: 31, max: 100 },
+      { value: "HIGH", label: "High (101-300)", min: 101, max: 300 },
+      { value: "VERY_HIGH", label: "Very High (300+)", min: 300, max: 999999 },
+    ];
+    const DEFAULT_BUSINESS_SIZES = [
+      { value: "SMALL", label: "Small (1-5 staff)", minStaff: 1, maxStaff: 5 },
+      { value: "MEDIUM", label: "Medium (6-20 staff)", minStaff: 6, maxStaff: 20 },
+      { value: "LARGE", label: "Large (21+ staff)", minStaff: 21, maxStaff: 999999 },
+    ];
+    const DEFAULT_CONTACT_POSITIONS = ["Owner", "Manager", "HR Manager", "Sales Manager", "Custom"];
+    const DEFAULT_PIPELINE_STATUSES = [
+      { id: "NOT_YET", name: "Not yet", color: "bg-slate-500", bg: "bg-slate-50", text: "text-slate-600" },
+      { id: "VISITED", name: "Visited", color: "bg-blue-500", bg: "bg-blue-50", text: "text-blue-600" },
+      { id: "CONTACTED", name: "Contacted", color: "bg-purple-500", bg: "bg-purple-50", text: "text-purple-600" },
+      { id: "INTERESTED", name: "Interested", color: "bg-emerald-500", bg: "bg-emerald-50", text: "text-emerald-600" },
+      { id: "NOT_INTERESTED", name: "Not Interested", color: "bg-red-500", bg: "bg-red-50", text: "text-red-600" },
+      { id: "CUSTOMER", name: "Customer", color: "bg-amber-500", bg: "bg-amber-50", text: "text-amber-600" },
+    ];
+    const DEFAULT_INTEREST_OPTIONS = [
+      { value: "YES", label: "Interested" },
+      { value: "NO", label: "Not Interested" },
+      { value: "MAYBE", label: "Maybe / Not decided" },
+    ];
+    const DEFAULT_PLAN_TYPES = [
+      { value: "BASIC", label: "Basic" },
+      { value: "STARTER", label: "Starter" },
+      { value: "PROFESSIONAL", label: "Professional" },
+      { value: "ENTERPRISE", label: "Enterprise" },
+    ];
+
     let config = await this.prisma.marketMappingAdminConfig.findFirst();
     if (!config) {
       config = await this.prisma.marketMappingAdminConfig.create({
         data: {
-          pipelineStatuses: ["POTENTIAL", "CONTACTED", "INTERESTED", "DEMO_SCHEDULED", "CONVERTED"],
-          categories: ["Retail", "Hospitality", "Corporate", "Healthcare", "Tech"],
+          categories: DEFAULT_BUSINESS_CATEGORIES,
+          openingDays: DEFAULT_OPENING_DAYS,
+          customerRanges: DEFAULT_CUSTOMER_RANGES,
+          businessSizes: DEFAULT_BUSINESS_SIZES,
+          contactPositions: DEFAULT_CONTACT_POSITIONS,
+          pipelineStatuses: DEFAULT_PIPELINE_STATUSES,
+          interestOptions: DEFAULT_INTEREST_OPTIONS,
+          planTypes: DEFAULT_PLAN_TYPES,
+          faqs: [],
+          ticketStatuses: [],
+          businessStatuses: [],
+          paymentStatuses: [],
+          dailyTarget: 5,
+          weeklyTarget: 25,
+          monthlyTarget: 20,
           fieldDefaults: { autoAssignLead: true, requireGps: true },
         },
       });
     }
-    return config;
+
+    const vemtapPlans = await this.fetchVemtapPlanTypes();
+
+    const categories = (config.categories as any) || DEFAULT_BUSINESS_CATEGORIES;
+    const pipelineStatusesRaw = (config.pipelineStatuses as any) || DEFAULT_PIPELINE_STATUSES;
+
+    const pipelineStatuses = Array.isArray(pipelineStatusesRaw)
+      ? pipelineStatusesRaw.map((item: any) => {
+          if (typeof item === "string") {
+            const match = DEFAULT_PIPELINE_STATUSES.find((s) => s.id === item);
+            return match || { id: item, name: item, color: "bg-blue-500", bg: "bg-blue-50", text: "text-blue-600" };
+          }
+          return item;
+        })
+      : DEFAULT_PIPELINE_STATUSES;
+
+    return {
+      id: config.id,
+      categories,
+      businessCategories: categories,
+      openingDays: (config.openingDays as any) || DEFAULT_OPENING_DAYS,
+      customerRanges: (config.customerRanges as any) || DEFAULT_CUSTOMER_RANGES,
+      businessSizes: (config.businessSizes as any) || DEFAULT_BUSINESS_SIZES,
+      contactPositions: (config.contactPositions as any) || DEFAULT_CONTACT_POSITIONS,
+      pipelineStatuses,
+      interestOptions: (config.interestOptions as any) || DEFAULT_INTEREST_OPTIONS,
+      planTypes: vemtapPlans || (config.planTypes as any) || DEFAULT_PLAN_TYPES,
+      faqs: (config.faqs as any) || [],
+      ticketStatuses: (config.ticketStatuses as any) || [],
+      businessStatuses: (config.businessStatuses as any) || [],
+      paymentStatuses: (config.paymentStatuses as any) || [],
+      dailyTarget: config.dailyTarget || 5,
+      weeklyTarget: config.weeklyTarget || 25,
+      monthlyTarget: config.monthlyTarget || 20,
+      fieldDefaults: (config.fieldDefaults as any) || { autoAssignLead: true, requireGps: true },
+      updatedAt: config.updatedAt,
+    };
   }
 
-  async updateAdminConfig(dto: { pipelineStatuses?: any; categories?: any; fieldDefaults?: any }) {
-    const config = await this.getAdminConfig();
+  async updateAdminConfig(dto: UpdateMarketMappingAdminConfigDto) {
+    const config = await this.prisma.marketMappingAdminConfig.findFirst();
+    const updateData: any = {};
+    if (dto.categories !== undefined) updateData.categories = dto.categories;
+    if (dto.pipelineStatuses !== undefined) updateData.pipelineStatuses = dto.pipelineStatuses;
+    if (dto.fieldDefaults !== undefined) updateData.fieldDefaults = dto.fieldDefaults;
+    if (dto.openingDays !== undefined) updateData.openingDays = dto.openingDays;
+    if (dto.customerRanges !== undefined) updateData.customerRanges = dto.customerRanges;
+    if (dto.businessSizes !== undefined) updateData.businessSizes = dto.businessSizes;
+    if (dto.contactPositions !== undefined) updateData.contactPositions = dto.contactPositions;
+    if (dto.interestOptions !== undefined) updateData.interestOptions = dto.interestOptions;
+    if (dto.planTypes !== undefined) updateData.planTypes = dto.planTypes;
+    if (dto.faqs !== undefined) updateData.faqs = dto.faqs;
+    if (dto.ticketStatuses !== undefined) updateData.ticketStatuses = dto.ticketStatuses;
+    if (dto.businessStatuses !== undefined) updateData.businessStatuses = dto.businessStatuses;
+    if (dto.paymentStatuses !== undefined) updateData.paymentStatuses = dto.paymentStatuses;
+    if (dto.dailyTarget !== undefined) updateData.dailyTarget = dto.dailyTarget;
+    if (dto.weeklyTarget !== undefined) updateData.weeklyTarget = dto.weeklyTarget;
+    if (dto.monthlyTarget !== undefined) updateData.monthlyTarget = dto.monthlyTarget;
+
+    if (!config) {
+      return this.prisma.marketMappingAdminConfig.create({
+        data: {
+          categories: updateData.categories || ["Supermarket / Grocery"],
+          pipelineStatuses: updateData.pipelineStatuses || ["NOT_YET"],
+          fieldDefaults: updateData.fieldDefaults || { autoAssignLead: true, requireGps: true },
+          ...updateData,
+        },
+      });
+    }
+
     return this.prisma.marketMappingAdminConfig.update({
       where: { id: config.id },
-      data: dto,
+      data: updateData,
     });
   }
 }
