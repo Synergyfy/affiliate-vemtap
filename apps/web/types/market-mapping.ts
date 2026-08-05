@@ -90,6 +90,7 @@ export interface MappedBusiness {
   assignedAffiliateId?: string;
   assignedAffiliateName?: string;
   priority: PriorityScore;
+  source?: 'CAPTURE' | 'BUSINESS';
   lastVisit?: string;
   nextVisit?: string;
   notes?: string;

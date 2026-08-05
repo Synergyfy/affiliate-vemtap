@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   CreateMissionPlanDto,
@@ -8,6 +9,10 @@ import {
   UpdateMarketMappingVisitDto,
   UpdateMarketMappingAdminConfigDto,
 } from "./dto/market-mapping.dto";
+
+type VisitWithUser = Prisma.MarketMappingVisitGetPayload<{
+  include: { user: { select: { id: true; fullName: true } } };
+}>;
 
 @Injectable()
 export class MarketMappingService {
@@ -485,10 +490,118 @@ export class MarketMappingService {
           select: { id: true, businessName: true, planType: true, status: true, ownerName: true, phone: true, affiliateId: true },
         });
 
+    const capturedVisits = assignedAffiliateIds.length === 0
+      ? []
+      : await this.prisma.marketMappingVisit.findMany({
+          where: {
+            userId: { in: assignedAffiliateIds },
+            isPlaceholder: false,
+          },
+          take: 100,
+          orderBy: { updatedAt: "desc" },
+          include: { user: { select: { id: true, fullName: true } } },
+        });
+
+    const capturedBusinesses = this.mapCapturedVisits(capturedVisits, assignedBusinesses, cluster);
+
     return {
       cluster,
-      businesses: assignedBusinesses,
+      businesses: [...assignedBusinesses, ...capturedBusinesses],
     };
+  }
+
+  async getAdminCapturedVisits() {
+    const visits = await this.prisma.marketMappingVisit.findMany({
+      where: { isPlaceholder: false },
+      take: 200,
+      orderBy: { updatedAt: "desc" },
+      include: { user: { select: { id: true, fullName: true } } },
+    });
+
+    return this.mapCapturedVisits(visits, [], { id: "", name: "" });
+  }
+
+  private mapVisitStatus(status?: string | null): string {
+    switch (status) {
+      case "CUSTOMER": return "CUSTOMER";
+      case "INTERESTED":
+      case "NEGOTIATING": return "NEGOTIATING";
+      case "CONTACTED":
+      case "MEETING": return "MEETING";
+      case "NOT_INTERESTED":
+      case "LOST": return "LOST";
+      default: return "PROSPECT";
+    }
+  }
+
+  private mapCustomerRangeToNumber(range?: string | null): number {
+    switch (range) {
+      case "LOW": return 25;
+      case "MEDIUM": return 65;
+      case "HIGH": return 200;
+      case "VERY_HIGH": return 400;
+      default: return 0;
+    }
+  }
+
+  private mapCapturedVisits(
+    visits: VisitWithUser[],
+    existingBusinesses: Array<{ phone?: string | null }>,
+    cluster: { id: string; name: string },
+  ) {
+    const existingPhones = new Set(
+      existingBusinesses.map((business) => business.phone).filter((phone): phone is string => Boolean(phone)),
+    );
+    const seenPhones = new Set<string>();
+
+    return visits
+      .filter((visit) => {
+        const lat = Number(visit.gpsLat);
+        const lng = Number(visit.gpsLng);
+        if (!visit.gpsLat || !visit.gpsLng || !Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+        if (visit.phone && existingPhones.has(visit.phone)) return false;
+        if (visit.phone && seenPhones.has(visit.phone)) return false;
+        if (visit.phone) seenPhones.add(visit.phone);
+        return true;
+      })
+      .map((visit) => {
+        const status = this.mapVisitStatus(visit.status);
+        const nextVisit = visit.nextVisitDate || visit.nextVisitTime
+          ? `${visit.nextVisitDate || ""} ${visit.nextVisitTime || ""}`.trim()
+          : undefined;
+        return {
+          id: visit.id,
+          name: visit.name,
+          businessName: visit.name,
+          category: visit.category || "Business",
+          industry: visit.category || "",
+          size: visit.businessSize || "SMALL",
+          status,
+          isAnchor: visit.isAnchor || false,
+          anchorScore: 0,
+          influenceScore: 0,
+          isVerified: status === "CUSTOMER",
+          ownerName: visit.ownerName || "",
+          decisionMaker: visit.ownerName || "",
+          phone: visit.phone || "",
+          email: visit.contactEmail || "",
+          address: visit.exactAddress || visit.address || "",
+          clusterId: cluster.id,
+          clusterName: cluster.name,
+          latitude: Number(visit.gpsLat),
+          longitude: Number(visit.gpsLng),
+          dailyCustomers: this.mapCustomerRangeToNumber(visit.dailyCustomers),
+          monthlyCustomers: 0,
+          openingHours: visit.openingHours || undefined,
+          assignedAffiliateId: visit.userId,
+          assignedAffiliateName: visit.user?.fullName || "",
+          priority: "LOW",
+          lastVisit: visit.visitedAt ? new Date(visit.visitedAt).toLocaleDateString() : undefined,
+          nextVisit,
+          notes: visit.visitNotes || undefined,
+          source: "CAPTURE",
+        };
+      });
   }
 
   async getAssignments() {

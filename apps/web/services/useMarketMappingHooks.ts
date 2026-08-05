@@ -6,6 +6,7 @@ import type {
   AdminLocation,
   AdminSubmission,
   GeographicHierarchyNode,
+  MappedBusiness,
   MarketMappingStats,
 } from '@/types/market-mapping';
 import type { PlannedVisit } from '@/types/affiliate-market-mapping';
@@ -138,11 +139,27 @@ export const useMarketMappingVisits = () => {
   });
 };
 
+const VISIT_FIELDS = [
+  'name', 'category', 'status', 'isPlaceholder', 'address', 'exactAddress',
+  'phone', 'ownerName', 'contactPosition', 'contactEmail', 'horizon',
+  'dailyCustomers', 'businessSize', 'openingHours', 'openingDays',
+  'gpsLat', 'gpsLng', 'nextVisitDate', 'nextVisitTime', 'decisionMakerMet',
+  'interested', 'demoDone', 'visitNotes', 'isAnchor', 'planId',
+] as const;
+
+const pickVisitFields = (payload: Record<string, unknown>): Record<string, unknown> => {
+  const clean: Record<string, unknown> = {};
+  for (const key of VISIT_FIELDS) {
+    if (payload[key] !== undefined) clean[key] = payload[key];
+  }
+  return clean;
+};
+
 export const useCreateMarketMappingVisit = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (payload: Omit<PlannedVisit, 'id'>) => {
-      const { data } = await api.post('/market-mapping/visits', payload);
+      const { data } = await api.post('/market-mapping/visits', pickVisitFields(payload as unknown as Record<string, unknown>));
       return data as PlannedVisit;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['market-mapping', 'visits'] }); },
@@ -153,7 +170,7 @@ export const useUpdateMarketMappingVisit = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...payload }: PlannedVisit) => {
-      const { data } = await api.patch(`/market-mapping/visits/${id}`, payload);
+      const { data } = await api.patch(`/market-mapping/visits/${id}`, pickVisitFields(payload as unknown as Record<string, unknown>));
       return data as PlannedVisit;
     },
     onSuccess: () => {
@@ -367,6 +384,16 @@ export const useAdminClusterDetail = (id?: string) => {
       return data?.cluster ? data : { cluster: data, businesses: [] };
     },
     enabled: !!id,
+  });
+};
+
+export const useAdminCapturedVisits = () => {
+  return useQuery<MappedBusiness[]>({
+    queryKey: ['market-mapping', 'admin', 'captured-visits'],
+    queryFn: async () => {
+      const { data } = await api.get('/market-mapping/admin/captured-visits');
+      return Array.isArray(data) ? data : data?.data ?? [];
+    },
   });
 };
 

@@ -88,6 +88,11 @@ export default function BusinessDrawer({ business, onClose }: BusinessDrawerProp
                         <Crown className="w-3 h-3" /> Anchor
                       </span>
                     )}
+                    {business.source === 'CAPTURE' && (
+                      <span className="bg-blue-100 text-blue-700 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md flex items-center gap-1">
+                        <MapPin className="w-3 h-3" /> Captured
+                      </span>
+                    )}
                     <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-bold border", getStatusColor(business.status))}>
                       {business.status}
                     </span>
