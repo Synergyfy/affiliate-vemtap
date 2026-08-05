@@ -222,4 +222,59 @@ export class UpdateMarketMappingAdminConfigDto {
   @ApiProperty({ required: false })
   @IsOptional()
   fieldDefaults?: any;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  openingDays?: any;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  customerRanges?: any;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  businessSizes?: any;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  contactPositions?: any;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  interestOptions?: any;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  planTypes?: any;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  faqs?: any;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  ticketStatuses?: any;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  businessStatuses?: any;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  paymentStatuses?: any;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  dailyTarget?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  weeklyTarget?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  monthlyTarget?: number;
 }
