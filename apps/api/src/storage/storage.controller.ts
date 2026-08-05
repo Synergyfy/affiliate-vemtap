@@ -3,6 +3,7 @@ import {
   Post,
   UseInterceptors,
   UploadedFile,
+  Body,
   UseGuards,
   BadRequestException,
 } from "@nestjs/common";
@@ -75,8 +76,11 @@ export class StorageController {
       },
     }),
   )
-  async uploadFile(@UploadedFile() file: Express.Multer.File) {
-    const url = await this.storageService.uploadFile(file);
+  async uploadFile(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('folder') folder?: string,
+  ) {
+    const url = await this.storageService.uploadFile(file, folder);
     return { url };
   }
 }
