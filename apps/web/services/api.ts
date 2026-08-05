@@ -12,6 +12,17 @@ const api = axios.create({
   },
 });
 
+// Remove default Content-Type header when data is FormData so browser sets multipart/form-data with proper boundary
+api.interceptors.request.use((config) => {
+  if (config.data instanceof FormData && config.headers) {
+    delete config.headers['Content-Type'];
+    if (typeof (config.headers as any).delete === 'function') {
+      (config.headers as any).delete('Content-Type');
+    }
+  }
+  return config;
+});
+
 let onUnauthorized: (() => void) | null = null;
 let isRefreshing = false;
 let refreshPromise: Promise<any> | null = null;

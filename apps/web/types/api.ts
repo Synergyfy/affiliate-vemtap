@@ -219,15 +219,15 @@ export interface PipelineStatusConfig {
 export interface CustomerRangeConfig {
   value: string;
   label: string;
-  min: number;
-  max: number;
+  min?: number;
+  max?: number;
 }
 
 export interface BusinessSizeConfig {
   value: string;
   label: string;
-  minStaff: number;
-  maxStaff: number;
+  minStaff?: number;
+  maxStaff?: number;
 }
 
 export interface MarketMappingConfig {

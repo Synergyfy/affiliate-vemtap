@@ -976,6 +976,7 @@ model MarketMappingTerritoryConfig {
   totalAssigned      Int      @default(0)
   anchorCount        Int      @default(0)
   prospectCount      Int      @default(0)
+
   anchorsJson        Json?
   priorityVisitsJson Json?
   partnershipsJson   Json?
@@ -1053,6 +1054,19 @@ model MarketMappingAdminConfig {
   pipelineStatuses Json
   categories       Json
   fieldDefaults    Json
+  openingDays      Json?
+  customerRanges   Json?
+  businessSizes    Json?
+  contactPositions Json?
+  interestOptions  Json?
+  planTypes        Json?
+  faqs             Json?
+  ticketStatuses   Json?
+  businessStatuses Json?
+  paymentStatuses  Json?
+  dailyTarget      Int?
+  weeklyTarget     Int?
+  monthlyTarget    Int?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 }
@@ -1070,6 +1084,3 @@ model NotificationDraft {
 
   @@index([createdById])
 }
-
-
-

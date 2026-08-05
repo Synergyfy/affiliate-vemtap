@@ -153,7 +153,8 @@ function buildWeekGroups(start: Date, includeSat: boolean, includeSun: boolean):
 }
 
 export default function PlanMission({ onAddVisits }: PlanMissionProps) {
-  const dateInputRef = useRef<HTMLInputElement>(null);
+  const startDateInputRef = useRef<HTMLInputElement>(null);
+  const dayPickerInputRef = useRef<HTMLInputElement>(null);
   const [horizon, setHorizon] = useState<MissionHorizon>('DAY');
   const [startDate, setStartDate] = useState<Date>(TODAY);
   const [includeSat, setIncludeSat] = useState(false);
@@ -386,12 +387,34 @@ export default function PlanMission({ onAddVisits }: PlanMissionProps) {
               <label className="text-[11px] font-semibold text-slate-500 mb-1.5 flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5" /> Start Date
               </label>
-              <div className="relative">
-                <div className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-pointer flex items-center justify-between">
+              <div 
+                className="relative cursor-pointer"
+                onClick={() => {
+                  try {
+                    startDateInputRef.current?.showPicker();
+                  } catch (err) {
+                    startDateInputRef.current?.focus();
+                  }
+                }}
+              >
+                <div className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 flex items-center justify-between">
                   <span>{startDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
                   <Calendar className="w-4 h-4 text-slate-400" />
                 </div>
-                <input ref={dateInputRef} type="date" min={toDateInputValue(TODAY)} value={toDateInputValue(startDate)} onChange={e => handleStartDateChange(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                <input 
+                  ref={startDateInputRef} 
+                  type="date" 
+                  min={toDateInputValue(TODAY)} 
+                  value={toDateInputValue(startDate)} 
+                  onChange={e => handleStartDateChange(e.target.value)} 
+                  onClick={e => {
+                    e.stopPropagation();
+                    try {
+                      e.currentTarget.showPicker();
+                    } catch (err) {}
+                  }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                />
               </div>
               <p className="text-[10px] text-slate-400 mt-1">Targets align from this date through end of {monthName}.</p>
             </div>
@@ -411,12 +434,34 @@ export default function PlanMission({ onAddVisits }: PlanMissionProps) {
                   <label className="text-[11px] font-semibold text-slate-500 mb-1.5 flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5" /> Pick a Day
                   </label>
-                  <div className="relative">
-                    <div className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-pointer flex items-center justify-between">
+                  <div 
+                    className="relative cursor-pointer"
+                    onClick={() => {
+                      try {
+                        dayPickerInputRef.current?.showPicker();
+                      } catch (err) {
+                        dayPickerInputRef.current?.focus();
+                      }
+                    }}
+                  >
+                    <div className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 flex items-center justify-between">
                       <span>{startDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}</span>
                       <Calendar className="w-4 h-4 text-slate-400" />
                     </div>
-                    <input ref={dateInputRef} type="date" min={toDateInputValue(TODAY)} value={toDateInputValue(startDate)} onChange={e => handleStartDateChange(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                    <input 
+                      ref={dayPickerInputRef} 
+                      type="date" 
+                      min={toDateInputValue(TODAY)} 
+                      value={toDateInputValue(startDate)} 
+                      onChange={e => handleStartDateChange(e.target.value)} 
+                      onClick={e => {
+                        e.stopPropagation();
+                        try {
+                          e.currentTarget.showPicker();
+                        } catch (err) {}
+                      }}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                    />
                   </div>
                   <p className="text-[10px] text-slate-400 mt-1">Choose the day you want to plan for.</p>
                 </div>
