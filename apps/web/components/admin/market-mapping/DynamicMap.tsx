@@ -28,6 +28,7 @@ interface DynamicMapProps {
   mapCenter?: [number, number];
   mapZoom?: number;
   mapType?: 'DEFAULT' | 'VECTOR' | 'SATELLITE';
+  forceCluster?: boolean;
 }
 
 // Map Updater Component to change view dynamically
@@ -112,9 +113,10 @@ export default function DynamicMap({
   showAnchorsOnly,
   mapCenter,
   mapZoom,
-  mapType = 'DEFAULT'
+  mapType = 'DEFAULT',
+  forceCluster = false
 }: DynamicMapProps) {
-  const isCluster = !selectedNode || selectedNode.type === 'CLUSTER';
+  const isCluster = forceCluster || !selectedNode || selectedNode.type === 'CLUSTER';
   
   // Center map on the provided center or default
   const center: [number, number] = mapCenter || [9.0765, 7.4898];
@@ -184,6 +186,11 @@ export default function DynamicMap({
                     {biz.isAnchor && (
                       <span style={{ fontSize: '9px', fontWeight: 700, padding: '2px 6px', borderRadius: '6px', background: '#fbbf24', color: '#451a03' }}>
                         ⭐ ANCHOR
+                      </span>
+                    )}
+                    {biz.source === 'CAPTURE' && (
+                      <span style={{ fontSize: '9px', fontWeight: 700, padding: '2px 6px', borderRadius: '6px', background: '#dbeafe', color: '#1e40af' }}>
+                        Captured
                       </span>
                     )}
                     {hasBeenVisited ? (
