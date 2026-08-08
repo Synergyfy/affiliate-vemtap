@@ -56,6 +56,7 @@ model User {
   assignedTasks   Task[]       @relation("AssignedTasks")
   agentDemos      Demo[]       @relation("AgentDemos")
   activities      Activity[]
+  workSessions    SalesWorkSession[]
   
   tokenVersion    Int       @default(0)
   paystackSubaccountId String?
@@ -102,6 +103,7 @@ enum Role {
   AGENT
   SUPERVISOR
   MANAGER
+  SALES_EXECUTIVE
 }
 
 enum UserStatus {
@@ -770,5 +772,78 @@ model AgreementSignature {
   @@unique([userId, agreementId, version])
   @@index([agreementId])
   @@index([userId])
+}
+
+model SalesWorkSession {
+  id              String              @id @default(uuid())
+  
+  userId          String
+  user            User                @relation(fields: [userId], references: [id])
+  
+  startedAt       DateTime            @default(now())
+  endedAt         DateTime?
+  
+  startLatitude   Float?
+  startLongitude  Float?
+  startAccuracy   Float?
+  
+  endLatitude     Float?
+  endLongitude    Float?
+  endAccuracy     Float?
+  
+  startGpsStatus  GpsStatus           @default(UNKNOWN)
+  endGpsStatus    GpsStatus?
+  
+  status          WorkSessionStatus   @default(ACTIVE)
+  
+  notes           String?             @db.Text
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  gpsEvents       GpsEvent[]
+  
+  @@index([userId])
+  @@index([status])
+  @@index([userId, status])
+  @@index([startedAt])
+}
+
+model GpsEvent {
+  id              String          @id @default(uuid())
+  
+  sessionId       String
+  session         SalesWorkSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  latitude        Float
+  longitude       Float
+  accuracy        Float?
+  
+  eventType       GpsEventType
+  source          String?         // e.g. "browser", "fallback"
+  
+  createdAt       DateTime        @default(now())
+  
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+enum WorkSessionStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum GpsStatus {
+  GRANTED
+  DENIED
+  UNAVAILABLE
+  UNKNOWN
+}
+
+enum GpsEventType {
+  START
+  END
+  CHECKPOINT
 }
 

@@ -14,7 +14,7 @@ interface User {
   hasAcceptedTerms?: boolean;
   hasSignedAgreement?: boolean;
   createdAt?: string;
-  role?: 'AFFILIATE' | 'ADMIN' | 'SUPER_ADMIN' | 'AGENT' | 'SUPERVISOR' | 'MANAGER';
+  role?: 'AFFILIATE' | 'ADMIN' | 'SUPER_ADMIN' | 'AGENT' | 'SUPERVISOR' | 'MANAGER' | 'SALES_EXECUTIVE';
   location?: string;
   address?: string;
   isKycVerified?: boolean;
@@ -86,16 +86,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const isAffiliate = email.toLowerCase().includes('affiliate') || email.toLowerCase().includes('dashboard') || email.toLowerCase() === 'test@vemtap.com';
         const isSupervisor = email.toLowerCase().includes('supervisor');
         const isManager = email.toLowerCase().includes('manager');
+        const isSalesExecutive = email.toLowerCase().includes('sales') || email.toLowerCase().includes('se');
         
-        const mockRole = isSupervisor ? 'SUPERVISOR' : isManager ? 'MANAGER' : isAffiliate ? 'AFFILIATE' : 'SUPER_ADMIN';
-        const mockName = isSupervisor ? 'Supervisor User' : isManager ? 'Manager User' : isAffiliate ? 'Affiliate User' : 'Admin User';
+        const mockRole = isSalesExecutive ? 'SALES_EXECUTIVE' : isSupervisor ? 'SUPERVISOR' : isManager ? 'MANAGER' : isAffiliate ? 'AFFILIATE' : 'SUPER_ADMIN';
+        const mockName = isSalesExecutive ? 'Sales Executive User' : isSupervisor ? 'Supervisor User' : isManager ? 'Manager User' : isAffiliate ? 'Affiliate User' : 'Admin User';
 
         const mockAdminUser: User = {
-          id: isAffiliate ? 'affiliate-mock-user-1' : isSupervisor ? 'supervisor-mock-user-1' : isManager ? 'manager-mock-user-1' : 'admin-mock-user-1',
+          id: isSalesExecutive ? 'se-mock-user-1' : isAffiliate ? 'affiliate-mock-user-1' : isSupervisor ? 'supervisor-mock-user-1' : isManager ? 'manager-mock-user-1' : 'admin-mock-user-1',
           fullName: mockName,
           email: email || 'admin@vemtap.com',
           phone: '+2348012345678',
-          referralCode: isAffiliate ? 'AFFILIATE1' : isSupervisor ? 'SUPERVISOR1' : isManager ? 'MANAGER1' : 'ADMINMOCK',
+          referralCode: isSalesExecutive ? 'SE1' : isAffiliate ? 'AFFILIATE1' : isSupervisor ? 'SUPERVISOR1' : isManager ? 'MANAGER1' : 'ADMINMOCK',
           role: mockRole,
           hasAcceptedTerms: true,
           hasSignedAgreement: true,
@@ -117,7 +118,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.warn('Backend API unavailable. Falling back to mock admin login mode.', apiErr);
         }
 
-        const MOCK_TOKEN = isAffiliate 
+        const MOCK_TOKEN = isSalesExecutive
+          ? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiU0FMRVNfRVhFQ1VUSVZFIiwiaWF0IjoxNjAwMDAwMDAwfQ.signature"
+          : isAffiliate 
           ? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiQUZGSUxJQVRFIiwiaWF0IjoxNjAwMDAwMDAwfQ.signature" 
           : isSupervisor
           ? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiU1VQRVJWSVNPUiIsImlhdCI6MTYwMDAwMDAwMH0.signature"

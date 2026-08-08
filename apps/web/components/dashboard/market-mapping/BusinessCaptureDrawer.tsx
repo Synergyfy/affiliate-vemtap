@@ -465,17 +465,48 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
                     </div>
                   </div>
                   <div className="pt-2 border-t border-slate-100">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">GPS</p>
-                    <div className="bg-white border border-slate-200 rounded-xl p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <Navigation className="w-4 h-4 text-blue-500" />
-                          <span className="text-xs font-semibold text-slate-700">Location</span>
-                        </div>
-                        <button type="button" onClick={() => { if (navigator.geolocation) { navigator.geolocation.getCurrentPosition(pos => { setFormData({ ...formData, gpsLat: pos.coords.latitude.toFixed(6), gpsLng: pos.coords.longitude.toFixed(6) }); }); } }} className="px-3 py-1.5 bg-blue-50 text-blue-600 text-[11px] font-semibold rounded-lg hover:bg-blue-100">Capture</button>
-                      </div>
-                      {formData.gpsLat && formData.gpsLng ? <p className="text-[10px] font-mono text-slate-500">{formData.gpsLat}, {formData.gpsLng}</p> : <p className="text-[10px] text-slate-400">Not captured</p>}
-                    </div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">GPS Location</p>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (navigator.geolocation) {
+                          navigator.geolocation.getCurrentPosition(async pos => {
+                            const lat = pos.coords.latitude.toFixed(6);
+                            const lng = pos.coords.longitude.toFixed(6);
+                            let address = '';
+                            try {
+                              const res = await fetch(
+                                `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&addressdetails=1`
+                              );
+                              const data = await res.json();
+                              if (data?.display_name) address = data.display_name;
+                            } catch {
+                              address = '';
+                            }
+                            setFormData({ ...formData, gpsLat: lat, gpsLng: lng, gpsAddress: address });
+                          });
+                        }
+                      }}
+                      className={cn(
+                        'w-full py-4 rounded-xl border-2 flex flex-col items-center justify-center gap-1.5 transition-all active:scale-[0.99]',
+                        formData.gpsLat && formData.gpsLng
+                          ? 'bg-emerald-50 border-emerald-300 hover:bg-emerald-100'
+                          : 'bg-blue-600 border-blue-600 hover:bg-blue-700 text-white'
+                      )}
+                    >
+                      <Navigation className={cn('w-6 h-6', formData.gpsLat && formData.gpsLng ? 'text-emerald-600' : 'text-white')} />
+                      <span className={cn('text-sm font-bold', formData.gpsLat && formData.gpsLng ? 'text-emerald-700' : 'text-white')}>
+                        {formData.gpsLat && formData.gpsLng ? 'GPS Location Captured' : 'Capture GPS Location'}
+                      </span>
+                      <span className={cn('text-[10px] font-medium', formData.gpsLat && formData.gpsLng ? 'text-emerald-600' : 'text-blue-100')}>
+                        {formData.gpsLat && formData.gpsLng ? 'Tap to recapture or update' : 'Tap to record your exact location'}
+                      </span>
+                    </button>
+                    {formData.gpsLat && formData.gpsLng && (
+                      <p className="text-[10px] text-slate-500 mt-1.5 text-center">
+                        {formData.gpsAddress ? formData.gpsAddress : 'Location captured'}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}

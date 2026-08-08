@@ -69,8 +69,8 @@ export default function MarketMappingHubPage() {
     {
       href: '/dashboard/market-mapping/execute',
       icon: Navigation,
-      title: 'Execute Visits',
-      description: 'View your territory, add businesses, start visits and capture data.',
+      title: 'Field Work',
+      description: 'Your daily list — record visits, update business info and add businesses to execute.',
       color: 'bg-emerald-600',
       badge: dayRemaining > 0 ? `${dayRemaining} remaining today` : null,
     },

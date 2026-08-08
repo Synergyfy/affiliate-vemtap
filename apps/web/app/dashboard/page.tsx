@@ -14,23 +14,22 @@ import {
   TrendingUp,
   ArrowRight,
   MessageCircle,
-  CheckSquare,
   BarChart3,
   FileText,
   Calculator,
   HelpCircle,
-  Download
+  Download,
 } from 'lucide-react';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import AgentTargetTracker from '@/components/dashboard/AgentTargetTracker';
+import SalesPerformanceCard from '@/components/sales/SalesPerformanceCard';
 import { useAuth } from '@/hooks/use-auth';
 import { useAffiliateStats } from '@/services/useDashboardHooks';
 import { usePwaInstall } from '@/components/PwaInstallPrompt';
 import { useState, useEffect } from 'react';
 
 const gridItems = [
-  { name: 'Market Mapping', icon: Target, color: 'from-blue-500 to-blue-700', href: '/dashboard/market-mapping' },
-  { name: 'Pipeline', icon: BarChart3, color: 'from-indigo-500 to-purple-600', href: '/dashboard/market-mapping/pipeline' },
+  { name: 'Market Mapping', icon: BarChart3, color: 'from-indigo-500 to-blue-700', href: '/dashboard/market-mapping' },
   { name: 'My Reports', icon: FileText, color: 'from-blue-500 to-cyan-500', href: '/dashboard/market-mapping/insights/reports' },
   { name: 'Earnings Calculator', icon: Calculator, color: 'from-emerald-400 to-green-600', href: '/dashboard/earnings-calculator' },
   { name: 'Referral Tools', icon: LinkIcon, color: 'from-emerald-400 to-teal-500', href: '/dashboard/tools' },
@@ -52,39 +51,50 @@ export default function MobileFirstDashboard() {
     setIsStandalone(window.matchMedia('(display-mode: standalone)').matches);
   }, []);
 
+  const visibleGridItems = gridItems;
+
   return (
     <DashboardLayout>
       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
 
-        {/* Banner Section */}
-        <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-slate-900 to-blue-900 p-8 text-white shadow-2xl shadow-blue-200">
-          <div className="relative z-10 space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10">
-              <Trophy className="w-3.5 h-3.5 text-yellow-400" />
+        {/* Welcome Banner — first major dashboard content */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 to-blue-900 px-5 py-4 text-white shadow-lg shadow-blue-200/40">
+          <div className="relative z-10 space-y-2.5">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-bold uppercase tracking-widest border border-white/10">
+              <Trophy className="w-3 h-3 text-yellow-400" />
               {isLoading ? (
                 <div className="w-20 h-3 bg-white/20 animate-pulse rounded" />
               ) : (
                 user?.isManagerMode ? 'Line Manager' : stats?.currentLevel || 'Novice Affiliate'
               )}
             </div>
-            <h1 className="text-3xl font-black leading-tight">Welcome,<br />{user?.firstName || user?.fullName?.split(' ')[0] || 'Affiliate'}!</h1>
-            <p className="text-sm text-blue-100/80 font-medium max-w-[240px]">Plan your mission, execute visits, and grow your business network.</p>
+            <div className="flex items-baseline gap-1.5 min-w-0">
+              <h1 className="text-xl font-bold leading-snug truncate">
+                Welcome,{user?.firstName || user?.fullName?.split(' ')[0] || 'Affiliate'}!
+              </h1>
+            </div>
+            <p className="text-xs text-blue-100/80 font-medium truncate">Plan your mission, execute visits, and grow your business network.</p>
 
-            <div className="flex gap-3 pt-2">
-              <Link href="/dashboard/market-mapping" className="bg-white text-slate-900 px-6 py-3 rounded-2xl text-xs font-black shadow-lg shadow-white/10 active:scale-95 transition-transform">
-                Market Mapping
-              </Link>
-              <Link href="/dashboard/wallet" className="bg-blue-600/50 backdrop-blur-md text-white border border-white/20 px-6 py-3 rounded-2xl text-xs font-black active:scale-95 transition-transform">
+            <div className="flex gap-2 pt-1">
+              {(user?.role === 'AFFILIATE' || user?.role === 'AGENT') && (
+                <Link href="/dashboard/sales-work" className="bg-white text-slate-900 px-4 py-2 rounded-lg text-xs font-bold shadow-lg shadow-white/10 active:scale-95 transition-transform">
+                  My Sales Work
+                </Link>
+              )}
+              <Link href="/dashboard/wallet" className="bg-blue-600/50 backdrop-blur-md text-white border border-white/20 px-4 py-2 rounded-lg text-xs font-bold active:scale-95 transition-transform">
                 Withdraw
               </Link>
             </div>
           </div>
 
-          <div className="absolute -right-12 -top-12 w-48 h-48 bg-blue-500/20 blur-[80px] rounded-full" />
-          <div className="absolute right-8 bottom-8 opacity-20 rotate-12">
-            <Target className="w-32 h-32" />
+          <div className="absolute -right-10 -top-10 w-36 h-36 bg-blue-500/20 blur-[80px] rounded-full" />
+          <div className="absolute right-6 bottom-4 opacity-20 rotate-12 pointer-events-none">
+            <Target className="w-16 h-16" />
           </div>
         </div>
+
+        {/* Sales Performance Metrics (Sales Executives only) */}
+        {user?.role === 'SALES_EXECUTIVE' && <SalesPerformanceCard />}
 
         {/* Action Grid */}
         <div className="grid grid-cols-4 gap-y-10 gap-x-4 px-2">
@@ -126,7 +136,7 @@ export default function MobileFirstDashboard() {
               key="install-app"
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: gridItems.length * 0.05 }}
+              transition={{ delay: visibleGridItems.length * 0.05 }}
               className="flex flex-col items-center gap-3 group"
             >
               <button onClick={openPrompt} className="flex flex-col items-center">

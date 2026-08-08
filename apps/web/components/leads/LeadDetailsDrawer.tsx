@@ -14,19 +14,42 @@ import {
   Target,
   Clock,
   ExternalLink,
-  Edit2
+  Edit2,
+  ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import LeadQualityBadge from '@/components/sales/LeadQualityBadge';
+import SalesPipelineProgress from '@/components/sales/SalesPipelineProgress';
+import { 
+  SalesPipelineEntry, 
+  PIPELINE_STAGES, 
+  SalesPipelineStage 
+} from '@/types/sales-pipeline';
 
 interface LeadDetailsDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  lead: any;
+  lead: SalesPipelineEntry | any;
   onEdit: (lead: any) => void;
 }
 
 export default function LeadDetailsDrawer({ isOpen, onClose, lead, onEdit }: LeadDetailsDrawerProps) {
   if (!lead) return null;
+
+  const getNextAction = (stage: SalesPipelineStage) => {
+    switch (stage) {
+      case 'NEW_LEAD': return { label: 'Start Visit', color: 'bg-blue-600' };
+      case 'VISITED': return { label: 'Contact Lead', color: 'bg-purple-600' };
+      case 'CONTACTED': return { label: 'Schedule Follow-up', color: 'bg-orange-600' };
+      case 'INTERESTED': return { label: 'Schedule Demo', color: 'bg-indigo-600' };
+      case 'FOLLOW_UP': return { label: 'Complete Follow-up', color: 'bg-emerald-600' };
+      case 'DEMO': return { label: 'Convert to Customer', color: 'bg-amber-600' };
+      case 'CUSTOMER': return { label: 'View Subscription', color: 'bg-slate-800' };
+      default: return { label: 'Update Status', color: 'bg-slate-600' };
+    }
+  };
+
+  const nextAction = getNextAction(lead.pipelineStage || 'NEW_LEAD');
 
   return (
     <AnimatePresence>
@@ -70,22 +93,28 @@ export default function LeadDetailsDrawer({ isOpen, onClose, lead, onEdit }: Lea
 
             {/* Content */}
             <div className="flex-grow overflow-y-auto p-6 space-y-8">
-              {/* Quick Status */}
-              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-3xl border border-slate-100">
-                <div className="space-y-1">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Current Status</p>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                    <span className="text-sm font-black text-blue-600 uppercase tracking-widest">{lead.status}</span>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => onEdit(lead)}
-                  className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm"
-                >
-                  <Edit2 className="w-4 h-4" />
-                </button>
-              </div>
+               {/* Quick Status */}
+               <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
+                 <div className="flex items-center justify-between">
+                   <div className="space-y-1">
+                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Current Status</p>
+                     <div className="flex items-center gap-3">
+                       <span className="text-sm font-black text-blue-600 uppercase tracking-widest">{lead.pipelineStage || lead.status || 'Unknown'}</span>
+                       <LeadQualityBadge quality={lead.leadQuality} score={lead.leadQualityInfo?.score} size="sm" />
+                     </div>
+                   </div>
+                   <button 
+                     onClick={() => onEdit(lead)}
+                     className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm"
+                   >
+                     <Edit2 className="w-4 h-4" />
+                   </button>
+                 </div>
+                 
+                 <div className="pt-2">
+                   <SalesPipelineProgress currentStage={lead.pipelineStage || 'NEW_LEAD'} exitState={lead.exitState} compact />
+                 </div>
+               </div>
 
               {/* Info Sections */}
               <div className="space-y-6">
@@ -176,21 +205,34 @@ export default function LeadDetailsDrawer({ isOpen, onClose, lead, onEdit }: Lea
               </div>
             </div>
 
-            {/* Footer Actions */}
-            <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex gap-3">
-              <button 
-                onClick={() => onEdit(lead)}
-                className="flex-grow bg-slate-900 text-white h-14 rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-slate-200"
-              >
-                Full Edit
-              </button>
-              <button 
-                onClick={onClose}
-                className="px-6 border border-slate-200 h-14 rounded-2xl text-xs font-black text-slate-600 bg-white"
-              >
-                Close
-              </button>
-            </div>
+             {/* Footer Actions */}
+             <div className="p-6 border-t border-slate-100 bg-slate-50/50 space-y-3">
+               <button 
+                 className={cn(
+                   "w-full h-14 rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 transition-all",
+                   nextAction.color,
+                   "text-white"
+                 )}
+               >
+                 {nextAction.label}
+                 <ChevronRight className="w-4 h-4" />
+               </button>
+               
+               <div className="flex gap-3">
+                 <button 
+                   onClick={() => onEdit(lead)}
+                   className="flex-grow bg-white border border-slate-200 text-slate-600 h-12 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition-all"
+                 >
+                   Full Edit
+                 </button>
+                 <button 
+                   onClick={onClose}
+                   className="px-6 border border-slate-200 h-12 rounded-2xl text-xs font-black text-slate-400 bg-white hover:text-slate-600 transition-all"
+                 >
+                   Close
+                 </button>
+               </div>
+             </div>
           </motion.div>
         </>
       )}

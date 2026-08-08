@@ -29,6 +29,7 @@ import { ShortLinksModule } from './tools/short-links/short-links.module';
 import { LeadsModule } from './leads/leads.module';
 import { AgentsModule } from './agents/agents.module';
 import { OperationsModule } from './operations/operations.module';
+import { SalesWorkSessionModule } from './sales-work-session/sales-work-session.module';
 import { ObservabilityModule } from './observability/observability.module';
 import { RequestIdMiddleware } from './observability/request-id.middleware';
 import { MetricsMiddleware } from './observability/metrics.middleware';
@@ -48,6 +49,7 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
     LeadsModule,
     AgentsModule,
     OperationsModule,
+    SalesWorkSessionModule,
     ObservabilityModule,
     ToolsModule,
     BusinessesModule,
