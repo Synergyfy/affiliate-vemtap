@@ -25,6 +25,10 @@ import * as z from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCreateLead, useUpdateLead } from '@/services/useLeadsHooks';
+import { useCheckDuplicate } from '@/services/useSalesPipeline';
+import { DuplicateWarning } from '@/types/sales-pipeline';
+import DuplicateWarningModal from '@/components/sales/DuplicateWarningModal';
+import api from '@/services/api';
 
 const leadSchema = z.object({
   businessName: z.string().min(1, 'Business name is required'),
@@ -58,6 +62,8 @@ interface LeadCaptureFormProps {
 export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = false, onSuccess, lead }: LeadCaptureFormProps) {
   const [showSuccess, setShowSuccess] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
+  const [duplicateWarning, setDuplicateWarning] = useState<DuplicateWarning | null>(null);
+  const [pendingLeadData, setPendingLeadData] = useState<any>(null);
   const { showToast } = useToast();
   const createLead = useCreateLead();
   const updateLead = useUpdateLead();
@@ -121,7 +127,6 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
   }, []);
 
   const onSubmit = async (data: LeadFormValues) => {
-    // Filter out any empty strings, null, or undefined values to only send filled fields
     const cleanedData = Object.entries(data).reduce((acc: any, [key, value]) => {
       if (value !== '' && value !== null && value !== undefined) {
         acc[key] = value;
@@ -146,24 +151,67 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
         reset();
         onSuccess?.();
       }, 2500);
-    } else {
-      try {
-        if (lead?.id) {
-          await updateLead.mutateAsync({ id: lead.id, data: leadData });
-          showToast('Lead updated successfully.', 'success');
-        } else {
-          await createLead.mutateAsync(leadData);
-          showToast('Lead created successfully.', 'success');
-        }
-        setShowSuccess(true);
-        setTimeout(() => {
-          setShowSuccess(false);
-          reset();
-          onSuccess?.();
-        }, 2500);
-      } catch (error) {
-        showToast('Failed to save lead. Please try again.', 'error');
+      return;
+    }
+
+    try {
+      // Duplicate Check Integration
+      const duplicateCheckReq = {
+        businessName: cleanedData.businessName,
+        phone: cleanedData.phone,
+        email: cleanedData.email,
+        address: cleanedData.businessAddress,
+      };
+
+      const { data: duplicateRes } = await api.post<DuplicateWarning>('/sales/leads/check-duplicate', duplicateCheckReq);
+      
+      if (duplicateRes && duplicateRes.isMatch) {
+        setDuplicateWarning(duplicateRes);
+        setPendingLeadData(leadData);
+        return;
       }
+
+      if (lead?.id) {
+        await updateLead.mutateAsync({ id: lead.id, data: leadData });
+        showToast('Lead updated successfully.', 'success');
+      } else {
+        await createLead.mutateAsync(leadData);
+        showToast('Lead created successfully.', 'success');
+      }
+      
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        reset();
+        onSuccess?.();
+      }, 2500);
+    } catch (error) {
+      showToast('Failed to save lead. Please try again.', 'error');
+    }
+  };
+
+  const handleProceedWithDuplicate = async () => {
+    if (!pendingLeadData) return;
+
+    try {
+      if (lead?.id) {
+        await updateLead.mutateAsync({ id: lead.id, data: pendingLeadData });
+        showToast('Lead updated successfully.', 'success');
+      } else {
+        await createLead.mutateAsync(pendingLeadData);
+        showToast('Lead created successfully despite duplicate warning.', 'success');
+      }
+      
+      setDuplicateWarning(null);
+      setPendingLeadData(null);
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        reset();
+        onSuccess?.();
+      }, 2500);
+    } catch (error) {
+      showToast('Failed to save lead. Please try again.', 'error');
     }
   };
 
@@ -411,6 +459,14 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
           </Button>
         </div>
       </form>
+      
+      <DuplicateWarningModal 
+        isOpen={!!duplicateWarning} 
+        warning={duplicateWarning!} 
+        businessName={watch('businessName')}
+        onClose={() => setDuplicateWarning(null)} 
+        onProceed={handleProceedWithDuplicate} 
+      />
 
       <AnimatePresence>
         {showSuccess && (

@@ -4,6 +4,7 @@ import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { useMarketMapping } from '@/components/dashboard/market-mapping/MarketMappingContext';
 import PlanMission from '@/components/dashboard/market-mapping/PlanMission';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 import { ArrowLeft, CalendarPlus } from 'lucide-react';
 import Link from 'next/link';
 import { PlannedVisit } from '@/types/affiliate-market-mapping';
@@ -11,10 +12,15 @@ import { PlannedVisit } from '@/types/affiliate-market-mapping';
 export default function PlanPage() {
   const { addVisits, missionPlans } = useMarketMapping();
   const { showToast } = useToast();
+  const { user } = useAuth();
 
   const handleAddVisits = (newVisits: PlannedVisit[]) => {
     addVisits(newVisits);
   };
+
+  const backHref = user?.role === 'AFFILIATE' || user?.role === 'AGENT'
+    ? '/dashboard/sales-work'
+    : '/dashboard/market-mapping';
 
   return (
     <DashboardLayout>
@@ -23,7 +29,7 @@ export default function PlanPage() {
         {/* Back Navigation */}
         <div className="flex items-center gap-3">
           <Link 
-            href="/dashboard/market-mapping" 
+            href={backHref} 
             className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />

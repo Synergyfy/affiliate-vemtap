@@ -667,7 +667,7 @@ export default function PlanMission({ onAddVisits }: PlanMissionProps) {
       <div className="space-y-3">
         {missionPlans.length > 0 && (
           <Link href="/dashboard/market-mapping/execute" className="flex items-center justify-center gap-3 w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-black rounded-2xl transition-colors shadow-lg">
-            <Rocket className="w-5 h-5" /> Start Executing Visits <Navigation className="w-4 h-4" />
+            <Rocket className="w-5 h-5" /> Start Work on Your Mission <Navigation className="w-4 h-4" />
           </Link>
         )}
         <Link href="/dashboard/market-mapping/history" className="flex items-center justify-center gap-2 w-full py-3 bg-white border border-slate-200 hover:border-slate-300 text-slate-600 text-sm font-bold rounded-2xl transition-colors">
