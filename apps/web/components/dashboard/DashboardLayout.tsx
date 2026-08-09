@@ -61,11 +61,13 @@ const sidebarItems = [
   { name: 'Leaderboard', icon: Trophy, href: '/dashboard/leaderboard' },
   { name: 'Wallet', icon: Wallet, href: '/dashboard/wallet' },
   { name: 'Sales Academy', icon: BookOpen, href: '/dashboard/training' },
+  { name: 'Sales Work', icon: CheckSquare, href: '/dashboard/sales-work', showTo: ['AFFILIATE', 'AGENT'] },
   { name: 'Profile', icon: User, href: '/dashboard/profile' },
 ];
 
 const mobileNavItems = [
   { name: 'Home', icon: Home, href: '/dashboard' },
+  { name: 'Sales Work', icon: CheckSquare, href: '/dashboard/sales-work', showTo: ['AFFILIATE', 'AGENT'] },
   { name: 'Map', icon: Map, href: '/dashboard/market-mapping' },
   { name: 'Report', icon: FileText, href: '/dashboard/market-mapping/insights/reports' },
   { name: 'Manager', icon: Users, href: '/dashboard/network' },
@@ -185,6 +187,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 }
                 if (item.name === 'Referral Tools') {
                   return user?.role !== 'AGENT';
+                }
+                if (item.name === 'Market Mapping') {
+                  return user?.role !== 'AFFILIATE' && user?.role !== 'AGENT';
+                }
+                if (item.showTo) {
+                  return item.showTo.includes(user?.role ?? '');
                 }
                 return true;
               })
@@ -377,29 +385,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Mobile Bottom Navigation Bar */}
         <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-3 sm:px-6 h-20 flex items-center justify-between gap-1 z-50 pb-safe">
-          {mobileNavItems.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <Link 
-                key={item.name} 
-                href={item.href} 
-                className="flex flex-col items-center justify-center gap-1 min-w-0 flex-1 px-1 transition-all"
-              >
-                <div className={cn(
-                  "p-2 rounded-2xl transition-all",
-                  isActive ? "bg-emerald-100 text-emerald-600" : "text-slate-400"
-                )}>
-                  <item.icon className="w-6 h-6" />
-                </div>
-                <span className={cn(
-                  "text-[10px] font-black uppercase tracking-widest whitespace-nowrap",
-                  isActive ? "text-emerald-600" : "text-slate-400"
-                )}>
-                  {item.name}
-                </span>
-              </Link>
-            );
-          })}
+          {mobileNavItems
+            .filter((item) => {
+              if (item.name === 'Map') {
+                return user?.role !== 'AFFILIATE' && user?.role !== 'AGENT';
+              }
+              return !item.showTo || item.showTo.includes(user?.role ?? '');
+            })
+            .map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link 
+                  key={item.name} 
+                  href={item.href} 
+                  className="flex flex-col items-center justify-center gap-1 min-w-0 flex-1 px-1 transition-all"
+                >
+                  <div className={cn(
+                    "p-2 rounded-2xl transition-all",
+                    isActive ? "bg-emerald-100 text-emerald-600" : "text-slate-400"
+                  )}>
+                    <item.icon className="w-6 h-6" />
+                  </div>
+                  <span className={cn(
+                    "text-[10px] font-black uppercase tracking-widest whitespace-nowrap",
+                    isActive ? "text-emerald-600" : "text-slate-400"
+                  )}>
+                    {item.name}
+                  </span>
+                </Link>
+              );
+            })}
         </nav>
 
         <DashboardTour isOpen={isTourOpen} onClose={() => setIsTourOpen(false)} />
