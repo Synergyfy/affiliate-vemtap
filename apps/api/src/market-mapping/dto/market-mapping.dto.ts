@@ -69,7 +69,7 @@ export class CreateMarketMappingVisitDto {
   @IsOptional() @IsString() planId?: string;
 }
 
-export class UpdateMarketMappingVisitDto extends CreateMarketMappingVisitDto {}
+export class UpdateMarketMappingVisitDto extends CreateMarketMappingVisitDto { }
 
 export class UpdateMissionPlanDto {
   @ApiProperty({ required: false, example: 25 })
