@@ -18,7 +18,7 @@ export class CommissionsService {
       ];
     }
 
-    const [commissions, total] = await Promise.all([
+    const [commissions, total, settings] = await Promise.all([
       this.prisma.commission.findMany({
         where,
         skip: pagination.skip,
@@ -40,7 +40,10 @@ export class CommissionsService {
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.commission.count({ where }),
+      this.prisma.platformSettings.findFirst(),
     ]);
+
+    const totalMonths = settings?.earningDurationMonths || settings?.recurringDurationMonths || 12;
 
     const data = commissions.map(c => {
       if (c.business) {
@@ -50,7 +53,7 @@ export class CommissionsService {
           business: {
             ...restBusiness,
             paidMonths: _count?.commissions || 0,
-            totalMonths: 12, // Placeholder for total subscription duration
+            totalMonths,
           },
         };
       }
@@ -117,4 +120,79 @@ export class CommissionsService {
       data: { status: data.status },
     });
   }
+
+  async getGlobalStats() {
+    const monthAgo = new Date();
+    monthAgo.setDate(monthAgo.getDate() - 30);
+    const twoMonthsAgo = new Date();
+    twoMonthsAgo.setDate(twoMonthsAgo.getDate() - 60);
+
+    const [totalAgg, paidAgg, pendingAgg, prevTotalAgg, prevPaidAgg, prevPendingAgg] = await Promise.all([
+      this.prisma.commission.aggregate({ _sum: { amount: true }, _count: { id: true } }),
+      this.prisma.commission.aggregate({ where: { status: 'PAID' }, _sum: { amount: true }, _count: { id: true } }),
+      this.prisma.commission.aggregate({ where: { status: 'PENDING' }, _sum: { amount: true }, _count: { id: true } }),
+      this.prisma.commission.aggregate({
+        where: { createdAt: { gte: twoMonthsAgo, lt: monthAgo } },
+        _sum: { amount: true },
+        _count: { id: true },
+      }),
+      this.prisma.commission.aggregate({
+        where: { status: 'PAID', createdAt: { gte: twoMonthsAgo, lt: monthAgo } },
+        _sum: { amount: true },
+        _count: { id: true },
+      }),
+      this.prisma.commission.aggregate({
+        where: { status: 'PENDING', createdAt: { gte: twoMonthsAgo, lt: monthAgo } },
+        _sum: { amount: true },
+        _count: { id: true },
+      }),
+    ]);
+
+    const pctChange = (current: number, previous: number) => {
+      if (previous === 0) return current > 0 ? 100 : 0;
+      return Math.round(((current - previous) / previous) * 100);
+    };
+
+    return {
+      totalCommissions: totalAgg._count.id,
+      totalAmount: Number(totalAgg._sum.amount || 0),
+      paidCount: paidAgg._count.id,
+      paidAmount: Number(paidAgg._sum.amount || 0),
+      pendingCount: pendingAgg._count.id,
+      pendingAmount: Number(pendingAgg._sum.amount || 0),
+      trends: {
+        totalChangePercent: pctChange(totalAgg._count.id, prevTotalAgg._count.id),
+        paidChangePercent: pctChange(paidAgg._count.id, prevPaidAgg._count.id),
+        pendingChangePercent: pctChange(pendingAgg._count.id, prevPendingAgg._count.id),
+      },
+    };
+  }
+
+  async exportCsv() {
+    const commissions = await this.prisma.commission.findMany({
+      include: {
+        user: { select: { fullName: true, email: true } },
+        business: { select: { businessName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const escapeCsv = (val?: string) => `"${(val || '').replace(/"/g, '""')}"`;
+    const header = 'ID,Affiliate Name,Affiliate Email,Business Source,Amount,Type,Status,Date\n';
+    const rows = commissions.map(c =>
+      [
+        c.id,
+        escapeCsv(c.user?.fullName),
+        escapeCsv(c.user?.email),
+        escapeCsv(c.business?.businessName),
+        c.amount,
+        c.type,
+        c.status,
+        c.createdAt.toISOString(),
+      ].join(',')
+    ).join('\n');
+
+    return header + rows;
+  }
 }
+

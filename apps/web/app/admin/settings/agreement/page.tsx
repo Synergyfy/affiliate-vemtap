@@ -27,7 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 import RichTextEditor from '@/components/admin/RichTextEditor';
 
 export default function AgreementsWorkspace() {
-  const { data: agreements, isLoading } = useAdminAgreements();
+  const { data: agreements, isLoading, isError, refetch } = useAdminAgreements();
   const createAgreement = useCreateAgreementCustom();
   const updateAgreement = useUpdateAgreementCustom();
   const { showToast } = useToast();
@@ -47,7 +47,7 @@ export default function AgreementsWorkspace() {
     if (agreements && agreements.length > 0 && !selectedAgreementId) {
       loadAgreementIntoForm(agreements[0]);
     }
-  }, [agreements]);
+  }, [agreements, selectedAgreementId]);
 
   const loadAgreementIntoForm = (ag: any) => {
     setSelectedAgreementId(ag.id);
@@ -203,6 +203,8 @@ export default function AgreementsWorkspace() {
                 <div className="flex justify-center py-8">
                   <Loader2 className="w-6 h-6 animate-spin text-slate-300" />
                 </div>
+              ) : isError ? (
+                <div className="text-center py-4"><p className="text-xs text-red-500">Unable to load agreements.</p><button onClick={() => refetch()} className="text-xs font-bold text-blue-600 hover:underline mt-2">Retry</button></div>
               ) : agreements && agreements.length > 0 ? (
                 <div className="space-y-2">
                   {agreements.map((ag) => (

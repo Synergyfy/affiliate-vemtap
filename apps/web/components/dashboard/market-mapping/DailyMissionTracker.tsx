@@ -1,14 +1,15 @@
 'use client';
 
-import { TerritoryStats } from '@/types/affiliate-market-mapping';
+import { TerritoryStats, AffiliatePerformance } from '@/types/affiliate-market-mapping';
 import { Target, CheckCircle2, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DailyMissionTrackerProps {
   stats: TerritoryStats;
+  performance?: AffiliatePerformance;
 }
 
-export default function DailyMissionTracker({ stats }: DailyMissionTrackerProps) {
+export default function DailyMissionTracker({ stats, performance }: DailyMissionTrackerProps) {
   const completionRate = Math.round((stats.visitedToday / stats.plannedToday) * 100) || 0;
 
   // Generate boxes for visual progress (□□□)
@@ -36,7 +37,7 @@ export default function DailyMissionTracker({ stats }: DailyMissionTrackerProps)
           <div className="flex items-center justify-between">
             <h3 className="font-black text-xl flex items-center gap-2">
               <Target className="w-6 h-6 text-blue-400" />
-              Today's Mission Progress
+              Today&apos;s Mission Progress
             </h3>
             <span className="text-3xl font-black text-emerald-400">{completionRate}%</span>
           </div>
@@ -65,7 +66,7 @@ export default function DailyMissionTracker({ stats }: DailyMissionTrackerProps)
         <div className="grid grid-cols-2 gap-3 w-full md:w-auto md:min-w-[300px]">
           <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl p-4 border border-slate-700">
             <CheckCircle2 className="w-5 h-5 text-blue-400 mb-2" />
-            <h4 className="text-2xl font-black mb-1">4</h4>
+            <h4 className="text-2xl font-black mb-1">{performance?.todayMeetings ?? 0}</h4>
             <p className="text-[10px] uppercase tracking-widest text-slate-400 font-extrabold">Meetings Done</p>
           </div>
           <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl p-4 border border-slate-700">
@@ -74,7 +75,7 @@ export default function DailyMissionTracker({ stats }: DailyMissionTrackerProps)
             <p className="text-[10px] uppercase tracking-widest text-slate-400 font-extrabold">New Customers</p>
           </div>
           <div className="col-span-2 bg-slate-800/50 backdrop-blur-md rounded-2xl p-4 border border-slate-700">
-            <h4 className="text-2xl font-black mb-1">2</h4>
+            <h4 className="text-2xl font-black mb-1">{performance?.proposalsSent ?? 0}</h4>
             <p className="text-[10px] uppercase tracking-widest text-slate-400 font-extrabold">Proposals Sent</p>
           </div>
         </div>

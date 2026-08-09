@@ -28,17 +28,20 @@ import FilterBar from '@/components/admin/FilterBar';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/toast';
 import { useDebounce } from '@/hooks/use-debounce';
-import { useBusinesses } from '@/services/useAdminHooks';
+import { useBusinesses, downloadBusinessesExport } from '@/services/useAdminHooks';
 import { Business } from '@/types/api';
+import { Download } from 'lucide-react';
 
 export default function ReferralsManagement() {
   const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [page, setPage] = useState(1);
   const debouncedSearch = useDebounce(searchTerm, 500);
 
-  const { data: businessesResponse, isLoading } = useBusinesses({
-    limit: 50,
+  const { data: businessesResponse, isLoading, refetch } = useBusinesses({
+    limit: 20,
+    page,
     search: debouncedSearch || undefined,
     status: statusFilter === 'All' ? undefined : statusFilter
   });
@@ -47,6 +50,16 @@ export default function ReferralsManagement() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
+
+  const handleUpdateStatus = async (businessId: string, status: string) => {
+    try {
+      await api.patch(`/businesses/${businessId}/status`, { status });
+      showToast(`Business status updated to ${status}`, 'success');
+      refetch();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to update status', 'error');
+    }
+  };
 
   const copyText = async (text: string, label: string) => {
     try {
@@ -73,11 +86,22 @@ export default function ReferralsManagement() {
   return (
     <AdminLayout>
       <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-slate-900">Referred Businesses</h2>
+          <button
+            onClick={() => downloadBusinessesExport()}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all shadow-sm"
+          >
+            <Download className="w-4 h-4" /> Export CSV
+          </button>
+        </div>
+
         <FilterBar 
           searchQuery={searchTerm}
           onSearchChange={setSearchTerm}
           searchPlaceholder="Search by business or affiliate..."
           activeFilter={statusFilter}
+
           onFilterChange={setStatusFilter}
           filterLabel="Status"
           filterOptions={[

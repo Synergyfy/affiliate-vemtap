@@ -36,6 +36,7 @@ import { useToast } from '@/hooks/toast';
 import { useDebounce } from '@/hooks/use-debounce';
 
 import { useAdminStats, useWithdrawals, useUpdateWithdrawalStatus, useUpdateWithdrawalAmount } from '@/services/useAdminHooks';
+import { useWithdrawalStats } from '@/services/useWithdrawalHooks';
 import { useCommissions } from '@/services/useCommissionsHooks';
 import { WithdrawalStatus, Withdrawal } from '@/types/api';
 
@@ -51,45 +52,92 @@ type ModalState =
 export default function WithdrawalsManagement() {
   const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<WithdrawalStatus | 'ALL'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<string>('All');
   const debouncedSearch = useDebounce(searchTerm, 500);
 
-  const { data: stats } = useAdminStats();
-  const { data: withdrawalsResponse, isLoading } = useWithdrawals({
+  const { data: withdrawalsResponse, isLoading: isWithdrawalsLoading, isError: isWithdrawalsError, refetch: refetchWithdrawals } = useWithdrawals({
     limit: 50,
     search: debouncedSearch || undefined,
-    status: statusFilter === 'ALL' ? undefined : statusFilter
+    status: statusFilter === 'All' ? undefined : statusFilter as any
   });
-
+  const { data: stats } = useAdminStats();
+  const { data: realWithdrawalStats } = useWithdrawalStats();
   const updateStatus = useUpdateWithdrawalStatus();
   const updateAmount = useUpdateWithdrawalAmount();
-  const [processingBulk, setProcessingBulk] = useState(false);
-  const [showBulkModal, setShowBulkModal] = useState(false);
-  const [bulkConfirmText, setBulkConfirmText] = useState('');
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
   const [modal, setModal] = useState<ModalState>(null);
-  const [rejectReason, setRejectReason] = useState('');
+  const [isBulkConfirmOpen, setIsBulkConfirmOpen] = useState(false);
+  const [bulkConfirmText, setBulkConfirmText] = useState('');
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+
   const [editAmount, setEditAmount] = useState('');
+  const [rejectReason, setRejectReason] = useState('');
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
 
-  const pendingWithdrawals = (withdrawalsResponse?.data || []).filter(w => w.status === 'PENDING');
-  const pendingTotal = pendingWithdrawals.reduce((sum, w) => sum + Number(w.amount), 0);
-  const approvedWithdrawals = (withdrawalsResponse?.data || []).filter(w => w.status === 'APPROVED');
-  const allEligible = [...pendingWithdrawals, ...approvedWithdrawals];
+  const withdrawalsList = withdrawalsResponse?.data || [];
 
-  const handleBulkTrigger = async () => {
-    if (bulkConfirmText !== 'Bulk Payout') return;
-    setProcessingBulk(true);
+  const openMenu = (e: React.MouseEvent<HTMLButtonElement>, id: string) => {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMenuPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+    setOpenMenuId(openMenuId === id ? null : id);
+  };
+
+  const closeModal = () => setModal(null);
+
+  const handleAction = async () => {
+    if (!modal) return;
+    const { type, withdrawal } = modal;
+
     try {
-      await api.post('/withdrawals/bulk-trigger');
-      showToast('Bulk processing complete.', 'success');
-      setShowBulkModal(false);
-      setBulkConfirmText('');
-    } catch (error) {
-      showToast('Failed to trigger bulk payouts.', 'error');
-    } finally {
-      setProcessingBulk(false);
+      if (type === 'approve') {
+        await updateStatus.mutateAsync({ id: withdrawal.id, status: 'PAID' });
+        showToast(`Withdrawal for ${withdrawal.user?.fullName} approved and marked as paid.`, 'success');
+      } else if (type === 'reject') {
+        await updateStatus.mutateAsync({ id: withdrawal.id, status: 'REJECTED' });
+        showToast(`Withdrawal for ${withdrawal.user?.fullName} rejected.`, 'info');
+      } else if (type === 'edit') {
+        const amount = Number(editAmount);
+        if (isNaN(amount) || amount <= 0) {
+          showToast('Please enter a valid amount', 'error');
+          return;
+        }
+        await updateAmount.mutateAsync({ id: withdrawal.id, amount });
+        showToast(`Withdrawal amount updated to ₦${amount.toLocaleString()}`, 'success');
+      }
+      closeModal();
+    } catch (error: any) {
+      showToast(error.message || 'Action failed', 'error');
     }
   };
+
+  const handleBulkTrigger = async () => {
+    setIsBulkProcessing(true);
+    try {
+      const { data } = await api.post('/withdrawals/bulk-trigger');
+      showToast(data.message || 'Bulk payouts triggered successfully!', 'success');
+      setIsBulkConfirmOpen(false);
+    } catch (error: any) {
+      showToast(error.message || 'Failed to trigger bulk payouts', 'error');
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
+
+  const openModal = (w: Withdrawal, type: ModalType) => {
+    setOpenMenuId(null);
+    if (type === 'edit') setEditAmount(String(w.amount));
+    if (type === 'reject') setRejectReason('');
+    setModal({ type, withdrawal: w });
+  };
+
+  const withdrawalStats = [
+    { label: 'Total Payouts', value: `₦${Number(realWithdrawalStats?.totalPayouts ?? stats?.completedPayouts ?? 0).toLocaleString()}`, icon: Banknote, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Pending Request', value: `₦${Number(realWithdrawalStats?.pendingRequests ?? stats?.pendingPayouts ?? 0).toLocaleString()}`, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { label: 'Approved', value: `₦${Number(realWithdrawalStats?.approvedAmount ?? stats?.approvedPayouts ?? 0).toLocaleString()}`, icon: CheckCircle2, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Completed', value: `₦${Number(realWithdrawalStats?.completedAmount ?? stats?.completedPayouts ?? 0).toLocaleString()}`, icon: CreditCard, color: 'text-green-600', bg: 'bg-green-50' },
+  ];
 
   const handleProcess = async (id: string, name: string, status: WithdrawalStatus, reason?: string) => {
     try {
@@ -119,20 +167,6 @@ export default function WithdrawalsManagement() {
       showToast('Failed to update withdrawal amount.', 'error');
     }
   };
-
-  const openModal = (w: Withdrawal, type: ModalType) => {
-    setOpenMenuId(null);
-    if (type === 'edit') setEditAmount(String(w.amount));
-    if (type === 'reject') setRejectReason('');
-    setModal({ type, withdrawal: w });
-  };
-
-  const withdrawalStats = [
-    { label: 'Total Payouts', value: `₦${stats?.completedPayouts?.toLocaleString() || '0'}`, icon: Banknote, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Pending Request', value: `₦${stats?.pendingPayouts?.toLocaleString() || '0'}`, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
-    { label: 'Approved', value: `₦${stats?.approvedPayouts?.toLocaleString() || '0'}`, icon: CheckCircle2, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Completed', value: `₦${stats?.completedPayouts?.toLocaleString() || '0'}`, icon: CreditCard, color: 'text-green-600', bg: 'bg-green-50' },
-  ];
 
   return (
     <AdminLayout>
@@ -173,11 +207,11 @@ export default function WithdrawalsManagement() {
           ]}
           extraActions={
             <button 
-              onClick={() => setShowBulkModal(true)}
-              disabled={processingBulk}
+              onClick={() => setIsBulkConfirmOpen(true)}
+              disabled={isBulkProcessing}
               className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all shadow-lg disabled:opacity-50"
             >
-              {processingBulk ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+              {isBulkProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
               Trigger Bulk Payouts
             </button>
           }
@@ -185,7 +219,7 @@ export default function WithdrawalsManagement() {
 
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto relative min-h-[400px]">
-            {isLoading && (
+            {isWithdrawalsLoading && (
               <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
               </div>
@@ -202,7 +236,9 @@ export default function WithdrawalsManagement() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {withdrawalsResponse?.data.map((wth, idx) => (
+                 {isWithdrawalsError ? (
+                   <tr><td colSpan={6} className="p-10 text-center"><p className="text-sm text-red-500">Unable to load withdrawals.</p><button onClick={() => refetchWithdrawals()} className="text-xs font-bold text-blue-600 hover:underline mt-2">Retry</button></td></tr>
+                 ) : withdrawalsResponse?.data?.length ? withdrawalsResponse.data.map((wth, idx) => (
                   <motion.tr 
                     key={wth.id}
                     initial={{ opacity: 0, y: 10 }}
@@ -240,6 +276,7 @@ export default function WithdrawalsManagement() {
                         {wth.status === 'APPROVED' && (
                           <button 
                             onClick={() => handleProcess(wth.id, wth.user?.fullName || 'User', 'PAID')}
+                            disabled={updateStatus.isPending}
                             className="flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700 transition-all"
                           >
                             Mark as Paid
@@ -293,7 +330,7 @@ export default function WithdrawalsManagement() {
                       </div>
                     </td>
                   </motion.tr>
-                ))}
+                 )) : !isWithdrawalsLoading ? <tr><td colSpan={6} className="p-10 text-center text-sm text-slate-400">No withdrawals match the current filters.</td></tr> : null}
               </tbody>
             </table>
           </div>
@@ -302,13 +339,13 @@ export default function WithdrawalsManagement() {
 
       {/* Bulk Payout Confirmation Modal */}
       <AnimatePresence>
-        {showBulkModal && (
+        {isBulkConfirmOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => { setShowBulkModal(false); setBulkConfirmText(''); }}
+              onClick={() => { setIsBulkConfirmOpen(false); setBulkConfirmText(''); }}
               className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
             <motion.div
@@ -339,17 +376,17 @@ export default function WithdrawalsManagement() {
                   <div className="grid grid-cols-2 gap-4 pt-2">
                     <div className="bg-white rounded-xl p-4 border border-amber-100">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Payouts</p>
-                      <p className="text-2xl font-black text-slate-900">{allEligible.length}</p>
+                      <p className="text-2xl font-black text-slate-900">{withdrawalsList.length}</p>
                     </div>
                     <div className="bg-white rounded-xl p-4 border border-amber-100">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Amount</p>
-                      <p className="text-2xl font-black text-emerald-600">₦{pendingTotal.toLocaleString()}</p>
+                      <p className="text-2xl font-black text-emerald-600">₦{(realWithdrawalStats?.pendingRequests ?? 0).toLocaleString()}</p>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-2 mb-6">
-                  <label className="text-sm font-bold text-slate-700">Type <span className="text-amber-600 font-black">"Bulk Payout"</span> to confirm</label>
+                   <label className="text-sm font-bold text-slate-700">Type <span className="text-amber-600 font-black">&quot;Bulk Payout&quot;</span> to confirm</label>
                   <input
                     type="text"
                     value={bulkConfirmText}
@@ -361,18 +398,18 @@ export default function WithdrawalsManagement() {
 
                 <div className="flex gap-3">
                   <button
-                    onClick={() => { setShowBulkModal(false); setBulkConfirmText(''); }}
+                    onClick={() => { setIsBulkConfirmOpen(false); setBulkConfirmText(''); }}
                     className="flex-1 px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-all"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleBulkTrigger}
-                    disabled={bulkConfirmText !== 'Bulk Payout' || processingBulk}
+                    disabled={bulkConfirmText !== 'Bulk Payout' || isBulkProcessing}
                     className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-amber-600 text-white rounded-xl font-bold hover:bg-amber-700 transition-all shadow-lg disabled:opacity-50"
                   >
-                    {processingBulk ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-                    {processingBulk ? 'Processing...' : 'Confirm Bulk Payout'}
+                    {isBulkProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                    {isBulkProcessing ? 'Processing...' : 'Confirm Bulk Payout'}
                   </button>
                 </div>
               </div>
@@ -410,8 +447,8 @@ export default function WithdrawalsManagement() {
             </div>
             <div className="flex gap-3">
               <button onClick={() => setModal(null)} className="flex-1 px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-all">Cancel</button>
-              <button onClick={() => handleProcess(modal.withdrawal.id, modal.withdrawal.user?.fullName || 'User', 'APPROVED')} className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg">
-                <Check className="w-4 h-4" /> Approve Payout
+               <button onClick={() => handleProcess(modal.withdrawal.id, modal.withdrawal.user?.fullName || 'User', 'APPROVED')} disabled={updateStatus.isPending} className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg disabled:opacity-50">
+                 {updateStatus.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Approve Payout
               </button>
             </div>
           </ModalShell>

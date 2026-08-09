@@ -10,10 +10,10 @@ import {
   MessageSquare, Share2, Download
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getAllReportComments } from '@/lib/report-comments';
 import { downloadReportAsPdf, shareReport as exportShare, ReportExportData } from '@/lib/report-export';
 import { useToast } from '@/hooks/use-toast';
 import ReportComments from '@/components/dashboard/ReportComments';
+import { useOperationsReportsDetail } from '@/services/useOperationsHooks';
 
 const TYPE_LABELS: Record<string, { label: string; color: string }> = {
   agent: { label: 'Agent', color: 'bg-violet-100 text-violet-700' },
@@ -27,63 +27,33 @@ function formatCurrency(val: number) {
   return `₦${val.toLocaleString()}`;
 }
 
-function hashNum(str: string) {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 997;
-  return h;
-}
-
 function ReportInner() {
   const params = useSearchParams();
   const { showToast } = useToast();
   const name = params.get('name') || 'Unknown';
   const type = params.get('type') || 'agent';
   const period = params.get('period') || 'monthly';
-  const leads = Number(params.get('leads')) || 0;
-  const conversions = Number(params.get('conversions')) || 0;
-  const earnings = Number(params.get('earnings')) || 0;
+  const locationId = params.get('locationId') || undefined;
+
+  const subjectId = params.get('subjectId') || undefined;
+  const { data: detailData, isLoading, error } = useOperationsReportsDetail({ subjectId, type: type as 'agent' | 'affiliate' | 'line-manager' | 'team' | 'location', locationId, period: period as 'daily' | 'weekly' | 'monthly' });
+
+  const leads = detailData?.summary.leads ?? 0;
+  const conversions = detailData?.summary.conversions ?? 0;
+  const earnings = detailData?.summary.earnings ?? 0;
 
   const rate = leads > 0 ? Math.round((conversions / leads) * 100) : 0;
   const typeMeta = TYPE_LABELS[type] || TYPE_LABELS.agent;
   const periodLabel = period === 'daily' ? 'this day' : period === 'weekly' ? 'this week' : 'this month';
 
-  const monthlyTrend = Array.from({ length: 6 }, (_, i) => {
-    const factor = 0.5 + ((hashNum(`${name}-${i}`) % 50) / 100);
-    return Math.round(leads * factor * (1 + i * 0.1));
-  });
+  const monthlyTrend = detailData?.trend || [];
 
-  const recentActivities = [
-    { title: 'Closed a new customer', desc: `Converted a prospect in the ${name} portfolio`, amount: formatCurrency(Math.round(earnings * 0.3)), date: '2 days ago', type: 'conversion' },
-    { title: 'Follow-up completed', desc: `Called lead on ${name}'s active pipeline`, amount: null, date: '4 days ago', type: 'followup' },
-    { title: 'Business won', desc: `Signed subscription for ${name}`, amount: formatCurrency(Math.round(earnings * 0.2)), date: '1 week ago', type: 'won' },
-    { title: 'New lead captured', desc: `Added a prospect linked to ${name}`, amount: null, date: '1 week ago', type: 'lead' },
-  ];
+  const recentActivities = detailData?.recentActivities || [];
 
-  // Gather notes & comments attached to this report across all surfaces
-  const comments = useMemo(() => {
-    const all = getAllReportComments();
-    const keys = [
-      `insights:${period}`,
-      `network:team:${period}`,
-      `network:member:${name.toLowerCase()}:${period}`,
-      `admin:${name.toLowerCase()}:${period}`,
-    ];
-    const seen = new Set<string>();
-    const list: { author: string; role: string; text: string; date: string; source: string }[] = [];
-    for (const k of keys) {
-      for (const c of all[k] || []) {
-        if (seen.has(c.id)) continue;
-        seen.add(c.id);
-        list.push({ ...c, source: k });
-      }
-    }
-    // Fall back to the most relevant key if nothing matched yet
-    if (list.length === 0) {
-      const fallbackKey = `admin:${name.toLowerCase()}:${period}`;
-      for (const c of all[fallbackKey] || []) list.push({ ...c, source: fallbackKey });
-    }
-    return list.sort((a, b) => (a.date < b.date ? 1 : -1));
-  }, [name, period]);
+
+  // Comments are now persisted via the market-mapping notes API and rendered
+  // by the ReportComments component; the legacy in-browser map is gone.
+  const comments = useMemo(() => [] as { author: string; role: string; text: string; date: string; source: string }[], []);
 
   const buildExport = (): ReportExportData => ({
     reportTitle: `${period === 'daily' ? 'Daily' : period === 'weekly' ? 'Weekly' : 'Monthly'} Report — ${name}`,
@@ -100,11 +70,11 @@ function ReportInner() {
     sections: [
       {
         title: 'Lead Generation Trend',
-        lines: monthlyTrend.map((v, i) => `Period ${i + 1}: ${v.toLocaleString()} leads`),
+        lines: monthlyTrend.map((v) => `${v.period}: ${v.leads.toLocaleString()} leads`),
       },
       {
         title: 'Recent Activity',
-        lines: recentActivities.map((a) => `${a.title} — ${a.desc}${a.amount ? ` (${a.amount})` : ''} [${a.date}]`),
+        lines: recentActivities.map((a) => `${a.title} — ${a.description || a.title} [${new Date(a.createdAt).toLocaleDateString()}]`),
       },
     ],
     businesses: [],
@@ -125,6 +95,14 @@ function ReportInner() {
     const ok = downloadReportAsPdf(buildExport());
     showToast(ok ? 'Opening PDF preview — choose "Save as PDF" to download' : 'Could not open PDF preview', ok ? 'success' : 'error');
   };
+
+  if (isLoading) {
+    return <AdminLayout><div className="p-8 text-sm font-bold text-slate-500">Loading report data...</div></AdminLayout>;
+  }
+
+  if (error || !detailData) {
+    return <AdminLayout><div className="p-8 text-sm font-bold text-red-600">Unable to load report data.</div></AdminLayout>;
+  }
 
   return (
     <AdminLayout>
@@ -216,16 +194,16 @@ function ReportInner() {
               </h3>
               <div className="bg-white rounded-2xl border border-slate-100 p-6">
                 <div className="flex items-end justify-between gap-2 h-40">
-                  {monthlyTrend.map((val, i) => {
-                    const max = Math.max(...monthlyTrend, 1);
-                    return (
-                      <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                        <span className="text-[9px] font-black text-slate-500">{val.toLocaleString()}</span>
+                   {monthlyTrend.map((point, i) => {
+                     const max = Math.max(...monthlyTrend.map((item) => item.leads), 1);
+                     return (
+                      <div key={point.period} className="flex-1 flex flex-col items-center gap-2">
+                        <span className="text-[9px] font-black text-slate-500">{point.leads.toLocaleString()}</span>
                         <div
                           className={cn("w-full rounded-t-lg transition-all", i === monthlyTrend.length - 1 ? "bg-gradient-to-t from-blue-600 to-blue-400" : "bg-slate-200")}
-                          style={{ height: `${(val / max) * 100}%` }}
+                          style={{ height: `${(point.leads / max) * 100}%` }}
                         />
-                        <span className="text-[9px] font-bold text-slate-400">{i + 1}</span>
+                        <span className="text-[9px] font-bold text-slate-400">{point.period}</span>
                       </div>
                     );
                   })}
@@ -249,11 +227,10 @@ function ReportInner() {
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-bold text-slate-900">{act.title}</p>
-                      <p className="text-xs text-slate-500">{act.desc}</p>
+                       <p className="text-xs text-slate-500">{act.description || act.title}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      {act.amount && <p className="text-xs font-black text-emerald-600">{act.amount}</p>}
-                      <p className="text-[10px] text-slate-400">{act.date}</p>
+                       <p className="text-[10px] text-slate-400">{new Date(act.createdAt).toLocaleDateString()}</p>
                     </div>
                   </div>
                 ))}

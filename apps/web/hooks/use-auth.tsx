@@ -25,6 +25,8 @@ interface User {
   accountNumber?: string;
   accountName?: string;
   isManagerMode?: boolean;
+  isTourCompleted?: boolean;
+  driversLicense?: string;
 }
 
 interface AuthContextType {
@@ -54,13 +56,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const checkAuth = async () => {
-      if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem('vemtap_user');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          setUser(parsed);
-          setIsAuthenticated(true);
-        }
+      try {
+        const response = await api.get<{ user: User }>('/auth/me');
+        const currentUser = response.user;
+        setUser(currentUser);
+        setIsAuthenticated(true);
+        localStorage.setItem('vemtap_user', JSON.stringify(currentUser));
+      } catch {
+        setUser(null);
+        setIsAuthenticated(false);
+        localStorage.removeItem('vemtap_user');
       }
       setIsLoading(false);
     };
@@ -138,7 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const response = await api.post('/auth/login', { email, password });
-      const { user } = response;
+      const user = response.user || response.data?.user || response.data || response;
       
       setUser(user);
       setIsAuthenticated(true);
@@ -159,45 +164,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     setError(null);
     try {
-      if (process.env.NEXT_PUBLIC_ADMIN_MOCK === 'true') {
-        const mockNewUser: User = {
-          id: 'user-mock-signup',
-          fullName: userData.fullName || 'New User',
-          email: userData.email || 'user@example.com',
-          phone: userData.phone || '+2348000000000',
-          referralCode: 'MOCKUSER1',
-          role: 'SUPER_ADMIN',
-          hasAcceptedTerms: true,
-          hasSignedAgreement: true,
-          isKycVerified: true,
-          kycStatus: 'VERIFIED',
-        };
-
-        try {
-          const response = await api.post('/auth/signup', userData);
-          if (response?.user) {
-            setUser(response.user);
-            setIsAuthenticated(true);
-            localStorage.setItem('vemtap_user', JSON.stringify(response.user));
-            return response.user;
-          }
-        } catch (apiErr) {
-          console.warn('Backend API unavailable. Falling back to mock signup.', apiErr);
-        }
-
-        const MOCK_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiU1VQRVJfQURNSU4iLCJpYXQiOjE2MDAwMDAwMDB9.signature";
-        setUser(mockNewUser);
-        setIsAuthenticated(true);
-        localStorage.setItem('vemtap_user', JSON.stringify(mockNewUser));
-        if (typeof window !== 'undefined') {
-          document.cookie = "vemtap_logged_out=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-          document.cookie = `vemtap-auth-token=${MOCK_TOKEN}; path=/; max-age=86400`;
-        }
-        return mockNewUser;
-      }
-
       const response = await api.post('/auth/signup', userData);
-      const { user } = response;
+      const user = response.user || response.data?.user || response.data || response;
       
       setUser(user);
       setIsAuthenticated(true);
@@ -223,9 +191,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      if (process.env.NEXT_PUBLIC_ADMIN_MOCK !== 'true') {
-        await api.post('/auth/logout');
-      }
+      await api.post('/auth/logout');
     } catch (err) {
       console.error('Logout error:', err);
     } finally {

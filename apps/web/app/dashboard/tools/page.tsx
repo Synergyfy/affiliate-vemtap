@@ -25,6 +25,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/toast';
 import { useReferralStats } from '@/hooks/use-referral-stats';
 import { useMarketingTools } from '@/hooks/use-marketing-tools';
+import { useShortLinks, useCreateShortLink, useDeleteShortLink } from '@/services/useToolsHooks';
 import Link from 'next/link';
 
 export default function ReferralTools() {
@@ -258,23 +259,41 @@ export default function ReferralTools() {
               </p>
             </div>
 
-            {/* Marketing Kit */}
-            {isLoadingTools ? (
-              <div className="bg-white p-4 rounded-2xl border border-slate-100 flex items-center justify-center">
-                <Loader2 className="w-4 h-4 animate-pulse text-slate-300" />
-              </div>
-            ) : tools.length > 0 ? (
-              <button
-                onClick={() => window.open(tools[0].content, '_blank')}
-                className="w-full bg-white p-4 rounded-2xl border border-slate-100 flex items-center justify-between active:scale-[0.98] transition-all"
-              >
-                <div>
-                  <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400">Marketing Kit</h4>
-                  <p className="text-xs font-black text-slate-900 truncate">{tools[0].title}</p>
+            {/* Marketing Kit — List All Tools */}
+            <div className="space-y-3">
+              <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Marketing Kit Assets</h4>
+              {isLoadingTools ? (
+                <div className="bg-white p-4 rounded-2xl border border-slate-100 flex items-center justify-center">
+                  <Loader2 className="w-4 h-4 animate-pulse text-slate-300" />
                 </div>
-                <Download className="w-4 h-4 text-slate-400" />
-              </button>
-            ) : null}
+              ) : tools && tools.length > 0 ? (
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                  {tools.map((tool: any) => (
+                    <a
+                      key={tool.id}
+                      href={tool.content}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full bg-white p-3.5 rounded-2xl border border-slate-200/80 flex items-center justify-between hover:bg-blue-50/50 hover:border-blue-200 active:scale-[0.98] transition-all group"
+                    >
+                      <div className="min-w-0 flex-1 pr-3">
+                        <span className="px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 rounded-md mb-1 inline-block">
+                          {tool.type || 'ASSET'}
+                        </span>
+                        <p className="text-xs font-black text-slate-900 truncate">{tool.title}</p>
+                        {tool.description && <p className="text-[10px] text-slate-500 truncate">{tool.description}</p>}
+                      </div>
+                      <Download className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-colors shrink-0" />
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 italic">No marketing assets available right now.</p>
+              )}
+            </div>
+
+            {/* Custom Short Links Section */}
+            <ShortLinksSection referralCode={referralCode} />
           </motion.div>
         </AnimatePresence>
 
@@ -314,5 +333,79 @@ export default function ReferralTools() {
 
       </div>
     </DashboardLayout>
+  );
+}
+
+function ShortLinksSection({ referralCode }: { referralCode: string }) {
+  const { data: shortLinks, isLoading } = useShortLinks();
+  const createShortLink = useCreateShortLink();
+  const deleteShortLink = useDeleteShortLink();
+  const { showToast } = useToast();
+  const [customCode, setCustomCode] = useState('');
+
+  const handleCreate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customCode.trim()) return;
+    createShortLink.mutate(
+      { code: customCode.trim() },
+      {
+        onSuccess: () => {
+          showToast('Custom short link created!', 'success');
+          setCustomCode('');
+        },
+        onError: (err: any) => {
+          showToast(err?.message || 'Failed to create short link', 'error');
+        },
+      }
+    );
+  };
+
+  return (
+    <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Custom Short Links</h4>
+        <span className="text-[10px] font-bold text-blue-600">{shortLinks?.length || 0} active</span>
+      </div>
+
+      <form onSubmit={handleCreate} className="flex gap-2">
+        <input
+          type="text"
+          placeholder="e.g. promo2026"
+          value={customCode}
+          onChange={(e) => setCustomCode(e.target.value)}
+          className="flex-1 px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+        />
+        <Button
+          type="submit"
+          disabled={createShortLink.isPending || !customCode.trim()}
+          className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shrink-0"
+        >
+          {createShortLink.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Create'}
+        </Button>
+      </form>
+
+      {isLoading ? (
+        <div className="text-center py-2 text-xs text-slate-400">Loading links...</div>
+      ) : shortLinks && shortLinks.length > 0 ? (
+        <div className="space-y-2 max-h-40 overflow-y-auto pr-1 divide-y divide-slate-100">
+          {shortLinks.map((link) => (
+            <div key={link.id} className="pt-2 flex items-center justify-between text-xs">
+              <div className="min-w-0 pr-2">
+                <p className="font-bold text-slate-900 truncate">vemtap.link/{link.code}</p>
+                <p className="text-[10px] text-slate-400">{link.clicks || 0} clicks</p>
+              </div>
+              <button
+                onClick={() => deleteShortLink.mutate(link.id)}
+                className="text-[10px] font-bold text-red-500 hover:text-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-[11px] text-slate-400 italic">No custom short links created yet.</p>
+      )}
+    </div>
   );
 }

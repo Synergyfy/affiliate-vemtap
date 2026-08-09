@@ -1,8 +1,21 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { PlannedVisit, TerritoryStats, ClusterMaturity, AIRecommendation, AffiliatePerformance, BusinessNote, MissionPlan, MissionHistoryEntry } from '@/types/affiliate-market-mapping';
-import { mockAffiliateStats, mockAffiliatePerformance, mockClusterMaturity, mockRecommendations, mockVisits, mockNotes, mockAnchorBusinesses, mockPriorityVisits, mockPartnershipVisits } from '@/lib/affiliate-mock';
+import { 
+  useMarketMappingTerritory, 
+  useMarketMappingPlans, 
+  useCreateMissionPlan, 
+  useMarketMappingNotes, 
+  useAddMarketMappingNote,
+  useClusterInsights,
+  useMarketMappingVisits,
+  useCreateMarketMappingVisit,
+  useUpdateMarketMappingVisit,
+  useMarketMappingPerformance,
+  useMarketMappingHistory,
+  useUpdateMissionPlan,
+} from '@/services/useMarketMappingHooks';
 
 interface MarketMappingContextType {
   stats: TerritoryStats;
@@ -22,24 +35,28 @@ interface MarketMappingContextType {
   addMissionPlan: (plan: MissionPlan) => void;
   missionHistory: MissionHistoryEntry[];
   archiveMissionPlan: (entry: MissionHistoryEntry) => void;
+  addNote?: (note: { businessId?: string; content: string }) => void;
 }
+
+const emptyStats: TerritoryStats = { country: '', state: '', city: '', area: '', clusterName: '', totalAssigned: 0, plannedToday: 0, visitedToday: 0, customersAcquired: 0, remainingInCluster: 0, prospects: 0, anchorBusinesses: 0, marketPenetration: 0, clusterCompletion: 0, missionGoal: '', remainingTime: '', recommendedAction: '' };
+const emptyPerformance: AffiliatePerformance = { todayVisits: 0, todayMeetings: 0, todayCustomers: 0, weekVisits: 0, weekCustomers: 0, monthVisits: 0, monthRevenue: 0, completionRate: 0, targetVisits: 0, dailyTarget: 0, weeklyTarget: 0, monthlyTarget: 0, dailyProgress: 0, weeklyProgress: 0, monthlyProgress: 0 };
+const emptyMaturity: ClusterMaturity = { discovery: 0, verification: 0, sales: 0, customers: 0, partnerships: 0, overall: 0 };
 
 const MarketMappingContext = createContext<MarketMappingContextType | undefined>(undefined);
 
 export function useMarketMapping() {
   const ctx = useContext(MarketMappingContext);
   if (!ctx) {
-    // Return safe defaults when used outside the provider (e.g. businesses page)
     return {
-      stats: mockAffiliateStats,
+      stats: emptyStats,
       setStats: () => {},
       visits: [] as PlannedVisit[],
       setVisits: () => {},
-      performance: mockAffiliatePerformance,
+      performance: emptyPerformance,
       setPerformance: () => {},
-      maturity: mockClusterMaturity,
-      recommendations: mockRecommendations,
-      notes: mockNotes,
+      maturity: emptyMaturity,
+      recommendations: [] as AIRecommendation[],
+      notes: [] as BusinessNote[],
       selectedVisit: null,
       setSelectedVisit: () => {},
       addVisits: () => {},
@@ -54,24 +71,123 @@ export function useMarketMapping() {
 }
 
 export function MarketMappingProvider({ children }: { children: React.ReactNode }) {
-  const [stats, setStats] = useState<TerritoryStats>(mockAffiliateStats);
-  const [visits, setVisits] = useState<PlannedVisit[]>(mockVisits);
+  const { data: territoryData } = useMarketMappingTerritory();
+  const { data: apiPlans } = useMarketMappingPlans();
+  const { data: apiNotes } = useMarketMappingNotes();
+  const { data: apiInsights } = useClusterInsights();
+  const { data: apiVisits } = useMarketMappingVisits();
+  const { data: apiPerformance } = useMarketMappingPerformance();
+  const { data: apiHistory } = useMarketMappingHistory();
+
+  const createPlanMutation = useCreateMissionPlan();
+  const addNoteMutation = useAddMarketMappingNote();
+  const createVisitMutation = useCreateMarketMappingVisit();
+  const updateVisitMutation = useUpdateMarketMappingVisit();
+  const updatePlanMutation = useUpdateMissionPlan();
+
+  const [stats, setStats] = useState<TerritoryStats>(emptyStats);
+  const [visits, setVisits] = useState<PlannedVisit[]>([]);
   const [selectedVisit, setSelectedVisit] = useState<PlannedVisit | null>(null);
 
-  const [performance, setPerformance] = useState<AffiliatePerformance>(mockAffiliatePerformance);
+  const [performance, setPerformance] = useState<AffiliatePerformance>(emptyPerformance);
   const [missionPlans, setMissionPlans] = useState<MissionPlan[]>([]);
   const [missionHistory, setMissionHistory] = useState<MissionHistoryEntry[]>([]);
+  const [notes, setNotes] = useState<BusinessNote[]>([]);
+
+  // Sync Territory Stats from Backend
+  useEffect(() => {
+    if (territoryData && typeof territoryData === 'object') {
+      setStats(prev => ({
+        ...prev,
+        country: territoryData.country,
+        state: territoryData.state,
+        city: territoryData.city,
+        area: territoryData.area,
+        clusterName: territoryData.cluster,
+        totalAssigned: territoryData.totalAssigned,
+        plannedToday: territoryData.plannedToday,
+        visitedToday: territoryData.visitedToday,
+        customersAcquired: territoryData.customersAcquired,
+        prospects: territoryData.prospects,
+        anchorBusinesses: territoryData.anchors,
+        remainingInCluster: territoryData.remainingInCluster,
+        marketPenetration: territoryData.marketPenetration,
+        clusterCompletion: territoryData.clusterCompletion,
+      }));
+    }
+  }, [territoryData]);
+
+  // Sync Mission Plans from Backend
+  useEffect(() => {
+    if (Array.isArray(apiPlans)) {
+      const formatted: MissionPlan[] = apiPlans.map((p) => ({
+        id: String(p.id),
+        horizon: (p.endDate && new Date(String(p.endDate)).getTime() - new Date(String(p.startDate || p.createdAt)).getTime() > 86400000 ? 'WEEK' : 'DAY') as MissionPlan['horizon'],
+        location: String(p.locationCluster || 'Assigned Cluster'),
+        targetCount: Number(p.targetVisits || 0),
+        createdAt: p.createdAt ? new Date(String(p.createdAt)).toISOString() : new Date().toISOString(),
+      }));
+      setMissionPlans(formatted);
+    }
+  }, [apiPlans]);
+
+  // Sync Notes from Backend
+  useEffect(() => {
+    if (Array.isArray(apiNotes)) {
+      const formatted: BusinessNote[] = apiNotes.map((n: any) => ({
+        id: String(n?.id || ''),
+        businessId: String(n?.businessId || n?.leadId || ''),
+        type: 'TEXT' as const,
+        content: n?.content || '',
+        createdAt: n?.createdAt ? new Date(n.createdAt).toLocaleDateString() : new Date().toLocaleDateString(),
+      }));
+      setNotes(formatted);
+    }
+  }, [apiNotes]);
+
+  // Sync persisted visits from the market-mapping API.
+  useEffect(() => {
+    if (Array.isArray(apiVisits)) setVisits(apiVisits);
+  }, [apiVisits]);
+
+  useEffect(() => {
+    if (!apiPerformance) return;
+    setPerformance((prev) => ({
+      ...prev,
+      todayVisits: apiPerformance.dailyVisits ?? prev.todayVisits,
+      weekVisits: apiPerformance.weeklyVisits ?? prev.weekVisits,
+      monthVisits: apiPerformance.monthlyVisits ?? prev.monthVisits,
+      todayMeetings: apiPerformance.meetingsCompleted ?? prev.todayMeetings,
+      todayCustomers: apiPerformance.customersAcquired ?? prev.todayCustomers,
+      completionRate: apiPerformance.conversionRatePercent ?? prev.completionRate,
+      monthRevenue: apiPerformance.monthRevenue ?? prev.monthRevenue,
+      dailyTarget: apiPerformance.dailyTarget ?? prev.dailyTarget,
+      weeklyTarget: apiPerformance.weeklyTarget ?? prev.weeklyTarget,
+      monthlyTarget: apiPerformance.monthlyTarget ?? prev.monthlyTarget,
+      dailyProgress: apiPerformance.dailyProgress ?? prev.dailyProgress,
+      weeklyProgress: apiPerformance.weeklyProgress ?? prev.weeklyProgress,
+      monthlyProgress: apiPerformance.monthlyProgress ?? prev.monthlyProgress,
+      proposalsSent: apiPerformance.proposalsSent ?? prev.proposalsSent,
+    }));
+  }, [apiPerformance]);
+
+  useEffect(() => {
+    if (!Array.isArray(apiHistory)) return;
+    setMissionHistory(apiHistory.map((p) => ({ id: p.id, horizon: p.endDate ? 'WEEK' : 'DAY', location: p.locationCluster || '', targetCount: p.targetVisits || 0, createdAt: p.createdAt, achieved: p.visits.filter((v) => v.status !== 'NOT_YET').length, status: p.status === 'COMPLETED' ? 'ACHIEVED' : 'INCOMPLETE', archivedAt: p.updatedAt || p.createdAt })) as MissionHistoryEntry[]);
+  }, [apiHistory]);
 
   const addMissionPlan = useCallback((plan: MissionPlan) => {
     setMissionPlans(prev => {
       const filtered = prev.filter(p => p.horizon !== plan.horizon);
       return [...filtered, plan];
     });
-  }, []);
+    createPlanMutation.mutate({ targetVisits: plan.targetCount, targetLeads: plan.targetCount, targetConversions: 0, locationCluster: plan.location, startDate: plan.createdAt });
+  }, [createPlanMutation]);
 
   const archiveMissionPlan = useCallback((entry: MissionHistoryEntry) => {
     setMissionHistory(prev => [entry, ...prev]);
-  }, []);
+    if (entry.id) updatePlanMutation.mutate({ id: entry.id, status: entry.status === 'ACHIEVED' ? 'COMPLETED' : 'ARCHIVED' });
+  }, [updatePlanMutation]);
 
   const addVisits = useCallback((newVisits: PlannedVisit[]) => {
     setVisits(prev => [...prev, ...newVisits]);
@@ -79,7 +195,10 @@ export function MarketMappingProvider({ children }: { children: React.ReactNode 
       ...prev,
       plannedToday: prev.plannedToday + newVisits.length,
     }));
-  }, []);
+    newVisits.forEach(({ id: tempId, ...visit }) => createVisitMutation.mutate(visit, {
+      onSuccess: (created) => setVisits((current) => current.map((item) => item.id === tempId ? created : item)),
+    }));
+  }, [createVisitMutation]);
 
   const saveCapture = useCallback((updatedVisit: PlannedVisit) => {
     setVisits(prev => prev.map(v => v.id === updatedVisit.id ? updatedVisit : v));
@@ -94,22 +213,30 @@ export function MarketMappingProvider({ children }: { children: React.ReactNode 
         monthVisits: prev.monthVisits + 1
       }));
     }
-  }, [visits]);
+    if (updatedVisit.id) updateVisitMutation.mutate(updatedVisit);
+  }, [visits, updateVisitMutation]);
+
+  const addNote = useCallback((notePayload: { businessId?: string; content: string }) => {
+    const visit = visits.find((item) => item.id === notePayload.businessId);
+    addNoteMutation.mutate({ ...notePayload, businessName: visit?.name || 'Market mapping visit' });
+  }, [addNoteMutation, visits]);
 
   return (
     <MarketMappingContext.Provider value={{
       stats, setStats,
       visits, setVisits,
       performance, setPerformance,
-      maturity: mockClusterMaturity,
-      recommendations: mockRecommendations,
-      notes: mockNotes,
+       maturity: apiInsights?.maturity || emptyMaturity,
+       recommendations: apiInsights?.recommendations || [],
+      notes,
       selectedVisit, setSelectedVisit,
       addVisits, saveCapture,
       missionPlans, addMissionPlan,
       missionHistory, archiveMissionPlan,
+      addNote,
     }}>
       {children}
     </MarketMappingContext.Provider>
   );
 }
+

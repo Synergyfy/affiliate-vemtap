@@ -22,7 +22,6 @@ import {
   shareReport as exportShare,
   ReportExportData,
 } from '@/lib/report-export';
-import { getReportComments } from '@/lib/report-comments';
 import ReportComments from '@/components/dashboard/ReportComments';
 
 interface ActivityEntry {
@@ -46,88 +45,8 @@ interface TeamMember {
   dailyLeadTarget: number; monthlyConversionTarget: number;
   activities: ActivityEntry[]; targetAdjustments: TargetAdjustment[];
   businessesReferred: number; leadsSubmitted: number;
+  dailyConversions: number; weeklyConversions: number; dailyVisits: number; weeklyVisits: number;
 }
-
-const mockTeamMembers: Record<string, TeamMember> = {
-  'tm-1': {
-    id: 'tm-1', name: 'Chioma Okafor', role: 'AGENT', email: 'chioma.o@example.com',
-    phone: '+234 801 234 5678', status: 'ACTIVE', dailyLeads: 5, weeklyLeads: 28,
-    monthlyConversions: 12, completionRate: 85, lastActive: '2026-07-28', earnings: 125000,
-    totalEarnings: 540000, joinedDate: '2025-11-15', dailyLeadTarget: 6, monthlyConversionTarget: 15,
-    businessesReferred: 8, leadsSubmitted: 34,
-    activities: [
-      { id: 'act-1', type: 'report', description: 'Submitted daily performance report', date: new Date(Date.now() - 2*3600000).toISOString() },
-      { id: 'act-2', type: 'lead', description: 'Captured new lead: Alhaji Enterprises', date: new Date(Date.now() - 5*3600000).toISOString(), amount: 1 },
-      { id: 'act-3', type: 'conversion', description: 'Closed deal: Mama Cass Kitchen (₦15,000)', date: new Date(Date.now() - 24*3600000).toISOString(), amount: 15000 },
-      { id: 'act-4', type: 'business', description: 'Registered business: De-Royal Choice Supermarket', date: new Date(Date.now() - 48*3600000).toISOString() },
-      { id: 'act-6', type: 'target_change', description: 'Target adjusted by you', date: new Date(Date.now() - 120*3600000).toISOString(), changedBy: 'You' },
-    ],
-    targetAdjustments: [
-      { id: 'ta-1', field: 'dailyLeadTarget', oldValue: 5, newValue: 6, changedBy: 'You', changedById: 'current-user', changedAt: '2026-06-15T10:00:00Z', reason: 'Increased due to strong performance' },
-      { id: 'ta-2', field: 'monthlyConversionTarget', oldValue: 12, newValue: 15, changedBy: 'You', changedById: 'current-user', changedAt: '2026-06-15T10:00:00Z', reason: 'Aligning with growth trajectory' },
-    ]
-  },
-  'tm-2': {
-    id: 'tm-2', name: 'Emeka Nwosu', role: 'AGENT', email: 'emeka.n@example.com',
-    phone: '+234 802 345 6789', status: 'ACTIVE', dailyLeads: 3, weeklyLeads: 18,
-    monthlyConversions: 8, completionRate: 72, lastActive: '2026-07-27', earnings: 85000,
-    totalEarnings: 310000, joinedDate: '2025-12-01', dailyLeadTarget: 5, monthlyConversionTarget: 12,
-    businessesReferred: 5, leadsSubmitted: 22,
-    activities: [
-      { id: 'act-1', type: 'report', description: 'Submitted daily performance report', date: new Date(Date.now() - 2*3600000).toISOString() },
-      { id: 'act-2', type: 'lead', description: 'Captured new lead: Alhaji Enterprises', date: new Date(Date.now() - 5*3600000).toISOString(), amount: 1 },
-      { id: 'act-3', type: 'conversion', description: 'Closed deal: Mama Cass Kitchen (₦15,000)', date: new Date(Date.now() - 24*3600000).toISOString(), amount: 15000 },
-    ],
-    targetAdjustments: []
-  },
-  'tm-3': {
-    id: 'tm-3', name: 'Bisi Adeyemi', role: 'AFFILIATE', email: 'bisi.a@example.com',
-    phone: '+234 803 456 7890', status: 'ACTIVE', dailyLeads: 7, weeklyLeads: 35,
-    monthlyConversions: 15, completionRate: 90, lastActive: '2026-07-28', earnings: 210000,
-    totalEarnings: 890000, joinedDate: '2025-10-20', dailyLeadTarget: 8, monthlyConversionTarget: 18,
-    businessesReferred: 12, leadsSubmitted: 45,
-    activities: [
-      { id: 'act-1', type: 'report', description: 'Submitted daily performance report', date: new Date(Date.now() - 2*3600000).toISOString() },
-      { id: 'act-2', type: 'lead', description: 'Captured new lead: Alhaji Enterprises', date: new Date(Date.now() - 5*3600000).toISOString(), amount: 1 },
-    ],
-    targetAdjustments: [
-      { id: 'ta-3', field: 'dailyLeadTarget', oldValue: 7, newValue: 8, changedBy: 'System', changedById: 'system', changedAt: '2026-05-01T08:00:00Z', reason: '' },
-    ]
-  },
-  'tm-4': {
-    id: 'tm-4', name: 'David Mark', role: 'AGENT', email: 'david.m@example.com',
-    phone: '+234 804 567 8901', status: 'ACTIVE', dailyLeads: 4, weeklyLeads: 22,
-    monthlyConversions: 10, completionRate: 78, lastActive: '2026-07-26', earnings: 98000,
-    totalEarnings: 425000, joinedDate: '2026-01-10', dailyLeadTarget: 5, monthlyConversionTarget: 12,
-    businessesReferred: 6, leadsSubmitted: 28,
-    activities: [
-      { id: 'act-1', type: 'report', description: 'Submitted daily performance report', date: new Date(Date.now() - 2*3600000).toISOString() },
-    ],
-    targetAdjustments: []
-  },
-  'tm-5': {
-    id: 'tm-5', name: 'Fatima Usman', role: 'AFFILIATE', email: 'fatima.u@example.com',
-    phone: '+234 805 678 9012', status: 'ACTIVE', dailyLeads: 6, weeklyLeads: 30,
-    monthlyConversions: 14, completionRate: 88, lastActive: '2026-07-28', earnings: 175000,
-    totalEarnings: 720000, joinedDate: '2025-11-01', dailyLeadTarget: 7, monthlyConversionTarget: 15,
-    businessesReferred: 10, leadsSubmitted: 38,
-    activities: [
-      { id: 'act-1', type: 'report', description: 'Submitted daily performance report', date: new Date(Date.now() - 2*3600000).toISOString() },
-    ],
-    targetAdjustments: [
-      { id: 'ta-4', field: 'monthlyConversionTarget', oldValue: 12, newValue: 15, changedBy: 'You', changedById: 'current-user', changedAt: '2026-07-01T09:00:00Z', reason: 'Top performer, increasing challenge' },
-    ]
-  },
-};
-
-const mockEarningsHistory = [
-  { month: 'Feb 2026', amount: 45000, leads: 12, conversions: 3 },
-  { month: 'Mar 2026', amount: 72000, leads: 18, conversions: 5 },
-  { month: 'Apr 2026', amount: 38000, leads: 10, conversions: 2 },
-  { month: 'May 2026', amount: 95000, leads: 22, conversions: 7 },
-  { month: 'Jun 2026', amount: 125000, leads: 28, conversions: 10 },
-  { month: 'Jul 2026', amount: 85000, leads: 20, conversions: 6 },
-];
 
 type Tab = 'overview' | 'activity' | 'history' | 'reports' | 'targets';
 
@@ -144,6 +63,7 @@ export default function TeamMemberDetailPage() {
   const [isSavingTarget, setIsSavingTarget] = useState(false);
   const [openReport, setOpenReport] = useState<'daily' | 'weekly' | 'monthly' | null>('daily');
   const [member, setMember] = useState<TeamMember | null>(null);
+  const [earningsHistory, setEarningsHistory] = useState<Array<{ month: string; totalEarnings: number; overrideEarnings: number }>>([]);
   const [targetForm, setTargetForm] = useState({ dailyLeadTarget: 0, monthlyConversionTarget: 0, reason: '' });
 
   useEffect(() => {
@@ -154,18 +74,44 @@ export default function TeamMemberDetailPage() {
   }, [searchParams]);
 
   useEffect(() => {
-    const found = mockTeamMembers[memberId];
-    if (found) setMember(found);
-    else {
-      api.get(`/network/team-member/${memberId}`).then(setMember).catch(() => {});
-    }
+    Promise.all([api.get(`/network/team-member/${memberId}`), api.get('/network/earnings-history')])
+      .then(([data, history]) => {
+        setEarningsHistory(Array.isArray(history?.monthlyBreakdown) ? history.monthlyBreakdown : []);
+        if (data) {
+          setMember({
+            id: data.id || memberId,
+            name: data.fullName || data.name || 'Team Member',
+            role: (data.role === 'AFFILIATE' ? 'AFFILIATE' : 'AGENT') as any,
+            email: data.email || '',
+            phone: data.phone || '',
+            status: data.status || 'ACTIVE',
+            dailyLeads: data.dailyLeadsCount ?? 0,
+            weeklyLeads: data.weeklyLeadsCount ?? 0,
+            monthlyConversions: data.monthlyConversionsCount ?? 0,
+            dailyConversions: data.dailyConversionsCount ?? 0,
+            weeklyConversions: data.weeklyConversionsCount ?? 0,
+            dailyVisits: data.dailyVisitsCount ?? 0,
+            weeklyVisits: data.weeklyVisitsCount ?? 0,
+            completionRate: data.completionRate ?? 0,
+            lastActive: data.updatedAt ? new Date(data.updatedAt).toISOString().split('T')[0] : '',
+            earnings: data.totalEarnings ?? 0,
+            totalEarnings: data.totalEarnings ?? 0,
+            joinedDate: data.createdAt ? new Date(data.createdAt).toISOString().split('T')[0] : '',
+            dailyLeadTarget: data.dailyLeadTarget ?? 0,
+            monthlyConversionTarget: data.monthlyConversionTarget ?? 0,
+            businessesReferred: data.businessCount ?? 0,
+            leadsSubmitted: data.leadCount ?? 0,
+            activities: data.activities || [],
+            targetAdjustments: data.targetAdjustmentHistory || [],
+          });
+        }
+      })
+      .catch(() => setMember(null));
   }, [memberId]);
 
   const buildMemberReportData = (type: 'daily' | 'weekly' | 'monthly', m: TeamMember): ReportExportData => {
     const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    const commentKey = `network:member:${m.id}:${type}`;
-    const storedComments = getReportComments(commentKey);
-    const comments = storedComments.map((c) => ({ author: c.author, role: c.role, text: c.text, date: c.date }));
+    const comments: { author: string; role: string; text: string; date: string }[] = [];
 
     let summary: string;
     if (type === 'daily') {
@@ -175,9 +121,8 @@ export default function TeamMemberDetailPage() {
     } else if (type === 'weekly') {
       summary = m.weeklyLeads >= 25 ? `Strong week with ${m.weeklyLeads} leads.` : m.weeklyLeads >= 15 ? `Moderate week with ${m.weeklyLeads} leads.` : `Slow week with ${m.weeklyLeads} leads.`;
     } else {
-      const avgLeads = Math.round(mockEarningsHistory.reduce((s, r) => s + r.leads, 0) / mockEarningsHistory.length);
-      const total = mockEarningsHistory.reduce((s, r) => s + r.amount, 0);
-      summary = `Over 6 months, ${m.name} averaged ${avgLeads} leads/mo with total earnings of ₦${total.toLocaleString()}.`;
+      const total = earningsHistory.reduce((s, r) => s + r.totalEarnings, 0);
+      summary = `Over the available history, ${m.name} recorded ₦${total.toLocaleString()} in team earnings.`;
     }
 
     return {
@@ -208,7 +153,7 @@ export default function TeamMemberDetailPage() {
         },
         {
           title: 'Earnings History',
-          lines: mockEarningsHistory.map((r) => `${r.month}: ${r.leads} leads, ${r.conversions} convs, ₦${r.amount.toLocaleString()}`),
+          lines: earningsHistory.map((r) => `${r.month}: ₦${r.totalEarnings.toLocaleString()} total, ₦${r.overrideEarnings.toLocaleString()} override`),
         },
       ],
       businesses: [],
@@ -469,8 +414,8 @@ export default function TeamMemberDetailPage() {
                     content: (
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4">
                         <div className="p-3 rounded-xl bg-blue-50 border border-blue-100 text-center"><p className="text-lg font-black text-blue-600">{member.dailyLeads}</p><p className="text-[10px] font-bold text-slate-500">Leads</p></div>
-                        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-center"><p className="text-lg font-black text-emerald-600">{Math.round(member.dailyLeads * 0.4)}</p><p className="text-[10px] font-bold text-slate-500">Convs</p></div>
-                        <div className="p-3 rounded-xl bg-purple-50 border border-purple-100 text-center"><p className="text-lg font-black text-purple-600">{Math.round(member.dailyLeads * 1.6)}</p><p className="text-[10px] font-bold text-slate-500">Visits</p></div>
+                         <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-center"><p className="text-lg font-black text-emerald-600">{member.dailyConversions}</p><p className="text-[10px] font-bold text-slate-500">Convs</p></div>
+                         <div className="p-3 rounded-xl bg-purple-50 border border-purple-100 text-center"><p className="text-lg font-black text-purple-600">{member.dailyVisits}</p><p className="text-[10px] font-bold text-slate-500">Visits</p></div>
                         <div className="p-3 rounded-xl bg-amber-50 border border-amber-100 text-center"><p className="text-lg font-black text-amber-600">{member.completionRate}%</p><p className="text-[10px] font-bold text-slate-500">Rate</p></div>
                       </div>
                     ),
@@ -482,8 +427,8 @@ export default function TeamMemberDetailPage() {
                     content: (
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4">
                         <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-100 text-center"><p className="text-lg font-black text-indigo-600">{member.weeklyLeads}</p><p className="text-[10px] font-bold text-slate-500">Leads</p></div>
-                        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-center"><p className="text-lg font-black text-emerald-600">{member.monthlyConversions}</p><p className="text-[10px] font-bold text-slate-500">Convs</p></div>
-                        <div className="p-3 rounded-xl bg-purple-50 border border-purple-100 text-center"><p className="text-lg font-black text-purple-600">{member.completionRate}%</p><p className="text-[10px] font-bold text-slate-500">Rate</p></div>
+                         <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-center"><p className="text-lg font-black text-emerald-600">{member.weeklyConversions}</p><p className="text-[10px] font-bold text-slate-500">Convs</p></div>
+                         <div className="p-3 rounded-xl bg-purple-50 border border-purple-100 text-center"><p className="text-lg font-black text-purple-600">{member.weeklyVisits ? Math.round((member.weeklyConversions / member.weeklyVisits) * 100) : 0}%</p><p className="text-[10px] font-bold text-slate-500">Rate</p></div>
                         <div className="p-3 rounded-xl bg-amber-50 border border-amber-100 text-center"><p className="text-lg font-black text-amber-600">₦{member.earnings.toLocaleString()}</p><p className="text-[10px] font-bold text-slate-500">Earnings</p></div>
                       </div>
                     ),
@@ -495,22 +440,22 @@ export default function TeamMemberDetailPage() {
                         <table className="w-full text-left text-xs">
                           <thead><tr className="border-b border-slate-100">
                             <th className="pb-2 font-bold text-slate-400 uppercase tracking-wider">Month</th>
-                            <th className="pb-2 font-bold text-slate-400 uppercase tracking-wider text-center">Leads</th>
-                            <th className="pb-2 font-bold text-slate-400 uppercase tracking-wider text-center">Convs</th>
+                            <th className="pb-2 font-bold text-slate-400 uppercase tracking-wider text-center">Team Earnings</th>
+                            <th className="pb-2 font-bold text-slate-400 uppercase tracking-wider text-center">Override</th>
                             <th className="pb-2 font-bold text-slate-400 uppercase tracking-wider text-right">Earnings</th>
                           </tr></thead>
-                          <tbody>{mockEarningsHistory.map((m,i) => (
+                           <tbody>{earningsHistory.map((m,i) => (
                             <tr key={i} className="border-b border-slate-50 last:border-0">
                               <td className="py-2.5 font-bold text-slate-900">{m.month}</td>
-                              <td className="py-2.5 text-center text-slate-600">{m.leads}</td>
-                              <td className="py-2.5 text-center text-slate-600">{m.conversions}</td>
-                              <td className="py-2.5 text-right font-bold text-emerald-600">₦{m.amount.toLocaleString()}</td>
+                               <td className="py-2.5 text-center text-slate-600">₦{m.totalEarnings.toLocaleString()}</td>
+                               <td className="py-2.5 text-center text-slate-600">₦{m.overrideEarnings.toLocaleString()}</td>
+                               <td className="py-2.5 text-right font-bold text-emerald-600">₦{(m.totalEarnings + m.overrideEarnings).toLocaleString()}</td>
                             </tr>
                           ))}</tbody>
                         </table>
                       </div>
                     ),
-                    summary: `Over 6 months, avg ${Math.round(mockEarningsHistory.reduce((s,r) => s+r.leads,0)/mockEarningsHistory.length)} leads/mo.`
+                     summary: `Available history contains ${earningsHistory.length} months of API-backed earnings.`
                   },
                 ].map(section => (
                   <div key={section.key} className="bg-white rounded-2xl border border-slate-200 relative">

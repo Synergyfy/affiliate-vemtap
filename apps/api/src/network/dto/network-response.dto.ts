@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { UserStatus } from "@prisma/client";
-import { IsEnum, IsNotEmpty } from "class-validator";
+import { IsEnum, IsNotEmpty, IsString, IsInt, Min, IsOptional } from "class-validator";
 
 export class NetworkRecruitResponseDto {
   @ApiProperty({ description: "Recruit user identifier", example: "user-uuid" })
@@ -152,4 +152,25 @@ export class ClaimBonusDto {
   @IsEnum(BonusType)
   @IsNotEmpty()
   type: BonusType;
+}
+
+export class UpdateTargetsDto {
+  @ApiProperty({ description: "Target team member ID", example: "user-uuid" })
+  @IsString()
+  memberId: string;
+
+  @ApiProperty({ description: "Daily lead target", example: 10 })
+  @IsInt()
+  @Min(0)
+  dailyLeadTarget: number;
+
+  @ApiProperty({ description: "Monthly conversion target", example: 25 })
+  @IsInt()
+  @Min(0)
+  monthlyConversionTarget: number;
+
+  @ApiProperty({ required: false, description: "Reason for target update", example: "Quarterly performance review adjustment" })
+  @IsOptional()
+  @IsString()
+  reason?: string;
 }

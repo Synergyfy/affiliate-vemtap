@@ -1,15 +1,22 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import AdminLayout from '@/components/admin/AdminLayout';
 import ClusterDetailPanel from '@/components/admin/market-mapping/ClusterDetailPanel';
 import { ArrowLeft, Search, MapPin, Users, Target, CheckCircle2, Plus, X, Loader2, Info, ToggleLeft, Eye, UserPlus, Clock, Building2, History, Edit3, ChevronRight, Save } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { mockClusterDetail } from '@/lib/market-mapping-mock';
-
-// --- Mock data ---
+import { useUsers } from '@/services/useAdminHooks';
+import type { User } from '@/types/api';
+import {
+  useAdminClusterDetail,
+  useAdminAssignments,
+  useCreateAssignment,
+  useUpdateAssignment,
+  useDeleteAssignment,
+  useAdminSubmissions
+} from '@/services/useMarketMappingHooks';
 
 interface SubmissionRecord {
   id: string;
@@ -31,6 +38,7 @@ interface Affiliate {
   phone?: string;
   target?: { daily: number; weekly: number; monthly: number };
   submissions?: SubmissionRecord[];
+  assignmentId?: string;
 }
 
 interface AffiliateTarget {
@@ -52,75 +60,27 @@ interface LocationRecord {
   allowUserEdit: boolean;
 }
 
-const defaultTargets: AffiliateTarget = { daily: 20, weekly: 100, monthly: 400 };
-
-const mockAffiliates: Affiliate[] = [
-  {
-    id: 'aff-1', name: 'Emmanuel Nnamdi', email: 'emmanuel@example.com', phone: '+234 801 234 5678',
-    businesses: 45, customers: 20, score: 94, assignedAt: '2026-06-15',
-    target: { daily: 20, weekly: 100, monthly: 400 },
-    submissions: [
-      { id: 'sub-1', businessName: 'Royal Gardens Supermarket', type: 'created', timestamp: '2026-07-28 09:15 AM', details: 'Added new business with contacts and photos' },
-      { id: 'sub-2', businessName: 'Banex Electronics Hub', type: 'updated', timestamp: '2026-07-27 02:30 PM', details: 'Updated pipeline status from "Prospect" to "Negotiation"' },
-      { id: 'sub-3', businessName: 'Freshmart Groceries', type: 'created', timestamp: '2026-07-25 11:00 AM', details: 'Completed business profile with owner details' },
-      { id: 'sub-4', businessName: 'Royal Gardens Supermarket', type: 'updated', timestamp: '2026-07-24 04:45 PM', details: 'Updated customer count and added document upload' },
-      { id: 'sub-5', businessName: 'Banex Tech Solutions', type: 'created', timestamp: '2026-07-22 10:30 AM', details: 'Added business from field visit' },
-      { id: 'sub-6', businessName: 'Freshmart Groceries', type: 'updated', timestamp: '2026-07-20 01:15 PM', details: 'Added 3 new customer referrals' },
-    ],
-  },
-  {
-    id: 'aff-2', name: 'Sarah Okafor', email: 'sarah@example.com', phone: '+234 802 345 6789',
-    businesses: 40, customers: 16, score: 88, assignedAt: '2026-06-20',
-    target: { daily: 15, weekly: 75, monthly: 300 },
-    submissions: [
-      { id: 'sub-7', businessName: 'Wuse Fashion House', type: 'created', timestamp: '2026-07-27 10:00 AM', details: 'Filed new fashion boutique with inventory details' },
-      { id: 'sub-8', businessName: 'Mega Pharmacy Wuse', type: 'updated', timestamp: '2026-07-26 03:20 PM', details: 'Updated contact number and added business hours' },
-      { id: 'sub-9', businessName: 'Wuse Fashion House', type: 'updated', timestamp: '2026-07-25 09:45 AM', details: 'Changed status to "Interested" after follow-up visit' },
-    ],
-  },
-  {
-    id: 'aff-3', name: 'Chidi Bello', email: 'chidi@example.com', phone: '+234 803 456 7890',
-    businesses: 35, customers: 12, score: 81, assignedAt: '2026-07-01',
-    target: { daily: 12, weekly: 60, monthly: 240 },
-    submissions: [
-      { id: 'sub-10', businessName: 'AutoMart Banex', type: 'created', timestamp: '2026-07-26 12:00 PM', details: 'Registered auto parts dealer with photos' },
-      { id: 'sub-11', businessName: 'Quick Eats Restaurant', type: 'created', timestamp: '2026-07-24 05:30 PM', details: 'Added restaurant and set initial pipeline status' },
-    ],
-  },
-  {
-    id: 'aff-4', name: 'Fatima Usman', email: 'fatima@example.com', phone: '+234 804 567 8901',
-    businesses: 50, customers: 22, score: 91, assignedAt: '2026-06-10',
-    target: { daily: 25, weekly: 125, monthly: 500 },
-    submissions: [
-      { id: 'sub-12', businessName: 'Al-Noor Shopping Center', type: 'created', timestamp: '2026-07-28 08:30 AM', details: 'Added anchor business with full documentation' },
-      { id: 'sub-13', businessName: 'Halal Meat Shop', type: 'updated', timestamp: '2026-07-27 11:15 AM', details: 'Updated weekly revenue estimate' },
-      { id: 'sub-14', businessName: 'Al-Noor Shopping Center', type: 'updated', timestamp: '2026-07-26 02:00 PM', details: 'Uploaded partnership agreement document' },
-      { id: 'sub-15', businessName: 'Fashion & Fabrics Store', type: 'created', timestamp: '2026-07-24 10:45 AM', details: 'Added new business from area walkthrough' },
-    ],
-  },
-  {
-    id: 'aff-5', name: 'John Okafor', email: 'john@example.com', phone: '+234 805 678 9012',
-    businesses: 0, customers: 0, score: 0, assignedAt: undefined,
-    submissions: [],
-  },
-];
-
-const locationsDb: LocationRecord[] = [
-  { id: 'banex', name: 'Banex Plaza', area: 'Wuse', city: 'Abuja', businesses: 120, affiliates: 3, penetration: 40, assigned: ['aff-1', 'aff-2', 'aff-3'], targets: { daily: 20, weekly: 100, monthly: 400 }, allowUserEdit: true },
-  { id: 'wuse-mkt', name: 'Wuse Main Market', area: 'Wuse', city: 'Abuja', businesses: 85, affiliates: 2, penetration: 37.6, assigned: ['aff-2', 'aff-4'], targets: { daily: 15, weekly: 75, monthly: 300 }, allowUserEdit: true },
-  { id: 'garki-mkt', name: 'Garki Model Market', area: 'Garki', city: 'Abuja', businesses: 90, affiliates: 1, penetration: 27.7, assigned: ['aff-1'], targets: { daily: 10, weekly: 50, monthly: 200 }, allowUserEdit: false },
-];
+const defaultTargets: AffiliateTarget = { daily: 0, weekly: 0, monthly: 0 };
 
 export default function LocationDetailPage() {
-  const params = useParams();
-  const [location, setLocation] = useState(locationsDb.find(l => l.id === params.id)!);
+  const params = useParams<{ id: string }>();
+  const clusterId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const clusterQuery = useAdminClusterDetail(clusterId);
+  const assignmentsQuery = useAdminAssignments();
+  const usersQuery = useUsers({ role: 'AFFILIATE' });
+  const submissionsQuery = useAdminSubmissions(clusterId);
+  const createAssignment = useCreateAssignment();
+  const updateAssignment = useUpdateAssignment();
+  const deleteAssignment = useDeleteAssignment();
+  const location = clusterQuery.data?.cluster;
+  const locationRecord = location ? { id: location.id, name: location.name, area: location.areaName ?? location.parent?.name ?? 'General', city: location.cityName ?? 'Unknown', businesses: location.totalBusinesses ?? clusterQuery.data?.businesses.length ?? 0, affiliates: 0, penetration: location.penetrationPercentage ?? 0, targets: defaultTargets, allowUserEdit: true } : null;
 
   const [selectedAffiliateIds, setSelectedAffiliateIds] = useState<string[]>([]);
   const [searchAffiliate, setSearchAffiliate] = useState('');
-  const [dailyTarget, setDailyTarget] = useState(location?.targets?.daily ?? 20);
-  const [weeklyTarget, setWeeklyTarget] = useState(location?.targets?.weekly ?? 100);
-  const [monthlyTarget, setMonthlyTarget] = useState(location?.targets?.monthly ?? 20);
-  const [allowUserEdit, setAllowUserEdit] = useState(location?.allowUserEdit ?? true);
+  const [dailyTarget, setDailyTarget] = useState(0);
+  const [weeklyTarget, setWeeklyTarget] = useState(0);
+  const [monthlyTarget, setMonthlyTarget] = useState(0);
+  const [allowUserEdit, setAllowUserEdit] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -131,29 +91,47 @@ export default function LocationDetailPage() {
   const [editAffTarget, setEditAffTarget] = useState<AffiliateTarget>({ daily: 0, weekly: 0, monthly: 0 });
   const [savingAffTarget, setSavingAffTarget] = useState(false);
   const [targetSaved, setTargetSaved] = useState(false);
+  const [mutationError, setMutationError] = useState<string | null>(null);
 
   // For the "Add More" flow, we need to track new assignments
-  const [assignedIds, setAssignedIds] = useState<string[]>(location?.assigned ?? []);
+  const [assignedIds, setAssignedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const clusterAssignments = (assignmentsQuery.data ?? []).filter(a => a.clusterId === clusterId);
+    setAssignedIds(clusterAssignments.map(a => a.userId));
+    const first = clusterAssignments[0];
+    setDailyTarget(first?.dailyLeadTarget ?? 0);
+    setWeeklyTarget(first?.weeklyLeadTarget ?? 0);
+    setMonthlyTarget(first?.monthlyConversionTarget ?? 0);
+    setAllowUserEdit(first?.allowUserEdit ?? true);
+  }, [assignmentsQuery.data, clusterId]);
 
   const assignedAffiliates = useMemo(() =>
-    mockAffiliates.filter(a => assignedIds.includes(a.id)),
-    [assignedIds]
+    (assignmentsQuery.data ?? []).filter(a => a.clusterId === clusterId).map(a => ({
+      id: a.userId, name: a.user?.fullName ?? 'Unknown affiliate', email: a.user?.email ?? '', businesses: 0, customers: 0, score: 0,
+      assignedAt: a.createdAt, target: { daily: a.dailyLeadTarget, weekly: a.weeklyLeadTarget, monthly: a.monthlyConversionTarget }, assignmentId: a.id,
+    })), [assignmentsQuery.data, clusterId]
   );
 
   const unassignedAffiliates = useMemo(() =>
-    mockAffiliates.filter(a => !assignedIds.includes(a.id)),
-    [assignedIds]
+    (usersQuery.data?.data ?? []).filter((user: User) => !assignedIds.includes(user.id)).map(user => ({
+      id: user.id, name: user.fullName, email: user.email, phone: user.phone, businesses: user._count?.businesses ?? 0, customers: 0, score: user.reportingScore ?? 0,
+    })), [usersQuery.data, assignedIds]
   );
 
   const filteredUnassigned = unassignedAffiliates.filter(a =>
     a.name.toLowerCase().includes(searchAffiliate.toLowerCase())
   );
 
-  if (!location) {
+  if (clusterQuery.isLoading) {
+    return <AdminLayout><div className="py-20 text-center text-sm text-slate-500">Loading location...</div></AdminLayout>;
+  }
+  if (clusterQuery.isError || !location || !locationRecord) {
     return (
       <AdminLayout>
         <div className="max-w-3xl mx-auto text-center py-20">
-          <p className="text-lg font-bold text-slate-500">Location not found</p>
+          <p className="text-lg font-bold text-slate-500">{clusterQuery.isError ? 'Unable to load location' : 'Location not found'}</p>
+          {clusterQuery.isError && <button onClick={() => clusterQuery.refetch()} className="text-sm text-blue-600 underline mt-2">Retry</button>}
           <Link href="/admin/market-mapping/assign" className="text-sm text-blue-600 hover:underline mt-2 inline-block">Back to locations</Link>
         </div>
       </AdminLayout>
@@ -166,26 +144,22 @@ export default function LocationDetailPage() {
     );
   };
 
-  const handleAddAffiliates = () => {
+  const handleAddAffiliates = async () => {
     setSubmitting(true);
-    setTimeout(() => {
-      setAssignedIds(prev => [...prev, ...selectedAffiliateIds]);
-      setSubmitting(false);
-      setDone(true);
-      setSelectedAffiliateIds([]);
-      setShowAddForm(false);
-      setTimeout(() => setDone(false), 2000);
-    }, 600);
+    setMutationError(null);
+    try {
+      for (const userId of selectedAffiliateIds) await createAssignment.mutateAsync({ userId, clusterId, dailyLeadTarget: dailyTarget, weeklyLeadTarget: weeklyTarget, monthlyConversionTarget: monthlyTarget, allowUserEdit });
+      setDone(true); setSelectedAffiliateIds([]); setShowAddForm(false);
+    } catch { setMutationError('Unable to assign one or more affiliates. Please retry.'); } finally { setSubmitting(false); }
   };
 
-  const handleSaveTargets = () => {
+  const handleSaveTargets = async () => {
     setSubmitting(true);
-    setTimeout(() => {
-      setLocation(prev => ({ ...prev, targets: { daily: dailyTarget, weekly: weeklyTarget, monthly: monthlyTarget }, allowUserEdit }));
-      setSubmitting(false);
+    setMutationError(null);
+    try {
+      for (const assignment of (assignmentsQuery.data ?? []).filter(a => a.clusterId === clusterId)) await updateAssignment.mutateAsync({ id: assignment.id, dailyLeadTarget: dailyTarget, weeklyLeadTarget: weeklyTarget, monthlyConversionTarget: monthlyTarget, allowUserEdit });
       setDone(true);
-      setTimeout(() => setDone(false), 2000);
-    }, 600);
+    } catch { setMutationError('Unable to save targets. Please retry.'); } finally { setSubmitting(false); }
   };
 
   const openAffiliateDetail = (aff: Affiliate) => {
@@ -195,25 +169,32 @@ export default function LocationDetailPage() {
     setTargetSaved(false);
   };
 
-  const handleSaveAffiliateTarget = () => {
+  const handleSaveAffiliateTarget = async () => {
     setSavingAffTarget(true);
-    setTimeout(() => {
-      setSavingAffTarget(false);
+    setMutationError(null);
+    setTargetSaved(false);
+    const assignment = selectedAffiliate?.assignmentId ? (assignmentsQuery.data ?? []).find(a => a.id === selectedAffiliate.assignmentId) : undefined;
+    try {
+      if (!assignment) {
+        setMutationError('The selected affiliate assignment is no longer available. Refresh and try again.');
+        return;
+      }
+      await updateAssignment.mutateAsync({ id: assignment.id, dailyLeadTarget: editAffTarget.daily, weeklyLeadTarget: editAffTarget.weekly, monthlyConversionTarget: editAffTarget.monthly, allowUserEdit: assignment.allowUserEdit });
       setTargetSaved(true);
-      setTimeout(() => setTargetSaved(false), 2000);
-    }, 500);
+    } catch { setMutationError('Unable to save affiliate target. Please retry.'); }
+    finally { setSavingAffTarget(false); }
   };
 
-  const handleRemoveAssignment = (affId: string) => {
-    setAssignedIds(prev => prev.filter(id => id !== affId));
-    setSelectedAffiliate(null);
-    setDone(true);
-    setTimeout(() => setDone(false), 2000);
+  const handleRemoveAssignment = async (affId: string) => {
+    const assignment = (assignmentsQuery.data ?? []).find(a => a.clusterId === clusterId && a.userId === affId);
+    try { if (assignment) await deleteAssignment.mutateAsync(assignment.id); } catch { setMutationError('Unable to remove assignment. Please retry.'); return; }
+    setSelectedAffiliate(null); setDone(true);
   };
 
   return (
     <AdminLayout>
-      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="max-w-4xl mx-auto space-y-6">
+        {mutationError && <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">{mutationError}</div>}
         {/* Header */}
         <div className="flex items-center gap-3">
           <Link href="/admin/market-mapping/assign" className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors">
@@ -222,31 +203,15 @@ export default function LocationDetailPage() {
           <div>
             <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
               <MapPin className="w-5 h-5 text-blue-600" />
-              {location.name}
+              {locationRecord.name}
             </h1>
-            <p className="text-xs text-slate-500 font-medium">{location.area}, {location.city} — {location.businesses} businesses, {location.penetration}% penetration</p>
+            <p className="text-xs text-slate-500 font-medium">{locationRecord.area}, {locationRecord.city} — {locationRecord.businesses} businesses, {locationRecord.penetration}% penetration</p>
           </div>
         </div>
 
         {/* Cluster Overview Card */}
         <ClusterDetailPanel
-          cluster={{
-            ...mockClusterDetail,
-            name: location.name,
-            areaName: location.area,
-            cityName: location.city,
-            assignedAffiliatesCount: assignedAffiliates.length,
-            totalBusinesses: location.businesses,
-            penetrationPercentage: location.penetration,
-            assignedAffiliates: assignedAffiliates.map(a => ({
-              id: a.id,
-              fullName: a.name,
-              businessesAssigned: a.businesses,
-              businessesVisited: Math.round(a.businesses * 0.8),
-              customersClosed: a.customers,
-              performanceScore: a.score,
-            })),
-          }}
+          cluster={{ ...location, assignedAffiliatesCount: assignedAffiliates.length, assignedAffiliates: assignedAffiliates.map(a => ({ id: a.id, fullName: a.name, businessesAssigned: a.businesses, businessesVisited: 0, customersClosed: a.customers, performanceScore: a.score })), totalBusinesses: locationRecord.businesses, penetrationPercentage: locationRecord.penetration, areaName: locationRecord.area, cityName: locationRecord.city, stateName: '', countryName: '', verifiedBusinesses: location.verifiedBusinesses ?? 0, customersCount: location.customersCount ?? 0, anchorBusinessesCount: location.anchorBusinessesCount ?? 0, prospectsCount: location.prospectsCount ?? 0, discoveryProgress: location.discoveryProgress ?? 0, verificationProgress: location.verificationProgress ?? 0, salesContactProgress: location.salesContactProgress ?? 0, partnershipsProgress: location.partnershipsProgress ?? 0, overallCompletion: location.overallCompletion ?? 0, currentStage: location.currentStage ?? 1, nextRecommendedAction: location.nextRecommendedAction ?? '', createdAt: location.createdAt ?? '', updatedAt: location.updatedAt ?? '' }}
           showActions={false}
         />
 
@@ -309,7 +274,7 @@ export default function LocationDetailPage() {
             <div className="border-t border-slate-100 p-6 space-y-4">
               <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-100 rounded-xl">
                 <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
-                <p className="text-xs text-blue-800">Select additional affiliates to assign to <strong>{location.name}</strong>. Assigned affiliates can visit businesses, capture data, and manage pipeline statuses for this location.</p>
+               <p className="text-xs text-blue-800">Select additional affiliates to assign to <strong>{locationRecord.name}</strong>. Assigned affiliates can visit businesses, capture data, and manage pipeline statuses for this location.</p>
               </div>
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -355,7 +320,7 @@ export default function LocationDetailPage() {
           </div>
           <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-100 rounded-xl">
             <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
-            <p className="text-xs text-blue-800">These targets appear on each affiliate's dashboard as their daily, weekly, and monthly goals. If "Allow user edit" is on, affiliates can adjust these values themselves.</p>
+             <p className="text-xs text-blue-800">These targets appear on each affiliate&apos;s dashboard as their daily, weekly, and monthly goals. If &quot;Allow user edit&quot; is on, affiliates can adjust these values themselves.</p>
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div>
@@ -404,7 +369,7 @@ export default function LocationDetailPage() {
             </div>
             <div className="p-4 rounded-xl bg-blue-50 border border-blue-100">
               <p className="text-xs font-bold text-blue-700 mb-2">Performance Targets</p>
-              <p className="text-[10px] text-blue-600 leading-relaxed">Daily, weekly, and monthly targets appear on the affiliate's dashboard. Progress bars show how they're performing against these goals.</p>
+               <p className="text-[10px] text-blue-600 leading-relaxed">Daily, weekly, and monthly targets appear on the affiliate&apos;s dashboard. Progress bars show how they&apos;re performing against these goals.</p>
             </div>
             <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-100">
               <p className="text-xs font-bold text-emerald-700 mb-2">Business Capture</p>
@@ -458,33 +423,33 @@ export default function LocationDetailPage() {
                 <div className="space-y-4">
                   <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-100 rounded-xl">
                     <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
-                    <p className="text-xs text-blue-800">Showing the last {selectedAffiliate.submissions?.length ?? 0} activities for <strong>{selectedAffiliate.name}</strong> at this location. Includes both new business creations and updates to existing businesses.</p>
+                   <p className="text-xs text-blue-800">Showing the latest {submissionsQuery.data?.length ?? 0} submissions for <strong>{selectedAffiliate.name}</strong> at this location.</p>
                   </div>
 
-                  {selectedAffiliate.submissions && selectedAffiliate.submissions.length > 0 ? (
+                   {(submissionsQuery.data ?? []).length > 0 ? (
                     <div className="space-y-2">
-                      {selectedAffiliate.submissions.map(sub => (
+                       {(submissionsQuery.data ?? []).map(sub => (
                         <div key={sub.id} className="flex items-start gap-3 p-4 rounded-xl bg-slate-50 border border-slate-100">
-                          <div className={cn("p-2 rounded-xl mt-0.5", sub.type === 'created' ? "bg-emerald-50" : "bg-blue-50")}>
-                            {sub.type === 'created' ? <Building2 className="w-4 h-4 text-emerald-600" /> : <Edit3 className="w-4 h-4 text-blue-600" />}
+                           <div className={cn("p-2 rounded-xl mt-0.5", sub.type === 'BUSINESS' ? "bg-emerald-50" : "bg-blue-50")}>
+                             {sub.type === 'BUSINESS' ? <Building2 className="w-4 h-4 text-emerald-600" /> : <Edit3 className="w-4 h-4 text-blue-600" />}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <p className="text-sm font-bold text-slate-900">{sub.businessName}</p>
-                              <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-md", sub.type === 'created' ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700")}>
-                                {sub.type === 'created' ? 'Created' : 'Updated'}
+                               <p className="text-sm font-bold text-slate-900">{sub.name}</p>
+                               <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-md", sub.type === 'BUSINESS' ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700")}>
+                                 {sub.type === 'BUSINESS' ? 'Business' : 'Lead'}
                               </span>
                             </div>
-                            <p className="text-xs text-slate-600 mt-0.5">{sub.details}</p>
+                           <p className="text-xs text-slate-600 mt-0.5">Submitted by {sub.submittedBy ?? 'Unknown'}</p>
                             <div className="flex items-center gap-1 mt-1.5">
                               <Clock className="w-3 h-3 text-slate-400" />
-                              <span className="text-[10px] text-slate-400">{sub.timestamp}</span>
+                               <span className="text-[10px] text-slate-400">{new Date(sub.date).toLocaleString()}</span>
                             </div>
                           </div>
                         </div>
                       ))}
                       <Link
-                        href={`/admin/affiliates/${selectedAffiliate.id}/history?locationId=${location.id}`}
+                         href={`/admin/affiliates/${selectedAffiliate.id}/history?locationId=${clusterId}`}
                         className="flex items-center justify-center gap-2 w-full py-3 mt-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors"
                       >
                         <Eye className="w-3.5 h-3.5" /> View All History for {selectedAffiliate.name}

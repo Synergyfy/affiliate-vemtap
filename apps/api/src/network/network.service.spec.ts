@@ -52,6 +52,22 @@ describe('NetworkService', () => {
     business: mockBusiness,
     commission: mockCommission,
     fraudAlert: mockFraudAlert,
+    platformSettings: {
+      findFirst: jest.fn().mockResolvedValue({
+        reqAgentActiveDays: 90,
+        reqAgentActiveBusinesses: 40,
+        reqAgentMinReportingScore: 85.0,
+        reqAgentMinAttendanceRate: 90.0,
+        reqAffiliateActiveAgents: 30,
+        reqAffiliateNetworkBusinesses: 100,
+        reqSupervisorActiveAgents: 10,
+        reqSupervisorActiveSupervisors: 5,
+        reqSupervisorNetworkBusinesses: 100,
+        managerOverrideRate: 0.10,
+        agentMilestoneBonusAmount: 5000,
+        businessMilestoneBonusAmount: 10000,
+      }),
+    },
   };
 
   // Then add $transaction

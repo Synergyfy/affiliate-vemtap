@@ -4,26 +4,22 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/toast';
 import { useState, useEffect } from 'react';
-import { api } from '@/lib/api-client';
 import {
   Save,
   Loader2,
   Plus,
   X,
-  List,
-  Tag,
-  HelpCircle,
-  Target,
   ChevronDown,
   ChevronRight
 } from 'lucide-react';
-import { useSettings, useUpdateSettings } from '@/services/useAdminHooks';
+import { useAdminEditorConfig, useUpdateAdminEditorConfig } from '@/services/useMarketMappingHooks';
 import { PlatformSettings, MarketMappingConfig } from '@/types/api';
 
 export default function MarketMappingConfigEditor() {
   const { showToast } = useToast();
-  const { data: settings, isLoading } = useSettings();
-  const updateSettings = useUpdateSettings();
+  const { data: editorConfig, isLoading, isError, refetch } = useAdminEditorConfig();
+  const updateEditorConfig = useUpdateAdminEditorConfig();
+
   const [newCategory, setNewCategory] = useState('');
   const [newPosition, setNewPosition] = useState('');
   const [showCategories, setShowCategories] = useState(true);
@@ -41,33 +37,53 @@ export default function MarketMappingConfigEditor() {
   const [formData, setFormData] = useState<Partial<PlatformSettings>>({});
 
   useEffect(() => {
-    if (settings) {
+    if (editorConfig) {
       setFormData({
-        ...settings,
-        marketMappingConfig: settings.marketMappingConfig || {
-          businessCategories: [],
-          openingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-          customerRanges: [],
-          businessSizes: [],
-          contactPositions: [],
-          pipelineStatuses: [],
-          interestOptions: [],
-          planTypes: [],
-          faqs: [],
-          ticketStatuses: [],
-          businessStatuses: [],
-          paymentStatuses: [],
-          dailyTarget: 20,
-          weeklyTarget: 100,
-          monthlyTarget: 20,
+        marketMappingConfig: {
+          businessCategories: editorConfig.categories || editorConfig.businessCategories || [],
+          openingDays: editorConfig.openingDays || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+          customerRanges: editorConfig.customerRanges || [],
+          businessSizes: editorConfig.businessSizes || [],
+          contactPositions: editorConfig.contactPositions || [],
+          pipelineStatuses: (editorConfig.pipelineStatuses || []).map((s: any) =>
+            typeof s === 'string' ? { id: s, name: s, color: 'bg-blue-500', bg: 'bg-blue-50', text: 'text-blue-600' } : s
+          ),
+          interestOptions: editorConfig.interestOptions || [],
+          planTypes: editorConfig.planTypes || [],
+          faqs: editorConfig.faqs || [],
+          ticketStatuses: editorConfig.ticketStatuses || [],
+          businessStatuses: editorConfig.businessStatuses || [],
+          paymentStatuses: editorConfig.paymentStatuses || [],
+          dailyTarget: editorConfig.dailyTarget || 5,
+          weeklyTarget: editorConfig.weeklyTarget || 25,
+          monthlyTarget: editorConfig.monthlyTarget || 20,
         },
       });
     }
-  }, [settings]);
+  }, [editorConfig]);
 
   const handleSave = async () => {
     try {
-      await updateSettings.mutateAsync(formData);
+      const config = formData.marketMappingConfig;
+      if (!config) return;
+      await updateEditorConfig.mutateAsync({
+        categories: config.businessCategories,
+        businessCategories: config.businessCategories,
+        openingDays: config.openingDays,
+        customerRanges: config.customerRanges,
+        businessSizes: config.businessSizes,
+        contactPositions: config.contactPositions,
+        pipelineStatuses: config.pipelineStatuses,
+        interestOptions: config.interestOptions,
+        planTypes: config.planTypes,
+        faqs: config.faqs,
+        ticketStatuses: config.ticketStatuses,
+        businessStatuses: config.businessStatuses,
+        paymentStatuses: config.paymentStatuses,
+        dailyTarget: config.dailyTarget,
+        weeklyTarget: config.weeklyTarget,
+        monthlyTarget: config.monthlyTarget,
+      });
       showToast('Market mapping configuration saved.', 'success');
     } catch (error: any) {
       showToast(error.message || 'Failed to save.', 'error');
@@ -92,8 +108,8 @@ export default function MarketMappingConfigEditor() {
         ticketStatuses: [],
         businessStatuses: [],
         paymentStatuses: [],
-        dailyTarget: 20,
-        weeklyTarget: 100,
+        dailyTarget: 5,
+        weeklyTarget: 25,
         monthlyTarget: 20,
       }),
     }));
@@ -142,6 +158,17 @@ export default function MarketMappingConfigEditor() {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="w-6 h-6 animate-pulse text-slate-300" />
+      </div>
+    );
+  }
+
+  if (isError || !editorConfig) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <p className="text-sm text-red-500">Unable to load market mapping editor configuration.</p>
+        <button onClick={() => refetch()} className="text-sm font-bold text-blue-600 hover:underline">
+          Retry
+        </button>
       </div>
     );
   }
@@ -226,9 +253,9 @@ export default function MarketMappingConfigEditor() {
         <div className="space-y-2">
           {mmConfig.pipelineStatuses.map((s, idx) => (
             <div key={idx} className="flex items-center gap-3">
-              <input value={s.name} onChange={e => { const next = [...mmConfig.pipelineStatuses]; next[idx] = { ...next[idx], name: e.target.value }; setMmConfig(prev => ({ ...prev, pipelineStatuses: next })); }} className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+              <input value={s.name || s.id} onChange={e => { const next = [...mmConfig.pipelineStatuses]; next[idx] = { ...next[idx], name: e.target.value }; setMmConfig(prev => ({ ...prev, pipelineStatuses: next })); }} className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
               <input value={s.id} onChange={e => { const next = [...mmConfig.pipelineStatuses]; next[idx] = { ...next[idx], id: e.target.value }; setMmConfig(prev => ({ ...prev, pipelineStatuses: next })); }} className="w-28 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
-              <div className={cn("w-4 h-4 rounded-full", s.color)} />
+              <div className={cn("w-4 h-4 rounded-full", s.color || "bg-blue-500")} />
             </div>
           ))}
         </div>
@@ -246,7 +273,9 @@ export default function MarketMappingConfigEditor() {
       </Section>
 
       <Section title="Business Plan Types" open={showPlanTypes} onToggle={() => setShowPlanTypes(!showPlanTypes)}>
-        <p className="text-xs text-slate-500">Available subscription plans when registering a business.</p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs text-slate-500">Available subscription plans (synced with Vemtap API or admin configured).</p>
+        </div>
         <div className="space-y-2">
           {mmConfig.planTypes.map((p, idx) => (
             <div key={idx} className="flex items-center gap-3">
@@ -261,7 +290,7 @@ export default function MarketMappingConfigEditor() {
         <p className="text-xs text-slate-500">These FAQs appear on the support page and dashboard FAQ page.</p>
         <div className="space-y-4">
           {mmConfig.faqs.map((faq, idx) => (
-            <div key={faq.id} className="bg-slate-50 border border-slate-100 rounded-xl p-4 space-y-2">
+            <div key={faq.id || idx} className="bg-slate-50 border border-slate-100 rounded-xl p-4 space-y-2">
               <div className="flex gap-2">
                 <input value={faq.question} onChange={e => { const next = [...mmConfig.faqs]; next[idx] = { ...next[idx], question: e.target.value }; setMmConfig(prev => ({ ...prev, faqs: next })); }} className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
                 <input value={faq.category} onChange={e => { const next = [...mmConfig.faqs]; next[idx] = { ...next[idx], category: e.target.value }; setMmConfig(prev => ({ ...prev, faqs: next })); }} className="w-28 px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20" placeholder="Category" />
@@ -269,45 +298,6 @@ export default function MarketMappingConfigEditor() {
               <textarea value={faq.answer} onChange={e => { const next = [...mmConfig.faqs]; next[idx] = { ...next[idx], answer: e.target.value }; setMmConfig(prev => ({ ...prev, faqs: next })); }} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 h-16 resize-none" />
             </div>
           ))}
-        </div>
-      </Section>
-
-      <Section title="Support Ticket Statuses" open={showTickets} onToggle={() => setShowTickets(!showTickets)}>
-        <div className="space-y-2">
-          {mmConfig.ticketStatuses.map((s, idx) => (
-            <div key={idx} className="flex items-center gap-3">
-              <input value={s.id} onChange={e => { const next = [...mmConfig.ticketStatuses]; next[idx] = { ...next[idx], id: e.target.value }; setMmConfig(prev => ({ ...prev, ticketStatuses: next })); }} className="w-24 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
-              <input value={s.label} onChange={e => { const next = [...mmConfig.ticketStatuses]; next[idx] = { ...next[idx], label: e.target.value }; setMmConfig(prev => ({ ...prev, ticketStatuses: next })); }} className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
-              <input value={s.color} onChange={e => { const next = [...mmConfig.ticketStatuses]; next[idx] = { ...next[idx], color: e.target.value }; setMmConfig(prev => ({ ...prev, ticketStatuses: next })); }} className="w-28 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20" placeholder="text-amber-600" />
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      <Section title="Business & Payment Statuses" open={showStatuses} onToggle={() => setShowStatuses(!showStatuses)}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <h4 className="text-xs font-bold text-slate-600 mb-2">Business Statuses</h4>
-            <div className="space-y-2">
-              {mmConfig.businessStatuses.map((s, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <input value={s.id} onChange={e => { const next = [...mmConfig.businessStatuses]; next[idx] = { ...next[idx], id: e.target.value }; setMmConfig(prev => ({ ...prev, businessStatuses: next })); }} className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
-                  <input value={s.color} onChange={e => { const next = [...mmConfig.businessStatuses]; next[idx] = { ...next[idx], color: e.target.value }; setMmConfig(prev => ({ ...prev, businessStatuses: next })); }} className="w-28 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20" placeholder="text-emerald-600" />
-                </div>
-              ))}
-            </div>
-          </div>
-          <div>
-            <h4 className="text-xs font-bold text-slate-600 mb-2">Payment Statuses</h4>
-            <div className="space-y-2">
-              {mmConfig.paymentStatuses.map((s, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <input value={s.id} onChange={e => { const next = [...mmConfig.paymentStatuses]; next[idx] = { ...next[idx], id: e.target.value }; setMmConfig(prev => ({ ...prev, paymentStatuses: next })); }} className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
-                  <input value={s.color} onChange={e => { const next = [...mmConfig.paymentStatuses]; next[idx] = { ...next[idx], color: e.target.value }; setMmConfig(prev => ({ ...prev, paymentStatuses: next })); }} className="w-28 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20" placeholder="text-emerald-600" />
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </Section>
 
@@ -333,11 +323,11 @@ export default function MarketMappingConfigEditor() {
       <div className="flex justify-end pt-2">
         <button
           onClick={handleSave}
-          disabled={updateSettings.isPending}
+          disabled={updateEditorConfig.isPending}
           className="flex items-center gap-2 px-8 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg disabled:opacity-50"
         >
-          {updateSettings.isPending ? <Loader2 className="w-4 h-4 animate-pulse" /> : <Save className="w-4 h-4" />}
-          {updateSettings.isPending ? 'Saving...' : 'Save Configuration'}
+          {updateEditorConfig.isPending ? <Loader2 className="w-4 h-4 animate-pulse" /> : <Save className="w-4 h-4" />}
+          {updateEditorConfig.isPending ? 'Saving...' : 'Save Configuration'}
         </button>
       </div>
     </div>

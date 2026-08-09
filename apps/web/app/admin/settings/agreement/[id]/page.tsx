@@ -25,7 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export default function AgreementSignatureAudit() {
   const { id } = useParams() as { id: string };
-  const { data: auditData, isLoading, isError } = useAgreementStats(id);
+  const { data: auditData, isLoading, isError, refetch } = useAgreementStats(id);
   const { showToast } = useToast();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,6 +54,7 @@ export default function AgreementSignatureAudit() {
           <Link href="/admin/settings/agreement" className="text-sm font-bold text-blue-600 hover:underline mt-4 inline-block">
             Back to Agreements
           </Link>
+          <button onClick={() => refetch()} className="text-sm font-bold text-blue-600 hover:underline mt-4 ml-4">Retry</button>
         </div>
       </AdminLayout>
     );

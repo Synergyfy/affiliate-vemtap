@@ -4,13 +4,23 @@ import { BusinessNote } from '@/types/affiliate-market-mapping';
 import { StickyNote, Mic, CalendarClock, MessageSquarePlus, CheckCircle2, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import { useMarketMapping } from '@/components/dashboard/market-mapping/MarketMappingContext';
 
 interface NotesWidgetProps {
   notes: BusinessNote[];
 }
 
 export default function NotesWidget({ notes }: NotesWidgetProps) {
+  const { addNote } = useMarketMapping();
   const [activeTab, setActiveTab] = useState<'NOTES' | 'TASKS'>('NOTES');
+  const [inputValue, setInputValue] = useState('');
+
+  const handleSave = () => {
+    const content = inputValue.trim();
+    if (!content) return;
+    addNote?.({ content });
+    setInputValue('');
+  };
   
   const filteredNotes = notes.filter(n => 
     activeTab === 'NOTES' ? (n.type === 'TEXT' || n.type === 'VOICE') : (n.type === 'TASK' || n.type === 'REMINDER')
@@ -82,16 +92,19 @@ export default function NotesWidget({ notes }: NotesWidgetProps) {
         <div className="relative">
           <input 
             type="text" 
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
             placeholder={activeTab === 'NOTES' ? "Type a quick note..." : "Add a new task or reminder..."}
             className="w-full pl-4 pr-24 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 shadow-sm"
           />
           <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
             {activeTab === 'NOTES' && (
-              <button className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+              <button type="button" className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" aria-label="Voice note (coming soon)">
                 <Mic className="w-4 h-4" />
               </button>
             )}
-            <button className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors">
+            <button onClick={handleSave} disabled={!inputValue.trim()} className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
               Save
             </button>
           </div>

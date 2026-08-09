@@ -5,21 +5,21 @@ import {
   Body,
   Param,
   Query,
+  Res,
   UseGuards,
 } from "@nestjs/common";
+import { Response } from "express";
 import {
   ApiTags,
   ApiOperation,
   ApiBearerAuth,
   ApiOkResponse,
   ApiResponse,
-  ApiBody,
 } from "@nestjs/swagger";
 import { CommissionsService } from "./commissions.service";
 import {
   PaginatedCommissionResponseDto,
 } from "./dto/commission-response.dto";
-import { PaginationDto } from "../common/dto/pagination.dto";
 import { CommissionFilterDto } from "./dto/commission-filter.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
@@ -67,17 +67,26 @@ export class CommissionsController {
   @ApiResponse({
     status: 200,
     description: "Commission statistics",
-    example: {
-      totalCommissions: 25,
-      totalEarnings: 11250,
-      pendingEarnings: 2500,
-      paidEarnings: 8750,
-      averageCommission: 450,
-    },
   })
-  @ApiResponse({ status: 401, description: "Unauthorized" })
   getStats(@CurrentUser() user: { id: string }) {
     return this.commissionsService.getStats(user.id);
+  }
+
+  @Get("admin/stats")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Get global commission stats (Admin only)" })
+  getGlobalStats() {
+    return this.commissionsService.getGlobalStats();
+  }
+
+  @Get("export")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Export commissions as CSV (Admin only)" })
+  async exportCsv(@Res() res: Response) {
+    const csv = await this.commissionsService.exportCsv();
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", "attachment; filename=commissions.csv");
+    return res.status(200).send(csv);
   }
 
   @Get()
@@ -107,25 +116,6 @@ export class CommissionsController {
   @Patch(":id/status")
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Update commission status (Admin only)" })
-  @ApiBody({
-    description: "New commission status",
-    examples: {
-      markPaid: { value: { status: "PAID" } },
-      markPending: { value: { status: "PENDING" } },
-    },
-  })
-  @ApiResponse({
-    status: 200,
-    description: "Commission status updated",
-    example: {
-      id: "commission-uuid",
-      amount: 450,
-      status: "PAID",
-      paidAt: "2026-05-06T10:00:00.000Z",
-    },
-  })
-  @ApiResponse({ status: 400, description: "Invalid status" })
-  @ApiResponse({ status: 404, description: "Commission not found" })
   updateStatus(
     @Param("id") id: string,
     @Body() data: { status: CommissionStatus },
@@ -133,3 +123,4 @@ export class CommissionsController {
     return this.commissionsService.updateStatus(id, data);
   }
 }
+

@@ -90,10 +90,15 @@ export class TrainingService {
   }
 
   async updateProgress(userId: string, moduleId: string, data: UpdateTrainingProgressDto) {
+    const updateData: any = { ...data };
+    if (data.status === 'COMPLETED' && !data.completedAt) {
+      updateData.completedAt = new Date();
+    }
+
     return this.prisma.trainingProgress.upsert({
       where: { userId_moduleId: { userId, moduleId } },
-      update: data,
-      create: { userId, moduleId, ...data },
+      update: updateData,
+      create: { userId, moduleId, ...updateData },
     });
   }
 }

@@ -7,7 +7,7 @@ import {
   CreateDemoDto, UpdateDemoDto, 
   UpdateOnboardingDto 
 } from './dto/operations.dto';
-import { TaskStatus, DemoStatus, OnboardingStatus, OnboardingStage } from '@prisma/client';
+import { TaskStatus, DemoStatus, OnboardingStatus, Prisma } from '@prisma/client';
 
 @Injectable()
 export class OperationsService {
@@ -225,7 +225,7 @@ export class OperationsService {
         lowRisk: healthData.filter(b => b.churnRisk === 'LOW').length,
         averageHealthScore: healthData.length > 0
           ? Math.round(healthData.reduce((s, b) => s + b.healthScore, 0) / healthData.length)
-          : 100,
+          : 0,
       },
     };
 
@@ -278,6 +278,178 @@ export class OperationsService {
       activeOnboarding,
       leadConversion,
       teamRevenue,
+    };
+  }
+
+  // --- REPORTS ---
+  async getReportHierarchy() {
+    const rootNodes = await this.prisma.marketMappingHierarchy.findMany({
+      where: { parentId: null },
+      include: {
+        children: {
+          include: {
+            children: {
+              include: {
+                children: {
+                  include: {
+                    children: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const flatten = (nodes: typeof rootNodes, parentId: string | null = null): Array<Record<string, unknown>> =>
+      nodes.flatMap((node) => [
+        { id: node.id, name: node.name, type: node.type, parentId, totalBusinesses: node.totalBusinesses, penetration: node.penetration },
+        ...flatten(node.children, node.id),
+      ]);
+
+    return flatten(rootNodes);
+  }
+
+  private getReportStart(period: string): Date {
+    const start = new Date();
+    if (period === 'daily') start.setDate(start.getDate() - 1);
+    else if (period === 'weekly') start.setDate(start.getDate() - 7);
+    else start.setMonth(start.getMonth() - 1);
+    return start;
+  }
+
+  private reportRow(user: { id: string; fullName: string; role: string; leads: { id: string }[]; businesses: { status: string; subscriptionAmount: unknown }[] }) {
+    const leads = user.leads.length;
+    const conversions = user.businesses.filter((business) => business.status === 'ACTIVE').length;
+    const earnings = user.businesses.reduce((sum, business) => sum + Number(business.subscriptionAmount), 0);
+    return { id: user.id, name: user.fullName, role: user.role, leads, conversions, earnings, conversionRate: leads ? Math.round((conversions / leads) * 100) : 0 };
+  }
+
+  async getReportAggregates(dto: {
+    period?: string;
+    tab?: string;
+    country?: string;
+    state?: string;
+    city?: string;
+    area?: string;
+    cluster?: string;
+  }) {
+    const startDate = this.getReportStart(dto.period || 'monthly');
+    const users = await this.prisma.user.findMany({
+      where: dto.tab === 'agents' ? { role: 'AGENT' } : dto.tab === 'affiliates' ? { role: 'AFFILIATE' } : dto.tab === 'line-managers' ? { role: { in: ['SUPERVISOR', 'MANAGER'] } } : {},
+      select: {
+        id: true, fullName: true, role: true,
+        leads: { where: { createdAt: { gte: startDate } }, select: { id: true } },
+        businesses: { where: { createdAt: { gte: startDate } }, select: { status: true, subscriptionAmount: true } },
+      },
+    });
+    const userRows = users.map((user) => this.reportRow(user));
+    let rows = userRows;
+    if (dto.tab === 'locations') {
+      const hierarchy = await this.getReportHierarchy() as Array<{ id: string; name: string; type: string; parentId: string | null }>;
+      const selectedId = dto.cluster || dto.area || dto.city || dto.state || dto.country;
+      const descendants = new Set<string>(selectedId ? [selectedId] : hierarchy.map((node) => node.id));
+      if (selectedId) {
+        let changed = true;
+        while (changed) {
+          changed = false;
+          for (const node of hierarchy) {
+            if (node.parentId && descendants.has(node.parentId) && !descendants.has(node.id)) {
+              descendants.add(node.id);
+              changed = true;
+            }
+          }
+        }
+      }
+      const assignments = await this.prisma.marketMappingAssignment.findMany({
+        where: { clusterId: { in: Array.from(descendants) } },
+        select: { userId: true, clusterId: true, cluster: { select: { id: true, name: true, type: true } } },
+      });
+      const rowsByCluster = new Map<string, { id: string; name: string; role: 'LOCATION'; level: string; leads: number; conversions: number; earnings: number; conversionRate: number }>();
+      for (const assignment of assignments) {
+        const row = rowsByCluster.get(assignment.clusterId) || { id: assignment.cluster.id, name: assignment.cluster.name, role: 'LOCATION', level: assignment.cluster.type, leads: 0, conversions: 0, earnings: 0, conversionRate: 0 };
+        const userRow = userRows.find((user) => user.id === assignment.userId);
+        if (userRow) {
+          row.leads += userRow.leads;
+          row.conversions += userRow.conversions;
+          row.earnings += userRow.earnings;
+        }
+        row.conversionRate = row.leads ? Math.round((row.conversions / row.leads) * 100) : 0;
+        rowsByCluster.set(assignment.clusterId, row);
+      }
+      rows = Array.from(rowsByCluster.values());
+    }
+    const summary = rows.reduce((result, row) => ({
+      totalLeads: result.totalLeads + row.leads,
+      conversions: result.conversions + row.conversions,
+      totalEarnings: result.totalEarnings + row.earnings,
+      totalMembers: result.totalMembers + 1,
+      activeMembers: result.activeMembers + (row.leads || row.conversions ? 1 : 0),
+    }), { totalLeads: 0, conversions: 0, totalEarnings: 0, totalMembers: 0, activeMembers: 0 });
+
+    return {
+      summary: { ...summary, conversionRate: summary.totalLeads ? Math.round((summary.conversions / summary.totalLeads) * 100) : 0 },
+      rows,
+    };
+  }
+
+  async getReportDetail(params: { subjectId?: string; type: string; period?: string; locationId?: string }) {
+    const startDate = this.getReportStart(params.period || 'monthly');
+    let locationUserIds: string[] | undefined;
+    if (params.type === 'location' && params.locationId) {
+      const assignments = await this.prisma.marketMappingAssignment.findMany({
+        where: { clusterId: params.locationId },
+        select: { userId: true },
+      });
+      locationUserIds = assignments.map((assignment) => assignment.userId);
+    }
+    const userWhere: Prisma.UserWhereInput = params.subjectId && params.type !== 'location'
+      ? { id: params.subjectId }
+      : locationUserIds ? { id: { in: locationUserIds } } : {};
+    const users = await this.prisma.user.findMany({
+      where: userWhere,
+      select: {
+        id: true,
+        leads: { where: { createdAt: { gte: startDate } }, select: { createdAt: true } },
+        businesses: { where: { createdAt: { gte: startDate } }, select: { createdAt: true, status: true, subscriptionAmount: true } },
+      },
+    });
+    const leads = users.flatMap((user) => user.leads);
+    const businesses = users.flatMap((user) => user.businesses);
+    const userIds = users.map((user) => user.id);
+    const [commissions, activities] = await Promise.all([
+      this.prisma.commission.findMany({ where: { userId: { in: userIds }, createdAt: { gte: startDate } }, select: { createdAt: true, amount: true } }),
+      this.prisma.activity.findMany({ where: { userId: { in: userIds }, createdAt: { gte: startDate } }, take: 20, orderBy: { createdAt: 'desc' }, include: { user: { select: { fullName: true, role: true } } } }),
+    ]);
+    const summary = {
+      leads: leads.length,
+      conversions: businesses.filter((business) => business.status === 'ACTIVE').length,
+      earnings: commissions.reduce((sum, commission) => sum + Number(commission.amount), 0),
+    };
+    const trend = Array.from({ length: 6 }, (_, index) => {
+      const bucketStart = new Date();
+      if (params.period === 'daily') bucketStart.setDate(bucketStart.getDate() - (5 - index));
+      else if (params.period === 'weekly') bucketStart.setDate(bucketStart.getDate() - (5 - index) * 7);
+      else bucketStart.setMonth(bucketStart.getMonth() - (5 - index));
+      const bucketEnd = new Date(bucketStart);
+      if (params.period === 'daily') bucketEnd.setDate(bucketEnd.getDate() + 1);
+      else if (params.period === 'weekly') bucketEnd.setDate(bucketEnd.getDate() + 7);
+      else bucketEnd.setMonth(bucketEnd.getMonth() + 1);
+      const inBucket = (date: Date) => date >= bucketStart && date < bucketEnd;
+      return {
+        period: params.period === 'daily' ? bucketStart.toLocaleDateString('en-US', { weekday: 'short' }) : params.period === 'weekly' ? `Week ${index + 1}` : bucketStart.toLocaleDateString('en-US', { month: 'short' }),
+        leads: leads.filter((lead) => inBucket(lead.createdAt)).length,
+        conversions: businesses.filter((business) => business.status === 'ACTIVE' && inBucket(business.createdAt)).length,
+        earnings: commissions.filter((commission) => inBucket(commission.createdAt)).reduce((sum, commission) => sum + Number(commission.amount), 0),
+      };
+    });
+
+    return {
+      subjectId: params.subjectId || null,
+      summary: { ...summary, conversionRate: summary.leads ? Math.round((summary.conversions / summary.leads) * 100) : 0 },
+      trend,
+      recentActivities: activities,
     };
   }
 }

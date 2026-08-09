@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { 
   Crown, 
   MapPin, 
@@ -15,7 +15,8 @@ import {
   Ruler,
   Users,
   Map as MapIcon,
-  ChevronDown
+  ChevronDown,
+  Crosshair
 } from 'lucide-react';
 import { MappedBusiness, ClusterDetail, GeographicHierarchyNode } from '@/types/market-mapping';
 import { cn } from '@/lib/utils';
@@ -49,11 +50,37 @@ export default function ClusterMap({
 }: ClusterMapProps) {
   const [activeTab, setActiveTab] = useState<'DEFAULT' | 'VECTOR' | 'SATELLITE'>('DEFAULT');
   const [showAnchorsOnly, setShowAnchorsOnly] = useState(false);
+  const [showCapturedOnly, setShowCapturedOnly] = useState(false);
   const [showMapTypeDropdown, setShowMapTypeDropdown] = useState(false);
 
-  const displayedBusinesses = showAnchorsOnly 
-    ? businesses.filter(b => b.isAnchor) 
-    : businesses;
+  const capturedCount = businesses.filter(b => b.source === 'CAPTURE').length;
+
+  const capturedBounds = useMemo(() => {
+    const points = businesses.filter(
+      (b) => b.source === 'CAPTURE' && Number.isFinite(b.latitude) && Number.isFinite(b.longitude) && b.latitude && b.longitude,
+    );
+    if (points.length === 0) return null;
+    const lats = points.map((p) => p.latitude);
+    const lngs = points.map((p) => p.longitude);
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+    const span = Math.max(maxLat - minLat, maxLng - minLng);
+    const zoom = span > 0.5 ? 11 : span > 0.1 ? 13 : 15;
+    return { center: [(minLat + maxLat) / 2, (minLng + maxLng) / 2] as [number, number], zoom };
+  }, [businesses]);
+
+  const displayedBusinesses = showCapturedOnly
+    ? businesses.filter(b => b.source === 'CAPTURE')
+    : showAnchorsOnly
+      ? businesses.filter(b => b.isAnchor)
+      : businesses;
+
+  // When the "Captured" filter is active, fly the map to the captured locations
+  // (they may be far from the currently selected cluster).
+  const effectiveCenter = showCapturedOnly && capturedBounds ? capturedBounds.center : mapCenter;
+  const effectiveZoom = showCapturedOnly && capturedBounds ? capturedBounds.zoom : mapZoom;
 
   const getPinStyle = (status: MappedBusiness['status'], isAnchor: boolean) => {
     if (isAnchor) {
@@ -98,6 +125,22 @@ export default function ClusterMap({
             Anchors Only ({businesses.filter(b => b.isAnchor).length})
           </button>
 
+          {capturedCount > 0 && (
+            <button 
+              onClick={() => setShowCapturedOnly(!showCapturedOnly)}
+              className={cn(
+                "px-3 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 backdrop-blur-md transition-all border",
+                showCapturedOnly 
+                  ? "bg-blue-500 text-white border-blue-400 shadow-lg shadow-blue-500/20" 
+                  : "bg-slate-900/80 text-blue-400 border-slate-800 hover:bg-slate-800"
+              )}
+              title="Show all affiliate-captured locations on the map"
+            >
+              <Crosshair className="w-3.5 h-3.5" />
+              Captured ({capturedCount})
+            </button>
+          )}
+
           <div className="relative">
             <button 
               onClick={() => setShowMapTypeDropdown(!showMapTypeDropdown)}
@@ -140,25 +183,27 @@ export default function ClusterMap({
           <VectorMap 
             selectedNode={selectedNode}
             childNodes={childNodes}
-            businesses={businesses}
+            businesses={displayedBusinesses}
             onSelectBusiness={onSelectBusiness}
             onSelectNode={onSelectNode}
             selectedBusinessId={selectedBusinessId}
             showAnchorsOnly={showAnchorsOnly}
+            forceCluster={showCapturedOnly}
           />
         ) : (
           <DynamicMap 
             cluster={cluster} 
             selectedNode={selectedNode}
             childNodes={childNodes}
-            businesses={businesses} 
+            businesses={displayedBusinesses} 
             selectedBusinessId={selectedBusinessId} 
             onSelectBusiness={onSelectBusiness} 
             onSelectNode={onSelectNode}
             showAnchorsOnly={showAnchorsOnly} 
-            mapCenter={mapCenter}
-            mapZoom={mapZoom}
+            mapCenter={effectiveCenter}
+            mapZoom={effectiveZoom}
             mapType={activeTab}
+            forceCluster={showCapturedOnly}
           />
         )}
       </div>

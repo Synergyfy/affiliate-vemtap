@@ -26,7 +26,7 @@ import { Role } from '@/types/api';
 import { useToast } from '@/hooks/use-toast';
 
 export default function AdminAgreementsDashboard() {
-  const { data: agreements, isLoading } = useAdminAgreements();
+  const { data: agreements, isLoading, isError, refetch } = useAdminAgreements();
   const { showToast } = useToast();
   const createAgreement = useCreateAgreementCustom();
   const updateAgreement = useUpdateAgreementCustom();
@@ -165,6 +165,8 @@ export default function AdminAgreementsDashboard() {
             <Loader2 className="w-8 h-8 animate-spin text-slate-350 mb-3" />
             <p className="text-slate-500 font-bold text-sm">Fetching agreement configurations...</p>
           </div>
+        ) : isError ? (
+          <div className="text-center py-16 bg-white border border-slate-200 rounded-[32px] shadow-sm"><p className="text-sm text-red-500">Unable to load agreements.</p><button onClick={() => refetch()} className="text-sm font-bold text-blue-600 hover:underline mt-3">Retry</button></div>
         ) : agreements && agreements.length > 0 ? (
           <div className="grid gap-6">
             {agreements.map((ag) => (
@@ -227,6 +229,7 @@ export default function AdminAgreementsDashboard() {
                     <button
                       type="button"
                       onClick={() => toggleAgreementStatus(ag)}
+                      disabled={updateAgreement.isPending}
                       className={`flex-grow px-3 py-2.5 rounded-xl text-xs font-bold border transition-all active:scale-95 ${
                         ag.isActive 
                           ? 'border-red-150 hover:bg-red-50 text-red-600'

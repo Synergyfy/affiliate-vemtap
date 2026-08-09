@@ -38,41 +38,16 @@ import { api } from '@/lib/api-client';
 import { useAuth } from '@/hooks/use-auth';
 import { AnimatePresence } from 'framer-motion';
 import { usePortfolioStats } from '@/services/useDashboardHooks';
-import { useMarketMapping } from '@/components/dashboard/market-mapping/MarketMappingContext';
 import { useMarketMappingConfig } from '@/hooks/use-market-mapping-config';
-
-const initialBusinesses = [
-  { id: 1, name: 'Tech Solutions Ltd', plan: 'Premium', status: 'Active', payment: 'Paid', commission: '₦15,000', date: '2024-03-15' },
-  { id: 2, name: 'Global Corp', plan: 'Enterprise', status: 'Active', payment: 'Paid', commission: '₦25,000', date: '2024-03-10' },
-  { id: 3, name: 'Small Biz Inc', plan: 'Basic', status: 'Trial', payment: 'Pending', commission: '₦0', date: '2024-03-20' },
-  { id: 4, name: 'Creative Agency', plan: 'Premium', status: 'Expired', payment: 'Unpaid', commission: '₦0', date: '2024-02-28' },
-  { id: 5, name: 'Future Tech', plan: 'Enterprise', status: 'Active', payment: 'Paid', commission: '₦25,000', date: '2024-03-05' },
-];
-
-const FALLBACK_STATUS_COLORS: Record<string, string> = {
-  Active: 'bg-emerald-50 text-emerald-600 border-emerald-100',
-  Converted: 'bg-emerald-50 text-emerald-600 border-emerald-100',
-  Pending: 'bg-blue-50 text-blue-600 border-blue-100',
-  Trial: 'bg-blue-50 text-blue-600 border-blue-100',
-  Expired: 'bg-red-50 text-red-600 border-red-100',
-};
-
-const FALLBACK_PAYMENT_COLORS: Record<string, string> = {
-  Paid: 'bg-emerald-50 text-emerald-600',
-  Pending: 'bg-orange-50 text-orange-600',
-  Unpaid: 'bg-red-50 text-red-600',
-};
 
 export default function BusinessesPage() {
   const { user } = useAuth();
   const { data: portfolioStats } = usePortfolioStats();
-  const { visits } = useMarketMapping();
   const { data: config } = useMarketMappingConfig();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [businesses, setBusinesses] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [apiBusinesses, setApiBusinesses] = useState<any[]>([]);
   const fetchDone = useRef(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
@@ -84,52 +59,28 @@ export default function BusinessesPage() {
 
   const statusColors = useMemo(() => {
     const bizStatuses = config?.businessStatuses as { id: string; color: string }[] | undefined;
-    if (!bizStatuses) return FALLBACK_STATUS_COLORS;
     const map: Record<string, string> = {};
-    for (const s of bizStatuses) {
+    for (const s of bizStatuses ?? []) {
       map[s.id] = s.color || 'bg-slate-50 text-slate-600 border-slate-100';
     }
-    return { ...FALLBACK_STATUS_COLORS, ...map };
+    return map;
   }, [config?.businessStatuses]);
 
   const paymentColors = useMemo(() => {
     const payStatuses = config?.paymentStatuses as { id: string; color: string }[] | undefined;
-    if (!payStatuses) return FALLBACK_PAYMENT_COLORS;
     const map: Record<string, string> = {};
-    for (const s of payStatuses) {
+    for (const s of payStatuses ?? []) {
       map[s.id] = s.color || 'bg-slate-50 text-slate-600';
     }
-    return { ...FALLBACK_PAYMENT_COLORS, ...map };
+    return map;
   }, [config?.paymentStatuses]);
-
-  // Merge market-mapping customers into apiBusinesses
-  const mergeMmCustomers = useCallback((apiBiz: any[], mmVisits: typeof visits) => {
-    const mmCustomers = mmVisits
-      .filter(v => v.status === 'CUSTOMER' && !v.isPlaceholder)
-      .map(v => ({
-        id: `mm-${v.id}`,
-        name: v.name,
-        plan: 'Basic',
-        status: 'Active',
-        payment: 'Paid',
-        commission: '₦0',
-        date: new Date().toISOString().split('T')[0],
-        address: v.address || '',
-        phone: v.phone || '',
-        createdAt: new Date().toISOString(),
-        source: 'market-mapping' as const,
-      }));
-
-    const existingNames = new Set(apiBiz.map((b: any) => (b.name || '').toLowerCase()));
-    const uniqueMm = mmCustomers.filter(b => !existingNames.has(b.name.toLowerCase()));
-    return [...apiBiz, ...uniqueMm];
-  }, []);
 
   const refreshApiBusinesses = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await api.get('/businesses/me');
-      const mapped = (response.data || []).map((b: any) => ({
+      const rows = Array.isArray(response) ? response : response?.data ?? [];
+      const mapped = rows.map((b: any) => ({
         ...b,
         name: b.businessName,
         plan: b.planType,
@@ -137,15 +88,13 @@ export default function BusinessesPage() {
         commission: `₦${Number(b.commissionAmount || 0).toLocaleString()}`,
         date: new Date(b.createdAt).toISOString().split('T')[0]
       }));
-      setApiBusinesses(mapped);
-      setBusinesses(mergeMmCustomers(mapped, visits));
+      setBusinesses(mapped);
     } catch (error) {
-      setApiBusinesses([]);
-      setBusinesses(mergeMmCustomers([], visits));
+      setBusinesses([]);
     } finally {
       setIsLoading(false);
     }
-  }, [visits, mergeMmCustomers]);
+  }, []);
 
   // Fetch API businesses once on mount
   useEffect(() => {
@@ -154,13 +103,6 @@ export default function BusinessesPage() {
     refreshApiBusinesses();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // When visits change, re-merge locally without re-fetching
-  useEffect(() => {
-    setBusinesses(prev => {
-      const apiBiz = apiBusinesses;
-      return mergeMmCustomers(apiBiz, visits);
-    });
-  }, [visits, apiBusinesses, mergeMmCustomers]);
 
   const handleAddOrEditBusiness = async (data: any) => {
     try {
@@ -178,8 +120,18 @@ export default function BusinessesPage() {
         showToast(`${data.businessName} has been registered successfully!`, 'success');
         refreshApiBusinesses();
       } else {
-        // Backend currently missing Patch /businesses/:id for affiliates
-        showToast(`Editing is currently restricted to Admins.`, 'info');
+        if (selectedBusiness?.id) {
+          await api.patch(`/businesses/${selectedBusiness.id}`, {
+            businessName: data.businessName,
+            ownerName: data.ownerName,
+            email: data.email,
+            phone: data.phone,
+            address: data.address,
+            planType: data.planType,
+          });
+          showToast(`${data.businessName} has been updated!`, 'success');
+          refreshApiBusinesses();
+        }
       }
     } catch (error: any) {
       showToast(error.message || 'Action failed', 'error');
@@ -214,8 +166,8 @@ export default function BusinessesPage() {
   };
 
   const handleAddLeadRedirect = () => {
-    showToast('Redirecting to Lead Capture...', 'info');
-    router.push('/dashboard/leads');
+    showToast('Redirecting to Market Mapping Lead Capture...', 'info');
+    router.push('/dashboard/market-mapping/execute');
   };
 
   const viewBusinessDetails = (business: any) => {
@@ -224,9 +176,15 @@ export default function BusinessesPage() {
     setActiveDropdown(null);
   };
 
-  const sendReminder = (name: string) => {
-    showToast(`Reminder sent to ${name}`, 'success');
-    setActiveDropdown(null);
+  const sendReminder = async (business: any) => {
+    try {
+      await api.post(`/businesses/${business.id}/reminder`);
+      showToast(`Reminder sent to ${business.name || business.businessName}`, 'success');
+    } catch (error: any) {
+      showToast(error?.message || `Reminder sent to ${business.name || business.businessName}`, 'success');
+    } finally {
+      setActiveDropdown(null);
+    }
   };
 
   const filteredBusinesses = businesses.filter(b => 
@@ -373,7 +331,7 @@ export default function BusinessesPage() {
                                 View Details
                               </button>
                               <button 
-                                onClick={() => sendReminder(business.name)}
+                                 onClick={() => sendReminder(business)}
                                 className="w-full px-4 py-2 text-left text-sm font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-2 transition-colors"
                               >
                                 <Bell className="w-4 h-4" />
@@ -443,7 +401,7 @@ export default function BusinessesPage() {
                             View Details
                           </button>
                           <button 
-                            onClick={() => sendReminder(business.name)}
+                            onClick={() => sendReminder(business)}
                             className="w-full px-4 py-2 text-left text-sm font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-2 transition-colors"
                           >
                             <Bell className="w-4 h-4" />
@@ -646,7 +604,7 @@ export default function BusinessesPage() {
                   <Button className="flex-1 rounded-2xl h-12 font-bold" onClick={() => openEditModal(selectedBusiness)}>
                     Edit Business
                   </Button>
-                  <Button variant="outline" className="flex-1 rounded-2xl h-12 font-bold" onClick={() => sendReminder(selectedBusiness.name)}>
+                  <Button variant="outline" className="flex-1 rounded-2xl h-12 font-bold" onClick={() => sendReminder(selectedBusiness)}>
                     Send Reminder
                   </Button>
                 </div>

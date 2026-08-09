@@ -148,6 +148,7 @@ export default function ProfilePage() {
         phone: profileData.phone,
         nin: profileData.idType === 'NIN' ? profileData.nin : undefined,
         bvn: profileData.idType === 'BVN' ? profileData.nin : undefined,
+        driversLicense: profileData.idType === 'DL' ? profileData.nin : undefined,
         bankName: profileData.bankName,
         accountNumber: profileData.accountNumber,
         accountName: profileData.accountName,

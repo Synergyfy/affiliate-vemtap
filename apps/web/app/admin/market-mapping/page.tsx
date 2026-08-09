@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import TopStats from '@/components/admin/market-mapping/TopStats';
 import HierarchySidebar from '@/components/admin/market-mapping/HierarchySidebar';
@@ -8,12 +8,7 @@ import ClusterMap from '@/components/admin/market-mapping/ClusterMap';
 import BusinessDrawer from '@/components/admin/market-mapping/BusinessDrawer';
 import MarketMappingConfigEditor from '@/components/admin/market-mapping/MarketMappingConfigEditor';
 import { GeographicHierarchyNode, MappedBusiness } from '@/types/market-mapping';
-import {
-  mockMarketStats,
-  mockHierarchy,
-  mockClusterDetail,
-  mockBusinesses,
-} from '@/lib/market-mapping-mock';
+import { useAdminMarketStats, useAdminMarketHierarchy, useAdminClusterDetail, useCreateHierarchyNode, useAdminCapturedVisits } from '@/services/useMarketMappingHooks';
 import { Globe2, Settings2, UserPlus, Building2, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -50,12 +45,64 @@ const getZoomForNode = (nodeId: string): number => {
 
 export default function MarketMappingPage() {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
-  const [selectedNodeId, setSelectedNodeId] = useState('banex');
+  const [selectedNodeId, setSelectedNodeId] = useState<string>();
   const [selectedBusiness, setSelectedBusiness] = useState<MappedBusiness | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showHierarchy, setShowHierarchy] = useState(false);
 
-  const [nodes, setNodes] = useState<GeographicHierarchyNode[]>(mockHierarchy);
+  const statsQuery = useAdminMarketStats();
+  const hierarchyQuery = useAdminMarketHierarchy();
+  const selectedClusterQuery = useAdminClusterDetail(selectedNodeId);
+  const { data: captured = [] } = useAdminCapturedVisits();
+  const createNode = useCreateHierarchyNode();
+
+  const marketStats = statsQuery.data;
+  const nodes: GeographicHierarchyNode[] = hierarchyQuery.data ?? [];
+  const selectedNode = nodes.find((node) => node.id === selectedNodeId) ?? null;
+  const cluster = selectedClusterQuery.data?.cluster;
+  const clusterBusinesses: MappedBusiness[] = (selectedClusterQuery.data?.businesses ?? []).map((business) => ({
+    id: business.id ?? '', name: business.name ?? business.businessName ?? 'Unnamed business',
+    category: business.category ?? 'Business', industry: business.industry ?? '', size: business.size ?? 'SMALL',
+    status: business.status ?? 'PROSPECT', isAnchor: business.isAnchor ?? false, anchorScore: business.anchorScore ?? 0,
+    influenceScore: business.influenceScore ?? 0, isVerified: business.isVerified ?? false, ownerName: business.ownerName ?? '',
+    decisionMaker: business.decisionMaker ?? '', phone: business.phone ?? '', email: business.email ?? undefined,
+    address: business.address ?? '', clusterId: business.clusterId ?? selectedNodeId ?? '',
+    clusterName: business.clusterName ?? selectedNode?.name ?? '',
+    latitude: business.latitude ?? 0, longitude: business.longitude ?? 0, dailyCustomers: business.dailyCustomers ?? 0,
+    monthlyCustomers: business.monthlyCustomers ?? 0, openingHours: business.openingHours ?? undefined,
+    assignedAffiliateId: business.assignedAffiliateId ?? undefined,
+    assignedAffiliateName: business.assignedAffiliateName ?? undefined,
+    priority: business.priority ?? 'LOW', source: business.source ?? 'BUSINESS',
+    lastVisit: business.lastVisit ?? undefined, nextVisit: business.nextVisit ?? undefined,
+    notes: business.notes ?? undefined,
+  }));
+
+  // Captured visits (with GPS) across all affiliates, deduped against cluster-scoped businesses.
+  const businesses: MappedBusiness[] = [
+    ...clusterBusinesses,
+    ...captured.filter((capturedBusiness) => !clusterBusinesses.some((business) => business.id === capturedBusiness.id)),
+  ];
+
+  // Auto-fit the map to captured locations when no cluster node is selected.
+  const capturedBounds = useMemo(() => {
+    const points = captured.filter(
+      (business) => Number.isFinite(business.latitude) && Number.isFinite(business.longitude) && business.latitude && business.longitude,
+    );
+    if (points.length === 0) return null;
+    const lats = points.map((p) => p.latitude);
+    const lngs = points.map((p) => p.longitude);
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+    const span = Math.max(maxLat - minLat, maxLng - minLng);
+    const zoom = span > 0.5 ? 11 : span > 0.1 ? 13 : 15;
+    return { center: [(minLat + maxLat) / 2, (minLng + maxLng) / 2] as [number, number], zoom };
+  }, [captured]);
+
+  const mapCenter = selectedNodeId ? getCenterForNode(selectedNodeId) : (capturedBounds?.center ?? ([9.0765, 7.3986] as [number, number]));
+  const mapZoom = selectedNodeId ? getZoomForNode(selectedNodeId) : (capturedBounds?.zoom ?? 12);
+
   const [addNodeModal, setAddNodeModal] = useState<{ isOpen: boolean, type: GeographicHierarchyNode['type'] | null, parentId?: string }>({ isOpen: false, type: null });
   const [newNodeName, setNewNodeName] = useState('');
 
@@ -67,20 +114,21 @@ export default function MarketMappingPage() {
     setAddNodeModal({ isOpen: true, type, parentId });
   };
 
-  const submitAddNode = () => {
+  const submitAddNode = async () => {
     if (!newNodeName.trim() || !addNodeModal.type) return;
-    const newNode: GeographicHierarchyNode = {
-      id: `node-${Date.now()}`,
-      name: newNodeName,
-      type: addNodeModal.type,
-      parentId: addNodeModal.parentId,
-      totalBusinesses: 0,
-      penetrationPercentage: addNodeModal.type === 'CLUSTER' ? 0 : undefined,
-    };
-    setNodes(prev => [...prev, newNode]);
-    setNewNodeName('');
-    setAddNodeModal({ isOpen: false, type: null });
+    try {
+      await createNode.mutateAsync({
+        name: newNodeName,
+        type: addNodeModal.type,
+        parentId: addNodeModal.parentId,
+      });
+      setNewNodeName('');
+      setAddNodeModal({ isOpen: false, type: null });
+    } catch {
+      // Handled by react query / toast
+    }
   };
+
 
   const handleSelectBusiness = (business: MappedBusiness) => {
     setSelectedBusiness(business);
@@ -89,7 +137,7 @@ export default function MarketMappingPage() {
 
   const handleCloseDrawer = () => {
     setIsDrawerOpen(false);
-    setTimeout(() => setSelectedBusiness(null), 300);
+    setSelectedBusiness(null);
   };
 
   const tabs = [
@@ -133,7 +181,9 @@ export default function MarketMappingPage() {
           <div className="space-y-6">
             <div>
               <h2 className="text-sm font-bold text-slate-900 mb-3">Key Metrics</h2>
-              <TopStats stats={mockMarketStats} />
+               {statsQuery.isLoading && <p className="text-sm text-slate-500">Loading metrics...</p>}
+               {statsQuery.isError && <RetryState message="Unable to load market metrics." onRetry={() => statsQuery.refetch()} />}
+               {marketStats && <TopStats stats={marketStats} />}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -185,22 +235,29 @@ export default function MarketMappingPage() {
                     <div className="lg:col-span-3">
                       <HierarchySidebar
                         nodes={nodes}
-                        selectedNodeId={selectedNodeId}
+                         selectedNodeId={selectedNodeId ?? ''}
                         onSelectNode={handleSelectNode}
                         onAddNode={handleAddNode}
                       />
                     </div>
                     <div className="lg:col-span-9">
                       <ClusterMap
-                        cluster={mockClusterDetail}
-                        selectedNode={nodes.find(n => n.id === selectedNodeId) || null}
-                        childNodes={nodes.filter(n => n.parentId === selectedNodeId)}
-                        businesses={mockBusinesses}
+                         cluster={cluster ? {
+                           ...cluster, areaName: cluster.areaName ?? '', cityName: cluster.cityName ?? '', stateName: cluster.stateName ?? '', countryName: cluster.countryName ?? '',
+                           totalBusinesses: cluster.totalBusinesses ?? clusterBusinesses.length, verifiedBusinesses: cluster.verifiedBusinesses ?? 0, customersCount: cluster.customersCount ?? 0,
+                           prospectsCount: cluster.prospectsCount ?? 0, anchorBusinessesCount: cluster.anchorBusinessesCount ?? 0, assignedAffiliatesCount: cluster.assignedAffiliatesCount ?? 0,
+                           penetrationPercentage: cluster.penetrationPercentage ?? 0, discoveryProgress: cluster.discoveryProgress ?? 0, verificationProgress: cluster.verificationProgress ?? 0,
+                           salesContactProgress: cluster.salesContactProgress ?? 0, partnershipsProgress: cluster.partnershipsProgress ?? 0, overallCompletion: cluster.overallCompletion ?? 0,
+                           currentStage: cluster.currentStage ?? 1, nextRecommendedAction: cluster.nextRecommendedAction ?? '', assignedAffiliates: cluster.assignedAffiliates ?? [], createdAt: cluster.createdAt ?? '', updatedAt: cluster.updatedAt ?? '',
+                          } : { id: selectedNodeId ?? '', name: selectedNode?.name ?? 'Select a cluster', areaName: '', cityName: '', stateName: '', countryName: '', totalBusinesses: 0, verifiedBusinesses: 0, customersCount: 0, prospectsCount: 0, anchorBusinessesCount: 0, assignedAffiliatesCount: 0, penetrationPercentage: 0, discoveryProgress: 0, verificationProgress: 0, salesContactProgress: 0, partnershipsProgress: 0, overallCompletion: 0, currentStage: 1, nextRecommendedAction: '', assignedAffiliates: [], createdAt: '', updatedAt: ''}}
+                         selectedNode={selectedNode}
+                         childNodes={nodes.filter(n => n.parentId === selectedNodeId)}
+                         businesses={businesses}
                         selectedBusinessId={selectedBusiness?.id}
                         onSelectBusiness={handleSelectBusiness}
                         onSelectNode={setSelectedNodeId}
-                        mapCenter={getCenterForNode(selectedNodeId)}
-                        mapZoom={getZoomForNode(selectedNodeId)}
+                         mapCenter={mapCenter}
+                         mapZoom={mapZoom}
                       />
                     </div>
                   </div>
@@ -255,4 +312,8 @@ export default function MarketMappingPage() {
       )}
     </AdminLayout>
   );
+}
+
+function RetryState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return <div className="flex items-center gap-3 text-sm text-red-600"><span>{message}</span><button onClick={onRetry} className="font-bold underline">Retry</button></div>;
 }

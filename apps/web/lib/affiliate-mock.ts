@@ -1,4 +1,4 @@
-import { 
+﻿import { 
   PlannedVisit, 
   TerritoryStats, 
   AffiliatePerformance, 
@@ -75,7 +75,7 @@ export const mockNotes: BusinessNote[] = [
   { id: 'n2', businessId: 'v2', type: 'TASK', content: 'Send updated pricing proposal', createdAt: '2026-07-28T11:00:00Z', dueDate: '2026-07-29', completed: false },
 ];
 
-// Mock anchor businesses — untouched anchors from insights
+// Mock anchor businesses ΓÇö untouched anchors from insights
 export const mockAnchorBusinesses: PlannedVisit[] = [
   { id: 'anc1', name: 'Grand Square Supermarket', category: 'Supermarket / Grocery', status: 'NOT_YET', isPlaceholder: false, isAnchor: true, address: 'Banex Plaza, Block A', dailyCustomers: 'VERY_HIGH', businessSize: 'LARGE' },
   { id: 'anc2', name: 'Kingsley Hotel & Suites', category: 'Hotel / Lodge', status: 'NOT_YET', isPlaceholder: false, isAnchor: true, address: 'Banex Plaza, Block C', dailyCustomers: 'HIGH', businessSize: 'LARGE' },
@@ -84,7 +84,7 @@ export const mockAnchorBusinesses: PlannedVisit[] = [
   { id: 'anc5', name: 'Federal Training Institute', category: 'School / Training Center', status: 'NOT_YET', isPlaceholder: false, isAnchor: true, address: 'Banex Plaza, Block E', dailyCustomers: 'HIGH', businessSize: 'LARGE' },
 ];
 
-// Mock priority visits — high-rated recommended businesses
+// Mock priority visits ΓÇö high-rated recommended businesses
 export const mockPriorityVisits: PlannedVisit[] = [
   { id: 'pri1', name: 'Banex Gourmet Restaurant', category: 'Restaurant / Fast Food', status: 'NOT_YET', isPlaceholder: false, address: 'Banex Plaza, Block B', dailyCustomers: 'HIGH', businessSize: 'MEDIUM', ownerName: 'Mr. Ade' },
   { id: 'pri2', name: 'TechHub phone Accessories', category: 'Electronics / Phone Accessories', status: 'NOT_YET', isPlaceholder: false, address: 'Banex Plaza, Block A', dailyCustomers: 'MEDIUM', businessSize: 'SMALL' },

@@ -25,3 +25,20 @@ export const useRequestWithdrawal = () => {
     },
   });
 };
+
+export const useWithdrawalStats = () => {
+  return useQuery<{
+    totalPayouts?: number;
+    pendingRequests?: number;
+    approvedAmount?: number;
+    completedAmount?: number;
+    [key: string]: any;
+  }>({
+    queryKey: ['withdrawals', 'stats'],
+    queryFn: async () => {
+      const { data } = await api.get('/withdrawals/stats');
+      return data;
+    },
+  });
+};
+

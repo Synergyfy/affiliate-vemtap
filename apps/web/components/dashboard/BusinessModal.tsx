@@ -18,12 +18,7 @@ interface BusinessModalProps {
 export default function BusinessModal({ isOpen, onClose, onConfirm, initialData, mode }: BusinessModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { data: config } = useMarketMappingConfig();
-  const planTypes = config?.planTypes ?? [
-    { value: 'BASIC', label: 'Basic' },
-    { value: 'STARTER', label: 'Starter' },
-    { value: 'PROFESSIONAL', label: 'Professional' },
-    { value: 'ENTERPRISE', label: 'Enterprise' },
-  ];
+  const planTypes = config?.planTypes ?? [];
   const [formData, setFormData] = useState({
     businessName: initialData?.name || '',
     ownerName: initialData?.ownerName || '',

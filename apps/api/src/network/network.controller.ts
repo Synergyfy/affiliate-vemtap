@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiOkResponse, ApiCreatedResponse } from '@nestjs/swagger';
 import { NetworkService } from './network.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -6,7 +6,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '@prisma/client';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { PaginatedNetworkRecruitResponseDto, NetworkStatsResponseDto, ClaimBonusDto } from './dto/network-response.dto';
+import { PaginatedNetworkRecruitResponseDto, NetworkStatsResponseDto, ClaimBonusDto, UpdateTargetsDto } from './dto/network-response.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 
 @ApiTags('network')
@@ -43,6 +43,34 @@ export class NetworkController {
   @ApiOkResponse({ type: NetworkStatsResponseDto })
   getStats(@CurrentUser() user: { id: string }) {
     return this.networkService.getStats(user.id);
+  }
+
+  @Get('team-member/:id')
+  @Roles(Role.AFFILIATE, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get full team member details and history' })
+  getTeamMemberDetail(@Param('id') memberId: string, @CurrentUser() user: { id: string }) {
+    return this.networkService.getTeamMemberDetail(user.id, memberId);
+  }
+
+  @Post('update-targets')
+  @Roles(Role.AFFILIATE, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Update team member target goals' })
+  updateTargets(@CurrentUser() user: { id: string }, @Body() dto: UpdateTargetsDto) {
+    return this.networkService.updateTargets(user.id, dto);
+  }
+
+  @Get('earnings-history')
+  @Roles(Role.AFFILIATE, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get team earnings history over time' })
+  getEarningsHistory(@CurrentUser() user: { id: string }) {
+    return this.networkService.getEarningsHistory(user.id);
+  }
+
+  @Get('team-reports')
+  @Roles(Role.AFFILIATE, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get aggregated team performance reports' })
+  getTeamReports(@CurrentUser() user: { id: string }, @Query('period') period?: string) {
+    return this.networkService.getTeamReports(user.id, period);
   }
 
   @Post('claim-bonus')

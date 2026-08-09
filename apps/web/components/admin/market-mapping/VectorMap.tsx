@@ -12,6 +12,7 @@ interface VectorMapProps {
   onSelectBusiness: (business: MappedBusiness) => void;
   onSelectNode?: (nodeId: string) => void;
   showAnchorsOnly: boolean;
+  forceCluster?: boolean;
 }
 
 export default function VectorMap({
@@ -21,14 +22,28 @@ export default function VectorMap({
   selectedBusinessId,
   onSelectBusiness,
   onSelectNode,
-  showAnchorsOnly
+  showAnchorsOnly,
+  forceCluster = false
 }: VectorMapProps) {
 
   const displayedBusinesses = showAnchorsOnly 
     ? businesses.filter(b => b.isAnchor) 
     : businesses;
 
-  const isCluster = !selectedNode || selectedNode.type === 'CLUSTER';
+  const isCluster = forceCluster || !selectedNode || selectedNode.type === 'CLUSTER';
+
+  const computeBounds = (values: Array<number | undefined>) => {
+    const valid = values.filter((v): v is number => typeof v === 'number' && isFinite(v));
+    if (valid.length === 0) return null;
+    return { min: Math.min(...valid), max: Math.max(...valid), range: Math.max(Math.max(...valid) - Math.min(...valid), 1) };
+  };
+
+  const businessLatBounds = computeBounds(displayedBusinesses.map((b) => b.latitude));
+  const businessLngBounds = computeBounds(displayedBusinesses.map((b) => b.longitude));
+  const businessHasGeo = Boolean(businessLatBounds && businessLngBounds);
+  const nodeLatBounds = computeBounds(childNodes.map((n) => n.latitude));
+  const nodeLngBounds = computeBounds(childNodes.map((n) => n.longitude));
+  const nodeHasGeo = Boolean(nodeLatBounds && nodeLngBounds);
 
   const getPinStyle = (status: MappedBusiness['status'], isAnchor: boolean) => {
     if (isAnchor) {
@@ -68,10 +83,13 @@ export default function VectorMap({
           displayedBusinesses.map((biz, idx) => {
             const isSelected = selectedBusinessId === biz.id;
             const style = getPinStyle(biz.status, biz.isAnchor);
-            
-            // Generate visual scatter coordinates for demonstration layout
-            const topOffset = 15 + ((idx * 14) % 70);
-            const leftOffset = 10 + ((idx * 18) % 78);
+
+            const topOffset = businessHasGeo && businessLatBounds
+              ? 85 - ((biz.latitude - businessLatBounds.min) / businessLatBounds.range) * 70
+              : 15 + ((idx * 14) % 70);
+            const leftOffset = businessHasGeo && businessLngBounds
+              ? 10 + ((biz.longitude - businessLngBounds.min) / businessLngBounds.range) * 78
+              : 10 + ((idx * 18) % 78);
 
             return (
               <div
@@ -104,8 +122,12 @@ export default function VectorMap({
         ) : (
           /* Render Child Nodes */
           childNodes.map((node, idx) => {
-            const topOffset = 20 + ((idx * 25) % 60);
-            const leftOffset = 20 + ((idx * 30) % 60);
+            const topOffset = nodeHasGeo && nodeLatBounds && typeof node.latitude === 'number'
+              ? 85 - ((node.latitude - nodeLatBounds.min) / nodeLatBounds.range) * 70
+              : 20 + ((idx * 25) % 60);
+            const leftOffset = nodeHasGeo && nodeLngBounds && typeof node.longitude === 'number'
+              ? 10 + ((node.longitude - nodeLngBounds.min) / nodeLngBounds.range) * 78
+              : 20 + ((idx * 30) % 60);
             const percentage = node.totalBusinesses ? Math.round(((node.totalCustomers || 0) / node.totalBusinesses) * 100) : 0;
 
             return (

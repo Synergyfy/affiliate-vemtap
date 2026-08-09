@@ -48,12 +48,12 @@ export default function PerformanceMetrics({ performance }: PerformanceMetricsPr
 
       <div className="space-y-5 mb-8">
         {targetMetrics.map((metric, idx) => {
-          const percentage = Math.min(100, Math.round((metric.progress / metric.target) * 100)) || 0;
+          const percentage = metric.target > 0 ? Math.min(100, Math.round((metric.progress / metric.target) * 100)) : 0;
           return (
             <div key={idx}>
               <div className="flex items-center justify-between text-xs font-bold mb-2">
                 <span className="text-slate-600">{metric.label}</span>
-                <span className={metric.text}>{metric.progress} / {metric.target}</span>
+                <span className={metric.text}>{metric.target > 0 ? `${metric.progress} / ${metric.target}` : metric.progress}</span>
               </div>
               <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden flex">
                 <div 

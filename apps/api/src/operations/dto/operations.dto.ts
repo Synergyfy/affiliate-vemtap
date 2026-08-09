@@ -99,3 +99,50 @@ export class UpdateOnboardingDto {
   @IsOptional()
   notes?: string;
 }
+
+export class GetOperationsReportDto {
+  @IsString()
+  @IsOptional()
+  country?: string;
+
+  @IsString()
+  @IsOptional()
+  state?: string;
+
+  @IsString()
+  @IsOptional()
+  city?: string;
+
+  @IsString()
+  @IsOptional()
+  area?: string;
+
+  @IsString()
+  @IsOptional()
+  cluster?: string;
+
+  @IsString()
+  @IsOptional()
+  period?: string; // daily | weekly | monthly
+
+  @IsString()
+  @IsOptional()
+  tab?: string; // teams | agents | affiliates | line-managers
+}
+
+export class GetOperationsReportDetailDto {
+  @IsString()
+  @IsOptional()
+  subjectId?: string;
+
+  @IsString()
+  type!: string;
+
+  @IsString()
+  @IsOptional()
+  period?: string;
+
+  @IsString()
+  @IsOptional()
+  locationId?: string;
+}

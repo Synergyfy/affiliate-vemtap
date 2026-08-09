@@ -1,14 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { MessageSquare, Send, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import {
-  getReportComments,
-  addReportComment,
-  ReportComment,
-} from '@/lib/report-comments';
+import { useMarketMappingNotes, useAddMarketMappingNote } from '@/services/useMarketMappingHooks';
 
 interface ReportCommentsProps {
   reportKey: string;
@@ -19,13 +15,10 @@ interface ReportCommentsProps {
 
 export default function ReportComments({ reportKey, currentUser, className, placeholder }: ReportCommentsProps) {
   const { showToast } = useToast();
-  const [comments, setComments] = useState<ReportComment[]>([]);
+  const { data: notes = [] } = useMarketMappingNotes(undefined, reportKey);
+  const addNote = useAddMarketMappingNote();
   const [draft, setDraft] = useState('');
   const [isAdding, setIsAdding] = useState(false);
-
-  useEffect(() => {
-    setComments(getReportComments(reportKey));
-  }, [reportKey]);
 
   const handleSubmit = () => {
     const text = draft.trim();
@@ -34,14 +27,9 @@ export default function ReportComments({ reportKey, currentUser, className, plac
       showToast('Sign in to add a comment', 'error');
       return;
     }
-    addReportComment(reportKey, {
-      author: currentUser.name,
-      role: currentUser.role,
-      text,
-    });
+    addNote.mutate({ reportKey, businessName: reportKey, content: text });
     setDraft('');
     setIsAdding(false);
-    setComments(getReportComments(reportKey));
     showToast('Comment saved and attached to the report', 'success');
   };
 
@@ -50,24 +38,24 @@ export default function ReportComments({ reportKey, currentUser, className, plac
       <div className="flex items-center gap-2 mb-3">
         <MessageSquare className="w-4 h-4 text-orange-600" />
         <span className="text-xs font-bold text-slate-900">Comments</span>
-        {comments.length > 0 && (
-          <span className="ml-auto text-[10px] font-bold text-slate-400">{comments.length}</span>
+        {notes.length > 0 && (
+          <span className="ml-auto text-[10px] font-bold text-slate-400">{notes.length}</span>
         )}
       </div>
 
       <div className="space-y-2">
-        {comments.length === 0 ? (
+        {notes.length === 0 ? (
           <p className="text-xs text-slate-400 italic py-2">No comments yet. Add your comments.</p>
         ) : (
-          comments.map((c) => (
+          notes.map((c) => (
             <div key={c.id} className="flex items-start gap-2 p-2 rounded-lg bg-slate-50">
               <div className="w-6 h-6 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0 mt-0.5">
                 <User className="w-3 h-3" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-slate-700">{c.text}</p>
+                <p className="text-xs text-slate-700">{c.content}</p>
                 <p className="text-[10px] text-slate-400 mt-0.5">
-                  {c.author} · {c.role} · {new Date(c.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  {new Date(c.createdAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                 </p>
               </div>
             </div>
@@ -93,7 +81,7 @@ export default function ReportComments({ reportKey, currentUser, className, plac
             </button>
             <button
               onClick={handleSubmit}
-              disabled={!draft.trim()}
+              disabled={!draft.trim() || addNote.isPending}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send className="w-3 h-3" /> Save Comment

@@ -1,10 +1,10 @@
-import { Controller, Get, Post, Patch, Param, Body, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, UseGuards, Req, Query } from '@nestjs/common';
 import { OperationsService } from './operations.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { 
   CreateTaskDto, UpdateTaskDto, 
   CreateDemoDto, UpdateDemoDto, 
-  UpdateOnboardingDto 
+  UpdateOnboardingDto, GetOperationsReportDto, GetOperationsReportDetailDto
 } from './dto/operations.dto';
 
 @Controller('operations')
@@ -70,5 +70,20 @@ export class OperationsController {
   @Get('onboarding/bonus')
   getOnboardingBonus() {
     return this.operationsService.getOnboardingBonus();
+  }
+
+  @Get('reports/hierarchy')
+  getReportHierarchy() {
+    return this.operationsService.getReportHierarchy();
+  }
+
+  @Get('reports/aggregates')
+  getReportAggregates(@Query() dto: GetOperationsReportDto) {
+    return this.operationsService.getReportAggregates(dto);
+  }
+
+  @Get('reports/detail')
+  getReportDetail(@Query() dto: GetOperationsReportDetailDto) {
+    return this.operationsService.getReportDetail(dto);
   }
 }

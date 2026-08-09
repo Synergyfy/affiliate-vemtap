@@ -3,21 +3,15 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateBusinessDto } from './dto/business.dto';
 import { UpdateBusinessDto } from './dto/update-business.dto';
 import { BusinessFilterDto } from './dto/business-filter.dto';
-import { PlanType, Prisma, BusinessStatus } from '@prisma/client';
+import { Prisma, BusinessStatus } from '@prisma/client';
+import { ResendService } from '../otp/resend.service';
 
 @Injectable()
 export class BusinessesService {
-  constructor(private prisma: PrismaService) {}
-
-  private getPlanPrice(plan: PlanType): number {
-    switch (plan) {
-      case PlanType.BASIC: return 3000;
-      case PlanType.STARTER: return 5000;      // Maps to "Standard" in Summary
-      case PlanType.PROFESSIONAL: return 10000; // Maps to "Pro" in Summary
-      case PlanType.ENTERPRISE: return 15000;   // Maps to "Premium" in Summary
-      default: return 0;
-    }
-  }
+  constructor(
+    private prisma: PrismaService,
+    private readonly resendService: ResendService,
+  ) {}
 
   async findAll(userId: string, filters: BusinessFilterDto) {
     const where = this.buildWhereClause(filters, userId);
@@ -91,17 +85,32 @@ export class BusinessesService {
   async findOne(id: string) {
     return this.prisma.business.findUnique({
       where: { id },
-      include: { affiliate: true },
+      include: {
+        affiliate: true,
+        statusHistory: {
+          orderBy: { createdAt: 'desc' },
+          include: { changedBy: { select: { id: true, fullName: true } } },
+        },
+      },
     });
   }
 
   async create(userId: string, dto: CreateBusinessDto) {
-    const subscriptionAmount = this.getPlanPrice(dto.planType);
-    
-    // Fetch platform settings for the rate (fallback to 0.15)
+    // Plan pricing is owned by the Vemtap backend. A business logged by the
+    // affiliate starts at ₦0; Vemtap's payment event sets the real amount and
+    // then triggers commissions.
+    const subscriptionAmount = 0;
+
+    // Commission settings are required for financial calculations.
     const settings = await this.prisma.platformSettings.findFirst();
-    const commissionRate = settings?.directCommissionRate ? Number(settings.directCommissionRate) : 0.15;
-    const commissionAmount = subscriptionAmount * commissionRate;
+    if (settings?.directCommissionRate == null) {
+      throw new BadRequestException('Direct commission rate is not configured');
+    }
+    const commissionRate = Number(settings.directCommissionRate);
+    if (!Number.isFinite(commissionRate) || commissionRate < 0 || commissionRate > 1) {
+      throw new BadRequestException('Direct commission rate is invalid');
+    }
+    const commissionAmount = 0;
 
     return this.prisma.business.create({
       data: {
@@ -131,7 +140,7 @@ export class BusinessesService {
     });
   }
 
-  async updateStatus(id: string, dto: { status: BusinessStatus }) {
+  async updateStatus(id: string, dto: { status: BusinessStatus }, changedById: string) {
     const business = await this.findOne(id);
     if (!business) throw new NotFoundException('Business not found');
 
@@ -142,6 +151,17 @@ export class BusinessesService {
         paidAt: dto.status === 'ACTIVE' ? new Date() : business.paidAt,
       },
     });
+
+    if (business.status !== dto.status) {
+      await this.prisma.businessStatusHistory.create({
+        data: {
+          businessId: id,
+          fromStatus: business.status,
+          toStatus: dto.status,
+          changedById,
+        },
+      });
+    }
 
     // TRIGGER COMMISSION IF ACTIVE
     if (dto.status === 'ACTIVE' && business.status !== 'ACTIVE') {
@@ -181,8 +201,25 @@ export class BusinessesService {
       data: { lastReminderAt: new Date() },
     });
 
-    // TODO: Actually send email/notification here
-    return { message: 'Reminder sent successfully' };
+    const emailSent = await this.resendService.sendBroadcastEmail(
+      [business.email],
+      `Reminder: Complete your Vemtap ${business.planType} subscription`,
+      `Hi ${business.ownerName},\n\nThis is a friendly reminder to complete the subscription for ${business.businessName} so you can start using Vemtap.\n\nIf you have any questions, reply to this email or reach out to support@vemtap.com.\n\nBest regards,\nThe Vemtap Team`,
+    );
+
+    await this.prisma.notification.create({
+      data: {
+        userId,
+        type: 'SYSTEM',
+        title: 'Reminder sent',
+        message: `Reminder sent to ${business.businessName}`,
+      },
+    });
+
+    return {
+      message: 'Reminder sent successfully',
+      emailSent: emailSent > 0,
+    };
   }
 
   async exportToCsv(userId: string, filters: BusinessFilterDto) {
@@ -220,13 +257,32 @@ export class BusinessesService {
 
   public async generateCommissions(business: any) {
     const amount = Number(business.subscriptionAmount);
-    
+
+    // Never generate a commission without a real subscription amount. A
+    // business logged by the affiliate (₦0) only earns once Vemtap's payment
+    // event sets the actual amount.
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return { skipped: true, reason: 'No subscription amount set' };
+    }
+
     // Fetch current rates from settings
     const settings = await this.prisma.platformSettings.findFirst();
-    const directRate = settings?.directCommissionRate ? Number(settings.directCommissionRate) : 0.15;
+    if (settings?.directCommissionRate == null) {
+      throw new BadRequestException('Direct commission rate is not configured');
+    }
+    const directRate = Number(settings.directCommissionRate);
+    if (!Number.isFinite(directRate) || directRate < 0 || directRate > 1) {
+      throw new BadRequestException('Direct commission rate is invalid');
+    }
     
     // Default indirect rate is 5%, but boosted to 10% if Manager Mode is active
-    let indirectRate = settings?.indirectCommissionRate ? Number(settings.indirectCommissionRate) : 0.05;
+    if (settings?.indirectCommissionRate == null) {
+      throw new BadRequestException('Indirect commission rate is not configured');
+    }
+    let indirectRate = Number(settings.indirectCommissionRate);
+    if (!Number.isFinite(indirectRate) || indirectRate < 0 || indirectRate > 1) {
+      throw new BadRequestException('Indirect commission rate is invalid');
+    }
 
     return this.prisma.$transaction(async (tx) => {
       // Guard: Check if direct commission already exists for this business
@@ -280,12 +336,10 @@ export class BusinessesService {
 
           // Only Supervisors and Managers (or legacy users in Manager Mode) earn overrides
           if (referrer && ((referrer.role as string) === 'SUPERVISOR' || (referrer.role as string) === 'MANAGER' || referrer.isManagerMode)) {
-            // Managers earn a boosted 10% override; Supervisors earn 5%
-            if ((referrer.role as string) === 'MANAGER') {
-              indirectRate = 0.10;
-            } else {
-              indirectRate = 0.05;
-            }
+            const managerRate = Number(settings?.managerOverrideRate ?? 0.10);
+            const supervisorRate = Number(settings?.supervisorOverrideRate ?? 0.05);
+            // Managers earn a boosted override; Supervisors earn the standard rate
+            indirectRate = (referrer.role as string) === 'MANAGER' ? managerRate : supervisorRate;
 
             const indirectAmount = amount * indirectRate;
 

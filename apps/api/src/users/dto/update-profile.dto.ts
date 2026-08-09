@@ -113,4 +113,27 @@ export class UpdateProfileDto {
   @IsInt()
   @Min(0)
   monthlyConversionTarget?: number;
+
+  @ApiProperty({ required: false, example: true, description: "Tour completed status" })
+  @IsOptional()
+  isTourCompleted?: boolean;
+
+  @ApiProperty({ required: false, example: true, description: "Onboarding completed status" })
+  @IsOptional()
+  isOnboardingCompleted?: boolean;
+
+  @ApiProperty({ required: false, example: "DL12345678", description: "Driver's License number" })
+  @IsOptional()
+  @IsString()
+  driversLicense?: string;
+
+  @ApiProperty({ required: false, example: "A12345678", description: "International Passport number" })
+  @IsOptional()
+  @IsString()
+  internationalPassport?: string;
+
+  @ApiProperty({ required: false, example: "NIN", description: "Identity document type (NIN, BVN, DL, IP)" })
+  @IsOptional()
+  @IsString()
+  idType?: string;
 }

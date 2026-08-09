@@ -72,6 +72,8 @@ export interface User {
   bvn?: string;
   kycStatus?: 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
   isManagerMode?: boolean;
+  isTourCompleted?: boolean;
+  driversLicense?: string;
   dailyLeadTarget?: number;
   monthlyConversionTarget?: number;
   reportingScore?: number;
@@ -82,6 +84,96 @@ export interface User {
     businesses?: number;
     leads?: number;
   };
+}
+
+export interface AdminPerformanceReport {
+  userId: string;
+  period: string;
+  totalLeads: number;
+  totalConversions: number;
+  totalEarnings: number;
+  dailyTarget?: number | null;
+  monthlyTarget?: number | null;
+  reportingScore: number;
+  attendanceRate: number;
+  leads: Lead[];
+  businesses: Business[];
+  commissions: Commission[];
+}
+
+export interface AdminLocationAssignment {
+  id: string;
+  clusterId: string;
+  assignedAt: string;
+  dailyLeadTarget: number;
+  weeklyLeadTarget: number;
+  monthlyConversionTarget: number;
+  cluster: {
+    id: string;
+    name: string;
+    type: string;
+    parentId?: string | null;
+    totalBusinesses?: number;
+  };
+}
+
+export interface AdminUserLocations {
+  id: string;
+  territoryId?: string | null;
+  marketMappingAssignments: AdminLocationAssignment[];
+}
+
+export interface AdminActivity {
+  id: string;
+  type: string;
+  title: string;
+  description?: string | null;
+  businessName?: string | null;
+  createdAt: string;
+}
+
+export interface AdminTargetAdjustmentLog {
+  id: string;
+  managerId: string;
+  memberId: string;
+  oldDailyLeadTarget: number;
+  newDailyLeadTarget: number;
+  oldMonthlyConversionTarget: number;
+  newMonthlyConversionTarget: number;
+  reason?: string | null;
+  createdAt: string;
+}
+
+export interface AdminAgreementSignature {
+  id: string;
+  agreementId: string;
+  version: number;
+  signedAt: string;
+  agreement?: { id: string; title: string };
+}
+
+export interface AdminUserHistory {
+  userId: string;
+  activities: AdminActivity[];
+  targetAdjustmentLogs: AdminTargetAdjustmentLog[];
+  signatures: AdminAgreementSignature[];
+}
+
+export interface AdminTeamMember {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  role: Role;
+  status: 'ACTIVE' | 'SUSPENDED';
+  dailyLeadTarget?: number | null;
+  monthlyConversionTarget?: number | null;
+  createdAt: string;
+}
+
+export interface AdminUserTeam {
+  managerId: string;
+  teamMembers: AdminTeamMember[];
 }
 
 export interface PlatformSettings {
@@ -127,15 +219,15 @@ export interface PipelineStatusConfig {
 export interface CustomerRangeConfig {
   value: string;
   label: string;
-  min: number;
-  max: number;
+  min?: number;
+  max?: number;
 }
 
 export interface BusinessSizeConfig {
   value: string;
   label: string;
-  minStaff: number;
-  maxStaff: number;
+  minStaff?: number;
+  maxStaff?: number;
 }
 
 export interface MarketMappingConfig {

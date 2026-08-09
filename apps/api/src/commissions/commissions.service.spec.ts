@@ -22,6 +22,9 @@ describe('CommissionsService', () => {
             user: {
               findUnique: jest.fn(),
             },
+            platformSettings: {
+              findFirst: jest.fn().mockResolvedValue({ earningDurationMonths: 12 }),
+            },
           },
         },
       ],

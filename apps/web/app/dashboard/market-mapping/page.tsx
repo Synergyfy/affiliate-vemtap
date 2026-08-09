@@ -22,17 +22,17 @@ export default function MarketMappingHubPage() {
   const weekPlan = missionPlans.find(p => p.horizon === 'WEEK');
   const activePlan = dayPlan || weekPlan;
 
-  const dayTarget = dayPlan?.targetCount || performance.dailyTarget || config?.dailyTarget || 20;
-  const weekTarget = weekPlan?.targetCount || performance.weeklyTarget || config?.weeklyTarget || 100;
+  const dayTarget = dayPlan?.targetCount || performance.dailyTarget || config?.dailyTarget || 0;
+  const weekTarget = weekPlan?.targetCount || performance.weeklyTarget || config?.weeklyTarget || 0;
   const dayProgress = performance.dailyProgress;
   const weekProgress = performance.weeklyProgress;
   const dayRemaining = Math.max(0, dayTarget - dayProgress);
   const weekRemaining = Math.max(0, weekTarget - weekProgress);
 
-  const dayPercent = Math.min(100, Math.round((dayProgress / dayTarget) * 100));
-  const weekPercent = Math.min(100, Math.round((weekProgress / weekTarget) * 100));
+  const dayPercent = dayTarget > 0 ? Math.min(100, Math.round((dayProgress / dayTarget) * 100)) : 0;
+  const weekPercent = weekTarget > 0 ? Math.min(100, Math.round((weekProgress / weekTarget) * 100)) : 0;
 
-  const monthlySubTarget = Math.max(20, performance.monthlyTarget || config?.monthlyTarget || 20);
+  const monthlySubTarget = performance.monthlyTarget || config?.monthlyTarget || 0;
   const [editingTarget, setEditingTarget] = useState(false);
   const [targetInput, setTargetInput] = useState(String(monthlySubTarget));
 
@@ -166,7 +166,7 @@ export default function MarketMappingHubPage() {
                       <p className="text-[10px] font-semibold text-slate-400">Today&apos;s goal</p>
                     </div>
                   </div>
-                  <p className="text-xl font-black text-slate-900">{dayProgress}<span className="text-sm text-slate-400 font-bold">/{dayTarget}</span></p>
+                  <p className="text-xl font-black text-slate-900">{dayProgress}{dayTarget > 0 && <span className="text-sm text-slate-400 font-bold">/{dayTarget}</span>}</p>
                 </div>
                 <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                   <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${dayPercent}%` }} />
@@ -185,7 +185,7 @@ export default function MarketMappingHubPage() {
                       <p className="text-[10px] font-semibold text-slate-400">This week&apos;s goal</p>
                     </div>
                   </div>
-                  <p className="text-xl font-black text-slate-900">{weekProgress}<span className="text-sm text-slate-400 font-bold">/{weekTarget}</span></p>
+                  <p className="text-xl font-black text-slate-900">{weekProgress}{weekTarget > 0 && <span className="text-sm text-slate-400 font-bold">/{weekTarget}</span>}</p>
                 </div>
                 <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                   <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${weekPercent}%` }} />
@@ -238,7 +238,7 @@ export default function MarketMappingHubPage() {
                       className="flex items-center gap-1 group"
                     >
                       <p className="text-2xl font-black text-slate-900">{bizStats.customers}</p>
-                      <span className="text-sm text-slate-400 font-bold">/{monthlySubTarget}</span>
+                      {monthlySubTarget > 0 && <span className="text-sm text-slate-400 font-bold">/{monthlySubTarget}</span>}
                       <Pencil className="w-3 h-3 text-slate-300 group-hover:text-purple-500 transition-colors" />
                     </button>
                   )}
@@ -249,7 +249,7 @@ export default function MarketMappingHubPage() {
                     style={{ width: `${subPercent}%` }}
                   />
                 </div>
-                <p className="text-[10px] font-semibold text-slate-400 mt-1.5 text-right">{subPercent}% of {monthlySubTarget} target</p>
+                <p className="text-[10px] font-semibold text-slate-400 mt-1.5 text-right">{monthlySubTarget > 0 ? `${subPercent}% of ${monthlySubTarget} target` : 'No monthly target set'}</p>
               </div>
 
               <div className="grid grid-cols-3 gap-3">

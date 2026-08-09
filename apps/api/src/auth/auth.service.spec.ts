@@ -16,7 +16,7 @@ describe("AuthService", () => {
   let _jwtService: JwtService;
   let prisma: PrismaService;
   let fraudService: FraudService;
-  let auditService: AuditService;
+  let _auditService: AuditService;
 
   const mockUsersService = {
     findByEmail: jest.fn(),
@@ -66,7 +66,7 @@ describe("AuthService", () => {
     _jwtService = module.get<JwtService>(JwtService);
     prisma = module.get<PrismaService>(PrismaService);
     fraudService = module.get<FraudService>(FraudService);
-    auditService = module.get<AuditService>(AuditService);
+    _auditService = module.get<AuditService>(AuditService);
     (service as any).auditService = mockAuditService;
   });
 

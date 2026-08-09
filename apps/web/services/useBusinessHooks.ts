@@ -47,3 +47,13 @@ export const useUpdateBusiness = () => {
     },
   });
 };
+
+export const useSendBusinessReminder = () => {
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data } = await api.post(`/businesses/${id}/reminder`);
+      return data;
+    },
+  });
+};
+

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BusinessesService } from '../businesses/businesses.service';
 
@@ -19,27 +19,56 @@ export class IntegrationService {
       throw new NotFoundException(`Affiliate with code ${dto.referralCode} not found`);
     }
 
+    const amount = Number(dto.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new BadRequestException('A valid payment amount is required');
+    }
+
     return this.prisma.$transaction(async (tx) => {
-      // 2. Create the business record
-      const business = await tx.business.create({
-        data: {
-          businessName: dto.businessName,
-          ownerName: dto.ownerName,
-          email: dto.email,
-          phone: dto.phone,
-          planType: dto.planType,
-          referralCode: dto.referralCode,
-          affiliateId: user.id,
-          subscriptionAmount: dto.amount,
-          status: 'ACTIVE',
-          paidAt: new Date(),
-        },
-        include: { affiliate: true },
+      // Commission rate comes from the affiliate platform's settings.
+      const settings = await tx.platformSettings.findFirst();
+      const commissionRate = settings?.directCommissionRate
+        ? Number(settings.directCommissionRate)
+        : 0.15;
+      const commissionAmount = amount * commissionRate;
+
+      // 2. Upsert the business by email so the real subscription amount lands
+      // on the affiliate-logged record instead of creating a duplicate.
+      const existing = await tx.business.findFirst({
+        where: { email: dto.email },
       });
 
-      // 3. Trigger commissions
-      // NOTE: generateCommissions will use its own transaction context. 
-      // This is acceptable for now but for absolute safety we would pass 'tx' to it.
+      const business = existing
+        ? await tx.business.update({
+            where: { id: existing.id },
+            data: {
+              subscriptionAmount: amount,
+              commissionRate,
+              commissionAmount,
+              status: 'ACTIVE',
+              paidAt: new Date(),
+            },
+            include: { affiliate: true },
+          })
+        : await tx.business.create({
+            data: {
+              businessName: dto.businessName,
+              ownerName: dto.ownerName,
+              email: dto.email,
+              phone: dto.phone,
+              planType: dto.planType,
+              referralCode: dto.referralCode,
+              affiliateId: user.id,
+              subscriptionAmount: amount,
+              commissionRate,
+              commissionAmount,
+              status: 'ACTIVE',
+              paidAt: new Date(),
+            },
+            include: { affiliate: true },
+          });
+
+      // 3. Trigger commissions (guarded against zero amounts and duplicates)
       await this.businessesService.generateCommissions(business);
 
       return { success: true, businessId: business.id };

@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/toast';
 import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api-client';
+import { useTeamMemberDetail } from '@/services/useNetworkHooks';
 
 interface ActivityEntry {
   id: string;
@@ -45,6 +46,8 @@ interface TeamMember {
   phone: string;
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
   dailyLeads: number;
+  dailyConversions?: number;
+  dailyVisits?: number;
   weeklyLeads: number;
   monthlyConversions: number;
   completionRate: number;
@@ -68,33 +71,7 @@ interface TeamMemberDetailModalProps {
   onTargetUpdated?: (memberId: string, field: string, oldValue: number, newValue: number) => void;
 }
 
-// Mock activity data generator
-const generateMockActivities = (member: TeamMember): ActivityEntry[] => [
-  { id: 'act-1', type: 'report', description: 'Submitted daily performance report', date: new Date(Date.now() - 2*3600000).toISOString() },
-  { id: 'act-2', type: 'lead', description: 'Captured new lead: Alhaji Enterprises', date: new Date(Date.now() - 5*3600000).toISOString(), amount: 1 },
-  { id: 'act-3', type: 'conversion', description: 'Closed deal: Mama Cass Kitchen (₦15,000)', date: new Date(Date.now() - 24*3600000).toISOString(), amount: 15000 },
-  { id: 'act-4', type: 'business', description: 'Registered business: De-Royal Choice Supermarket', date: new Date(Date.now() - 48*3600000).toISOString() },
-  { id: 'act-5', type: 'referral', description: `Referred by Line Manager to ${['Alhaji Enterprises', 'Mama Cass Kitchen', 'De-Royal Supermarket'][Math.floor(Math.random()*3)]}`, date: new Date(Date.now() - 72*3600000).toISOString() },
-  { id: 'act-6', type: 'target_change', description: `Target adjusted by you`, date: new Date(Date.now() - 120*3600000).toISOString(), changedBy: 'You', changedById: 'current-user' },
-];
-
-const mockEarningsHistory = [
-  { month: 'Feb 2026', amount: 45000, leads: 12, conversions: 3 },
-  { month: 'Mar 2026', amount: 72000, leads: 18, conversions: 5 },
-  { month: 'Apr 2026', amount: 38000, leads: 10, conversions: 2 },
-  { month: 'May 2026', amount: 95000, leads: 22, conversions: 7 },
-  { month: 'Jun 2026', amount: 125000, leads: 28, conversions: 10 },
-  { month: 'Jul 2026', amount: 85000, leads: 20, conversions: 6 },
-];
-
-const mockReferralHistory = [
-  { id: 'ref-1', businessName: 'Alhaji Enterprises', type: 'lead', date: '2026-07-25', status: 'pending', assignedBy: 'You' },
-  { id: 'ref-2', businessName: 'Mama Cass Kitchen', type: 'conversion', date: '2026-07-24', status: 'completed', assignedBy: 'You' },
-  { id: 'ref-3', businessName: 'De-Royal Choice Supermarket', type: 'business', date: '2026-07-22', status: 'completed', assignedBy: 'Self' },
-  { id: 'ref-4', businessName: 'Grace & Mercy Ventures', type: 'lead', date: '2026-07-20', status: 'completed', assignedBy: 'System' },
-];
-
-export default function TeamMemberDetailModal({ isOpen, onClose, member, onTargetUpdated }: TeamMemberDetailModalProps) {
+export default function TeamMemberDetailModal({ isOpen, onClose, member: memberProp, onTargetUpdated }: TeamMemberDetailModalProps) {
   const { user } = useAuth();
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'history' | 'reports' | 'targets'>('overview');
@@ -104,18 +81,50 @@ export default function TeamMemberDetailModal({ isOpen, onClose, member, onTarge
   const [isAssigning, setIsAssigning] = useState(false);
   const [openReport, setOpenReport] = useState<'daily' | 'weekly' | 'monthly' | null>('daily');
   const [targetForm, setTargetForm] = useState({ dailyLeadTarget: 0, monthlyConversionTarget: 0, reason: '' });
+  const { data: memberDetail } = useTeamMemberDetail(memberProp?.id || '');
+
+  const member = memberProp && memberDetail ? {
+    ...memberProp,
+    name: memberDetail.fullName,
+    email: memberDetail.email,
+    phone: memberDetail.phone,
+    role: memberDetail.role as TeamMember['role'],
+    status: memberDetail.status === 'ACTIVE' ? 'ACTIVE' : 'SUSPENDED' as TeamMember['status'],
+    dailyLeads: memberDetail.dailyLeadsCount || 0,
+    dailyConversions: memberDetail.dailyConversionsCount || 0,
+    dailyVisits: memberDetail.dailyVisitsCount || 0,
+    weeklyLeads: memberDetail.weeklyLeadsCount || 0,
+    monthlyConversions: memberDetail.monthlyConversionsCount || 0,
+    totalEarnings: memberDetail.totalEarnings,
+    earnings: memberDetail.totalEarnings,
+    joinedDate: memberDetail.createdAt,
+    dailyLeadTarget: memberDetail.dailyLeadTarget,
+    monthlyConversionTarget: memberDetail.monthlyConversionTarget,
+    businessesReferred: memberDetail.businessCount,
+    leadsSubmitted: memberDetail.leadCount,
+    activities: memberDetail.activities.map((activity): ActivityEntry => ({
+      id: activity.id,
+      type: activity.type as ActivityEntry['type'],
+      description: activity.description || activity.title,
+      date: activity.createdAt,
+    })),
+  } : memberProp;
+
+  const monthlyHistory = memberDetail?.monthlyBreakdown || [];
+  const referralHistory = memberDetail?.referralHistory || [];
 
   const getReportText = (type: 'daily' | 'weekly' | 'monthly', m: TeamMember): string => {
     const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
     if (type === 'daily') {
-      return `📊 Daily Report for ${m.name} — ${dateStr}\n\nLeads Collected: ${m.dailyLeads}\nConversions: ${Math.round(m.dailyLeads * 0.4)}\nBusinesses Visited: ${Math.round(m.dailyLeads * 1.6)}\nCompletion Rate: ${m.completionRate}%\n\n${m.dailyLeads >= (m.dailyLeadTarget * 0.8) ? `✅ ${m.name} had a productive day collecting ${m.dailyLeads} leads, surpassing ${Math.round((m.dailyLeads / m.dailyLeadTarget) * 100)}% of target.` : `⚠️ ${m.name} collected ${m.dailyLeads} leads, below the target of ${m.dailyLeadTarget}.`}`;
+      return `Daily Report for ${m.name} — ${dateStr}\n\nLeads Collected: ${m.dailyLeads}\nConversions: ${m.dailyConversions ?? 0}\nBusinesses Visited: ${m.dailyVisits ?? 0}\nCompletion Rate: ${m.completionRate}%\n\n${m.dailyLeads >= (m.dailyLeadTarget * 0.8) ? `${m.name} had a productive day collecting ${m.dailyLeads} leads.` : `${m.name} collected ${m.dailyLeads} leads, below the target of ${m.dailyLeadTarget}.`}`;
     }
     if (type === 'weekly') {
       return `📈 Weekly Report for ${m.name} — Week of ${dateStr}\n\nTotal Leads: ${m.weeklyLeads}\nConversions: ${m.monthlyConversions}\nAvg Completion Rate: ${m.completionRate}%\nEarnings: ₦${m.earnings.toLocaleString()}\n\n${m.weeklyLeads >= 25 ? `✅ Strong week with ${m.weeklyLeads} leads generated.` : m.weeklyLeads >= 15 ? `📊 Moderate week with ${m.weeklyLeads} leads.` : `⚠️ Slow week with only ${m.weeklyLeads} leads.`}`;
     }
-    const avgLeads = Math.round(mockEarningsHistory.reduce((s, r) => s + r.leads, 0) / mockEarningsHistory.length);
-    const avgConvRate = Math.round(mockEarningsHistory.reduce((s, r) => s + (r.conversions / r.leads) * 100, 0) / mockEarningsHistory.length);
-    return `📅 Monthly Performance Report for ${m.name}\n\n6-Month Avg Leads/Month: ${avgLeads}\nAvg Conversion Rate: ${avgConvRate}%\nCurrent Completion Rate: ${m.completionRate}%\nTotal Earnings (6mo): ₦${mockEarningsHistory.reduce((s, r) => s + r.amount, 0).toLocaleString()}\n\n${m.completionRate >= 80 ? `✅ ${m.name} continues to be a top performer.` : m.completionRate >= 60 ? `📊 ${m.name} has room to grow but shows dedication.` : `⚠️ ${m.name} would benefit from additional training.`}`;
+    const avgLeads = monthlyHistory.length ? Math.round(monthlyHistory.reduce((sum, row) => sum + row.leads, 0) / monthlyHistory.length) : 0;
+    const avgConvRate = monthlyHistory.length ? Math.round(monthlyHistory.reduce((sum, row) => sum + (row.leads ? (row.conversions / row.leads) * 100 : 0), 0) / monthlyHistory.length) : 0;
+    const totalEarnings = monthlyHistory.reduce((sum, row) => sum + row.amount, 0);
+    return `Monthly Performance Report for ${m.name}\n\nAverage Leads/Month: ${avgLeads}\nAverage Conversion Rate: ${avgConvRate}%\nCurrent Completion Rate: ${m.completionRate}%\nReported Earnings: ₦${totalEarnings.toLocaleString()}\n\n${m.completionRate >= 80 ? `${m.name} is performing strongly.` : m.completionRate >= 60 ? `${m.name} is making steady progress.` : `${m.name} needs additional support.`}`;
   };
 
   const shareReport = async (type: 'daily' | 'weekly' | 'monthly', m: TeamMember) => {
@@ -144,7 +153,7 @@ export default function TeamMemberDetailModal({ isOpen, onClose, member, onTarge
 
   if (!member) return null;
 
-  const activities = member.activities.length > 0 ? member.activities : generateMockActivities(member);
+  const activities = member.activities;
 
   const handleOpenTargetForm = () => {
     setTargetForm({
@@ -398,7 +407,9 @@ export default function TeamMemberDetailModal({ isOpen, onClose, member, onTarge
                     <span className="text-xs text-slate-400 font-medium">{activities.length} entries</span>
                   </div>
                   <div className="space-y-3">
-                    {activities.slice(0, 10).map((activity) => (
+                    {activities.length === 0 ? (
+                      <div className="p-6 rounded-xl bg-slate-50 border border-slate-100 text-center text-xs text-slate-400">No activity recorded for this member.</div>
+                    ) : activities.slice(0, 10).map((activity) => (
                       <div key={activity.id} className="flex gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
                         <div className={cn(
                           "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
@@ -492,7 +503,9 @@ export default function TeamMemberDetailModal({ isOpen, onClose, member, onTarge
                       Referral & Assignment History
                     </h3>
                     <div className="space-y-2">
-                      {mockReferralHistory.map(ref => (
+                      {referralHistory.length === 0 ? (
+                        <div className="p-6 rounded-xl bg-slate-50 border border-slate-100 text-center text-xs text-slate-400">No referrals recorded for this member.</div>
+                      ) : referralHistory.map(ref => (
                         <div key={ref.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
                           <div className="flex items-center gap-3">
                             <div className={cn(
@@ -502,7 +515,7 @@ export default function TeamMemberDetailModal({ isOpen, onClose, member, onTarge
                             )}>{ref.type === 'lead' ? 'L' : ref.type === 'conversion' ? 'C' : 'B'}</div>
                             <div>
                               <p className="text-sm font-bold text-slate-900">{ref.businessName}</p>
-                              <p className="text-[10px] text-slate-400">Assigned by {ref.assignedBy} • {new Date(ref.date).toLocaleDateString()}</p>
+                               <p className="text-[10px] text-slate-400">Recorded referral • {new Date(ref.date).toLocaleDateString()}</p>
                             </div>
                           </div>
                           <span className={cn(
@@ -542,11 +555,11 @@ export default function TeamMemberDetailModal({ isOpen, onClose, member, onTarge
                             <p className="text-[10px] font-bold text-slate-500">Leads Collected</p>
                           </div>
                           <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-center">
-                            <p className="text-lg font-black text-emerald-600">{Math.round(member.dailyLeads * 0.4)}</p>
+                            <p className="text-lg font-black text-emerald-600">{member.dailyConversions ?? 0}</p>
                             <p className="text-[10px] font-bold text-slate-500">Conversions</p>
                           </div>
                           <div className="p-3 rounded-xl bg-purple-50 border border-purple-100 text-center">
-                            <p className="text-lg font-black text-purple-600">{Math.round(member.dailyLeads * 1.6)}</p>
+                            <p className="text-lg font-black text-purple-600">{member.dailyVisits ?? 0}</p>
                             <p className="text-[10px] font-bold text-slate-500">Businesses Visited</p>
                           </div>
                           <div className="p-3 rounded-xl bg-amber-50 border border-amber-100 text-center">
@@ -559,8 +572,8 @@ export default function TeamMemberDetailModal({ isOpen, onClose, member, onTarge
                             <span className="font-bold">Daily Summary:</span>{' '}
                             {member.name}{' '}
                             {member.dailyLeads >= (member.dailyLeadTarget * 0.8)
-                              ? `had a productive day collecting ${member.dailyLeads} leads, surpassing ${Math.round((member.dailyLeads / member.dailyLeadTarget) * 100)}% of their daily target. They closed ${Math.round(member.dailyLeads * 0.4)} conversions and visited ${Math.round(member.dailyLeads * 1.6)} businesses. Their completion rate of ${member.completionRate}% is ${member.completionRate >= 80 ? 'excellent and shows consistent effort throughout the day.' : member.completionRate >= 60 ? 'acceptable but there is room for improvement in meeting scheduling.' : 'below expectations and may need additional support or coaching.'}`
-                              : `${member.name} collected ${member.dailyLeads} leads today, which is below their daily target of ${member.dailyLeadTarget}. Only ${Math.round(member.dailyLeads * 0.4)} conversions were recorded from ${Math.round(member.dailyLeads * 1.6)} business visits. The completion rate stands at ${member.completionRate}%, ${member.completionRate >= 60 ? 'which is fair but needs improvement in lead generation.' : 'which requires immediate attention and possible intervention.'}`
+                              ? `had a productive day collecting ${member.dailyLeads} leads, surpassing ${Math.round((member.dailyLeads / member.dailyLeadTarget) * 100)}% of their daily target. They closed ${member.dailyConversions ?? 0} conversions and completed ${member.dailyVisits ?? 0} business visits. Their completion rate of ${member.completionRate}% is ${member.completionRate >= 80 ? 'excellent and shows consistent effort throughout the day.' : member.completionRate >= 60 ? 'acceptable but there is room for improvement in meeting scheduling.' : 'below expectations and may need additional support or coaching.'}`
+                              : `${member.name} collected ${member.dailyLeads} leads today, which is below their daily target of ${member.dailyLeadTarget}. ${member.dailyConversions ?? 0} conversions were recorded from ${member.dailyVisits ?? 0} completed business visits. The completion rate stands at ${member.completionRate}%, ${member.completionRate >= 60 ? 'which is fair but needs improvement in lead generation.' : 'which requires immediate attention and possible intervention.'}`
                             }
                           </p>
                         </div>
@@ -668,14 +681,14 @@ export default function TeamMemberDetailModal({ isOpen, onClose, member, onTarge
                               </tr>
                             </thead>
                             <tbody>
-                              {mockEarningsHistory.map((month, idx) => (
+                              {monthlyHistory.map((month, idx) => (
                                 <tr key={idx} className="border-b border-slate-50 last:border-0">
                                   <td className="py-2.5 font-bold text-slate-900">{month.month}</td>
                                   <td className="py-2.5 text-center text-slate-600">{month.leads}</td>
-                                  <td className="py-2.5 text-center text-slate-600">{Math.round(month.leads / 30)}</td>
+                                   <td className="py-2.5 text-center text-slate-600">{Math.round(month.leads / 30)}</td>
                                   <td className="py-2.5 text-center text-slate-600">{month.conversions}</td>
                                   <td className="py-2.5 text-center text-slate-600">{Math.round((month.conversions / month.leads) * 100)}%</td>
-                                  <td className="py-2.5 text-center text-slate-600">{Math.round(month.conversions * 0.7)}</td>
+                                   <td className="py-2.5 text-center text-slate-600">{month.businesses}</td>
                                   <td className="py-2.5 text-right font-bold text-emerald-600">₦{month.amount.toLocaleString()}</td>
                                   <td className="py-2.5 text-center">
                                     <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", month.amount >= 80000 ? "bg-emerald-100 text-emerald-700" : month.amount >= 50000 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700")}>
@@ -690,15 +703,13 @@ export default function TeamMemberDetailModal({ isOpen, onClose, member, onTarge
                         <div className="mt-4 p-4 bg-gradient-to-r from-emerald-50 to-blue-50 rounded-xl border border-slate-100">
                           <p className="text-xs text-slate-700 leading-relaxed">
                             <span className="font-bold">Monthly Performance Summary:</span>{' '}
-                            Over the last 6 months, {member.name} has shown {
-                              mockEarningsHistory.length >= 2 && mockEarningsHistory[mockEarningsHistory.length - 1].amount > mockEarningsHistory[0].amount
-                                ? 'consistent growth'
-                                : 'fluctuating performance'
-                            } in earnings, starting at ₦{mockEarningsHistory[0]?.amount.toLocaleString()} in {mockEarningsHistory[0]?.month} and peaking at ₦{[...mockEarningsHistory].sort((a, b) => b.amount - a.amount)[0]?.amount.toLocaleString()} in {[...mockEarningsHistory].sort((a, b) => b.amount - a.amount)[0]?.month}. Their average monthly conversion rate is {
-                              Math.round(mockEarningsHistory.reduce((sum, m) => sum + (m.conversions / m.leads) * 100, 0) / mockEarningsHistory.length)
-                            }% with an average of {
-                              Math.round(mockEarningsHistory.reduce((sum, m) => sum + m.leads, 0) / mockEarningsHistory.length)
-                            } leads per month. {
+                             Over the last {monthlyHistory.length} months, {member.name} has reported {
+                               monthlyHistory.length >= 2 && monthlyHistory[monthlyHistory.length - 1].amount >= monthlyHistory[0].amount ? 'an upward' : 'a variable'
+                             } earnings performance. Their average monthly conversion rate is {
+                               monthlyHistory.length ? Math.round(monthlyHistory.reduce((sum, row) => sum + (row.leads ? (row.conversions / row.leads) * 100 : 0), 0) / monthlyHistory.length) : 0
+                             }% with an average of {
+                               monthlyHistory.length ? Math.round(monthlyHistory.reduce((sum, row) => sum + row.leads, 0) / monthlyHistory.length) : 0
+                             } leads per month. {
                               member.completionRate >= 80
                                 ? `${member.name} continues to be a top performer with strong consistency.`
                                 : member.completionRate >= 60
