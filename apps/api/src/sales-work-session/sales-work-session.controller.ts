@@ -34,7 +34,7 @@ export class SalesWorkSessionController {
   ) {}
 
   @Post('start')
-  @Roles(Role.SALES_EXECUTIVE)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.SALES_EXECUTIVE)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Start a new work session' })
   @ApiResponse({ status: 201, description: 'Work session started successfully' })
@@ -54,7 +54,7 @@ export class SalesWorkSessionController {
   }
 
   @Post('end')
-  @Roles(Role.SALES_EXECUTIVE)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.SALES_EXECUTIVE)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'End the active work session' })
   @ApiResponse({ status: 200, description: 'Work session ended successfully' })
@@ -73,7 +73,7 @@ export class SalesWorkSessionController {
   }
 
   @Get('active')
-  @Roles(Role.SALES_EXECUTIVE)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: 'Get current active work session' })
   @ApiResponse({ status: 200, description: 'Returns active session or null' })
   async getActiveSession(@CurrentUser() user: any) {
@@ -81,7 +81,7 @@ export class SalesWorkSessionController {
   }
 
   @Get('history')
-  @Roles(Role.SALES_EXECUTIVE)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: 'Get work session history' })
   @ApiResponse({ status: 200, description: 'Returns paginated session history' })
   async getHistory(

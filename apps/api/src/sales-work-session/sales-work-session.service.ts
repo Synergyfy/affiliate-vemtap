@@ -18,8 +18,17 @@ export class SalesWorkSessionService {
   ) {}
 
   private validateSalesExecutiveRole(userRole: Role): void {
-    if (userRole !== Role.SALES_EXECUTIVE) {
-      throw new ForbiddenException('Only Sales Executives can access work sessions');
+    const allowed = [
+      Role.AFFILIATE,
+      Role.AGENT,
+      Role.SUPERVISOR,
+      Role.MANAGER,
+      Role.SALES_EXECUTIVE,
+      Role.ADMIN,
+      Role.SUPER_ADMIN,
+    ];
+    if (!allowed.includes(userRole)) {
+      throw new ForbiddenException('Access denied to work sessions');
     }
   }
 
@@ -83,8 +92,13 @@ export class SalesWorkSessionService {
       id: session.id,
       startedAt: session.startedAt,
       status: session.status,
+      startLatitude: session.startLatitude,
+      startLongitude: session.startLongitude,
+      startAccuracy: session.startAccuracy,
+      startGpsStatus: session.startGpsStatus,
       gpsStatus,
       hasGps: dto.latitude != null,
+      notes: session.notes,
     };
   }
 
@@ -159,8 +173,17 @@ export class SalesWorkSessionService {
       endedAt: now,
       durationMinutes,
       status: session.status,
+      startLatitude: session.startLatitude,
+      startLongitude: session.startLongitude,
+      startAccuracy: session.startAccuracy,
+      endLatitude: session.endLatitude,
+      endLongitude: session.endLongitude,
+      endAccuracy: session.endAccuracy,
+      startGpsStatus: session.startGpsStatus,
+      endGpsStatus: session.endGpsStatus,
       gpsStatus,
       hasGps: dto.latitude != null,
+      notes: session.notes,
     };
   }
 
@@ -191,11 +214,17 @@ export class SalesWorkSessionService {
     return {
       id: session.id,
       startedAt: session.startedAt,
+      endedAt: session.endedAt,
       durationMinutes,
       status: session.status,
       startLatitude: session.startLatitude,
       startLongitude: session.startLongitude,
+      startAccuracy: session.startAccuracy,
+      endLatitude: session.endLatitude,
+      endLongitude: session.endLongitude,
+      endAccuracy: session.endAccuracy,
       startGpsStatus: session.startGpsStatus,
+      endGpsStatus: session.endGpsStatus,
       notes: session.notes,
       gpsEventCount: session.gpsEvents.length,
     };

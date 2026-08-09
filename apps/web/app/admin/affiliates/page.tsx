@@ -529,6 +529,10 @@ function AffiliatesManagement() {
                                 className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-3 transition-colors">
                                 <Eye className="w-4 h-4" /> View Profile
                               </button>
+                              <button onClick={() => { setSelectedAffiliate(user); setIsEditModalOpen(true); setActiveDropdown(null); }}
+                                className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-purple-50 hover:text-purple-600 flex items-center gap-3 transition-colors">
+                                <UserCog className="w-4 h-4" /> Edit Role & Supervisor
+                              </button>
                               <Link href={`/admin/affiliates/${user.id}/history`}
                                 className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-amber-50 hover:text-amber-600 flex items-center gap-3 transition-colors">
                                 <History className="w-4 h-4" /> Activity History

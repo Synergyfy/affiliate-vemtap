@@ -671,11 +671,37 @@ export class UsersService {
 
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },
-      data: { referrerId: managerId },
+      data: { referrerId: managerId, managerId },
+    });
+
+    const { password: _, ...safe } = updatedUser;
+    return safe;
+  }
+
+  async assignUserHierarchy(userId: string, supervisorId?: string, managerId?: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException("User not found");
+
+    if (supervisorId) {
+      const supervisor = await this.prisma.user.findUnique({ where: { id: supervisorId } });
+      if (!supervisor) throw new NotFoundException("Supervisor not found");
+    }
+
+    if (managerId) {
+      const manager = await this.prisma.user.findUnique({ where: { id: managerId } });
+      if (!manager) throw new NotFoundException("Manager not found");
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        supervisorId: supervisorId ?? user.supervisorId,
+        managerId: managerId ?? user.managerId,
+        referrerId: managerId || user.referrerId,
+      },
     });
 
     const { password: _, ...safe } = updatedUser;
     return safe;
   }
 }
-

@@ -46,7 +46,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get("profile")
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: "Get current user profile" })
   @ApiOkResponse({
     type: UserResponseDto,
@@ -58,7 +58,7 @@ export class UsersController {
   }
 
   @Patch("profile")
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: "Update current user profile" })
   @ApiBody({
     type: UpdateProfileDto,
@@ -87,7 +87,7 @@ export class UsersController {
   }
 
   @Post("request-email-update")
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: "Request an email update with OTP" })
   @ApiBody({
     type: RequestEmailUpdateDto,
@@ -111,7 +111,7 @@ export class UsersController {
   }
 
   @Post("verify-email-update")
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: "Verify OTP and update email" })
   @ApiBody({
     type: VerifyEmailUpdateDto,
@@ -132,7 +132,7 @@ export class UsersController {
   }
 
   @Get("leaderboard")
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: "Get affiliate leaderboard" })
   @ApiQuery({
     name: "limit",
@@ -164,7 +164,7 @@ export class UsersController {
   }
 
   @Post("agreement/sign")
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: "Sign the latest affiliate agreement" })
   @ApiResponse({
     status: 201,
@@ -179,7 +179,7 @@ export class UsersController {
   }
 
   @Get("agreement/status")
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: "Check if user has signed the latest agreement" })
   @ApiResponse({
     status: 200,
@@ -413,6 +413,16 @@ export class UsersController {
     @Body() data: { managerId: string }
   ) {
     return this.usersService.assignUserManager(id, data.managerId);
+  }
+
+  @Patch(":id/assign-hierarchy")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Assign supervisor and/or manager hierarchy to affiliate/agent (Admin only)" })
+  assignUserHierarchy(
+    @Param("id") id: string,
+    @Body() data: { supervisorId?: string; managerId?: string }
+  ) {
+    return this.usersService.assignUserHierarchy(id, data.supervisorId, data.managerId);
   }
 }
 

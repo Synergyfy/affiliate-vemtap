@@ -58,6 +58,7 @@ export class CreateMarketMappingVisitDto {
   @IsOptional() @IsArray() openingDays?: string[];
   @IsOptional() @IsString() gpsLat?: string;
   @IsOptional() @IsString() gpsLng?: string;
+  @IsOptional() @IsString() gpsAddress?: string;
   @IsOptional() @IsString() nextVisitDate?: string;
   @IsOptional() @IsString() nextVisitTime?: string;
   @IsOptional() @IsBoolean() decisionMakerMet?: boolean;
@@ -68,7 +69,7 @@ export class CreateMarketMappingVisitDto {
   @IsOptional() @IsString() planId?: string;
 }
 
-export class UpdateMarketMappingVisitDto extends CreateMarketMappingVisitDto {}
+export class UpdateMarketMappingVisitDto extends CreateMarketMappingVisitDto { }
 
 export class UpdateMissionPlanDto {
   @ApiProperty({ required: false, example: 25 })

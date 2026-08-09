@@ -17,7 +17,7 @@ export class NetworkController {
   constructor(private readonly networkService: NetworkService) {}
 
   @Get('recruits')
-  @Roles(Role.AFFILIATE, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: 'List direct recruits and their stats' })
   @ApiOkResponse({ type: PaginatedNetworkRecruitResponseDto })
   async getRecruits(@CurrentUser() user: { id: string }, @Query() paginationDto: PaginationDto) {
@@ -38,7 +38,7 @@ export class NetworkController {
   }
 
   @Get('stats')
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: 'Get network summary stats and milestone progress' })
   @ApiOkResponse({ type: NetworkStatsResponseDto })
   getStats(@CurrentUser() user: { id: string }) {
@@ -46,35 +46,35 @@ export class NetworkController {
   }
 
   @Get('team-member/:id')
-  @Roles(Role.AFFILIATE, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: 'Get full team member details and history' })
   getTeamMemberDetail(@Param('id') memberId: string, @CurrentUser() user: { id: string }) {
     return this.networkService.getTeamMemberDetail(user.id, memberId);
   }
 
   @Post('update-targets')
-  @Roles(Role.AFFILIATE, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: 'Update team member target goals' })
   updateTargets(@CurrentUser() user: { id: string }, @Body() dto: UpdateTargetsDto) {
     return this.networkService.updateTargets(user.id, dto);
   }
 
   @Get('earnings-history')
-  @Roles(Role.AFFILIATE, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: 'Get team earnings history over time' })
   getEarningsHistory(@CurrentUser() user: { id: string }) {
     return this.networkService.getEarningsHistory(user.id);
   }
 
   @Get('team-reports')
-  @Roles(Role.AFFILIATE, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: 'Get aggregated team performance reports' })
   getTeamReports(@CurrentUser() user: { id: string }, @Query('period') period?: string) {
     return this.networkService.getTeamReports(user.id, period);
   }
 
   @Post('claim-bonus')
-  @Roles(Role.AFFILIATE, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: 'Claim a milestone bonus' })
   @ApiCreatedResponse({ description: 'Bonus claimed successfully' })
   claimBonus(@CurrentUser() user: { id: string }, @Body() claimBonusDto: ClaimBonusDto) {
@@ -82,7 +82,7 @@ export class NetworkController {
   }
 
   @Post('toggle-manager-mode')
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: 'Toggle Extended Earnings (Manager Mode)' })
   @ApiCreatedResponse({ description: 'Manager mode toggled successfully' })
   toggleManagerMode(@CurrentUser() user: { id: string }) {

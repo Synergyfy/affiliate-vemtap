@@ -1,5 +1,6 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
@@ -37,6 +38,13 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { MarketMappingModule } from './market-mapping/market-mapping.module';
 import { SupportModule } from './support/support.module';
 import { FaqsModule } from './faqs/faqs.module';
+import { WorkSessionsModule } from './work-sessions/work-sessions.module';
+import { ExceptionsModule } from './exceptions/exceptions.module';
+import { PerformanceModule } from './performance/performance.module';
+import { AnomaliesModule } from './anomalies/anomalies.module';
+
+import { FieldActivityModule } from './field-activity/field-activity.module';
+import { SalesModule } from './sales/sales.module';
 
 @Module({
   imports: [
@@ -44,6 +52,7 @@ import { FaqsModule } from './faqs/faqs.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    ScheduleModule.forRoot(),
     PrismaModule,
     RedisModule,
     UsersModule,
@@ -76,6 +85,12 @@ import { FaqsModule } from './faqs/faqs.module';
     MarketMappingModule,
     SupportModule,
     FaqsModule,
+    WorkSessionsModule,
+    ExceptionsModule,
+    PerformanceModule,
+    AnomaliesModule,
+    FieldActivityModule,
+    SalesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
