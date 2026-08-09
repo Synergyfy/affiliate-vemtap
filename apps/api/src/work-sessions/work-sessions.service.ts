@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
-import { WorkSessionStatus } from '@prisma/client';
+import { AccountabilitySessionStatus } from '@prisma/client';
 import { StartWorkDto, EndWorkDto } from './dto/work-sessions.dto';
 
 @Injectable()
@@ -27,7 +27,7 @@ export class WorkSessionsService {
     const config = await this.getConfig();
 
     const existing = await this.prisma.workSession.findFirst({
-      where: { userId, status: WorkSessionStatus.ACTIVE },
+      where: { userId, status: AccountabilitySessionStatus.ACTIVE },
     });
     if (existing) {
       throw new BadRequestException('You already have an active work session');
@@ -47,7 +47,7 @@ export class WorkSessionsService {
         gpsStartLng: dto.gpsLng ?? null,
         device: dto.device ?? null,
         territoryId: dto.territoryId ?? null,
-        status: WorkSessionStatus.ACTIVE,
+        status: AccountabilitySessionStatus.ACTIVE,
         lateStart,
         expectedStart: config?.expectedWorkStart ?? '09:00',
       },
@@ -70,7 +70,7 @@ export class WorkSessionsService {
 
   async endWork(userId: string, dto: EndWorkDto) {
     const existing = await this.prisma.workSession.findFirst({
-      where: { userId, status: WorkSessionStatus.ACTIVE },
+      where: { userId, status: AccountabilitySessionStatus.ACTIVE },
     });
     if (!existing) {
       throw new NotFoundException('No active work session found');
@@ -79,7 +79,7 @@ export class WorkSessionsService {
     return this.prisma.workSession.update({
       where: { id: existing.id },
       data: {
-        status: WorkSessionStatus.ENDED,
+        status: AccountabilitySessionStatus.ENDED,
         endTime: new Date(),
         gpsEndLat: dto.gpsLat ?? existing.gpsEndLat,
         gpsEndLng: dto.gpsLng ?? existing.gpsEndLng,
@@ -90,7 +90,7 @@ export class WorkSessionsService {
 
   async getActiveSession(userId: string) {
     return this.prisma.workSession.findFirst({
-      where: { userId, status: WorkSessionStatus.ACTIVE },
+      where: { userId, status: AccountabilitySessionStatus.ACTIVE },
     });
   }
 
@@ -120,7 +120,7 @@ export class WorkSessionsService {
 
     return {
       startedWork: !!session,
-      active: session?.status === WorkSessionStatus.ACTIVE,
+      active: session?.status === AccountabilitySessionStatus.ACTIVE,
       startedAt: session?.startTime ?? null,
       endedAt: session?.endTime ?? null,
       lateStart: session?.lateStart ?? false,
@@ -170,7 +170,7 @@ export class WorkSessionsService {
           userId: u.id,
           fullName: u.fullName,
           avatar: u.avatar,
-          status: session ? (session.status === WorkSessionStatus.ACTIVE ? 'WORKING' : 'ENDED') : 'NOT_STARTED',
+          status: session ? (session.status === AccountabilitySessionStatus.ACTIVE ? 'WORKING' : 'ENDED') : 'NOT_STARTED',
           startedAt: session?.startTime ?? null,
           endedAt: session?.endTime ?? null,
           lateStart: session?.lateStart ?? false,
@@ -186,8 +186,8 @@ export class WorkSessionsService {
     const cutoff = new Date();
     cutoff.setHours(cutoff.getHours() - 2);
     await this.prisma.workSession.updateMany({
-      where: { status: WorkSessionStatus.ACTIVE, startTime: { lt: cutoff } },
-      data: { status: WorkSessionStatus.AUTO_ENDED, endTime: cutoff },
+      where: { status: AccountabilitySessionStatus.ACTIVE, startTime: { lt: cutoff } },
+      data: { status: AccountabilitySessionStatus.AUTO_ENDED, endTime: cutoff },
     });
   }
 }

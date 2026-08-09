@@ -414,5 +414,15 @@ export class UsersController {
   ) {
     return this.usersService.assignUserManager(id, data.managerId);
   }
+
+  @Patch(":id/assign-hierarchy")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Assign supervisor and/or manager hierarchy to affiliate/agent (Admin only)" })
+  assignUserHierarchy(
+    @Param("id") id: string,
+    @Body() data: { supervisorId?: string; managerId?: string }
+  ) {
+    return this.usersService.assignUserHierarchy(id, data.supervisorId, data.managerId);
+  }
 }
 

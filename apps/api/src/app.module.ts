@@ -43,6 +43,9 @@ import { ExceptionsModule } from './exceptions/exceptions.module';
 import { PerformanceModule } from './performance/performance.module';
 import { AnomaliesModule } from './anomalies/anomalies.module';
 
+import { FieldActivityModule } from './field-activity/field-activity.module';
+import { SalesModule } from './sales/sales.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -86,6 +89,8 @@ import { AnomaliesModule } from './anomalies/anomalies.module';
     ExceptionsModule,
     PerformanceModule,
     AnomaliesModule,
+    FieldActivityModule,
+    SalesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -58,6 +58,7 @@ export class CreateMarketMappingVisitDto {
   @IsOptional() @IsArray() openingDays?: string[];
   @IsOptional() @IsString() gpsLat?: string;
   @IsOptional() @IsString() gpsLng?: string;
+  @IsOptional() @IsString() gpsAddress?: string;
   @IsOptional() @IsString() nextVisitDate?: string;
   @IsOptional() @IsString() nextVisitTime?: string;
   @IsOptional() @IsBoolean() decisionMakerMet?: boolean;

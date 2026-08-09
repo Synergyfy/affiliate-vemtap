@@ -218,19 +218,25 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
   }, [visit, planLocation]);
 
   const isAnchor = formData.dailyCustomers === 'HIGH' || formData.dailyCustomers === 'VERY_HIGH';
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = useCallback((skipToNext = false) => {
-    const newStatus = formData.status === 'NOT_YET' ? 'VISITED' : (formData.status || 'VISITED');
-    const updated = { ...(formData as PlannedVisit), status: newStatus as any, isPlaceholder: false, isAnchor };
-    setSavedTabs(prev => new Set(prev).add(activeTab));
-    onSave(updated, !skipToNext);
+  const handleSave = useCallback(async (skipToNext = false) => {
+    setIsSaving(true);
+    try {
+      const newStatus = formData.status === 'NOT_YET' ? 'VISITED' : (formData.status || 'VISITED');
+      const updated = { ...(formData as PlannedVisit), status: newStatus as any, isPlaceholder: false, isAnchor };
+      setSavedTabs(prev => new Set(prev).add(activeTab));
+      await onSave(updated, !skipToNext);
 
-    if (skipToNext) {
-      const tabsArr: TabId[] = ['general', 'profile', 'sales'];
-      const currentIdx = tabsArr.indexOf(activeTab);
-      if (currentIdx < tabsArr.length - 1) {
-        setTimeout(() => setActiveTab(tabsArr[currentIdx + 1]), 50);
+      if (skipToNext) {
+        const tabsArr: TabId[] = ['general', 'profile', 'sales'];
+        const currentIdx = tabsArr.indexOf(activeTab);
+        if (currentIdx < tabsArr.length - 1) {
+          setTimeout(() => setActiveTab(tabsArr[currentIdx + 1]), 50);
+        }
       }
+    } finally {
+      setIsSaving(false);
     }
   }, [formData, activeTab, onSave, isAnchor]);
 
@@ -697,10 +703,19 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
                     Previous
                   </button>
                 )}
-                <button type="button" onClick={() => handleSave(!isLastTab)} className={cn("flex-1 py-2.5 rounded-xl text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors", isLastTab ? "bg-emerald-600 hover:bg-emerald-700" : "bg-blue-600 hover:bg-blue-700")}>
-                  <Save className="w-3.5 h-3.5" />
-                  {isLastTab ? 'Save Business' : 'Save & Next'}
-                  {!isLastTab && <ArrowRight className="w-3.5 h-3.5" />}
+                <button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={() => handleSave(!isLastTab)}
+                  className={cn(
+                    "flex-1 py-2.5 rounded-xl text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors",
+                    isSaving && "opacity-75 cursor-not-allowed",
+                    isLastTab ? "bg-emerald-600 hover:bg-emerald-700" : "bg-blue-600 hover:bg-blue-700"
+                  )}
+                >
+                  <Save className={cn("w-3.5 h-3.5", isSaving && "animate-spin")} />
+                  {isSaving ? 'Saving...' : isLastTab ? 'Save Business' : 'Save & Next'}
+                  {!isLastTab && !isSaving && <ArrowRight className="w-3.5 h-3.5" />}
                 </button>
               </div>
             </div>
