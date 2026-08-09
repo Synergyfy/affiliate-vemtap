@@ -40,35 +40,35 @@ export class MarketMappingController {
   constructor(private readonly marketMappingService: MarketMappingService) {}
 
   @Get("config")
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: "Get user territory market mapping configuration" })
   getConfig(@CurrentUser() user: { id: string }) {
     return this.marketMappingService.getConfig(user.id);
   }
 
   @Get("territory")
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: "Get market mapping territory statistics" })
   getTerritoryStats(@CurrentUser() user: { id: string }) {
     return this.marketMappingService.getTerritoryStats(user.id);
   }
 
   @Get("plans")
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: "Get user mission plans and target history" })
   getPlans(@CurrentUser() user: { id: string }) {
     return this.marketMappingService.getPlans(user.id);
   }
 
   @Post("plans")
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: "Create a new mission plan" })
   createPlan(@CurrentUser() user: { id: string }, @Body() dto: CreateMissionPlanDto) {
     return this.marketMappingService.createPlan(user.id, dto);
   }
 
   @Patch("plans/:id")
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: "Update mission plan targets" })
   updatePlan(
     @Param("id") id: string,
@@ -79,87 +79,87 @@ export class MarketMappingController {
   }
 
   @Get("visits")
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   getVisits(@CurrentUser() user: { id: string }) {
     return this.marketMappingService.getVisits(user.id);
   }
 
   @Post("visits")
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   createVisit(@CurrentUser() user: { id: string }, @Body() dto: CreateMarketMappingVisitDto) {
     return this.marketMappingService.createVisit(user.id, dto);
   }
 
   @Patch("visits/:id")
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   updateVisit(@Param("id") id: string, @CurrentUser() user: { id: string }, @Body() dto: UpdateMarketMappingVisitDto) {
     return this.marketMappingService.updateVisit(id, user.id, dto);
   }
 
   @Get("history")
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   getHistory(@CurrentUser() user: { id: string }) {
     return this.marketMappingService.getHistory(user.id);
   }
 
   @Get("anchors")
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: "Get anchor businesses for user cluster" })
   getAnchors(@CurrentUser() user: { id: string }) {
     return this.marketMappingService.getAnchors(user.id);
   }
 
   @Get("priority-visits")
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: "Get AI-recommended priority visits" })
   getPriorityVisits(@CurrentUser() user: { id: string }) {
     return this.marketMappingService.getPriorityVisits(user.id);
   }
 
   @Get("partnerships")
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: "Get partnership candidates for cluster" })
   getPartnerships(@CurrentUser() user: { id: string }) {
     return this.marketMappingService.getPartnerships(user.id);
   }
 
   @Get("insights")
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: "Get AI recommendations and cluster maturity metrics" })
   getInsights(@CurrentUser() user: { id: string }) {
     return this.marketMappingService.getInsights(user.id);
   }
 
   @Get("notes")
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: "Get market mapping notes and follow-ups" })
   getNotes(@CurrentUser() user: { id: string }, @Query("businessId") businessId?: string, @Query("reportKey") reportKey?: string) {
     return this.marketMappingService.getNotes(user.id, businessId, reportKey);
   }
 
   @Post("notes")
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: "Create a note or follow-up for a business" })
   createNote(@CurrentUser() user: { id: string }, @Body() dto: CreateMarketMappingNoteDto) {
     return this.marketMappingService.createNote(user.id, dto);
   }
 
   @Get("performance")
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: "Get aggregated market mapping performance metrics" })
   getPerformance(@CurrentUser() user: { id: string }) {
     return this.marketMappingService.getPerformance(user.id);
   }
 
   @Get("reports")
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: "Get market mapping report data per period" })
   getReports(@CurrentUser() user: { id: string }, @Query("period") period?: string) {
     return this.marketMappingService.getReports(user.id, period);
   }
 
   @Get("reports/download")
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN, Role.SALES_EXECUTIVE)
   @ApiOperation({ summary: "Download market mapping report CSV" })
   @Header("Content-Type", "text/csv")
   @Header("Content-Disposition", "attachment; filename=market_mapping_report.csv")
