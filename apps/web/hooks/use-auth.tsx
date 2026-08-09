@@ -14,7 +14,7 @@ interface User {
   hasAcceptedTerms?: boolean;
   hasSignedAgreement?: boolean;
   createdAt?: string;
-  role?: 'AFFILIATE' | 'ADMIN' | 'SUPER_ADMIN' | 'AGENT' | 'SUPERVISOR' | 'MANAGER';
+  role?: 'AFFILIATE' | 'ADMIN' | 'SUPER_ADMIN' | 'AGENT' | 'SUPERVISOR' | 'MANAGER' | 'SALES_EXECUTIVE';
   location?: string;
   address?: string;
   isKycVerified?: boolean;
@@ -87,6 +87,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     setError(null);
     try {
+      if (process.env.NEXT_PUBLIC_ADMIN_MOCK === 'true') {
+        const isAffiliate = email.toLowerCase().includes('affiliate') || email.toLowerCase().includes('dashboard') || email.toLowerCase() === 'test@vemtap.com';
+        const isSupervisor = email.toLowerCase().includes('supervisor');
+        const isManager = email.toLowerCase().includes('manager');
+        const isSalesExecutive = email.toLowerCase().includes('sales') || email.toLowerCase().includes('se');
+        
+        const mockRole = isSalesExecutive ? 'SALES_EXECUTIVE' : isSupervisor ? 'SUPERVISOR' : isManager ? 'MANAGER' : isAffiliate ? 'AFFILIATE' : 'SUPER_ADMIN';
+        const mockName = isSalesExecutive ? 'Sales Executive User' : isSupervisor ? 'Supervisor User' : isManager ? 'Manager User' : isAffiliate ? 'Affiliate User' : 'Admin User';
+
+        const mockAdminUser: User = {
+          id: isSalesExecutive ? 'se-mock-user-1' : isAffiliate ? 'affiliate-mock-user-1' : isSupervisor ? 'supervisor-mock-user-1' : isManager ? 'manager-mock-user-1' : 'admin-mock-user-1',
+          fullName: mockName,
+          email: email || 'admin@vemtap.com',
+          phone: '+2348012345678',
+          referralCode: isSalesExecutive ? 'SE1' : isAffiliate ? 'AFFILIATE1' : isSupervisor ? 'SUPERVISOR1' : isManager ? 'MANAGER1' : 'ADMINMOCK',
+          role: mockRole,
+          hasAcceptedTerms: true,
+          hasSignedAgreement: true,
+          isKycVerified: true,
+          kycStatus: 'VERIFIED',
+          totalEarnings: 1500000,
+        };
+        
+        // Try real login first if backend is running, otherwise use mock user
+        try {
+          const response = await api.post('/auth/login', { email, password });
+          if (response?.user) {
+            setUser(response.user);
+            setIsAuthenticated(true);
+            localStorage.setItem('vemtap_user', JSON.stringify(response.user));
+            return response.user;
+          }
+        } catch (apiErr) {
+          console.warn('Backend API unavailable. Falling back to mock admin login mode.', apiErr);
+        }
+
+        const MOCK_TOKEN = isSalesExecutive
+          ? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiU0FMRVNfRVhFQ1VUSVZFIiwiaWF0IjoxNjAwMDAwMDAwfQ.signature"
+          : isAffiliate 
+          ? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiQUZGSUxJQVRFIiwiaWF0IjoxNjAwMDAwMDAwfQ.signature" 
+          : isSupervisor
+          ? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiU1VQRVJWSVNPUiIsImlhdCI6MTYwMDAwMDAwMH0.signature"
+          : isManager
+          ? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiTUFOQUdFUiIsImlhdCI6MTYwMDAwMDAwMH0.signature"
+          : "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiU1VQRVJfQURNSU4iLCJpYXQiOjE2MDAwMDAwMDB9.signature";
+        setUser(mockAdminUser);
+        setIsAuthenticated(true);
+        localStorage.setItem('vemtap_user', JSON.stringify(mockAdminUser));
+        if (typeof window !== 'undefined') {
+          document.cookie = "vemtap_logged_out=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+          document.cookie = `vemtap-auth-token=${MOCK_TOKEN}; path=/; max-age=86400`;
+        }
+        return mockAdminUser;
+      }
+
       const response = await api.post('/auth/login', { email, password });
       const user = response.user || response.data?.user || response.data || response;
       

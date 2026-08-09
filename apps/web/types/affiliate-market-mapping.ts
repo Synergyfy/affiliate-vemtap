@@ -24,6 +24,7 @@ export interface PlannedVisit {
   // GPS
   gpsLat?: string;
   gpsLng?: string;
+  gpsAddress?: string;
   // Sales
   nextVisitDate?: string;
   nextVisitTime?: string;
