@@ -350,6 +350,16 @@ export class UsersService {
           totalEarnings: true,
           isManagerMode: true,
           referralCount: true,
+          dailyLeadTarget: true,
+          monthlyConversionTarget: true,
+          supervisorId: true,
+          managerId: true,
+          supervisor: {
+            select: { id: true, fullName: true, email: true },
+          },
+          manager: {
+            select: { id: true, fullName: true, email: true },
+          },
           _count: {
             select: { referrals: true, businesses: true, leads: true },
           },
@@ -682,22 +692,25 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException("User not found");
 
-    if (supervisorId) {
-      const supervisor = await this.prisma.user.findUnique({ where: { id: supervisorId } });
+    const targetSupervisorId = supervisorId === "" ? null : supervisorId;
+    const targetManagerId = managerId === "" ? null : managerId;
+
+    if (targetSupervisorId) {
+      const supervisor = await this.prisma.user.findUnique({ where: { id: targetSupervisorId } });
       if (!supervisor) throw new NotFoundException("Supervisor not found");
     }
 
-    if (managerId) {
-      const manager = await this.prisma.user.findUnique({ where: { id: managerId } });
+    if (targetManagerId) {
+      const manager = await this.prisma.user.findUnique({ where: { id: targetManagerId } });
       if (!manager) throw new NotFoundException("Manager not found");
     }
 
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },
       data: {
-        supervisorId: supervisorId ?? user.supervisorId,
-        managerId: managerId ?? user.managerId,
-        referrerId: managerId || user.referrerId,
+        supervisorId: targetSupervisorId === undefined ? user.supervisorId : targetSupervisorId,
+        managerId: targetManagerId === undefined ? user.managerId : targetManagerId,
+        referrerId: targetManagerId || (targetSupervisorId === undefined ? user.referrerId : (targetSupervisorId ?? user.referrerId)),
       },
     });
 
