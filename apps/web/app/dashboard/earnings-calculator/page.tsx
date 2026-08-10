@@ -54,7 +54,7 @@ function EarningsCalculatorInner() {
     if (searchParams.get('tab') === 'guide') setTab('guide');
   }, [searchParams]);
 
-  const isLineManager = user?.role === 'SUPERVISOR' || user?.role === 'MANAGER' || !!user?.isManagerMode;
+  const isLineManager = user?.role === 'SUPERVISOR' || user?.role === 'MANAGER';
   const isAgent = user?.role === 'AGENT';
 
   const directRate = Math.round((settings?.directCommissionRate ?? 0.2) * 100);

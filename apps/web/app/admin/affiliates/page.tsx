@@ -87,7 +87,7 @@ function AffiliatesManagement() {
   const debouncedSearch = useDebounce(searchQuery, 500);
 
   const { data: usersResponse, isLoading } = useUsers({
-    role: activeTab === 'Agents' ? 'AGENT' as any : activeTab === 'Managers' ? 'MANAGER' as any : undefined,
+    role: activeTab === 'All' ? 'AFFILIATE' as any : activeTab === 'Agents' ? 'AGENT' as any : activeTab === 'Managers' ? 'MANAGER' as any : undefined,
     isManager: activeTab === 'Line Managers' ? true : undefined,
     status: statusFilter === 'All' ? undefined : statusFilter,
     search: debouncedSearch || undefined,
@@ -109,14 +109,12 @@ function AffiliatesManagement() {
     isOpen: boolean;
     id: string;
     name: string;
-    isManagerMode: boolean;
     currentStatus: string;
     type: 'upgrade' | 'downgrade' | 'suspend' | 'reactivate';
   }>({
     isOpen: false,
     id: '',
     name: '',
-    isManagerMode: false,
     currentStatus: '',
     type: 'upgrade'
   });
@@ -127,7 +125,6 @@ function AffiliatesManagement() {
       isOpen: true,
       id,
       name,
-      isManagerMode: false,
       currentStatus,
       type
     });
@@ -139,7 +136,6 @@ function AffiliatesManagement() {
       isOpen: true,
       id,
       name,
-      isManagerMode,
       currentStatus: '',
       type
     });
@@ -164,7 +160,7 @@ function AffiliatesManagement() {
   }, [affiliateIdParam, router]);
 
   const executeAction = async () => {
-    const { id, isManagerMode, currentStatus, type } = confirmModal;
+    const { id, currentStatus, type } = confirmModal;
     
     try {
       if (type === 'upgrade' || type === 'downgrade') {
@@ -448,6 +444,23 @@ function AffiliatesManagement() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
+                {usersResponse?.data.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="p-12 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-16 h-16 bg-slate-50 rounded-3xl flex items-center justify-center">
+                          <Users className="w-8 h-8 text-slate-400" />
+                        </div>
+                        <p className="font-bold text-slate-600">
+                          {activeTab === 'Line Managers' ? 'No Line Managers found' : activeTab === 'Managers' ? 'No Managers found' : 'No affiliates found'}
+                        </p>
+                        <p className="text-sm text-slate-400">
+                          {activeTab === 'Managers' ? 'Promote a team member to Manager or assign them in Edit Profile' : 'Try adjusting your search or filter criteria'}
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
                 {usersResponse?.data.map((user: UserType, idx: number) => (
                   <motion.tr 
                     key={user.id}
@@ -473,9 +486,10 @@ function AffiliatesManagement() {
                       <span className={cn(
                         "text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest",
                         user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' ? "bg-purple-100 text-purple-600 border border-purple-200" :
-                        user.isManagerMode || user.role === 'SUPERVISOR' ? "bg-blue-100 text-blue-600 border border-blue-200" : "bg-slate-100 text-slate-500"
+                        user.role === 'MANAGER' ? "bg-emerald-100 text-emerald-600 border border-emerald-200" :
+                        user.role === 'SUPERVISOR' ? "bg-blue-100 text-blue-600 border border-blue-200" : "bg-slate-100 text-slate-500"
                       )}>
-                        {user.isManagerMode || user.role === 'SUPERVISOR' ? 'LINE MANAGER' : user.role}
+                        {user.role === 'MANAGER' ? 'MANAGER' : user.role === 'SUPERVISOR' ? 'LINE MANAGER' : user.role}
                       </span>
                     </td>
                     <td className="p-4">
@@ -550,17 +564,17 @@ function AffiliatesManagement() {
                               </Link>
 
                               {/* Upgrade/Downgrade */}
-                              {user.isManagerMode ? (
+                              {user.role === 'SUPERVISOR' ? (
                                 <button onClick={() => { handleRoleToggle(user.id, user.fullName, true); setActiveDropdown(null); }}
                                   className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 flex items-center gap-3 transition-colors">
                                   <ArrowDownCircle className="w-4 h-4" /> Demote to Affiliate
                                 </button>
-                              ) : (
+                              ) : user.role !== 'MANAGER' ? (
                                 <button onClick={() => { handleRoleToggle(user.id, user.fullName, false); setActiveDropdown(null); }}
                                   className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-purple-50 hover:text-purple-600 flex items-center gap-3 transition-colors">
                                   <ArrowUpCircle className="w-4 h-4" /> Promote to Line Manager
                                 </button>
-                              )}
+                              ) : null}
 
                               <div className="border-t border-slate-100 my-1" />
 
@@ -686,9 +700,10 @@ function AffiliatesManagement() {
                       <span className={cn(
                         "text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest",
                         selectedAffiliate.role === 'ADMIN' || selectedAffiliate.role === 'SUPER_ADMIN' ? "bg-purple-100 text-purple-600 border border-purple-200" :
-                        selectedAffiliate.isManagerMode || selectedAffiliate.role === 'SUPERVISOR' ? "bg-blue-100 text-blue-600 border border-blue-200" : "bg-slate-100 text-slate-500"
+                        selectedAffiliate.role === 'MANAGER' ? "bg-emerald-100 text-emerald-600 border border-emerald-200" :
+                        selectedAffiliate.role === 'SUPERVISOR' ? "bg-blue-100 text-blue-600 border border-blue-200" : "bg-slate-100 text-slate-500"
                       )}>
-                        {selectedAffiliate.isManagerMode || selectedAffiliate.role === 'SUPERVISOR' ? 'LINE MANAGER' : selectedAffiliate.role}
+                        {selectedAffiliate.role === 'MANAGER' ? 'MANAGER' : selectedAffiliate.role === 'SUPERVISOR' ? 'LINE MANAGER' : selectedAffiliate.role}
                       </span>
                       <span className={cn(
                         "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
@@ -810,7 +825,7 @@ function AffiliatesManagement() {
                       <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Current Role</p>
-                          <p className="text-sm font-bold text-slate-900 mt-0.5">{selectedAffiliate.isManagerMode ? 'SUPERVISOR' : selectedAffiliate.role}</p>
+                          <p className="text-sm font-bold text-slate-900 mt-0.5">{selectedAffiliate.role}</p>
                         </div>
                         <button onClick={() => showToast('Role change dialog opened', 'info')} className="px-3 py-1.5 bg-blue-600 text-white text-[10px] font-bold rounded-xl hover:bg-blue-700 transition-all">Change</button>
                       </div>

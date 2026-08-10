@@ -36,7 +36,7 @@ export default function EarningsCalculatorModal({ isOpen, onClose }: EarningsCal
   const [target, setTarget] = useState<number>(20);
   const [planCounts, setPlanCounts] = useState<Record<string, number>>({ silver: 0, gold: 0, platinum: 0 });
 
-  const isLineManager = user?.role === 'SUPERVISOR' || user?.role === 'MANAGER' || !!user?.isManagerMode;
+  const isLineManager = user?.role === 'SUPERVISOR' || user?.role === 'MANAGER';
   const isAgent = user?.role === 'AGENT';
 
   const directRate = Math.round((settings?.directCommissionRate ?? 0.20) * 100);

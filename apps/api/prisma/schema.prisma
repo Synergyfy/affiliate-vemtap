@@ -72,7 +72,8 @@ model User {
   paystackRecipientCode String?
   
   managerQualificationExpiry DateTime?
-  isManagerMode             Boolean   @default(false)
+
+
   hasClaimedAgentBonus      Boolean   @default(false)
   hasClaimedBusinessBonus   Boolean   @default(false)
   
