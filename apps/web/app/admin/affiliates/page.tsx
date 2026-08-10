@@ -32,7 +32,8 @@ import {
   AlertTriangle,
   MapPin,
   History,
-  ArrowUpDown
+  ArrowUpDown,
+  Copy
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -51,6 +52,8 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { useUsers, useUpdateUserStatus } from '@/services/useAdminHooks';
 import { useUserAgreementHistory } from '@/services/useAgreementHooks';
 import { Role, User as UserType } from '@/types/api';
+
+const VEMTAP_BASE_URL = process.env.NEXT_PUBLIC_VEMTAP_URL || 'https://vemtap.com';
 
 const affiliateLocations: Record<string, { id: string; name: string }[]> = {
   'aff-1': [
@@ -185,6 +188,17 @@ function AffiliatesManagement() {
 
   const handleViewProfile = (user: UserType) => {
     router.push(`/admin/affiliates/${user.id}`);
+  };
+
+  const handleCopyReferralLink = async (user: UserType) => {
+    const url = `${VEMTAP_BASE_URL}/get-started?ref=${user.referralCode}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast('Vemtap referral link copied!', 'success');
+    } catch {
+      showToast('Failed to copy link', 'error');
+    }
+    setActiveDropdown(null);
   };
 
   const handleAffiliateUpdate = (updated: UserType) => {
@@ -397,6 +411,10 @@ function AffiliatesManagement() {
                                   className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-3 transition-colors">
                                   <Eye className="w-4 h-4" /> View Profile
                                 </button>
+                                <button onClick={() => handleCopyReferralLink(user)}
+                                  className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-sky-50 hover:text-sky-600 flex items-center gap-3 transition-colors">
+                                  <Copy className="w-4 h-4" /> Copy Vemtap Referral Link
+                                </button>
                                 <button onClick={() => { setSelectedAffiliate(user); setIsEditModalOpen(true); setActiveDropdown(null); }}
                                   className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-purple-50 hover:text-purple-600 flex items-center gap-3 transition-colors">
                                   <UserCog className="w-4 h-4" /> Edit Role & Supervisor
@@ -553,6 +571,10 @@ function AffiliatesManagement() {
                               <button onClick={() => { handleViewProfile(user); setActiveDropdown(null); }}
                                 className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-3 transition-colors">
                                 <Eye className="w-4 h-4" /> View Profile
+                              </button>
+                              <button onClick={() => handleCopyReferralLink(user)}
+                                className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-sky-50 hover:text-sky-600 flex items-center gap-3 transition-colors">
+                                <Copy className="w-4 h-4" /> Copy Vemtap Referral Link
                               </button>
                               <button onClick={() => { setSelectedAffiliate(user); setIsEditModalOpen(true); setActiveDropdown(null); }}
                                 className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-purple-50 hover:text-purple-600 flex items-center gap-3 transition-colors">
