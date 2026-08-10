@@ -90,9 +90,48 @@ export interface MarketMappingHistoryResponse {
   visits: Array<{ status: string }>;
 }
 
+export interface MarketMappingReportSummary {
+  totalLeads: number;
+  totalConversions: number;
+  totalVisits: number;
+  totalEarnings: number;
+  completionRate: number;
+  businessesReferred: number;
+  avgLeadsPerDay: number;
+  avgConversionRate: number;
+}
+
+export interface MarketMappingReportWeights {
+  leads: number;
+  conversion: number;
+  businessInfo: number;
+  visits: number;
+  completion: number;
+  riskThreshold: number;
+  conversionReference: number;
+  leadTarget: number;
+}
+
+export interface MarketMappingReportDay {
+  id: string;
+  date: string;
+  leads: number;
+  target: number;
+  conversions: number;
+  visits: number;
+  infoPct: number;
+  gpsPct: number;
+  completionPct: number;
+  isToday: boolean;
+  score: number;
+  met: boolean;
+}
+
 export interface MarketMappingReport {
   period: string;
-  summary: { totalLeads: number; totalConversions: number; totalVisits: number; totalEarnings: number };
+  summary: MarketMappingReportSummary;
+  weights: MarketMappingReportWeights;
+  ledger: MarketMappingReportDay[];
   leads: Array<{ id: string; businessName: string; phone?: string; status: string; date: string }>;
   visitedBusinesses: Array<{ id: string; businessName: string; ownerName?: string; planType?: string; status: string; date: string }>;
   notes: Array<{ id: string; businessName: string; content: string; followUpDate?: string; createdAt: string }>;
@@ -291,6 +330,20 @@ export const useMarketMappingReports = (period: string = 'monthly') => {
     queryKey: ['market-mapping', 'reports', period],
     queryFn: async () => {
       const { data } = await api.get('/market-mapping/reports', { params: { period } });
+      return data;
+    },
+  });
+};
+
+export const useMarketMappingReportData = (userId?: string, period: string = 'monthly') => {
+  return useQuery<MarketMappingReport>({
+    queryKey: userId
+      ? ['market-mapping', 'admin', 'reports', userId, period]
+      : ['market-mapping', 'reports', period],
+    queryFn: async () => {
+      const { data } = userId
+        ? await api.get('/market-mapping/admin/reports', { params: { userId, period } })
+        : await api.get('/market-mapping/reports', { params: { period } });
       return data;
     },
   });

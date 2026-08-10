@@ -174,6 +174,13 @@ export class MarketMappingController {
 
   // --- ADMIN ENDPOINTS ---
 
+  @Get("admin/reports")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Get market mapping report data for a specific affiliate (Admin only)" })
+  getAdminReports(@Query("userId") userId: string, @Query("period") period?: string) {
+    return this.marketMappingService.getReports(userId, period);
+  }
+
   @Get("admin/hierarchy")
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Get complete market mapping hierarchy tree (Admin only)" })
