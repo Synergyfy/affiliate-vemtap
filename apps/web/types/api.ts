@@ -79,6 +79,10 @@ export interface User {
   reportingScore?: number;
   attendanceRate?: number;
   territoryId?: string;
+  supervisorId?: string;
+  managerId?: string;
+  supervisor?: { id: string; fullName: string; email: string };
+  manager?: { id: string; fullName: string; email: string };
   _count?: {
     referrals?: number;
     businesses?: number;
