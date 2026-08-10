@@ -98,6 +98,12 @@ model User {
   internationalPassport    String?
   idType                   String?
 
+  basicSalary              Decimal   @default(0)
+  employmentType           String?
+  hiredAt                  DateTime?
+  expectedWorkStart        String?   @default("09:00")
+  currentPerformanceScore  Decimal   @default(0)
+
   marketMappingPlans       MarketMappingPlan[]
   marketMappingVisits      MarketMappingVisit[]
   marketMappingNotes       MarketMappingNote[]
@@ -106,6 +112,18 @@ model User {
   marketMappingAssignments MarketMappingAssignment[]
   createdNotificationDrafts NotificationDraft[]
   supportTickets            SupportTicket[]
+  accountabilityWorkSessions WorkSession[]
+  exceptionReports          ExceptionReport[]
+  reviewedExceptions        ExceptionReport[] @relation("ExceptionReviewer")
+  performanceScores         PerformanceScore[]
+  activityAnomalies         ActivityAnomaly[]
+
+  fieldMissions             FieldMission[]
+  timelineEvents            FieldActivityTimelineEvent[]
+  visitTransitions          VisitTransition[]
+  salesPipelines            SalesPipeline[]
+  salesFollowUps            SalesFollowUp[]
+  salesDemos                SalesDemo[]
 
   @@index([referralCode])
   @@index([referredBy])
@@ -682,6 +700,15 @@ model Lead {
   
   assignedAgentId String?     // For Admin use
 
+  qualityScore     Int       @default(0)
+  qualifiedAt      DateTime?
+  rejectedAt       DateTime?
+  rejectionReason  String?
+  isDuplicate      Boolean   @default(false)
+  duplicateOfId    String?
+  duplicateOf      Lead?      @relation("DuplicateLeads", fields: [duplicateOfId], references: [id])
+  duplicates       Lead[]     @relation("DuplicateLeads")
+
   demos           Demo[]
 
   createdAt       DateTime    @default(now())
@@ -691,6 +718,7 @@ model Lead {
   @@index([affiliateId])
   @@index([status])
   @@index([priority])
+  @@index([isDuplicate])
 }
 
 enum Priority {
@@ -895,6 +923,8 @@ enum WorkSessionStatus {
   ACTIVE
   COMPLETED
   CANCELLED
+  ENDED
+  AUTO_ENDED
 }
 
 enum GpsStatus {
@@ -1003,6 +1033,7 @@ model MarketMappingVisit {
   openingDays       Json?
   gpsLat             String?
   gpsLng             String?
+  gpsAddress         String?
   nextVisitDate      String?
   nextVisitTime      String?
   decisionMakerMet   Boolean?
@@ -1159,3 +1190,422 @@ model NotificationDraft {
 
   @@index([createdById])
 }
+
+// ============================================================
+// Sales Performance & Accountability
+// ============================================================
+
+enum AccountabilitySessionStatus {
+  ACTIVE
+  ENDED
+  AUTO_ENDED
+}
+
+model WorkSession {
+  id            String                      @id @default(uuid())
+  userId        String
+  user          User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date          DateTime                    @default(now())
+  startTime     DateTime
+  endTime       DateTime?
+  gpsStartLat   String?
+  gpsStartLng   String?
+  gpsEndLat     String?
+  gpsEndLng     String?
+  device        String?
+  territoryId   String?
+  status        AccountabilitySessionStatus @default(ACTIVE)
+  lateStart     Boolean           @default(false)
+  expectedStart String?           @default("09:00")
+  endComment    String?
+  createdByDevice String?
+
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([userId, date])
+  @@index([userId, status])
+  @@index([date])
+}
+
+enum ExceptionType {
+  WAITING_FOR_DECISION_MAKER
+  BUSINESS_TEMPORARILY_CLOSED
+  TRAFFIC
+  SECURITY_RESTRICTIONS
+  CUSTOMER_REQUESTED_DELAY
+  TECHNICAL_ISSUE
+  NETWORK_PROBLEM
+  UNEXPECTED_MEETING
+  OTHER
+}
+
+enum ExceptionStatus {
+  PENDING
+  VALID
+  INVALID
+}
+
+model ExceptionReport {
+  id             String          @id @default(uuid())
+  userId         String
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date           DateTime        @default(now())
+  type           ExceptionType
+  description    String?         @db.Text
+  workSessionId  String?
+  visitId        String?
+  evidence       Json?
+  status         ExceptionStatus @default(PENDING)
+  reviewedBy     String?
+  reviewer       User?           @relation("ExceptionReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
+  reviewComment  String?
+  reviewedAt     DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([userId, date])
+  @@index([status])
+  @@index([type])
+}
+
+enum AnomalyType {
+  BURST_SUBMISSION
+  SAME_LOCATION_MULTIPLE_BUSINESSES
+  IMPOSSIBLE_TRAVEL_TIME
+  OUT_OF_TERRITORY
+  DUPLICATE_LEAD
+  SUSPICIOUS_ACTIVITY
+}
+
+enum AnomalyStatus {
+  OPEN
+  ACKNOWLEDGED
+  DISMISSED
+}
+
+model ActivityAnomaly {
+  id            String         @id @default(uuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type          AnomalyType
+  description   String
+  evidence      Json?
+  status        AnomalyStatus  @default(OPEN)
+  resolvedBy    String?
+  resolution    String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+}
+
+enum PerformancePeriodType {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum PerformanceStatus {
+  EXCELLENT
+  ON_TRACK
+  AT_RISK
+}
+
+model PerformanceScore {
+  id            String               @id @default(uuid())
+  userId        String
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodType    PerformancePeriodType
+  periodStart   DateTime
+  periodEnd     DateTime
+  score         Decimal
+  status        PerformanceStatus
+  breakdown     Json
+  computedAt    DateTime             @default(now())
+
+  @@unique([userId, periodType, periodStart])
+  @@index([userId, periodType, periodEnd])
+  @@index([periodType, periodEnd])
+}
+
+model PerformanceConfig {
+  id               String    @id @default(uuid())
+  enabled          Boolean   @default(true)
+
+  // Target defaults
+  dailyLeadTarget          Int     @default(20)
+  weeklyLeadTarget         Int     @default(100)
+  monthlyLeadTarget        Int     @default(400)
+  conversionTarget         Int     @default(20)
+  demoTarget               Int     @default(80)
+  followUpTarget           Int     @default(20)
+  revenueTarget            Decimal @default(0)
+  dailyVisitTarget         Int     @default(0)
+  leadQualityPassThreshold Int     @default(60)
+
+  // Schedule
+  expectedWorkStart String   @default("09:00")
+  expectedWorkEnd   String   @default("17:00")
+  lateStartGraceMinutes Int @default(15)
+
+  // Performance
+  performanceThreshold Decimal @default(90.0)
+  excellentThreshold   Decimal @default(100.0)
+
+  // Metric weights (must total 100)
+  weightQualifiedLead  Decimal @default(20.0)
+  weightLeadQuality    Decimal @default(10.0)
+  weightFieldActivity  Decimal @default(15.0)
+  weightFollowUp       Decimal @default(10.0)
+  weightDemo           Decimal @default(10.0)
+  weightConversion     Decimal @default(20.0)
+  weightRevenue        Decimal @default(15.0)
+
+  // Lead quality requirements
+  requireContactInfo   Boolean @default(true)
+  requireDecisionMaker Boolean @default(false)
+  requireGps           Boolean @default(true)
+  requireBusinessCategory Boolean @default(true)
+
+  // Anomaly thresholds
+  burstSubmissionWindowMinutes Int @default(10)
+  burstSubmissionMaxLeads      Int @default(15)
+  maxSameLocationRadiusMeters  Int @default(50)
+  maxTransitionGapMinutes      Int @default(45)
+
+  updatedAt            DateTime @updatedAt
+}
+
+// ============================================================
+// Field Activity Domain Models
+// ============================================================
+
+enum TransitionStatus {
+  NORMAL
+  UNUSUAL_DISTANCE
+  UNUSUAL_TIME
+  BOTH_UNUSUAL
+}
+
+enum FieldTimelineEventType {
+  WORK_STARTED
+  VISIT_STARTED
+  VISIT_COMPLETED
+  LEAD_CAPTURED
+  TRANSITION_UNUSUAL
+  WORK_ENDED
+}
+
+model FieldMission {
+  id           String                 @id @default(uuid())
+  userId       String
+  user         User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  location     String
+  targetCount  Int                    @default(20)
+  horizon      String                 @default("DAY")
+  startedAt    DateTime               @default(now())
+  completedAt  DateTime?
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+
+  businesses   FieldMissionBusiness[]
+  events       FieldActivityTimelineEvent[]
+
+  @@index([userId])
+  @@index([userId, startedAt])
+}
+
+model FieldMissionBusiness {
+  id             String        @id @default(uuid())
+  missionId      String
+  mission        FieldMission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  visitId        String?
+  name           String
+  category       String
+  address        String?
+  gpsAddress     String?
+  isAnchor       Boolean       @default(false)
+  isPlaceholder  Boolean       @default(false)
+  status         String        @default("NOT_YET")
+  dailyCustomers String?
+  businessSize   String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([missionId])
+  @@index([visitId])
+}
+
+model FieldActivityTimelineEvent {
+  id          String                 @id @default(uuid())
+  userId      String
+  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  missionId   String?
+  mission     FieldMission?          @relation(fields: [missionId], references: [id], onDelete: SetNull)
+  visitId     String?
+  eventType   FieldTimelineEventType
+  title       String
+  description String?
+  metadata    Json?
+  createdAt   DateTime               @default(now())
+
+  @@index([userId])
+  @@index([missionId])
+  @@index([eventType])
+}
+
+model VisitTransition {
+  id                String           @id @default(uuid())
+  userId            String
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  visitId           String
+  fromVisitId       String?
+  transitionStatus  TransitionStatus @default(NORMAL)
+  distanceMeters    Decimal?
+  durationSeconds   Int?
+  gpsAccuracy       Decimal?
+  explanationReason String?
+  explanationNotes  String?          @db.Text
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([userId])
+  @@index([visitId])
+}
+
+// ============================================================
+// Sales Pipeline Domain Models
+// ============================================================
+
+enum SalesPipelineStage {
+  NEW_LEAD
+  VISITED
+  CONTACTED
+  INTERESTED
+  DEMO_SCHEDULED
+  PROPOSAL_SENT
+  CUSTOMER
+}
+
+enum SalesLeadQuality {
+  NEW
+  QUALIFIED
+  UNQUALIFIED
+  INTERESTED
+  CONVERTED
+  INVALID
+  DUPLICATE
+}
+
+enum SalesExitState {
+  NOT_INTERESTED
+  LOST
+  INVALID
+  DUPLICATE
+}
+
+enum SalesPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum SalesDemoType {
+  VIRTUAL
+  ONSITE
+}
+
+enum SalesFollowUpStatus {
+  PENDING
+  COMPLETED
+  OVERDUE
+  CANCELLED
+}
+
+enum SalesDemoStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+model SalesPipeline {
+  id                   String              @id @default(uuid())
+  affiliateId          String
+  affiliate            User                @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  leadId               String?
+  businessName         String
+  industry             String?
+  location             String?
+  contactName          String?
+  phone                String?
+  email                String?
+  source               String              @default("Direct Referral")
+  pipelineStage        SalesPipelineStage  @default(NEW_LEAD)
+  leadQuality          SalesLeadQuality    @default(NEW)
+  exitState            SalesExitState?
+  priority             SalesPriority       @default(MEDIUM)
+  subscriptionInterest Boolean             @default(false)
+  followUpDate         DateTime?
+  demoScheduledDate    DateTime?
+  demoType             SalesDemoType?
+  demoMeetingUrl       String?
+  notes                String?             @db.Text
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  followUps            SalesFollowUp[]
+  demos                SalesDemo[]
+
+  @@index([affiliateId])
+  @@index([pipelineStage])
+  @@index([leadQuality])
+  @@index([businessName])
+  @@index([phone])
+}
+
+model SalesFollowUp {
+  id            String              @id @default(uuid())
+  pipelineId    String
+  pipeline      SalesPipeline       @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scheduledDate DateTime
+  scheduledTime String?
+  status        SalesFollowUpStatus @default(PENDING)
+  outcome       String?
+  notes         String?             @db.Text
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([pipelineId])
+  @@index([userId])
+  @@index([scheduledDate])
+  @@index([status])
+}
+
+model SalesDemo {
+  id            String          @id @default(uuid())
+  pipelineId    String
+  pipeline      SalesPipeline   @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scheduledDate DateTime
+  scheduledTime String?
+  type          SalesDemoType   @default(VIRTUAL)
+  meetingUrl    String?
+  status        SalesDemoStatus @default(SCHEDULED)
+  outcome       String?
+  notes         String?         @db.Text
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([pipelineId])
+  @@index([userId])
+  @@index([scheduledDate])
+  @@index([status])
+}
+

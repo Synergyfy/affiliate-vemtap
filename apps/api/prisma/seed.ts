@@ -33,6 +33,14 @@ async function main() {
     });
     console.log(`✓ ${node.type}: ${node.name}`);
   }
+
+  const first = await prisma.performanceConfig.findFirst();
+  if (!first) {
+    await prisma.performanceConfig.create({ data: {} });
+    console.log("✓ PerformanceConfig: default row seeded");
+  } else {
+    console.log("✓ PerformanceConfig: already present");
+  }
 }
 
 main()

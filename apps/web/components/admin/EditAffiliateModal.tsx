@@ -1,12 +1,10 @@
-'use client';
-
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Phone, Banknote, CreditCard, Hash, Fingerprint, Target, TrendingUp } from 'lucide-react';
+import { X, User, Phone, Banknote, CreditCard, Hash, Fingerprint, Target, UserCog, Users, TrendingUp } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/hooks/toast';
-import { useUpdateUser } from '@/services/useAdminHooks';
-import type { User as UserType } from '@/types/api';
+import { useUpdateUser, useUpdateUserRole, useAssignUserHierarchy, useUsers } from '@/services/useAdminHooks';
+import type { User as UserType, Role } from '@/types/api';
 
 interface EditAffiliateModalProps {
   isOpen: boolean;
@@ -44,9 +42,22 @@ function FormField({ label, icon, value, onChange, placeholder }: FormFieldProps
 export default function EditAffiliateModal({ isOpen, onClose, affiliate, onUpdate }: EditAffiliateModalProps) {
   const { showToast } = useToast();
   const updateUser = useUpdateUser();
+  const updateUserRole = useUpdateUserRole();
+  const assignHierarchy = useAssignUserHierarchy();
+
+  // Fetch list of supervisors and managers for dropdown assignment
+  const { data: supervisorsData } = useUsers({ role: 'SUPERVISOR' as any, limit: 50 });
+  const { data: managersData } = useUsers({ role: 'MANAGER' as any, limit: 50 });
+
+  const supervisors = supervisorsData?.data || [];
+  const managers = managersData?.data || [];
 
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [initialValues, setInitialValues] = useState<Record<string, string>>({});
+  const [selectedRole, setSelectedRole] = useState<Role>('AFFILIATE' as Role);
+  const [initialRole, setInitialRole] = useState<Role>('AFFILIATE' as Role);
+  const [selectedSupervisorId, setSelectedSupervisorId] = useState<string>('');
+  const [initialSupervisorId, setInitialSupervisorId] = useState<string>('');
 
   useEffect(() => {
     if (affiliate) {
@@ -64,6 +75,10 @@ export default function EditAffiliateModal({ isOpen, onClose, affiliate, onUpdat
       };
       setFormValues(vals);
       setInitialValues(vals);
+      setSelectedRole(affiliate.role as Role);
+      setInitialRole(affiliate.role as Role);
+      setSelectedSupervisorId((affiliate as any).supervisorId || (affiliate as any).referrerId || '');
+      setInitialSupervisorId((affiliate as any).supervisorId || (affiliate as any).referrerId || '');
     }
   }, [affiliate]);
 
@@ -78,7 +93,9 @@ export default function EditAffiliateModal({ isOpen, onClose, affiliate, onUpdat
     return acc;
   }, {} as Record<string, string>);
 
-  const hasChanges = Object.keys(dirtyFields).length > 0;
+  const roleChanged = selectedRole !== initialRole;
+  const supervisorChanged = selectedSupervisorId !== initialSupervisorId;
+  const hasChanges = Object.keys(dirtyFields).length > 0 || roleChanged || supervisorChanged;
 
   const handleSubmit = async () => {
     if (!affiliate) return;
@@ -88,12 +105,26 @@ export default function EditAffiliateModal({ isOpen, onClose, affiliate, onUpdat
     }
 
     try {
-      const result = await updateUser.mutateAsync({ id: affiliate.id, ...dirtyFields });
-      showToast('Profile updated successfully', 'success');
-      onUpdate(result);
+      let updatedUser = affiliate;
+
+      if (Object.keys(dirtyFields).length > 0) {
+        updatedUser = await updateUser.mutateAsync({ id: affiliate.id, ...dirtyFields });
+      }
+
+      if (roleChanged) {
+        await updateUserRole.mutateAsync({ userId: affiliate.id, role: selectedRole });
+        showToast(`Role updated from ${initialRole} to ${selectedRole}`, 'success');
+      }
+
+      if (supervisorChanged) {
+        await assignHierarchy.mutateAsync({ userId: affiliate.id, supervisorId: selectedSupervisorId });
+        showToast('Assigned supervisor updated successfully', 'success');
+      }
+
+      onUpdate({ ...updatedUser, role: selectedRole as any });
       onClose();
     } catch (error: any) {
-      showToast(error?.message || 'Failed to update profile', 'error');
+      showToast(error?.message || 'Failed to update user', 'error');
     }
   };
 
@@ -146,6 +177,57 @@ export default function EditAffiliateModal({ isOpen, onClose, affiliate, onUpdat
                   onChange={handleChange('avatar')}
                   placeholder="https://example.com/avatar.jpg"
                 />
+              </div>
+
+              {/* Role & Supervisor Hierarchy Assignment */}
+              <div className="border-t border-slate-100 pt-4 space-y-4">
+                <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <UserCog className="w-3.5 h-3.5 text-blue-500" />
+                  Role & Supervisor Hierarchy
+                </h5>
+
+                {/* Role Switcher */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <UserCog className="w-3 h-3" />
+                    User Role
+                  </label>
+                  <select
+                    value={selectedRole}
+                    onChange={(e) => setSelectedRole(e.target.value as Role)}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
+                  >
+                    <option value="AFFILIATE">AFFILIATE (Standard Partner)</option>
+                    <option value="AGENT">AGENT (Field Agent)</option>
+                    <option value="SUPERVISOR">SUPERVISOR (Team Lead)</option>
+                    <option value="MANAGER">MANAGER (City / Regional Lead)</option>
+                  </select>
+                </div>
+
+                {/* Supervisor Re-assignment Dropdown */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <Users className="w-3 h-3" />
+                    Assign Supervisor / Manager
+                  </label>
+                  <select
+                    value={selectedSupervisorId}
+                    onChange={(e) => setSelectedSupervisorId(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
+                  >
+                    <option value="">-- Direct / Unassigned --</option>
+                    {supervisors.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.fullName} ({s.email}) — Supervisor
+                      </option>
+                    ))}
+                    {managers.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.fullName} ({m.email}) — Manager
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="border-t border-slate-100 pt-4 space-y-4">

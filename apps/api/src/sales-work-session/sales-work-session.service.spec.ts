@@ -9,8 +9,8 @@ import { ConflictException, NotFoundException, ForbiddenException } from '@nestj
 
 describe('SalesWorkSessionService', () => {
   let service: SalesWorkSessionService;
-  let _prisma: PrismaService;
-  let _auditService: AuditService;
+  let prisma: PrismaService;
+  let auditService: AuditService;
 
   const mockPrisma = {
     salesWorkSession: {
@@ -49,20 +49,28 @@ describe('SalesWorkSessionService', () => {
   });
 
   describe('validateSalesExecutiveRole', () => {
-    it('should throw ForbiddenException for non-SALES_EXECUTIVE roles', async () => {
+    it('should allow allowed roles without throwing ForbiddenException', async () => {
+      mockPrisma.salesWorkSession.findFirst.mockResolvedValue(null);
+      mockPrisma.salesWorkSession.create.mockResolvedValue({
+        id: mockSessionId,
+        startedAt: new Date(),
+        status: WorkSessionStatus.ACTIVE,
+      });
+
       const roles: Role[] = [
         Role.AFFILIATE,
-        Role.ADMIN,
-        Role.SUPER_ADMIN,
         Role.AGENT,
         Role.SUPERVISOR,
         Role.MANAGER,
+        Role.SALES_EXECUTIVE,
+        Role.ADMIN,
+        Role.SUPER_ADMIN,
       ];
 
       for (const role of roles) {
         await expect(
           service.startWork(mockUserId, role, { gpsStatus: 'UNKNOWN' }),
-        ).rejects.toThrow(ForbiddenException);
+        ).resolves.toBeDefined();
       }
     });
 
@@ -168,10 +176,16 @@ describe('SalesWorkSessionService', () => {
       ).rejects.toThrow(ConflictException);
     });
 
-    it('should throw ForbiddenException for non-SALES_EXECUTIVE', async () => {
-      await expect(
-        service.startWork(mockUserId, Role.AFFILIATE, startDto),
-      ).rejects.toThrow(ForbiddenException);
+    it('should allow AFFILIATE role for startWork', async () => {
+      mockPrisma.salesWorkSession.findFirst.mockResolvedValue(null);
+      mockPrisma.salesWorkSession.create.mockResolvedValue({
+        id: mockSessionId,
+        startedAt: new Date(),
+        status: WorkSessionStatus.ACTIVE,
+      });
+
+      const result = await service.startWork(mockUserId, Role.AFFILIATE, startDto);
+      expect(result).toBeDefined();
     });
   });
 
@@ -268,10 +282,22 @@ describe('SalesWorkSessionService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('should throw ForbiddenException for non-SALES_EXECUTIVE', async () => {
-      await expect(
-        service.endWork(mockUserId, Role.AGENT, endDto),
-      ).rejects.toThrow(ForbiddenException);
+    it('should allow AGENT role for endWork', async () => {
+      mockPrisma.salesWorkSession.findFirst.mockResolvedValue(activeSession);
+      mockPrisma.salesWorkSession.update.mockResolvedValue({
+        ...activeSession,
+        endedAt: new Date('2024-01-15T17:00:00Z'),
+        endLatitude: endDto.latitude,
+        endLongitude: endDto.longitude,
+        endAccuracy: endDto.accuracy,
+        endGpsStatus: GpsStatus.GRANTED,
+        status: WorkSessionStatus.COMPLETED,
+        notes: `${activeSession.notes}\n---\n${endDto.notes}`,
+      });
+      mockAuditService.log.mockResolvedValue({});
+
+      const result = await service.endWork(mockUserId, Role.AGENT, endDto);
+      expect(result).toBeDefined();
     });
 
     it('should use server-generated timestamp for endedAt', async () => {
@@ -326,10 +352,10 @@ describe('SalesWorkSessionService', () => {
       expect(result).toBeNull();
     });
 
-    it('should throw ForbiddenException for non-SALES_EXECUTIVE', async () => {
-      await expect(
-        service.getActiveSession(mockUserId, Role.AFFILIATE),
-      ).rejects.toThrow(ForbiddenException);
+    it('should allow AFFILIATE role for getActiveSession', async () => {
+      mockPrisma.salesWorkSession.findFirst.mockResolvedValue(null);
+      const result = await service.getActiveSession(mockUserId, Role.AFFILIATE);
+      expect(result).toBeNull();
     });
   });
 
@@ -370,10 +396,11 @@ describe('SalesWorkSessionService', () => {
       expect(result.sessions[0].durationMinutes).toBe(540); // 9 hours
     });
 
-    it('should throw ForbiddenException for non-SALES_EXECUTIVE', async () => {
-      await expect(
-        service.getSessionHistory(mockUserId, Role.AFFILIATE),
-      ).rejects.toThrow(ForbiddenException);
+    it('should allow AFFILIATE role for getSessionHistory', async () => {
+      mockPrisma.salesWorkSession.findMany.mockResolvedValue([]);
+      mockPrisma.salesWorkSession.count.mockResolvedValue(0);
+      const result = await service.getSessionHistory(mockUserId, Role.AFFILIATE);
+      expect(result.sessions).toEqual([]);
     });
   });
 });

@@ -301,6 +301,34 @@ export const useAssignUserManager = () => {
   });
 };
 
+export const useUpdateUserRole = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: Role }) => {
+      const { data } = await api.patch(`/users/${userId}/role`, { role });
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users', variables.userId] });
+    },
+  });
+};
+
+export const useAssignUserHierarchy = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, supervisorId, managerId }: { userId: string; supervisorId?: string; managerId?: string }) => {
+      const { data } = await api.patch(`/users/${userId}/assign-hierarchy`, { supervisorId, managerId });
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users', variables.userId] });
+    },
+  });
+};
+
 export const downloadBusinessesExport = async () => {
   const response = await api.get('/businesses/export', { responseType: 'blob' });
   const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -311,5 +339,3 @@ export const downloadBusinessesExport = async () => {
   link.click();
   link.remove();
 };
-
-

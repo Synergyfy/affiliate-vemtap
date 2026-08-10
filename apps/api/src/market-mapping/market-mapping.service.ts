@@ -350,12 +350,76 @@ export class MarketMappingService {
     if (period === "daily") start.setHours(0, 0, 0, 0);
     else if (period === "weekly") start.setDate(start.getDate() - 6);
     else start.setDate(start.getDate() - 29);
-    const [leads, businesses, notes] = await Promise.all([
+
+    const [leads, businesses, notes, visits] = await Promise.all([
       this.prisma.lead.findMany({ where: { affiliateId: userId, createdAt: { gte: start } }, orderBy: { createdAt: "desc" } }),
       this.prisma.business.findMany({ where: { affiliateId: userId, createdAt: { gte: start } }, orderBy: { createdAt: "desc" } }),
       this.prisma.marketMappingNote.findMany({ where: { userId, createdAt: { gte: start } }, orderBy: { createdAt: "desc" } }),
+      this.prisma.marketMappingVisit.findMany({ where: { userId, OR: [{ visitedAt: { gte: start } }, { visitedAt: null, updatedAt: { gte: start } }] }, orderBy: { updatedAt: "desc" } }),
     ]);
-    const visits = await this.prisma.marketMappingVisit.findMany({ where: { userId, OR: [{ visitedAt: { gte: start } }, { visitedAt: null, updatedAt: { gte: start } }] }, orderBy: { updatedAt: "desc" } });
+
+    const daysCount = period === "daily" ? 1 : period === "weekly" ? 7 : 30;
+    const leadTarget = 20;
+    const conversionReference = 0.4;
+    const totalEarnings = businesses.reduce((acc, b) => acc + Number(b.commissionAmount || 0), 0);
+    const avgLeadsPerDay = Math.round((leads.length / Math.max(1, daysCount)) * 10) / 10;
+    const avgConversionRate = leads.length > 0 ? Math.round((businesses.length / leads.length) * 100) : 0;
+    const completionRate = Math.min(100, Math.round((visits.filter(v => v.status !== "NOT_YET").length / Math.max(1, visits.length)) * 100));
+
+    // Calculate 30-day daily score ledger
+    const ledger = [];
+    for (let i = 0; i < 30; i++) {
+      const dayDate = new Date(now);
+      dayDate.setDate(dayDate.getDate() - i);
+      const dayStart = new Date(dayDate);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(dayDate);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      const dayLeads = leads.filter((l) => new Date(l.createdAt) >= dayStart && new Date(l.createdAt) <= dayEnd).length;
+      const dayConversions = businesses.filter((b) => new Date(b.createdAt) >= dayStart && new Date(b.createdAt) <= dayEnd).length;
+      const dayVisits = visits.filter((v) => {
+        const d = v.visitedAt || v.updatedAt;
+        return d && new Date(d) >= dayStart && new Date(d) <= dayEnd;
+      }).length;
+
+      const dayGpsVisits = visits.filter((v) => {
+        const d = v.visitedAt || v.updatedAt;
+        return d && new Date(d) >= dayStart && new Date(d) <= dayEnd && v.gpsLat != null && v.gpsLng != null;
+      }).length;
+
+      const infoPct = dayVisits > 0 ? 80 : 50;
+      const gpsPct = dayVisits > 0 ? Math.round((dayGpsVisits / dayVisits) * 100) : 40;
+      const completionPct = Math.min(100, Math.round((dayVisits / Math.max(1, leadTarget)) * 100));
+
+      const leadPct = Math.min(100, (dayLeads / leadTarget) * 100);
+      const infoComposite = 0.6 * infoPct + 0.4 * gpsPct;
+      const convPct = Math.min(100, (dayConversions / Math.max(1, dayLeads) / conversionReference) * 100);
+      const visitPct = Math.min(100, (dayVisits / leadTarget) * 100);
+
+      const score = Math.round(
+        0.35 * leadPct +
+        0.30 * convPct +
+        0.20 * infoComposite +
+        0.10 * visitPct +
+        0.05 * completionPct,
+      );
+
+      ledger.push({
+        id: `day-${i}`,
+        date: dayStart.toISOString().split("T")[0],
+        leads: dayLeads,
+        target: leadTarget,
+        conversions: dayConversions,
+        visits: dayVisits,
+        infoPct,
+        gpsPct,
+        completionPct,
+        isToday: i === 0,
+        score,
+        met: score >= 90,
+      });
+    }
 
     return {
       period,
@@ -363,8 +427,23 @@ export class MarketMappingService {
         totalLeads: leads.length,
         totalConversions: businesses.length,
         totalVisits: visits.length,
-        totalEarnings: businesses.reduce((acc, b) => acc + Number(b.commissionAmount || 0), 0),
+        totalEarnings,
+        completionRate,
+        businessesReferred: businesses.length,
+        avgLeadsPerDay,
+        avgConversionRate,
       },
+      weights: {
+        leads: 0.35,
+        conversion: 0.30,
+        businessInfo: 0.20,
+        visits: 0.10,
+        completion: 0.05,
+        riskThreshold: 90,
+        conversionReference: 0.40,
+        leadTarget: 20,
+      },
+      ledger,
       leads: leads.map((l) => ({
         id: l.id,
         businessName: l.businessName,
@@ -387,7 +466,15 @@ export class MarketMappingService {
         followUpDate: n.followUpDate,
         createdAt: n.createdAt,
       })),
-      visits: visits.map((visit) => ({ id: visit.id, businessName: visit.name, category: visit.category, status: visit.status, date: visit.visitedAt || visit.updatedAt, notes: visit.visitNotes })),
+      visits: visits.map((visit) => ({
+        id: visit.id,
+        businessName: visit.name,
+        category: visit.category,
+        status: visit.status,
+        gpsAddress: visit.gpsAddress,
+        date: visit.visitedAt || visit.updatedAt,
+        notes: visit.visitNotes,
+      })),
     };
   }
 

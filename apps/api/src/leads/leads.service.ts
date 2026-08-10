@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/commo
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateLeadDto, UpdateLeadDto, LeadFilterDto } from './dto/leads.dto';
 import { LeadStatus } from '@prisma/client';
+import { evaluateLeadQuality } from '../performance/lead-quality.util';
 
 @Injectable()
 export class LeadsService {
@@ -67,13 +68,100 @@ export class LeadsService {
   }
 
   async create(userId: string, dto: CreateLeadDto) {
-    return this.prisma.lead.create({
+    const quality = evaluateLeadQuality({
+      businessName: dto.businessName,
+      businessAddress: dto.businessAddress,
+      location: dto.location,
+      industry: dto.industry,
+      phone: dto.phone,
+      email: dto.email,
+      contactName: dto.contactName,
+      contactRole: dto.contactRole,
+      website: dto.website,
+    });
+
+    const config = await this.prisma.performanceConfig.findFirst();
+    const passThreshold = config?.leadQualityPassThreshold ?? 60;
+    const now = new Date();
+
+    const existing = await this.prisma.lead.findFirst({
+      where: {
+        affiliateId: userId,
+        deletedAt: null,
+        businessName: { equals: dto.businessName, mode: 'insensitive' },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const isDuplicate = !!existing;
+    const qualityScore = isDuplicate ? Math.min(quality.score, passThreshold - 1) : quality.score;
+
+    const lead = await this.prisma.lead.create({
       data: {
         ...dto,
         affiliateId: userId,
         followUpDate: dto.followUpDate ? new Date(dto.followUpDate) : null,
+        qualityScore,
+        isDuplicate,
+        duplicateOfId: isDuplicate ? existing!.id : null,
+        qualifiedAt: !isDuplicate && qualityScore >= passThreshold ? now : null,
+        rejectedAt: !isDuplicate && qualityScore < passThreshold ? now : null,
+        rejectionReason: !isDuplicate && qualityScore < passThreshold
+          ? `Incomplete data (score ${qualityScore}/100)`
+          : null,
       },
     });
+
+    this.detectSubmissionAnomaly(userId, lead, dto).catch(() => undefined);
+
+    return { ...lead, quality: { score: qualityScore, breakdown: quality.breakdown, missing: quality.missing } };
+  }
+
+  private async detectSubmissionAnomaly(userId: string, lead: any, dto: CreateLeadDto) {
+    const config = await this.prisma.performanceConfig.findFirst();
+    const windowMin = config?.burstSubmissionWindowMinutes ?? 10;
+    const maxLeads = config?.burstSubmissionMaxLeads ?? 15;
+    const since = new Date(Date.now() - windowMin * 60000);
+
+    const [recentCount, sameLocationCount] = await Promise.all([
+      this.prisma.lead.count({
+        where: { affiliateId: userId, createdAt: { gte: since } },
+      }),
+      lead.isDuplicate
+        ? Promise.resolve(0)
+        : this.prisma.lead.count({
+            where: {
+              affiliateId: userId,
+              deletedAt: null,
+              location: dto.location ?? undefined,
+              id: { not: lead.id },
+            },
+          }),
+    ]);
+
+    const anomalies: { type: any; description: string; evidence?: any }[] = [];
+
+    if (recentCount >= maxLeads) {
+      anomalies.push({
+        type: 'BURST_SUBMISSION',
+        description: `${recentCount} leads submitted within ${windowMin} minutes`,
+        evidence: { count: recentCount, windowMinutes: windowMin },
+      });
+    }
+
+    if (sameLocationCount >= 3) {
+      anomalies.push({
+        type: 'SAME_LOCATION_MULTIPLE_BUSINESSES',
+        description: `${sameLocationCount + 1} businesses recorded at the same location`,
+        evidence: { location: dto.location, count: sameLocationCount + 1 },
+      });
+    }
+
+    for (const a of anomalies) {
+      await this.prisma.activityAnomaly.create({
+        data: { userId, ...a },
+      });
+    }
   }
 
   async update(id: string, user: any, dto: UpdateLeadDto) {
