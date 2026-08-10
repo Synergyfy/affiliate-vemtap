@@ -1,4 +1,5 @@
 import { IsString, IsOptional, MinLength, IsInt, Min } from "class-validator";
+import { Type } from "class-transformer";
 import { ApiProperty } from "@nestjs/swagger";
 
 export class UpdateProfileDto {
@@ -100,6 +101,7 @@ export class UpdateProfileDto {
     description: "Daily lead target (Agent only)",
   })
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @Min(0)
   dailyLeadTarget?: number;
@@ -110,6 +112,7 @@ export class UpdateProfileDto {
     description: "Monthly conversion target (Agent only)",
   })
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @Min(0)
   monthlyConversionTarget?: number;
