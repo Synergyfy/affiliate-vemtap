@@ -82,7 +82,7 @@ export class NetworkService {
         reportingScore: true,
         attendanceRate: true,
         managerQualificationExpiry: true,
-        isManagerMode: true,
+
         hasClaimedAgentBonus: true,
         hasClaimedBusinessBonus: true,
       },
@@ -206,7 +206,7 @@ export class NetworkService {
         },
       },
       managerQualificationExpiry: user.managerQualificationExpiry,
-      isManagerMode: user.isManagerMode || user.role === 'SUPERVISOR' || user.role === 'MANAGER',
+      isManagerMode: user.role === 'SUPERVISOR' || user.role === 'MANAGER',
       hasClaimedAgentBonus: user.hasClaimedAgentBonus,
       hasClaimedBusinessBonus: user.hasClaimedBusinessBonus,
     };
@@ -295,7 +295,6 @@ export class NetworkService {
       where: { id: userId },
       data: {
         role: nextRole,
-        isManagerMode: true,
         managerQualificationExpiry: !user.managerQualificationExpiry 
           ? new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) 
           : user.managerQualificationExpiry,

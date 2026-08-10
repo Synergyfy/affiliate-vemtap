@@ -55,7 +55,7 @@ export class NotificationsService {
     } else if (recipients === BroadcastRecipientType.MANAGERS) {
       where.OR = [
         { referralCount: { gte: 10 } },
-        { isManagerMode: true },
+        { role: { in: ['SUPERVISOR', 'MANAGER'] as any } },
       ];
     } else if (recipients === BroadcastRecipientType.NEW_AFFILIATES) {
       const sevenDaysAgo = new Date();

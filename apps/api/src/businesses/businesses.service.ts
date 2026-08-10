@@ -331,11 +331,11 @@ export class BusinessesService {
         if (!existingIndirect) {
           const referrer = await tx.user.findUnique({
             where: { id: business.affiliate.referrerId },
-            select: { role: true, isManagerMode: true },
+            select: { role: true },
           });
 
           // Only Supervisors and Managers (or legacy users in Manager Mode) earn overrides
-          if (referrer && ((referrer.role as string) === 'SUPERVISOR' || (referrer.role as string) === 'MANAGER' || referrer.isManagerMode)) {
+          if (referrer && ((referrer.role as string) === 'SUPERVISOR' || (referrer.role as string) === 'MANAGER')) {
             const managerRate = Number(settings?.managerOverrideRate ?? 0.10);
             const supervisorRate = Number(settings?.supervisorOverrideRate ?? 0.05);
             // Managers earn a boosted override; Supervisors earn the standard rate
