@@ -335,7 +335,14 @@ function AffiliatesManagement() {
                           </div>
                           <div>
                             <p className="font-bold text-slate-900">{user.fullName}</p>
-                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-violet-100 text-violet-600 uppercase tracking-widest">Agent</span>
+                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-violet-100 text-violet-600 uppercase tracking-widest">Agent</span>
+                              {(user.supervisor || user.manager) && (
+                                <span className="text-[9px] font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+                                  Sup: {user.supervisor?.fullName || user.manager?.fullName}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -393,6 +400,10 @@ function AffiliatesManagement() {
                                 <button onClick={() => { handleViewProfile(user); setActiveDropdown(null); }}
                                   className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-3 transition-colors">
                                   <Eye className="w-4 h-4" /> View Profile
+                                </button>
+                                <button onClick={() => { setSelectedAffiliate(user); setIsEditModalOpen(true); setActiveDropdown(null); }}
+                                  className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-purple-50 hover:text-purple-600 flex items-center gap-3 transition-colors">
+                                  <UserCog className="w-4 h-4" /> Edit Role & Supervisor
                                 </button>
                                 <Link href={`/admin/affiliates/${user.id}/history`}
                                   className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-amber-50 hover:text-amber-600 flex items-center gap-3 transition-colors">
@@ -462,9 +473,9 @@ function AffiliatesManagement() {
                       <span className={cn(
                         "text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest",
                         user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' ? "bg-purple-100 text-purple-600 border border-purple-200" :
-                        user.isManagerMode ? "bg-blue-100 text-blue-600 border border-blue-200" : "bg-slate-100 text-slate-500"
+                        user.isManagerMode || user.role === 'SUPERVISOR' ? "bg-blue-100 text-blue-600 border border-blue-200" : "bg-slate-100 text-slate-500"
                       )}>
-                        {user.isManagerMode ? 'SUPERVISOR' : user.role}
+                        {user.isManagerMode || user.role === 'SUPERVISOR' ? 'LINE MANAGER' : user.role}
                       </span>
                     </td>
                     <td className="p-4">
@@ -675,9 +686,9 @@ function AffiliatesManagement() {
                       <span className={cn(
                         "text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest",
                         selectedAffiliate.role === 'ADMIN' || selectedAffiliate.role === 'SUPER_ADMIN' ? "bg-purple-100 text-purple-600 border border-purple-200" :
-                        selectedAffiliate.isManagerMode ? "bg-blue-100 text-blue-600 border border-blue-200" : "bg-slate-100 text-slate-500"
+                        selectedAffiliate.isManagerMode || selectedAffiliate.role === 'SUPERVISOR' ? "bg-blue-100 text-blue-600 border border-blue-200" : "bg-slate-100 text-slate-500"
                       )}>
-                        {selectedAffiliate.isManagerMode ? 'SUPERVISOR' : selectedAffiliate.role}
+                        {selectedAffiliate.isManagerMode || selectedAffiliate.role === 'SUPERVISOR' ? 'LINE MANAGER' : selectedAffiliate.role}
                       </span>
                       <span className={cn(
                         "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",

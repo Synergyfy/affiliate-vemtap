@@ -48,9 +48,18 @@ export default function EditAffiliateModal({ isOpen, onClose, affiliate, onUpdat
   // Fetch list of supervisors and managers for dropdown assignment
   const { data: supervisorsData } = useUsers({ role: 'SUPERVISOR' as any, limit: 50 });
   const { data: managersData } = useUsers({ role: 'MANAGER' as any, limit: 50 });
+  const { data: lineManagersData } = useUsers({ isManager: true, limit: 50 });
 
   const supervisors = supervisorsData?.data || [];
   const managers = managersData?.data || [];
+  const lineManagers = lineManagersData?.data || [];
+
+  // Deduplicate supervisor/manager options
+  const supervisorOptions = Array.from(
+    new Map(
+      [...lineManagers, ...supervisors, ...managers].map(u => [u.id, u])
+    ).values()
+  ).filter(u => u.id !== affiliate?.id);
 
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [initialValues, setInitialValues] = useState<Record<string, string>>({});
@@ -199,7 +208,7 @@ export default function EditAffiliateModal({ isOpen, onClose, affiliate, onUpdat
                   >
                     <option value="AFFILIATE">AFFILIATE (Standard Partner)</option>
                     <option value="AGENT">AGENT (Field Agent)</option>
-                    <option value="SUPERVISOR">SUPERVISOR (Team Lead)</option>
+                    <option value="SUPERVISOR">LINE MANAGER (Line Manager / Team Lead)</option>
                     <option value="MANAGER">MANAGER (City / Regional Lead)</option>
                   </select>
                 </div>
@@ -208,7 +217,7 @@ export default function EditAffiliateModal({ isOpen, onClose, affiliate, onUpdat
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                     <Users className="w-3 h-3" />
-                    Assign Supervisor / Manager
+                    Assign Line Manager / Manager
                   </label>
                   <select
                     value={selectedSupervisorId}
@@ -216,14 +225,9 @@ export default function EditAffiliateModal({ isOpen, onClose, affiliate, onUpdat
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
                   >
                     <option value="">-- Direct / Unassigned --</option>
-                    {supervisors.map((s) => (
+                    {supervisorOptions.map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.fullName} ({s.email}) — Supervisor
-                      </option>
-                    ))}
-                    {managers.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.fullName} ({m.email}) — Manager
+                        {s.fullName} ({s.email}) — {s.isManagerMode || s.role === 'SUPERVISOR' ? 'Line Manager' : s.role}
                       </option>
                     ))}
                   </select>
