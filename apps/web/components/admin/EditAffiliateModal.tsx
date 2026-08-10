@@ -258,7 +258,7 @@ export default function EditAffiliateModal({ isOpen, onClose, affiliate, onUpdat
                     <option value="">-- Direct / Unassigned --</option>
                     {supervisorOptions.map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.fullName} ({s.email}) — {s.isManagerMode || s.role === 'SUPERVISOR' ? 'Line Manager' : s.role}
+                        {s.fullName} ({s.email}) — {s.role === 'SUPERVISOR' ? 'Line Manager' : s.role}
                       </option>
                     ))}
                   </select>
