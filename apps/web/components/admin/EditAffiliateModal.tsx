@@ -113,11 +113,39 @@ export default function EditAffiliateModal({ isOpen, onClose, affiliate, onUpdat
       return;
     }
 
+    // Client-side validations for target fields if they were modified
+    if (dirtyFields.dailyLeadTarget !== undefined) {
+      const val = dirtyFields.dailyLeadTarget.trim();
+      const num = Number(val);
+      if (val === '' || isNaN(num) || !Number.isInteger(num) || num < 0) {
+        showToast('Daily lead target must be a non-negative whole number (0 or higher)', 'error');
+        return;
+      }
+    }
+
+    if (dirtyFields.monthlyConversionTarget !== undefined) {
+      const val = dirtyFields.monthlyConversionTarget.trim();
+      const num = Number(val);
+      if (val === '' || isNaN(num) || !Number.isInteger(num) || num < 0) {
+        showToast('Monthly conversion target must be a non-negative whole number (0 or higher)', 'error');
+        return;
+      }
+    }
+
+    // Format payload with numeric data types for integer target fields
+    const updatePayload: Record<string, any> = { ...dirtyFields };
+    if (updatePayload.dailyLeadTarget !== undefined) {
+      updatePayload.dailyLeadTarget = parseInt(updatePayload.dailyLeadTarget, 10);
+    }
+    if (updatePayload.monthlyConversionTarget !== undefined) {
+      updatePayload.monthlyConversionTarget = parseInt(updatePayload.monthlyConversionTarget, 10);
+    }
+
     try {
       let updatedUser = affiliate;
 
-      if (Object.keys(dirtyFields).length > 0) {
-        updatedUser = await updateUser.mutateAsync({ id: affiliate.id, ...dirtyFields });
+      if (Object.keys(updatePayload).length > 0) {
+        updatedUser = await updateUser.mutateAsync({ id: affiliate.id, ...updatePayload });
       }
 
       if (roleChanged) {
@@ -130,10 +158,13 @@ export default function EditAffiliateModal({ isOpen, onClose, affiliate, onUpdat
         showToast('Assigned supervisor updated successfully', 'success');
       }
 
+      showToast('Profile updated successfully', 'success');
       onUpdate({ ...updatedUser, role: selectedRole as any });
       onClose();
     } catch (error: any) {
-      showToast(error?.message || 'Failed to update user', 'error');
+      const apiMsg = error?.response?.data?.message;
+      const formattedMsg = Array.isArray(apiMsg) ? apiMsg.join(', ') : apiMsg || error?.message || 'Failed to update user';
+      showToast(formattedMsg, 'error');
     }
   };
 
@@ -278,26 +309,42 @@ export default function EditAffiliateModal({ isOpen, onClose, affiliate, onUpdat
               </div>
 
               {/* Agent Targets Section */}
-              {affiliate?.role === 'AGENT' && (
+              {(affiliate?.role === 'AGENT' || selectedRole === 'AGENT') && (
                 <div className="border-t border-slate-100 pt-4 space-y-4">
                   <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
                     <Target className="w-3.5 h-3.5 text-violet-500" />
                     Performance Targets
                   </h5>
-                  <FormField
-                    label="Daily Lead Target"
-                    icon={<Target className="w-3 h-3" />}
-                    value={formValues.dailyLeadTarget || '0'}
-                    onChange={handleChange('dailyLeadTarget')}
-                    placeholder="e.g. 10"
-                  />
-                  <FormField
-                    label="Monthly Conversion Target"
-                    icon={<TrendingUp className="w-3 h-3" />}
-                    value={formValues.monthlyConversionTarget || '0'}
-                    onChange={handleChange('monthlyConversionTarget')}
-                    placeholder="e.g. 20"
-                  />
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <Target className="w-3 h-3" />
+                      Daily Lead Target
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={formValues.dailyLeadTarget ?? '0'}
+                      onChange={(e) => handleChange('dailyLeadTarget')(e.target.value)}
+                      placeholder="e.g. 10"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <TrendingUp className="w-3 h-3" />
+                      Monthly Conversion Target
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={formValues.monthlyConversionTarget ?? '0'}
+                      onChange={(e) => handleChange('monthlyConversionTarget')(e.target.value)}
+                      placeholder="e.g. 20"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
+                    />
+                  </div>
                 </div>
               )}
             </div>
