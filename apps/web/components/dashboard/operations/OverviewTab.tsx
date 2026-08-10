@@ -30,7 +30,7 @@ interface OverviewTabProps {
 export default function OverviewTab({ onNavigate }: OverviewTabProps = {}) {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const isManager = !!user?.isManagerMode;
+  const isManager = user?.role === 'SUPERVISOR' || user?.role === 'MANAGER';
   
   const { data: leadStats, isLoading: isLoadingLeadStats } = useLeadStats();
   const { data: opStats, isLoading: isLoadingOpStats } = useOperationsStats();

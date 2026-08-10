@@ -24,7 +24,7 @@ interface User {
   bankName?: string;
   accountNumber?: string;
   accountName?: string;
-  isManagerMode?: boolean;
+
   isTourCompleted?: boolean;
   driversLicense?: string;
 }

@@ -470,7 +470,7 @@ export class DashboardService {
       }),
       this.prisma.user.findUnique({
         where: { id: userId },
-        select: { referralCount: true, role: true, isManagerMode: true },
+        select: { referralCount: true, role: true },
       }),
       this.prisma.user.count({
         where: { 
@@ -527,7 +527,7 @@ export class DashboardService {
     }
 
     // 3. Activation Action
-    if (user?.isManagerMode || user?.role === "ADMIN" || user?.role === "SUPER_ADMIN") {
+    if (user?.role === "SUPERVISOR" || user?.role === "MANAGER" || user?.role === "ADMIN" || user?.role === "SUPER_ADMIN") {
       if (inactiveReferrals > 0) {
         actions.push({
           title: "Activate Affiliates",

@@ -305,29 +305,38 @@ export class UsersService {
 
   async findAllAdmin(filter: UserFilterDto) {
     const where: Prisma.UserWhereInput = {};
+    const isManagerFilter = filter.isManager === true || (filter.isManager as any) === 'true';
 
-    if (filter.role) {
+    if (isManagerFilter) {
+      where.role = Role.SUPERVISOR;
+    } else if (filter.role) {
       where.role = filter.role;
     } else {
-      // Default to showing affiliates unless a role filter is explicitly set
-      where.role = Role.AFFILIATE;
+      // Default to showing all affiliate network members (exclude admin users unless searched)
+      where.role = { notIn: [Role.ADMIN, Role.SUPER_ADMIN] };
     }
 
     if (filter.status) {
       where.status = filter.status;
     }
 
-    if (filter.isManager !== undefined) {
-      where.isManagerMode = filter.isManager;
-    }
-
     if (filter.search) {
-      where.OR = [
+      const searchConditions: Prisma.UserWhereInput[] = [
         { fullName: { contains: filter.search, mode: "insensitive" } },
         { email: { contains: filter.search, mode: "insensitive" } },
         { phone: { contains: filter.search, mode: "insensitive" } },
         { referralCode: { contains: filter.search, mode: "insensitive" } },
       ];
+
+      if (where.OR) {
+        where.AND = [
+          { OR: where.OR },
+          { OR: searchConditions },
+        ];
+        delete where.OR;
+      } else {
+        where.OR = searchConditions;
+      }
     }
 
     const [data, total] = await Promise.all([
@@ -348,7 +357,7 @@ export class UsersService {
           referralCode: true,
           createdAt: true,
           totalEarnings: true,
-          isManagerMode: true,
+
           referralCount: true,
           dailyLeadTarget: true,
           monthlyConversionTarget: true,
@@ -402,9 +411,14 @@ export class UsersService {
   }
 
   async updateRole(id: string, role: Role) {
+    const isSupervisorOrAbove = role === Role.SUPERVISOR || role === Role.MANAGER;
     return this.prisma.user.update({
       where: { id },
-      data: { role },
+      data: {
+        role,
+        // Clear expiry when demoting below supervisor
+        ...(isSupervisorOrAbove ? {} : { managerQualificationExpiry: null }),
+      },
     });
   }
 
@@ -412,12 +426,21 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException("User not found");
 
+    // Promote: set role to SUPERVISOR if not already a supervisor/manager
+    // Demote: revert role to AFFILIATE
+    let newRole = user.role;
+    if (isManagerMode && user.role !== Role.SUPERVISOR && user.role !== Role.MANAGER) {
+      newRole = Role.SUPERVISOR;
+    } else if (!isManagerMode && user.role === Role.SUPERVISOR) {
+      newRole = Role.AFFILIATE;
+    }
+
     return this.prisma.user.update({
       where: { id },
       data: {
-        isManagerMode,
-        managerQualificationExpiry: isManagerMode 
-          ? new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) 
+        role: newRole,
+        managerQualificationExpiry: isManagerMode
+          ? new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
           : null,
       },
     });

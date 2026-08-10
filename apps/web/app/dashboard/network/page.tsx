@@ -141,7 +141,7 @@ export default function NetworkPage() {
   }, []);
 
   const isAgent = user?.role === 'AGENT';
-  const isAlreadySupervisor = user?.role === 'SUPERVISOR' || user?.role === 'MANAGER' || !!user?.isManagerMode;
+  const isAlreadySupervisor = user?.role === 'SUPERVISOR' || user?.role === 'MANAGER';
 
   useEffect(() => {
     if (isAlreadySupervisor) {

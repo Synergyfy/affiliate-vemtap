@@ -71,7 +71,7 @@ export interface User {
   nin?: string;
   bvn?: string;
   kycStatus?: 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
-  isManagerMode?: boolean;
+
   isTourCompleted?: boolean;
   driversLicense?: string;
   dailyLeadTarget?: number;

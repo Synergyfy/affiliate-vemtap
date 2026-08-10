@@ -22,7 +22,7 @@ export class UserFilterDto extends PaginationDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
-  @Transform(({ value }) => value === 'true' || value === true)
+  @Transform(({ value }) => (value === undefined || value === null || value === '' ? undefined : value === 'true' || value === true))
   @IsBoolean()
   isManager?: boolean;
 }
