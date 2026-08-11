@@ -61,7 +61,7 @@ export class AgreementsController {
    * User: Fetch pending agreements that need signature (called on dashboard load)
    */
   @Get('pending')
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'User: Fetch pending agreements that the current user must sign' })
   async getPendingAgreements(@CurrentUser() user: { id: string; role: Role }) {
     return this.agreementsService.getPendingAgreements(user.id, user.role);
@@ -71,7 +71,7 @@ export class AgreementsController {
    * User: Fetch current user's signed agreement history
    */
   @Get('my-signatures')
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "User: Get a history of all agreements signed by the current user" })
   async getUserSignatures(@CurrentUser() user: { id: string }) {
     return this.agreementsService.getUserSignatures(user.id);
@@ -111,7 +111,7 @@ export class AgreementsController {
    * User: Sign an agreement (confirming signature of the latest version)
    */
   @Post(':id/sign')
-  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER)
+  @Roles(Role.AFFILIATE, Role.AGENT, Role.SUPERVISOR, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "User: Sign the latest version of a specific agreement" })
   async signAgreement(
     @Param('id') id: string,

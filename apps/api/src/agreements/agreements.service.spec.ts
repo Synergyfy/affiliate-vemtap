@@ -145,8 +145,8 @@ describe('AgreementsService', () => {
   });
 
   describe('getPendingAgreements', () => {
-    it('should retrieve pending agreements on cache miss', async () => {
-      mockCache.get.mockResolvedValue(null); // Cache miss for both active and signed
+    it('should retrieve pending agreements and query user signatures from DB', async () => {
+      mockCache.get.mockResolvedValue(null); // Cache miss for active agreements
       
       const activeAgreements = [
         { id: 'ag-1', title: 'Ag 1', version: 1, targetRoles: [Role.AFFILIATE], isActive: true },
@@ -165,10 +165,13 @@ describe('AgreementsService', () => {
       expect(result.length).toBe(1);
       expect(result[0].id).toBe('ag-2'); // Only ag-2 is pending (version 2 is active, user only signed 1)
       expect(mockCache.set).toHaveBeenCalledWith('agreements:active:role:AFFILIATE', activeAgreements, 3600 * 1000);
-      expect(mockCache.set).toHaveBeenCalledWith('agreements:signed:user:user-1', signedLogs, 3600 * 1000);
+      expect(mockPrisma.agreementSignature.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+        select: { agreementId: true, version: true },
+      });
     });
 
-    it('should read from cache on cache hit without querying DB', async () => {
+    it('should read active agreements from cache and query signatures from DB', async () => {
       const activeAgreements = [
         { id: 'ag-1', title: 'Ag 1', version: 1, targetRoles: [Role.AFFILIATE], isActive: true },
       ];
@@ -176,15 +179,17 @@ describe('AgreementsService', () => {
         { agreementId: 'ag-1', version: 1 },
       ];
       
-      mockCache.get
-        .mockResolvedValueOnce(activeAgreements) // First call: active cache
-        .mockResolvedValueOnce(signedLogs);      // Second call: signed cache
+      mockCache.get.mockResolvedValueOnce(activeAgreements); // Active cache hit
+      mockPrisma.agreementSignature.findMany.mockResolvedValue(signedLogs);
 
       const result = await service.getPendingAgreements('user-1', Role.AFFILIATE);
 
       expect(result.length).toBe(0); // All signed
       expect(mockPrisma.agreement.findMany).not.toHaveBeenCalled();
-      expect(mockPrisma.agreementSignature.findMany).not.toHaveBeenCalled();
+      expect(mockPrisma.agreementSignature.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+        select: { agreementId: true, version: true },
+      });
     });
   });
 

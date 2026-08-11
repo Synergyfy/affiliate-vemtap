@@ -4,7 +4,7 @@ import { MarketMappingConfig } from '@/types/api';
 
 export function useMarketMappingConfig() {
   return useQuery<MarketMappingConfig>({
-    queryKey: ['market-mapping-config'],
+    queryKey: ['market-mapping', 'config'],
     queryFn: async () => {
       const { data } = await api.get('/market-mapping/config');
       return data;
