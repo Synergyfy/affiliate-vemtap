@@ -181,7 +181,7 @@ export class AgreementsService {
   }
 
   /**
-   * Get pending agreements for a given user (utilizes Redis caching layer)
+   * Get pending agreements for a given user (utilizes Redis caching layer for active agreements)
    */
   async getPendingAgreements(userId: string, role: Role): Promise<Agreement[]> {
     // 1. Fetch active agreements targeting this role from cache or DB
@@ -200,18 +200,11 @@ export class AgreementsService {
 
     if (activeAgreements.length === 0) return [];
 
-    // 2. Fetch user's signed agreements from cache or DB
-    const signedCacheKey = this.getSignedCacheKey(userId);
-    let signedLogs = await this.cacheManager.get<{ agreementId: string; version: number }[]>(signedCacheKey);
-
-    if (!signedLogs) {
-      const logs = await this.prisma.agreementSignature.findMany({
-        where: { userId },
-        select: { agreementId: true, version: true },
-      });
-      signedLogs = logs;
-      await this.cacheManager.set(signedCacheKey, signedLogs, CACHE_TTL);
-    }
+    // 2. Fetch user's signed agreements directly from DB for 100% real-time accuracy
+    const signedLogs = await this.prisma.agreementSignature.findMany({
+      where: { userId },
+      select: { agreementId: true, version: true },
+    });
 
     // Map user signatures for O(1) lookup
     const signedMap = new Map<string, number>();
@@ -259,6 +252,7 @@ export class AgreementsService {
     });
 
     if (existing) {
+      await this.invalidateUserSignedCache(userId);
       return existing; // Already signed this version
     }
 

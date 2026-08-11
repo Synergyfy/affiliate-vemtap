@@ -14,11 +14,23 @@ interface PipelineViewProps {
   onSelectVisit: (visit: PlannedVisit) => void;
 }
 
+const DEFAULT_PIPELINE_STATUSES = [
+  { id: 'NOT_YET', name: 'To Visit', color: 'bg-slate-500', bg: 'bg-slate-50', text: 'text-slate-600' },
+  { id: 'VISITED', name: 'Visited', color: 'bg-blue-500', bg: 'bg-blue-50', text: 'text-blue-600' },
+  { id: 'CONTACTED', name: 'Contacted', color: 'bg-purple-500', bg: 'bg-purple-50', text: 'text-purple-600' },
+  { id: 'INTERESTED', name: 'Interested', color: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-600' },
+  { id: 'NOT_INTERESTED', name: 'Not Interested', color: 'bg-red-500', bg: 'bg-red-50', text: 'text-red-600' },
+  { id: 'CUSTOMER', name: 'Customer', color: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-600' },
+];
+
 export default function PipelineView({ visits, onSelectVisit }: PipelineViewProps) {
   const { saveCapture } = useMarketMapping();
   const { data: config } = useMarketMappingConfig();
   const { showToast } = useToast();
-  const pipelineStatuses = config?.pipelineStatuses ?? [];
+  const rawStatuses = config?.pipelineStatuses;
+  const pipelineStatuses = Array.isArray(rawStatuses) && rawStatuses.length > 0
+    ? rawStatuses.map((st: any) => typeof st === 'string' ? { id: st, name: st, color: 'bg-blue-500', bg: 'bg-blue-50', text: 'text-blue-600' } : st)
+    : DEFAULT_PIPELINE_STATUSES;
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   
