@@ -6,20 +6,32 @@ import { useMarketMapping } from '@/components/dashboard/market-mapping/MarketMa
 import {
   MapPin, Calendar, Navigation, BarChart3, Sparkles,
   ArrowRight, Target, Users, Pencil, Check, ChevronDown,
-  FileText, ArrowLeft
+  FileText, ArrowLeft, Lock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMemo, useState } from 'react';
 import { useMarketMappingConfig } from '@/hooks/use-market-mapping-config';
+import { useToast } from '@/hooks/use-toast';
 
 export default function MarketMappingHubPage() {
   const { stats, missionPlans, performance, visits, setPerformance } = useMarketMapping();
   const { data: config } = useMarketMappingConfig();
+  const { showToast } = useToast();
   const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long' });
 
-  const dayPlan = missionPlans.find(p => p.horizon === 'DAY');
-  const weekPlan = missionPlans.find(p => p.horizon === 'WEEK');
+  const hasLocation = Boolean(config?.assignment?.clusterName)
+    || missionPlans.some(p => p.location && p.location.trim() && p.location.trim() !== 'Assigned Cluster');
+
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const dayPlan = missionPlans.find(p => p.horizon === 'DAY' && (p.startDate || '').slice(0, 10) === todayKey);
+  const weekPlan = missionPlans.find(p => {
+    if (p.horizon !== 'WEEK' || !p.startDate) return false;
+    const start = new Date(p.startDate);
+    const end = p.endDate ? new Date(p.endDate) : new Date(start.getTime() + 6 * 86400000);
+    return !isNaN(start.getTime()) && !isNaN(end.getTime()) && start <= today && today <= end;
+  });
   const activePlan = dayPlan || weekPlan;
 
   const dayTarget = dayPlan?.targetCount || performance.dailyTarget || config?.dailyTarget || 0;
@@ -57,6 +69,10 @@ export default function MarketMappingHubPage() {
 
   const subPercent = monthlySubTarget > 0 ? Math.min(100, Math.round((bizStats.customers / monthlySubTarget) * 100)) : 0;
 
+  const notifyNeedsLocation = () => {
+    showToast('Add a location first — business leads need a location before you can capture them.', 'error');
+  };
+
   const actionButtons = [
     {
       href: '/dashboard/market-mapping/plan',
@@ -65,6 +81,7 @@ export default function MarketMappingHubPage() {
       description: 'Set targets and locations for your daily or weekly goals.',
       color: 'bg-blue-600',
       badge: null,
+      locked: false,
     },
     {
       href: '/dashboard/market-mapping/execute',
@@ -73,6 +90,7 @@ export default function MarketMappingHubPage() {
       description: 'Your daily list — record visits, update business info and add businesses to execute.',
       color: 'bg-emerald-600',
       badge: dayRemaining > 0 ? `${dayRemaining} remaining today` : null,
+      locked: true,
     },
     {
       href: '/dashboard/market-mapping/pipeline',
@@ -81,6 +99,7 @@ export default function MarketMappingHubPage() {
       description: 'All businesses you captured — track status, progress and subscriptions.',
       color: 'bg-indigo-600',
       badge: null,
+      locked: true,
     },
     {
       href: '/dashboard/market-mapping/insights',
@@ -89,6 +108,7 @@ export default function MarketMappingHubPage() {
       description: 'AI recommendations, cluster maturity and market goals.',
       color: 'bg-purple-600',
       badge: null,
+      locked: false,
     },
     {
       href: '/dashboard/market-mapping/insights/reports',
@@ -97,6 +117,7 @@ export default function MarketMappingHubPage() {
       description: 'Daily, weekly & monthly performance breakdown with targets, business visits and conversion insights.',
       color: 'bg-rose-600',
       badge: null,
+      locked: false,
     },
   ];
 
@@ -270,35 +291,92 @@ export default function MarketMappingHubPage() {
           )}
         </div>
 
+        {/* Location status — tells users why business leads are locked/unlocked */}
+        <div className="space-y-3">
+          {hasLocation ? (
+            <div className="flex items-start gap-2.5 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3">
+              <MapPin className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+              <p className="text-xs font-semibold text-emerald-800">
+                Your location is set{config?.assignment?.clusterName ? ` (${config.assignment.clusterName})` : ''} — you can now add business leads.
+              </p>
+            </div>
+          ) : (
+            <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
+              <MapPin className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold text-amber-800">Add a location first</p>
+                <p className="text-[11px] text-amber-700 mt-0.5">
+                  Business leads (Field Work &amp; Pipeline) are locked until you set a location in Plan Mission — every captured business is tied to where you work.
+                </p>
+                <Link
+                  href="/dashboard/market-mapping/plan"
+                  className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold rounded-lg transition-colors"
+                >
+                  <Calendar className="w-3.5 h-3.5" /> Set a location
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Action Buttons — after targets & status */}
         <div className="space-y-3">
           <h2 className="text-xs font-extrabold uppercase tracking-widest text-slate-400">What do you want to do?</h2>
 
-          {actionButtons.map((action) => (
-            <Link
-              key={action.href}
-              href={action.href}
-              className="block bg-white rounded-2xl border border-slate-200 p-4 hover:shadow-lg hover:border-slate-300 transition-all group active:scale-[0.98]"
-            >
-              <div className="flex items-start gap-4">
-                <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shrink-0 text-white transition-transform group-hover:scale-110", action.color)}>
-                  <action.icon className="w-6 h-6" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <h3 className="text-sm font-black text-slate-900">{action.title}</h3>
-                    <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-slate-600 group-hover:translate-x-1 transition-all shrink-0" />
+          {actionButtons.map((action) => {
+            const locked = action.locked && !hasLocation;
+            if (locked) {
+              return (
+                <button
+                  key={action.href}
+                  type="button"
+                  onClick={notifyNeedsLocation}
+                  className="block w-full text-left bg-slate-50 rounded-2xl border border-slate-200 p-4 opacity-70 grayscale transition-all"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shrink-0 text-white", action.color)}>
+                      <Lock className="w-6 h-6" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="text-sm font-black text-slate-700">{action.title}</h3>
+                        <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      </div>
+                      <p className="text-xs text-slate-400 leading-relaxed">{action.description}</p>
+                      <span className="inline-block mt-2 px-2.5 py-0.5 bg-amber-50 text-amber-700 text-[10px] font-bold rounded-md border border-amber-100">
+                        Add a location first
+                      </span>
+                    </div>
                   </div>
-                  <p className="text-xs text-slate-500 leading-relaxed">{action.description}</p>
-                  {action.badge && (
-                    <span className="inline-block mt-2 px-2.5 py-0.5 bg-amber-50 text-amber-700 text-[10px] font-bold rounded-md border border-amber-100">
-                      {action.badge}
-                    </span>
-                  )}
+                </button>
+              );
+            }
+            return (
+              <Link
+                key={action.href}
+                href={action.href}
+                className="block bg-white rounded-2xl border border-slate-200 p-4 hover:shadow-lg hover:border-slate-300 transition-all group active:scale-[0.98]"
+              >
+                <div className="flex items-start gap-4">
+                  <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shrink-0 text-white transition-transform group-hover:scale-110", action.color)}>
+                    <action.icon className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="text-sm font-black text-slate-900">{action.title}</h3>
+                      <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-slate-600 group-hover:translate-x-1 transition-all shrink-0" />
+                    </div>
+                    <p className="text-xs text-slate-500 leading-relaxed">{action.description}</p>
+                    {action.badge && (
+                      <span className="inline-block mt-2 px-2.5 py-0.5 bg-amber-50 text-amber-700 text-[10px] font-bold rounded-md border border-amber-100">
+                        {action.badge}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
 
       </div>

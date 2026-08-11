@@ -99,6 +99,21 @@ export class UpdateMissionPlanDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiProperty({ required: false, example: "Ikeja Cluster A", description: "Location or cluster name" })
+  @IsOptional()
+  @IsString()
+  locationCluster?: string;
+
+  @ApiProperty({ required: false, example: "2026-08-10T00:00:00.000Z" })
+  @IsOptional()
+  @IsDateString()
+  startDate?: string;
+
+  @ApiProperty({ required: false, example: "2026-08-16T23:59:59.000Z" })
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
 }
 
 export class CreateMarketMappingNoteDto {
@@ -158,6 +173,14 @@ export class UpdateHierarchyNodeDto {
   parentId?: string;
 }
 
+export enum AssignmentDurationEnum {
+  ONE_DAY = "ONE_DAY",
+  ONE_WEEK = "ONE_WEEK",
+  ONE_MONTH = "ONE_MONTH",
+  CUSTOM = "CUSTOM",
+  FOREVER = "FOREVER",
+}
+
 export class CreateAssignmentDto {
   @ApiProperty({ example: "uuid-user-id" })
   @IsString()
@@ -185,9 +208,94 @@ export class CreateAssignmentDto {
   @ApiProperty({ example: true })
   @IsOptional()
   allowUserEdit?: boolean;
+
+  @ApiProperty({ required: false, enum: ["ONE_DAY", "ONE_WEEK", "ONE_MONTH", "CUSTOM", "FOREVER"], example: "ONE_WEEK" })
+  @IsOptional()
+  @IsIn(["ONE_DAY", "ONE_WEEK", "ONE_MONTH", "CUSTOM", "FOREVER"])
+  duration?: "ONE_DAY" | "ONE_WEEK" | "ONE_MONTH" | "CUSTOM" | "FOREVER";
+
+  @ApiProperty({ required: false, example: "2026-09-01T00:00:00.000Z", description: "Required if duration is CUSTOM" })
+  @IsOptional()
+  @IsDateString()
+  customExpiresAt?: string;
+
+  @ApiProperty({ required: false, example: 14, description: "Alternative to customExpiresAt: number of days from now" })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  customDays?: number;
+
+  @ApiProperty({ required: false, example: true, description: "Whether to replace any active existing cluster assignment for this user" })
+  @IsOptional()
+  @IsBoolean()
+  reassignExisting?: boolean;
+}
+
+export class AssignLineManagerDto {
+  @ApiProperty({ example: "uuid-manager-id", description: "User ID of the Line Manager" })
+  @IsString()
+  managerId: string;
+
+  @ApiProperty({ example: "uuid-cluster-id" })
+  @IsString()
+  clusterId: string;
+
+  @ApiProperty({ required: false, example: 10 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  dailyLeadTarget?: number;
+
+  @ApiProperty({ required: false, example: 50 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  weeklyLeadTarget?: number;
+
+  @ApiProperty({ required: false, example: 20 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  monthlyConversionTarget?: number;
+
+  @ApiProperty({ required: false, example: true })
+  @IsOptional()
+  @IsBoolean()
+  allowUserEdit?: boolean;
+
+  @ApiProperty({ required: false, enum: ["ONE_DAY", "ONE_WEEK", "ONE_MONTH", "CUSTOM", "FOREVER"], example: "ONE_WEEK" })
+  @IsOptional()
+  @IsIn(["ONE_DAY", "ONE_WEEK", "ONE_MONTH", "CUSTOM", "FOREVER"])
+  duration?: "ONE_DAY" | "ONE_WEEK" | "ONE_MONTH" | "CUSTOM" | "FOREVER";
+
+  @ApiProperty({ required: false, example: "2026-09-01T00:00:00.000Z" })
+  @IsOptional()
+  @IsDateString()
+  customExpiresAt?: string;
+
+  @ApiProperty({ required: false, example: 14 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  customDays?: number;
+
+  @ApiProperty({ required: false, example: true, description: "Automatically include all affiliates/agents under this line manager" })
+  @IsOptional()
+  @IsBoolean()
+  includeTeamMembers?: boolean;
+
+  @ApiProperty({ required: false, example: true, description: "Whether to replace active cluster assignments for team members" })
+  @IsOptional()
+  @IsBoolean()
+  reassignExisting?: boolean;
 }
 
 export class UpdateAssignmentDto {
+  @ApiProperty({ required: false, example: "uuid-cluster-id", description: "Intentionally reassign to a new cluster" })
+  @IsOptional()
+  @IsString()
+  clusterId?: string;
+
   @ApiProperty({ required: false, example: 12 })
   @IsOptional()
   @IsInt()
@@ -208,6 +316,67 @@ export class UpdateAssignmentDto {
 
   @ApiProperty({ required: false, example: true })
   @IsOptional()
+  allowUserEdit?: boolean;
+
+  @ApiProperty({ required: false, enum: ["ONE_DAY", "ONE_WEEK", "ONE_MONTH", "CUSTOM", "FOREVER"], example: "ONE_MONTH" })
+  @IsOptional()
+  @IsIn(["ONE_DAY", "ONE_WEEK", "ONE_MONTH", "CUSTOM", "FOREVER"])
+  duration?: "ONE_DAY" | "ONE_WEEK" | "ONE_MONTH" | "CUSTOM" | "FOREVER";
+
+  @ApiProperty({ required: false, example: "2026-09-01T00:00:00.000Z" })
+  @IsOptional()
+  @IsDateString()
+  customExpiresAt?: string;
+
+  @ApiProperty({ required: false, example: 14 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  customDays?: number;
+}
+
+export class ReassignAssignmentDto {
+  @ApiProperty({ example: "uuid-new-cluster-id" })
+  @IsString()
+  clusterId: string;
+
+  @ApiProperty({ required: false, enum: ["ONE_DAY", "ONE_WEEK", "ONE_MONTH", "CUSTOM", "FOREVER"], example: "ONE_WEEK" })
+  @IsOptional()
+  @IsIn(["ONE_DAY", "ONE_WEEK", "ONE_MONTH", "CUSTOM", "FOREVER"])
+  duration?: "ONE_DAY" | "ONE_WEEK" | "ONE_MONTH" | "CUSTOM" | "FOREVER";
+
+  @ApiProperty({ required: false, example: "2026-09-01T00:00:00.000Z" })
+  @IsOptional()
+  @IsDateString()
+  customExpiresAt?: string;
+
+  @ApiProperty({ required: false, example: 14 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  customDays?: number;
+
+  @ApiProperty({ required: false, example: 10 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  dailyLeadTarget?: number;
+
+  @ApiProperty({ required: false, example: 50 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  weeklyLeadTarget?: number;
+
+  @ApiProperty({ required: false, example: 20 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  monthlyConversionTarget?: number;
+
+  @ApiProperty({ required: false, example: true })
+  @IsOptional()
+  @IsBoolean()
   allowUserEdit?: boolean;
 }
 

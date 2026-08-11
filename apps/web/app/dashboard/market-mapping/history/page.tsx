@@ -5,19 +5,59 @@ import { useMarketMapping } from '@/components/dashboard/market-mapping/MarketMa
 import { ArrowLeft, Target, CheckCircle, XCircle, MapPin, Clock, Pencil } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { MissionPlan } from '@/types/affiliate-market-mapping';
 
 export default function TargetHistoryPage() {
   const { missionHistory, missionPlans, performance } = useMarketMapping();
 
-  const allEntries = [
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+  const isPlanActive = (p: MissionPlan) => {
+    if (p.horizon === 'WEEK' && p.startDate) {
+      const end = p.endDate ? new Date(p.endDate) : null;
+      if (end && !isNaN(end.getTime())) return end >= todayStart;
+    }
+    const start = p.startDate ? new Date(p.startDate) : null;
+    if (start && !isNaN(start.getTime())) return start >= todayStart;
+    return true;
+  };
+
+  const achievedFor = (p: MissionPlan) =>
+    p.horizon === 'DAY' ? performance.dailyProgress : p.horizon === 'WEEK' ? performance.weeklyProgress : performance.monthlyProgress;
+
+  const activePlans = missionPlans.filter(isPlanActive);
+  const pastPlans = missionPlans.filter(p => !isPlanActive(p));
+
+  const activeEntries = activePlans.map(p => ({
+    ...p,
+    achieved: achievedFor(p),
+    status: 'ACTIVE' as const,
+    archivedAt: '',
+  }));
+
+  const pastEntries = [
     ...missionHistory,
-    ...missionPlans.map(p => ({
+    ...pastPlans.map(p => ({
       ...p,
-      achieved: p.horizon === 'DAY' ? performance.dailyProgress : p.horizon === 'WEEK' ? performance.weeklyProgress : performance.monthlyProgress,
-      status: 'ACTIVE' as const,
+      achieved: achievedFor(p),
+      status: 'INCOMPLETE' as const,
       archivedAt: '',
     })),
-  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  ]
+    .filter((entry, i, arr) => arr.findIndex(x => x.id && x.id === entry.id) === i)
+    .sort((a, b) => new Date(b.startDate || b.createdAt).getTime() - new Date(a.startDate || a.createdAt).getTime());
+
+  const dateLabel = (entry: { startDate?: string; createdAt: string }) => {
+    const d = entry.startDate ? new Date(entry.startDate) : null;
+    if (d && !isNaN(d.getTime())) return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return new Date(entry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const progressOf = (entry: { targetCount: number; achieved: number }) => {
+    const pct = entry.targetCount > 0 ? Math.min(100, Math.round((entry.achieved / entry.targetCount) * 100)) : 0;
+    return { pct, achieved: pct >= 100 };
+  };
 
   return (
     <DashboardLayout>
@@ -35,23 +75,19 @@ export default function TargetHistoryPage() {
               Target History
             </h1>
             <p className="text-xs text-slate-500 font-medium">
-              {missionHistory.length} past targets · {missionPlans.length} active
+              {pastEntries.length} past targets · {activeEntries.length} active
             </p>
           </div>
         </div>
 
         {/* Active Plans — with Edit Mission */}
-        {missionPlans.length > 0 && (
+        {activeEntries.length > 0 && (
           <div className="space-y-2">
             <h2 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-1">Active Plans</h2>
-            {missionPlans.map((plan, idx) => {
-              const progress = plan.horizon === 'DAY' ? performance.dailyProgress : performance.weeklyProgress;
-              const pct = plan.targetCount > 0 ? Math.min(100, Math.round((progress / plan.targetCount) * 100)) : 0;
-              const achieved = pct >= 100;
-              const createdDate = new Date(plan.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-
+            {activeEntries.map((plan, idx) => {
+              const { pct, achieved } = progressOf(plan);
               return (
-                <div key={idx} className="bg-white border border-blue-200 ring-1 ring-blue-100 rounded-2xl p-4">
+                <div key={plan.id || idx} className="bg-white border border-blue-200 ring-1 ring-blue-100 rounded-2xl p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
@@ -71,14 +107,14 @@ export default function TargetHistoryPage() {
                       </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-lg font-black text-slate-900">{progress}<span className="text-xs font-bold text-slate-400">/{plan.targetCount}</span></p>
-                      <p className="text-[10px] font-medium text-slate-400">{createdDate}</p>
+                      <p className="text-lg font-black text-slate-900">{plan.achieved}<span className="text-xs font-bold text-slate-400">/{plan.targetCount}</span></p>
+                      <p className="text-[10px] font-medium text-slate-400">{dateLabel(plan)}</p>
                     </div>
                   </div>
                   <div className="mt-3 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                     <div className={cn("h-full rounded-full transition-all", achieved ? "bg-emerald-500" : "bg-blue-500")} style={{ width: `${pct}%` }} />
                   </div>
-                  <Link href="/dashboard/market-mapping/plan" className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-[11px] font-semibold text-slate-600 transition-colors">
+                  <Link href={plan.id ? `/dashboard/market-mapping/plan?plan=${plan.id}` : '/dashboard/market-mapping/plan'} className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-[11px] font-semibold text-slate-600 transition-colors">
                     <Pencil className="w-3 h-3" /> Edit Mission
                   </Link>
                 </div>
@@ -88,16 +124,13 @@ export default function TargetHistoryPage() {
         )}
 
         {/* Past / Archived */}
-        {missionHistory.length > 0 && (
+        {pastEntries.length > 0 && (
           <div className="space-y-2">
             <h2 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-1">Past Targets</h2>
-            {missionHistory.map((entry, idx) => {
-              const pct = entry.targetCount > 0 ? Math.min(100, Math.round((entry.achieved / entry.targetCount) * 100)) : 0;
-              const achieved = pct >= 100;
-              const createdDate = new Date(entry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-
+            {pastEntries.map((entry, idx) => {
+              const { pct, achieved } = progressOf(entry);
               return (
-                <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-4">
+                <div key={entry.id || idx} className="bg-white border border-slate-200 rounded-2xl p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
@@ -120,19 +153,24 @@ export default function TargetHistoryPage() {
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-lg font-black text-slate-900">{entry.achieved}<span className="text-xs font-bold text-slate-400">/{entry.targetCount}</span></p>
-                      <p className="text-[10px] font-medium text-slate-400">{createdDate}</p>
+                      <p className="text-[10px] font-medium text-slate-400">{dateLabel(entry)}</p>
                     </div>
                   </div>
                   <div className="mt-3 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                     <div className={cn("h-full rounded-full transition-all", achieved ? "bg-emerald-500" : "bg-red-300")} style={{ width: `${pct}%` }} />
                   </div>
+                  {entry.id && (
+                    <Link href={`/dashboard/market-mapping/plan?plan=${entry.id}`} className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-[11px] font-semibold text-slate-600 transition-colors">
+                      <Pencil className="w-3 h-3" /> Edit Mission
+                    </Link>
+                  )}
                 </div>
               );
             })}
           </div>
         )}
 
-        {allEntries.length === 0 && (
+        {activeEntries.length === 0 && pastEntries.length === 0 && (
           <div className="text-center py-16">
             <Target className="w-12 h-12 text-slate-200 mx-auto mb-4" />
             <h3 className="text-sm font-bold text-slate-500">No targets set yet</h3>

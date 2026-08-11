@@ -22,7 +22,9 @@ import {
   CreateHierarchyNodeDto,
   UpdateHierarchyNodeDto,
   CreateAssignmentDto,
+  AssignLineManagerDto,
   UpdateAssignmentDto,
+  ReassignAssignmentDto,
   UpdateMarketMappingAdminConfigDto,
   CreateMarketMappingVisitDto,
   UpdateMarketMappingVisitDto,
@@ -233,22 +235,48 @@ export class MarketMappingController {
   @Get("admin/assignments")
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "List affiliate cluster assignments (Admin only)" })
-  getAssignments() {
-    return this.marketMappingService.getAssignments();
+  getAssignments(
+    @Query("clusterId") clusterId?: string,
+    @Query("userId") userId?: string,
+    @Query("includeExpired") includeExpired?: string,
+  ) {
+    return this.marketMappingService.getAssignments({
+      clusterId,
+      userId,
+      includeExpired: includeExpired === "true" || includeExpired === "1",
+    });
   }
 
   @Post("admin/assignments")
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  @ApiOperation({ summary: "Assign affiliate to cluster (Admin only)" })
-  createAssignment(@Body() dto: CreateAssignmentDto) {
-    return this.marketMappingService.createAssignment(dto);
+  @ApiOperation({ summary: "Assign affiliate or agent to cluster with optional duration (Admin only)" })
+  createAssignment(@Body() dto: CreateAssignmentDto, @CurrentUser() user: { id: string }) {
+    return this.marketMappingService.createAssignment(dto, user.id);
+  }
+
+  @Post("admin/assignments/line-manager")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Assign line manager and all managed affiliates/agents to cluster (Admin only)" })
+  assignLineManager(@Body() dto: AssignLineManagerDto, @CurrentUser() user: { id: string }) {
+    return this.marketMappingService.assignLineManager(dto, user.id);
   }
 
   @Patch("admin/assignments/:id")
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
-  @ApiOperation({ summary: "Update affiliate assignment targets (Admin only)" })
+  @ApiOperation({ summary: "Update affiliate assignment targets, duration, or cluster (Admin only)" })
   updateAssignment(@Param("id") id: string, @Body() dto: UpdateAssignmentDto) {
     return this.marketMappingService.updateAssignment(id, dto);
+  }
+
+  @Post("admin/assignments/:id/reassign")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Intentionally reassign affiliate/agent to a new cluster (Admin only)" })
+  reassignAssignment(
+    @Param("id") id: string,
+    @Body() dto: ReassignAssignmentDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.marketMappingService.reassignAssignment(id, dto, user.id);
   }
 
   @Delete("admin/assignments/:id")

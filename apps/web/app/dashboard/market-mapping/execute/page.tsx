@@ -347,8 +347,15 @@ function ExecutePage() {
   const { showToast } = useToast();
   const [horizonFilter, setHorizonFilter] = useState<MissionHorizon>('DAY');
 
-  const dayPlan = missionPlans.find(p => p.horizon === 'DAY');
-  const weekPlan = missionPlans.find(p => p.horizon === 'WEEK');
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const dayPlan = missionPlans.find(p => p.horizon === 'DAY' && (p.startDate || '').slice(0, 10) === todayKey);
+  const weekPlan = missionPlans.find(p => {
+    if (p.horizon !== 'WEEK' || !p.startDate) return false;
+    const start = new Date(p.startDate);
+    const end = p.endDate ? new Date(p.endDate) : new Date(start.getTime() + 6 * 86400000);
+    return !isNaN(start.getTime()) && !isNaN(end.getTime()) && start <= today && today <= end;
+  });
 
   const availableHorizons = useMemo(() => {
     const horizons: MissionHorizon[] = [];

@@ -9,6 +9,7 @@ import { PlannedVisit, BUSINESS_CATEGORIES, DAILY_CUSTOMER_RANGES, OPENING_DAYS 
 import { cn } from '@/lib/utils';
 import { useMarketMapping } from './MarketMappingContext';
 import { useMarketMappingConfig } from '@/hooks/use-market-mapping-config';
+import { useToast } from '@/hooks/use-toast';
 
 interface BusinessCaptureDrawerProps {
   visit: PlannedVisit | null;
@@ -135,9 +136,50 @@ function countFilledFields(d: Partial<PlannedVisit>): { filled: number; total: n
   return { filled, total };
 }
 
+function toDateInputValue(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function toTimeInputValue(d: Date): string {
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+/**
+ * A next-visit schedule must not be in the past. An unchanged (legacy) past
+ * date is allowed on edits so existing records stay editable; only a newly
+ * chosen past date/time is rejected.
+ */
+function getNextVisitError(
+  submittedDate?: string,
+  submittedTime?: string,
+  originalDate?: string,
+  originalTime?: string,
+): string | null {
+  const date = String(submittedDate || '').slice(0, 10).trim();
+  const time = String(submittedTime || '').slice(0, 5).trim();
+  if (!date) return null;
+
+  const unchanged =
+    date === String(originalDate || '').slice(0, 10).trim() &&
+    time === String(originalTime || '').slice(0, 5).trim();
+  if (unchanged) return null;
+
+  const now = new Date();
+  const today = toDateInputValue(now);
+  if (date < today) return 'Next visit date can\'t be in the past';
+  if (date === today && time && time < toTimeInputValue(now)) {
+    return 'Next visit time can\'t be in the past';
+  }
+  return null;
+}
+
 export default function BusinessCaptureDrawer({ visit, onClose, onSave }: BusinessCaptureDrawerProps) {
-  const { missionPlans } = useMarketMapping();
+  const { missionPlans, stats } = useMarketMapping();
   const { data: config } = useMarketMappingConfig();
+  const { showToast } = useToast();
 
   const categories = config?.businessCategories && config.businessCategories.length > 0
     ? config.businessCategories
@@ -167,8 +209,16 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
     ? config.pipelineStatuses
     : DEFAULT_PIPELINE_STATUSES;
 
-  const activePlan = missionPlans[missionPlans.length - 1];
-  const planLocation = activePlan?.location || '';
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const dayPlan = missionPlans.find(p => p.horizon === 'DAY' && (p.startDate || '').slice(0, 10) === todayKey);
+  const weekPlan = missionPlans.find(p => {
+    if (p.horizon !== 'WEEK' || !p.startDate) return false;
+    const start = new Date(p.startDate);
+    const end = p.endDate ? new Date(p.endDate) : new Date(start.getTime() + 6 * 86400000);
+    return !isNaN(start.getTime()) && !isNaN(end.getTime()) && start <= today && today <= end;
+  });
+  const planLocation = dayPlan?.location || weekPlan?.location || config?.assignedCluster || stats?.clusterName || '';
 
   const [formData, setFormData] = useState<Partial<PlannedVisit>>({});
   const [activeTab, setActiveTab] = useState<TabId>('general');
@@ -177,6 +227,11 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [showDaysDropdown, setShowDaysDropdown] = useState(false);
   const [customPositionText, setCustomPositionText] = useState('');
+
+  const now = new Date();
+  const nextVisitMinDate = toDateInputValue(now);
+  const nextVisitIsToday = (formData.nextVisitDate || '').slice(0, 10) === nextVisitMinDate;
+  const nextVisitMinTime = nextVisitIsToday ? toTimeInputValue(now) : undefined;
   
   const prevVisitId = useRef<string | null>(null);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
@@ -221,6 +276,16 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = useCallback(async (skipToNext = false) => {
+    const nextVisitError = getNextVisitError(
+      formData.nextVisitDate,
+      formData.nextVisitTime,
+      visit?.nextVisitDate,
+      visit?.nextVisitTime,
+    );
+    if (nextVisitError) {
+      showToast(nextVisitError, 'error');
+      return;
+    }
     setIsSaving(true);
     try {
       const newStatus = formData.status === 'NOT_YET' ? 'VISITED' : (formData.status || 'VISITED');
@@ -238,7 +303,7 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
     } finally {
       setIsSaving(false);
     }
-  }, [formData, activeTab, onSave, isAnchor]);
+  }, [formData, activeTab, onSave, isAnchor, visit, showToast]);
 
   const filteredCategories = useMemo(() => {
     if (!categorySearch) return categories;
@@ -613,6 +678,7 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
                             <input 
                               ref={visitDateRef} 
                               type="date" 
+                              min={nextVisitMinDate}
                               value={formData.nextVisitDate || ''} 
                               onChange={e => setFormData({ ...formData, nextVisitDate: e.target.value })} 
                               className="w-full bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer font-mono" 
@@ -637,6 +703,7 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
                             <input 
                               ref={visitTimeRef} 
                               type="time" 
+                              min={nextVisitMinTime}
                               value={formData.nextVisitTime || ''} 
                               onChange={e => setFormData({ ...formData, nextVisitTime: e.target.value })} 
                               className="w-full bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer font-mono" 
