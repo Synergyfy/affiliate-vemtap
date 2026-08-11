@@ -102,14 +102,17 @@ export const useUsers = (params?: {
   limit?: number; 
   page?: number; 
   isManager?: boolean;
+  enabled?: boolean;
 }) => {
   return useQuery<PaginatedResponse<User>>({
     queryKey: ['admin', 'users', params],
     queryFn: async () => {
-      const { data } = await api.get('/users', { params });
+      const { enabled, ...query } = params || {};
+      const { data } = await api.get('/users', { params: query });
       return data;
     },
     staleTime: 0,
+    enabled: params?.enabled ?? true,
   });
 };
 
