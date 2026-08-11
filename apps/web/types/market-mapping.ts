@@ -140,6 +140,8 @@ export interface AdminLocation {
   penetration: number;
 }
 
+export type AssignmentDuration = 'ONE_DAY' | 'ONE_WEEK' | 'ONE_MONTH' | 'CUSTOM' | 'FOREVER';
+
 export interface AdminAssignment {
   id: string;
   userId: string;
@@ -148,8 +150,11 @@ export interface AdminAssignment {
   weeklyLeadTarget: number;
   monthlyConversionTarget: number;
   allowUserEdit: boolean;
+  duration?: AssignmentDuration;
+  expiresAt?: string | null;
+  assignedBy?: string | null;
   createdAt?: string;
-  user?: { id: string; fullName: string; role: string; email?: string; avatar?: string };
+  user?: { id: string; fullName: string; role: string; email?: string; avatar?: string; phone?: string };
   cluster?: { id: string; name: string; type: GeographicHierarchyNode['type'] };
 }
 

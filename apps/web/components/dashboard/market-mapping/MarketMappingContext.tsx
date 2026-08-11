@@ -44,6 +44,11 @@ const emptyMaturity: ClusterMaturity = { discovery: 0, verification: 0, sales: 0
 
 const MarketMappingContext = createContext<MarketMappingContextType | undefined>(undefined);
 
+function planDateKey(date?: string): string {
+  if (!date) return '';
+  return String(date).slice(0, 10);
+}
+
 export function useMarketMapping() {
   const ctx = useContext(MarketMappingContext);
   if (!ctx) {
@@ -126,6 +131,8 @@ export function MarketMappingProvider({ children }: { children: React.ReactNode 
         location: String(p.locationCluster || 'Assigned Cluster'),
         targetCount: Number(p.targetVisits || 0),
         createdAt: p.createdAt ? new Date(String(p.createdAt)).toISOString() : new Date().toISOString(),
+        startDate: p.startDate ? String(p.startDate) : undefined,
+        endDate: p.endDate ? String(p.endDate) : undefined,
       }));
       setMissionPlans(formatted);
     }
@@ -173,16 +180,28 @@ export function MarketMappingProvider({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     if (!Array.isArray(apiHistory)) return;
-    setMissionHistory(apiHistory.map((p) => ({ id: p.id, horizon: p.endDate ? 'WEEK' : 'DAY', location: p.locationCluster || '', targetCount: p.targetVisits || 0, createdAt: p.createdAt, achieved: p.visits.filter((v) => v.status !== 'NOT_YET').length, status: p.status === 'COMPLETED' ? 'ACHIEVED' : 'INCOMPLETE', archivedAt: p.updatedAt || p.createdAt })) as MissionHistoryEntry[]);
+    setMissionHistory(apiHistory.map((p) => ({ id: p.id, horizon: p.endDate ? 'WEEK' : 'DAY', location: p.locationCluster || '', targetCount: p.targetVisits || 0, createdAt: p.createdAt, startDate: p.startDate ? String(p.startDate) : undefined, endDate: p.endDate ? String(p.endDate) : undefined, achieved: p.visits.filter((v) => v.status !== 'NOT_YET').length, status: p.status === 'COMPLETED' ? 'ACHIEVED' : 'INCOMPLETE', archivedAt: p.updatedAt || p.createdAt })) as MissionHistoryEntry[]);
   }, [apiHistory]);
 
   const addMissionPlan = useCallback((plan: MissionPlan) => {
     setMissionPlans(prev => {
-      const filtered = prev.filter(p => p.horizon !== plan.horizon);
-      return [...filtered, plan];
+      const others = prev.filter(p => !(p.horizon === plan.horizon && planDateKey(p.startDate) === planDateKey(plan.startDate)));
+      return [...others, plan];
     });
-    createPlanMutation.mutate({ targetVisits: plan.targetCount, targetLeads: plan.targetCount, targetConversions: 0, locationCluster: plan.location, startDate: plan.createdAt });
-  }, [createPlanMutation]);
+    const payload = {
+      targetVisits: plan.targetCount,
+      targetLeads: plan.targetCount,
+      targetConversions: 0,
+      locationCluster: plan.location,
+      startDate: plan.startDate || plan.createdAt,
+      endDate: plan.endDate,
+    };
+    if (plan.id) {
+      updatePlanMutation.mutate({ id: plan.id, ...payload });
+    } else {
+      createPlanMutation.mutate(payload);
+    }
+  }, [createPlanMutation, updatePlanMutation]);
 
   const archiveMissionPlan = useCallback((entry: MissionHistoryEntry) => {
     setMissionHistory(prev => [entry, ...prev]);

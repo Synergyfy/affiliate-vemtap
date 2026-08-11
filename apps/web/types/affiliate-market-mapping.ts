@@ -74,6 +74,8 @@ export interface MissionPlan {
   location: string;
   targetCount: number;
   createdAt: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 export interface MissionHistoryEntry extends MissionPlan {

@@ -250,6 +250,8 @@ export interface MarketMappingConfig {
   dailyTarget: number;
   weeklyTarget: number;
   monthlyTarget: number;
+  assignment?: { clusterId: string; clusterName: string; allowUserEdit: boolean } | null;
+  assignedCluster?: string;
 }
 
 export interface Agreement {

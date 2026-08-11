@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import {
@@ -8,6 +8,10 @@ import {
   CreateMarketMappingVisitDto,
   UpdateMarketMappingVisitDto,
   UpdateMarketMappingAdminConfigDto,
+  CreateAssignmentDto,
+  AssignLineManagerDto,
+  UpdateAssignmentDto,
+  ReassignAssignmentDto,
 } from "./dto/market-mapping.dto";
 
 type VisitWithUser = Prisma.MarketMappingVisitGetPayload<{
@@ -85,6 +89,18 @@ export class MarketMappingService {
     const dailyTarget = user?.dailyLeadTarget || adminConfig.dailyTarget || 5;
     const monthlyTarget = user?.monthlyConversionTarget || adminConfig.monthlyTarget || 20;
 
+    const assignment = await this.prisma.marketMappingAssignment.findFirst({
+      where: {
+        userId,
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gt: new Date() } },
+        ],
+      },
+      include: { cluster: { select: { id: true, name: true } } },
+      orderBy: { createdAt: "desc" },
+    });
+
     return {
       businessCategories: adminConfig.businessCategories,
       openingDays: adminConfig.openingDays,
@@ -101,6 +117,14 @@ export class MarketMappingService {
       dailyTarget,
       weeklyTarget: dailyTarget * 5,
       monthlyTarget,
+      assignment: assignment
+        ? {
+            clusterId: assignment.clusterId,
+            clusterName: assignment.cluster?.name || "",
+            allowUserEdit: assignment.allowUserEdit,
+          }
+        : null,
+      assignedCluster: assignment?.cluster?.name || config.cluster,
       territory: config,
       userTargets: {
         dailyLeadTarget: dailyTarget,
@@ -121,7 +145,45 @@ export class MarketMappingService {
     });
   }
 
+  private normalizeDatePart(d: Date): string {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+
+  /**
+   * A next-visit schedule must not be in the past. On updates, an unchanged
+   * (legacy) past date is allowed so existing records stay editable; only a
+   * newly chosen past date/time is rejected.
+   */
+  private assertValidNextVisit(
+    submittedDate?: string,
+    submittedTime?: string,
+    existingDate?: string | null,
+    existingTime?: string | null,
+  ) {
+    const date = String(submittedDate || "").slice(0, 10).trim();
+    const time = String(submittedTime || "").slice(0, 5).trim();
+    if (!date) return;
+
+    const unchanged =
+      date === String(existingDate || "").slice(0, 10).trim() &&
+      time === String(existingTime || "").slice(0, 5).trim();
+    if (unchanged) return;
+
+    const today = this.normalizeDatePart(new Date());
+    if (date < today) {
+      throw new BadRequestException("Next visit schedule cannot be in the past");
+    }
+    if (date === today && time) {
+      const now = new Date();
+      const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+      if (time < nowTime) {
+        throw new BadRequestException("Next visit schedule cannot be in the past");
+      }
+    }
+  }
+
   async createVisit(userId: string, dto: CreateMarketMappingVisitDto) {
+    this.assertValidNextVisit(dto.nextVisitDate, dto.nextVisitTime);
     const { openingDays, ...data } = dto;
     return this.prisma.marketMappingVisit.create({
       data: {
@@ -136,6 +198,7 @@ export class MarketMappingService {
   async updateVisit(id: string, userId: string, dto: UpdateMarketMappingVisitDto) {
     const existing = await this.prisma.marketMappingVisit.findFirst({ where: { id, userId } });
     if (!existing) throw new NotFoundException("Market mapping visit not found");
+    this.assertValidNextVisit(dto.nextVisitDate, dto.nextVisitTime, existing.nextVisitDate, existing.nextVisitTime);
     const { openingDays, ...data } = dto;
     const becameVisited = data.status && data.status !== "NOT_YET" && !existing.visitedAt;
     return this.prisma.marketMappingVisit.update({
@@ -711,36 +774,183 @@ export class MarketMappingService {
       });
   }
 
-  async getAssignments() {
+  private calculateExpiration(duration?: string, customExpiresAt?: string, customDays?: number, baseDate = new Date()): Date | null {
+    if (!duration || duration === "FOREVER") return null;
+    if (duration === "ONE_DAY") {
+      return new Date(baseDate.getTime() + 24 * 60 * 60 * 1000);
+    }
+    if (duration === "ONE_WEEK") {
+      return new Date(baseDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+    }
+    if (duration === "ONE_MONTH") {
+      const d = new Date(baseDate.getTime());
+      d.setMonth(d.getMonth() + 1);
+      return d;
+    }
+    if (duration === "CUSTOM") {
+      if (customExpiresAt) return new Date(customExpiresAt);
+      if (customDays && customDays > 0) return new Date(baseDate.getTime() + customDays * 24 * 60 * 60 * 1000);
+    }
+    return null;
+  }
+
+  async getAssignments(query?: { clusterId?: string; userId?: string; includeExpired?: boolean }) {
+    const where: any = {};
+    if (query?.clusterId) where.clusterId = query.clusterId;
+    if (query?.userId) where.userId = query.userId;
+    if (!query?.includeExpired) {
+      where.OR = [
+        { expiresAt: null },
+        { expiresAt: { gt: new Date() } },
+      ];
+    }
     return this.prisma.marketMappingAssignment.findMany({
+      where,
       include: {
-        user: { select: { id: true, fullName: true, role: true, email: true } },
+        user: { select: { id: true, fullName: true, role: true, email: true, phone: true } },
         cluster: { select: { id: true, name: true, type: true } },
       },
       orderBy: { createdAt: "desc" },
     });
   }
 
-  async createAssignment(dto: { userId: string; clusterId: string; dailyLeadTarget: number; weeklyLeadTarget: number; monthlyConversionTarget: number; allowUserEdit?: boolean }) {
+  async createAssignment(dto: CreateAssignmentDto, assignedByUserId?: string) {
+    const duration = dto.duration ?? "FOREVER";
+    const expiresAt = this.calculateExpiration(duration, dto.customExpiresAt, dto.customDays);
+
+    if (dto.reassignExisting) {
+      await this.prisma.marketMappingAssignment.deleteMany({
+        where: { userId: dto.userId },
+      });
+    }
+
     return this.prisma.marketMappingAssignment.create({
       data: {
         userId: dto.userId,
         clusterId: dto.clusterId,
-        dailyLeadTarget: dto.dailyLeadTarget,
-        weeklyLeadTarget: dto.weeklyLeadTarget,
-        monthlyConversionTarget: dto.monthlyConversionTarget,
+        dailyLeadTarget: dto.dailyLeadTarget ?? 0,
+        weeklyLeadTarget: dto.weeklyLeadTarget ?? 0,
+        monthlyConversionTarget: dto.monthlyConversionTarget ?? 0,
         allowUserEdit: dto.allowUserEdit ?? true,
+        duration: duration as any,
+        expiresAt,
+        assignedBy: assignedByUserId,
+      },
+      include: {
+        user: { select: { id: true, fullName: true, role: true, email: true } },
+        cluster: { select: { id: true, name: true, type: true } },
       },
     });
   }
 
-  async updateAssignment(id: string, dto: { dailyLeadTarget?: number; weeklyLeadTarget?: number; monthlyConversionTarget?: number; allowUserEdit?: boolean }) {
+  async assignLineManager(dto: AssignLineManagerDto, assignedByUserId?: string) {
+    const manager = await this.prisma.user.findUnique({
+      where: { id: dto.managerId },
+      select: { id: true, role: true, fullName: true },
+    });
+    if (!manager) throw new NotFoundException("Line manager not found");
+
+    let memberIds: string[] = [];
+    if (dto.includeTeamMembers !== false) {
+      const teamMembers = await this.prisma.user.findMany({
+        where: {
+          OR: [
+            { managerId: dto.managerId },
+            { supervisorId: dto.managerId },
+          ],
+        },
+        select: { id: true },
+      });
+      memberIds = teamMembers.map((m) => m.id);
+    }
+
+    const allUserIds = Array.from(new Set([dto.managerId, ...memberIds]));
+    const duration = dto.duration ?? "FOREVER";
+    const expiresAt = this.calculateExpiration(duration, dto.customExpiresAt, dto.customDays);
+
+    return this.prisma.$transaction(async (tx) => {
+      if (dto.reassignExisting !== false) {
+        await tx.marketMappingAssignment.deleteMany({
+          where: { userId: { in: allUserIds } },
+        });
+      }
+
+      const assignmentsData = allUserIds.map((userId) => ({
+        userId,
+        clusterId: dto.clusterId,
+        dailyLeadTarget: dto.dailyLeadTarget ?? 0,
+        weeklyLeadTarget: dto.weeklyLeadTarget ?? 0,
+        monthlyConversionTarget: dto.monthlyConversionTarget ?? 0,
+        allowUserEdit: dto.allowUserEdit ?? true,
+        duration: duration as any,
+        expiresAt,
+        assignedBy: assignedByUserId,
+      }));
+
+      await tx.marketMappingAssignment.createMany({
+        data: assignmentsData,
+      });
+
+      return tx.marketMappingAssignment.findMany({
+        where: { userId: { in: allUserIds }, clusterId: dto.clusterId },
+        include: {
+          user: { select: { id: true, fullName: true, role: true, email: true } },
+          cluster: { select: { id: true, name: true, type: true } },
+        },
+      });
+    });
+  }
+
+  async updateAssignment(id: string, dto: UpdateAssignmentDto) {
     const assignment = await this.prisma.marketMappingAssignment.findUnique({ where: { id } });
     if (!assignment) throw new NotFoundException("Assignment not found");
 
+    const updateData: any = {};
+    if (dto.dailyLeadTarget !== undefined) updateData.dailyLeadTarget = dto.dailyLeadTarget;
+    if (dto.weeklyLeadTarget !== undefined) updateData.weeklyLeadTarget = dto.weeklyLeadTarget;
+    if (dto.monthlyConversionTarget !== undefined) updateData.monthlyConversionTarget = dto.monthlyConversionTarget;
+    if (dto.allowUserEdit !== undefined) updateData.allowUserEdit = dto.allowUserEdit;
+    if (dto.clusterId !== undefined) updateData.clusterId = dto.clusterId;
+    if (dto.duration !== undefined) {
+      updateData.duration = dto.duration;
+      updateData.expiresAt = this.calculateExpiration(dto.duration, dto.customExpiresAt, dto.customDays);
+    }
+
     return this.prisma.marketMappingAssignment.update({
       where: { id },
-      data: dto,
+      data: updateData,
+      include: {
+        user: { select: { id: true, fullName: true, role: true, email: true } },
+        cluster: { select: { id: true, name: true, type: true } },
+      },
+    });
+  }
+
+  async reassignAssignment(id: string, dto: ReassignAssignmentDto, assignedByUserId?: string) {
+    const assignment = await this.prisma.marketMappingAssignment.findUnique({ where: { id } });
+    if (!assignment) throw new NotFoundException("Assignment not found");
+
+    const duration = dto.duration ?? assignment.duration;
+    const expiresAt = dto.duration
+      ? this.calculateExpiration(dto.duration, dto.customExpiresAt, dto.customDays)
+      : assignment.expiresAt;
+
+    return this.prisma.marketMappingAssignment.update({
+      where: { id },
+      data: {
+        clusterId: dto.clusterId,
+        duration: duration as any,
+        expiresAt,
+        dailyLeadTarget: dto.dailyLeadTarget ?? assignment.dailyLeadTarget,
+        weeklyLeadTarget: dto.weeklyLeadTarget ?? assignment.weeklyLeadTarget,
+        monthlyConversionTarget: dto.monthlyConversionTarget ?? assignment.monthlyConversionTarget,
+        allowUserEdit: dto.allowUserEdit ?? assignment.allowUserEdit,
+        assignedBy: assignedByUserId,
+      },
+      include: {
+        user: { select: { id: true, fullName: true, role: true, email: true } },
+        cluster: { select: { id: true, name: true, type: true } },
+      },
     });
   }
 

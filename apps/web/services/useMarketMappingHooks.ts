@@ -5,6 +5,7 @@ import type {
   AdminClusterResponse,
   AdminLocation,
   AdminSubmission,
+  AssignmentDuration,
   GeographicHierarchyNode,
   MappedBusiness,
   MarketMappingStats,
@@ -24,6 +25,8 @@ export interface MarketMappingConfigResponse {
   pipelineStatuses?: unknown[];
   categories?: string[];
   fieldDefaults?: Record<string, unknown>;
+  assignment?: { clusterId: string; clusterName: string; allowUserEdit: boolean } | null;
+  assignedCluster?: string;
 }
 
 export interface TerritoryResponse {
@@ -451,11 +454,11 @@ export const useAdminCapturedVisits = () => {
   });
 };
 
-export const useAdminAssignments = () => {
+export const useAdminAssignments = (params?: { clusterId?: string; userId?: string; includeExpired?: boolean }) => {
   return useQuery<AdminAssignment[]>({
-    queryKey: ['market-mapping', 'admin', 'assignments'],
+    queryKey: ['market-mapping', 'admin', 'assignments', params],
     queryFn: async () => {
-      const { data } = await api.get('/market-mapping/admin/assignments');
+      const { data } = await api.get('/market-mapping/admin/assignments', { params });
       return Array.isArray(data) ? data : data?.data ?? [];
     },
   });
@@ -464,8 +467,70 @@ export const useAdminAssignments = () => {
 export const useCreateAssignment = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { userId: string; clusterId: string; dailyLeadTarget: number; weeklyLeadTarget: number; monthlyConversionTarget: number; allowUserEdit?: boolean }) => {
+    mutationFn: async (payload: {
+      userId: string;
+      clusterId: string;
+      dailyLeadTarget?: number;
+      weeklyLeadTarget?: number;
+      monthlyConversionTarget?: number;
+      allowUserEdit?: boolean;
+      duration?: AssignmentDuration;
+      customExpiresAt?: string;
+      customDays?: number;
+      reassignExisting?: boolean;
+    }) => {
       const { data } = await api.post('/market-mapping/admin/assignments', payload);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['market-mapping', 'admin', 'assignments'] });
+    },
+  });
+};
+
+export const useAssignLineManager = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: {
+      managerId: string;
+      clusterId: string;
+      dailyLeadTarget?: number;
+      weeklyLeadTarget?: number;
+      monthlyConversionTarget?: number;
+      allowUserEdit?: boolean;
+      duration?: AssignmentDuration;
+      customExpiresAt?: string;
+      customDays?: number;
+      includeTeamMembers?: boolean;
+      reassignExisting?: boolean;
+    }) => {
+      const { data } = await api.post('/market-mapping/admin/assignments/line-manager', payload);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['market-mapping', 'admin', 'assignments'] });
+    },
+  });
+};
+
+export const useReassignAssignment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      ...payload
+    }: {
+      id: string;
+      clusterId: string;
+      duration?: AssignmentDuration;
+      customExpiresAt?: string;
+      customDays?: number;
+      dailyLeadTarget?: number;
+      weeklyLeadTarget?: number;
+      monthlyConversionTarget?: number;
+      allowUserEdit?: boolean;
+    }) => {
+      const { data } = await api.post(`/market-mapping/admin/assignments/${id}/reassign`, payload);
       return data;
     },
     onSuccess: () => {
