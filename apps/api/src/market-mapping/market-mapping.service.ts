@@ -351,16 +351,33 @@ export class MarketMappingService {
     else if (period === "weekly") start.setDate(start.getDate() - 6);
     else start.setDate(start.getDate() - 29);
 
-    const [leads, businesses, notes, visits] = await Promise.all([
+    const [leads, businesses, notes, visits, user, adminConfig] = await Promise.all([
       this.prisma.lead.findMany({ where: { affiliateId: userId, createdAt: { gte: start } }, orderBy: { createdAt: "desc" } }),
       this.prisma.business.findMany({ where: { affiliateId: userId, createdAt: { gte: start } }, orderBy: { createdAt: "desc" } }),
       this.prisma.marketMappingNote.findMany({ where: { userId, createdAt: { gte: start } }, orderBy: { createdAt: "desc" } }),
       this.prisma.marketMappingVisit.findMany({ where: { userId, OR: [{ visitedAt: { gte: start } }, { visitedAt: null, updatedAt: { gte: start } }] }, orderBy: { updatedAt: "desc" } }),
+      this.prisma.user.findUnique({ where: { id: userId }, select: { dailyLeadTarget: true } }),
+      this.prisma.marketMappingAdminConfig.findFirst(),
     ]);
 
     const daysCount = period === "daily" ? 1 : period === "weekly" ? 7 : 30;
-    const leadTarget = 20;
+    const leadTarget = user?.dailyLeadTarget || adminConfig?.dailyTarget || 0;
     const conversionReference = 0.4;
+    const riskThreshold = 90;
+    const WEIGHTS = {
+      leads: 0.35,
+      conversion: 0.30,
+      businessInfo: 0.20,
+      visits: 0.10,
+      completion: 0.05,
+    } as const;
+
+    const pctOfTarget = (value: number, target: number) => {
+      if (target <= 0) return 0;
+      return Math.min(100, Math.round((value / target) * 100));
+    };
+    const gpsPoints = (v: (typeof visits)[number]) => v.gpsLat != null && v.gpsLng != null && String(v.gpsLat).trim() !== "" && String(v.gpsLng).trim() !== "";
+    const INFO_FIELDS = (v: (typeof visits)[number]) => [v.category, v.phone, v.ownerName, v.address || v.exactAddress, v.businessSize, v.openingHours, v.contactPosition];
     const totalEarnings = businesses.reduce((acc, b) => acc + Number(b.commissionAmount || 0), 0);
     const avgLeadsPerDay = Math.round((leads.length / Math.max(1, daysCount)) * 10) / 10;
     const avgConversionRate = leads.length > 0 ? Math.round((businesses.length / leads.length) * 100) : 0;
@@ -383,26 +400,28 @@ export class MarketMappingService {
         return d && new Date(d) >= dayStart && new Date(d) <= dayEnd;
       }).length;
 
-      const dayGpsVisits = visits.filter((v) => {
+      const dayVisitsArr = visits.filter((v) => {
         const d = v.visitedAt || v.updatedAt;
-        return d && new Date(d) >= dayStart && new Date(d) <= dayEnd && v.gpsLat != null && v.gpsLng != null;
-      }).length;
+        return d && new Date(d) >= dayStart && new Date(d) <= dayEnd;
+      });
 
-      const infoPct = dayVisits > 0 ? 80 : 50;
-      const gpsPct = dayVisits > 0 ? Math.round((dayGpsVisits / dayVisits) * 100) : 40;
-      const completionPct = Math.min(100, Math.round((dayVisits / Math.max(1, leadTarget)) * 100));
+      const infoPct = dayVisitsArr.length > 0
+        ? Math.round(dayVisitsArr.reduce((sum, v) => sum + INFO_FIELDS(v).filter((f) => f != null && String(f).trim() !== "").length, 0) / (dayVisitsArr.length * INFO_FIELDS(dayVisitsArr[0]).length) * 100)
+        : 0;
+      const gpsPct = dayVisitsArr.length > 0 ? Math.round((dayVisitsArr.filter(gpsPoints).length / dayVisitsArr.length) * 100) : 0;
+      const completionPct = pctOfTarget(dayVisitsArr.length, leadTarget);
 
-      const leadPct = Math.min(100, (dayLeads / leadTarget) * 100);
+      const leadPct = pctOfTarget(dayLeads, leadTarget);
       const infoComposite = 0.6 * infoPct + 0.4 * gpsPct;
       const convPct = Math.min(100, (dayConversions / Math.max(1, dayLeads) / conversionReference) * 100);
-      const visitPct = Math.min(100, (dayVisits / leadTarget) * 100);
+      const visitPct = pctOfTarget(dayVisitsArr.length, leadTarget);
 
       const score = Math.round(
-        0.35 * leadPct +
-        0.30 * convPct +
-        0.20 * infoComposite +
-        0.10 * visitPct +
-        0.05 * completionPct,
+        WEIGHTS.leads * leadPct +
+        WEIGHTS.conversion * convPct +
+        WEIGHTS.businessInfo * infoComposite +
+        WEIGHTS.visits * visitPct +
+        WEIGHTS.completion * completionPct,
       );
 
       ledger.push({
@@ -414,10 +433,11 @@ export class MarketMappingService {
         visits: dayVisits,
         infoPct,
         gpsPct,
+        infoComposite: Math.round(infoComposite),
         completionPct,
         isToday: i === 0,
         score,
-        met: score >= 90,
+        met: score >= riskThreshold,
       });
     }
 
@@ -434,14 +454,14 @@ export class MarketMappingService {
         avgConversionRate,
       },
       weights: {
-        leads: 0.35,
-        conversion: 0.30,
-        businessInfo: 0.20,
-        visits: 0.10,
-        completion: 0.05,
-        riskThreshold: 90,
-        conversionReference: 0.40,
-        leadTarget: 20,
+        leads: WEIGHTS.leads,
+        conversion: WEIGHTS.conversion,
+        businessInfo: WEIGHTS.businessInfo,
+        visits: WEIGHTS.visits,
+        completion: WEIGHTS.completion,
+        riskThreshold,
+        conversionReference,
+        leadTarget,
       },
       ledger,
       leads: leads.map((l) => ({
