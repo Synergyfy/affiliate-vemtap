@@ -25,8 +25,11 @@ export default function AgreementSignModal() {
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  const currentAgreement = pendingAgreements && pendingAgreements.length > currentIndex 
-    ? pendingAgreements[currentIndex] 
+  // Safely clamp index within current pending agreements length
+  const safeIndex = pendingAgreements.length > 0 && currentIndex >= pendingAgreements.length ? 0 : currentIndex;
+
+  const currentAgreement = pendingAgreements && pendingAgreements.length > safeIndex 
+    ? pendingAgreements[safeIndex] 
     : null;
 
   // Reset signature form and scroll state when moving to a new agreement
@@ -42,7 +45,7 @@ export default function AgreementSignModal() {
         scrollContainerRef.current.scrollTop = 0;
       }
     }
-  }, [currentIndex, currentAgreement]);
+  }, [currentAgreement?.id, currentAgreement?.version]);
 
   // Track scrolling to enforce scroll-to-read requirement
   const handleScroll = () => {
@@ -70,12 +73,11 @@ export default function AgreementSignModal() {
       setShowSuccessState(true);
       
       setTimeout(() => {
-        if (pendingAgreements && currentIndex + 1 < pendingAgreements.length) {
-          setCurrentIndex(prev => prev + 1);
-        } else {
-          // Fully completed
-          setCurrentIndex(0);
-        }
+        setSignatureName('');
+        setHasScrolledToBottom(false);
+        setIsAgreed(false);
+        setShowSuccessState(false);
+        setCurrentIndex(0);
       }, 1500);
     } catch (err: any) {
       const errMsg = err?.response?.data?.message || 'Failed to sign agreement. Please try again.';
