@@ -1112,6 +1112,14 @@ model TargetAdjustmentHistory {
   @@index([memberId])
 }
 
+enum AssignmentDuration {
+  ONE_DAY
+  ONE_WEEK
+  ONE_MONTH
+  CUSTOM
+  FOREVER
+}
+
 enum HierarchyType {
   COUNTRY
   STATE
@@ -1148,12 +1156,16 @@ model MarketMappingAssignment {
   weeklyLeadTarget        Int                    @default(0)
   monthlyConversionTarget Int                    @default(0)
   allowUserEdit           Boolean                @default(true)
+  duration                AssignmentDuration     @default(FOREVER)
+  expiresAt               DateTime?
+  assignedBy              String?
   assignedAt              DateTime               @default(now())
   createdAt               DateTime               @default(now())
   updatedAt               DateTime               @updatedAt
 
   @@index([userId])
   @@index([clusterId])
+  @@index([expiresAt])
 }
 
 model MarketMappingAdminConfig {

@@ -363,7 +363,13 @@ export class OperationsService {
         }
       }
       const assignments = await this.prisma.marketMappingAssignment.findMany({
-        where: { clusterId: { in: Array.from(descendants) } },
+        where: {
+          clusterId: { in: Array.from(descendants) },
+          OR: [
+            { expiresAt: null },
+            { expiresAt: { gt: new Date() } },
+          ],
+        },
         select: { userId: true, clusterId: true, cluster: { select: { id: true, name: true, type: true } } },
       });
       const rowsByCluster = new Map<string, { id: string; name: string; role: 'LOCATION'; level: string; leads: number; conversions: number; earnings: number; conversionRate: number }>();
@@ -399,7 +405,13 @@ export class OperationsService {
     let locationUserIds: string[] | undefined;
     if (params.type === 'location' && params.locationId) {
       const assignments = await this.prisma.marketMappingAssignment.findMany({
-        where: { clusterId: params.locationId },
+        where: {
+          clusterId: params.locationId,
+          OR: [
+            { expiresAt: null },
+            { expiresAt: { gt: new Date() } },
+          ],
+        },
         select: { userId: true },
       });
       locationUserIds = assignments.map((assignment) => assignment.userId);

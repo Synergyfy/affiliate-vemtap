@@ -1,16 +1,18 @@
 'use client';
 
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Save, MapPin, Target, CheckCircle, Navigation, Rocket, Plus, Minus, History, ChevronLeft, ChevronRight } from 'lucide-react';
-import { MissionHorizon } from '@/types/affiliate-market-mapping';
+import { Calendar, Save, MapPin, Target, CheckCircle, Navigation, Rocket, Plus, Minus, History, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
+import { MissionHorizon, MissionPlan } from '@/types/affiliate-market-mapping';
 import { cn } from '@/lib/utils';
 import { useMarketMapping } from '@/components/dashboard/market-mapping/MarketMappingContext';
+import { useMarketMappingConfig } from '@/hooks/use-market-mapping-config';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
 interface PlanMissionProps {
   onAddVisits?: (visits: any[]) => void;
+  initialPlan?: MissionPlan | null;
 }
 
 interface DayEntry {
@@ -35,6 +37,8 @@ interface PendingPlan {
   location: string;
   targetCount: number;
   startDate: string;
+  endDate?: string;
+  id?: string;
 }
 
 const TODAY = new Date();
@@ -152,7 +156,7 @@ function buildWeekGroups(start: Date, includeSat: boolean, includeSun: boolean):
   return groups;
 }
 
-export default function PlanMission({ onAddVisits }: PlanMissionProps) {
+export default function PlanMission({ onAddVisits, initialPlan }: PlanMissionProps) {
   const startDateInputRef = useRef<HTMLInputElement>(null);
   const dayPickerInputRef = useRef<HTMLInputElement>(null);
   const [horizon, setHorizon] = useState<MissionHorizon>('DAY');
@@ -172,11 +176,78 @@ export default function PlanMission({ onAddVisits }: PlanMissionProps) {
   // WEEK tab: quick set
   const [quickTarget, setQuickTarget] = useState(0);
 
-  const { setPerformance, setStats, performance, missionPlans, addMissionPlan, archiveMissionPlan } = useMarketMapping();
+  const { setPerformance, setStats, missionPlans, addMissionPlan } = useMarketMapping();
+  const { data: config } = useMarketMappingConfig();
   const { showToast } = useToast();
+
+  const locationLocked = !!config?.assignment;
+  const assignedCluster = config?.assignedCluster || '';
 
   const monthName = `${MONTH_NAMES[startDate.getMonth()]} ${startDate.getFullYear()}`;
   const currentWeek = weekGroups[currentWeekIdx];
+
+  // Effective location used for saving — the admin-assigned cluster overrides any typed value.
+  const effectiveDayLocation = locationLocked ? assignedCluster : dayLocation;
+  const effectiveWeekLocation = locationLocked
+    ? assignedCluster
+    : (weekLocations[currentWeekIdx] || '');
+
+  // DAY plan already saved for the currently selected day
+  const selectedDayPlan = useMemo(() => {
+    const key = toDateInputValue(startDate);
+    return missionPlans.find(p => p.horizon === 'DAY' && (p.startDate || '').slice(0, 10) === key) || null;
+  }, [missionPlans, startDate]);
+
+  // Load a saved day mission into the DAY tab whenever the selected date changes
+  const lastLoadedDayRef = useRef('');
+  useEffect(() => {
+    const key = toDateInputValue(startDate);
+    if (key === lastLoadedDayRef.current) return;
+    lastLoadedDayRef.current = key;
+    const plan = missionPlans.find(p => p.horizon === 'DAY' && (p.startDate || '').slice(0, 10) === key);
+    setDayTarget(plan?.targetCount ?? 0);
+    setDayLocation(locationLocked ? assignedCluster : (plan?.location ?? ''));
+  }, [startDate, missionPlans, locationLocked, assignedCluster]);
+
+  // WEEK plan already saved for the currently viewed week
+  const weekPlan = useMemo(() => {
+    if (!currentWeek) return null;
+    const key = toDateInputValue(currentWeek.days[0].dateObj);
+    return missionPlans.find(p => p.horizon === 'WEEK' && (p.startDate || '').slice(0, 10) === key) || null;
+  }, [currentWeek, missionPlans]);
+
+  // Load a saved week mission into the WEEK tab whenever the viewed week changes
+  const lastLoadedWeekRef = useRef('');
+  useEffect(() => {
+    if (!currentWeek) return;
+    const key = toDateInputValue(currentWeek.days[0].dateObj);
+    if (key === lastLoadedWeekRef.current) return;
+    lastLoadedWeekRef.current = key;
+    const plan = missionPlans.find(p => p.horizon === 'WEEK' && (p.startDate || '').slice(0, 10) === key);
+    setWeekLocations(prev => ({ ...prev, [currentWeekIdx]: locationLocked ? assignedCluster : (plan?.location ?? '') }));
+    setQuickTarget(plan?.targetCount ?? 0);
+  }, [currentWeek, currentWeekIdx, missionPlans, locationLocked, assignedCluster]);
+
+  // Dates that already have their own saved DAY mission (badges on week cards)
+  const dayPlanDates = useMemo(() => {
+    const dates = new Set<string>();
+    missionPlans.forEach(p => {
+      if (p.horizon === 'DAY' && p.startDate) dates.add(String(p.startDate).slice(0, 10));
+    });
+    return dates;
+  }, [missionPlans]);
+
+  // Pending week navigation target while weekGroups rebuild after a month jump
+  const pendingWeekJumpRef = useRef<string | null>(null);
+  useEffect(() => {
+    const targetKey = pendingWeekJumpRef.current;
+    if (!targetKey) return;
+    const idx = weekGroups.findIndex(w => w.days.some(d => toDateInputValue(d.dateObj) === targetKey));
+    if (idx >= 0) {
+      pendingWeekJumpRef.current = null;
+      setCurrentWeekIdx(idx);
+    }
+  }, [weekGroups]);
 
   // Dynamic range from active days (not static from buildWeekGroups)
   const currentWeekRange = useMemo(() => {
@@ -243,12 +314,12 @@ export default function PlanMission({ onAddVisits }: PlanMissionProps) {
     setCurrentWeekIdx(0);
   }, []);
 
-  const handleStartDateChange = (val: string) => {
+  const handleStartDateChange = useCallback((val: string) => {
     const d = new Date(val + 'T00:00:00');
     if (isNaN(d.getTime())) return;
     setStartDate(d);
     rebuild(includeSat, includeSun, d);
-  };
+  }, [rebuild, includeSat, includeSun]);
 
   const toggleSat = () => {
     if (!weekendInMonth.sat) return;
@@ -314,7 +385,7 @@ export default function PlanMission({ onAddVisits }: PlanMissionProps) {
   };
 
   const applyDayToWeek = () => {
-    if (!dayLocation) { showToast('Set a location for your target day', 'error'); return; }
+    if (!effectiveDayLocation) { showToast('Set a location for your target day', 'error'); return; }
     setWeekGroups(prev => prev.map((w, wi) => {
       if (wi !== 0) return w;
       return {
@@ -328,44 +399,64 @@ export default function PlanMission({ onAddVisits }: PlanMissionProps) {
           const isWeekday = idx < 5;
           const weekendAllowed = idx === 5 ? includeSat : includeSun;
           if (isWeekday || (isWeekend && weekendAllowed)) {
-            return { ...d, isActive: true, target: dayTarget, location: dayLocation };
+            return { ...d, isActive: true, target: dayTarget, location: effectiveDayLocation };
           }
           return d;
         }),
       };
     }));
-    setWeekLocations(prev => ({ ...prev, [0]: dayLocation }));
+    setWeekLocations(prev => ({ ...prev, [0]: effectiveDayLocation }));
     setHorizon('WEEK');
   };
 
   const saveDayOnly = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!dayLocation) { showToast('Set a location for your target day', 'error'); return; }
+    if (!effectiveDayLocation) { showToast('Set a location for your target day', 'error'); return; }
     if (dayTarget < 1) { showToast('Set at least 1 business target', 'error'); return; }
-    setPendingPlan({ horizon: 'DAY', location: dayLocation, targetCount: dayTarget, startDate: startDate.toISOString() });
+    const dayKey = toDateInputValue(startDate);
+    const existing = missionPlans.find(p => p.horizon === 'DAY' && (p.startDate || '').slice(0, 10) === dayKey);
+    setPendingPlan({
+      horizon: 'DAY',
+      location: effectiveDayLocation,
+      targetCount: dayTarget,
+      startDate: `${dayKey}T00:00:00`,
+      endDate: `${dayKey}T23:59:59`,
+      id: existing?.id,
+    });
   };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const allLocations = weekGroups.flatMap(w => w.days.filter(d => d.isActive && d.location).map(d => d.location));
-    const primaryLocation = allLocations[0] || '';
+    const primaryLocation = horizon === 'WEEK'
+      ? (effectiveWeekLocation || allLocations[0] || '')
+      : (effectiveDayLocation || allLocations[0] || '');
     if (!primaryLocation) { showToast('Set a location for your target days', 'error'); return; }
-    const total = horizon === 'DAY'
-      ? (currentWeek?.days.filter(d => d.isActive).reduce((s, d) => s + d.target, 0) || 0)
-      : weekSummaries.reduce((s, w) => s + w.total, 0);
+    const total = currentWeek?.days.filter(d => d.isActive).reduce((s, d) => s + d.target, 0) || 0;
     if (total < 1) { showToast('Set at least 1 business target', 'error'); return; }
-    setPendingPlan({ horizon, location: primaryLocation, targetCount: total, startDate: startDate.toISOString() });
+
+    if (horizon === 'WEEK' && currentWeek) {
+      const monday = new Date(currentWeek.days[0].dateObj);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      setPendingPlan({
+        horizon,
+        location: primaryLocation,
+        targetCount: total,
+        startDate: `${toDateInputValue(monday)}T00:00:00`,
+        endDate: `${toDateInputValue(sunday)}T23:59:59`,
+        id: weekPlan?.id,
+      });
+    } else {
+      const dayKey = toDateInputValue(startDate);
+      setPendingPlan({ horizon, location: primaryLocation, targetCount: total, startDate: `${dayKey}T00:00:00`, endDate: `${dayKey}T23:59:59`, id: selectedDayPlan?.id });
+    }
   };
 
   const confirm = () => {
     if (!pendingPlan) return;
-    const { horizon: h, location: loc, targetCount: count } = pendingPlan;
-    const progress = h === 'DAY' ? performance.dailyProgress : h === 'WEEK' ? performance.weeklyProgress : performance.monthlyProgress;
-    const existing = missionPlans.find(p => p.horizon === h);
-    if (existing) {
-      archiveMissionPlan({ ...existing, achieved: progress, status: progress >= existing.targetCount ? 'ACHIEVED' : 'INCOMPLETE', archivedAt: new Date().toISOString() });
-    }
-    addMissionPlan({ horizon: h, location: loc, targetCount: count, createdAt: new Date().toISOString() });
+    const { horizon: h, location: loc, targetCount: count, id, startDate: pStart, endDate: pEnd } = pendingPlan;
+    addMissionPlan({ id, horizon: h, location: loc, targetCount: count, createdAt: new Date().toISOString(), startDate: pStart, endDate: pEnd });
 
     if (h === 'DAY') setPerformance(p => ({ ...p, dailyTarget: count, dailyProgress: 0 }));
     else if (h === 'WEEK') setPerformance(p => ({ ...p, weeklyTarget: count, weeklyProgress: 0 }));
@@ -377,15 +468,69 @@ export default function PlanMission({ onAddVisits }: PlanMissionProps) {
 
   const gridCols = includeSun ? 'grid-cols-7' : includeSat ? 'grid-cols-6' : 'grid-cols-5';
 
+  const openDay = (d: DayEntry) => {
+    handleStartDateChange(toDateInputValue(d.dateObj));
+    setHorizon('DAY');
+  };
+
+  const jumpToPlan = useCallback((plan: MissionPlan) => {
+    if (plan.horizon === 'DAY') {
+      const key = (plan.startDate || '').slice(0, 10);
+      if (!key) return;
+      handleStartDateChange(key);
+      setHorizon('DAY');
+    } else {
+      const start = plan.startDate ? new Date(plan.startDate) : null;
+      if (!start || isNaN(start.getTime())) return;
+      const monthStart = new Date(start.getFullYear(), start.getMonth(), 1);
+      handleStartDateChange(toDateInputValue(monthStart));
+      pendingWeekJumpRef.current = (plan.startDate || '').slice(0, 10);
+      setHorizon('WEEK');
+    }
+  }, [handleStartDateChange]);
+
+  const formatPlanDate = (plan: MissionPlan) => {
+    if (plan.horizon === 'WEEK') {
+      const start = plan.startDate ? new Date(plan.startDate) : null;
+      if (start && !isNaN(start.getTime())) {
+        const end = plan.endDate ? new Date(plan.endDate) : null;
+        const endLabel = end && !isNaN(end.getTime()) ? `–${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : '';
+        return `Week of ${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}${endLabel}`;
+      }
+      return 'Weekly mission';
+    }
+    const start = plan.startDate ? new Date(plan.startDate) : null;
+    if (start && !isNaN(start.getTime())) return start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    return new Date(plan.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const savedMissions = useMemo(() => {
+    return [...missionPlans].sort((a, b) => {
+      const ka = (a.startDate || a.createdAt || '').slice(0, 10);
+      const kb = (b.startDate || b.createdAt || '').slice(0, 10);
+      return kb.localeCompare(ka);
+    });
+  }, [missionPlans]);
+
+  // Jump straight to a plan passed in via ?plan=<id> (e.g. from Target History)
+  const jumpedPlanRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!initialPlan?.id) return;
+    if (jumpedPlanRef.current === initialPlan.id) return;
+    jumpedPlanRef.current = initialPlan.id;
+    jumpToPlan(initialPlan);
+  }, [initialPlan, jumpToPlan]);
+
   return (
     <>
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden mb-6">
         <div className="p-5">
           <form onSubmit={submit} className="space-y-4">
-            {/* Start Date */}
+            {/* Start Date — WEEK tab only (the week grid is anchored to this date's month) */}
+            {horizon === 'WEEK' && (
             <div>
               <label className="text-[11px] font-semibold text-slate-500 mb-1.5 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5" /> Start Date
+                <Calendar className="w-3.5 h-3.5" /> Month
               </label>
               <div 
                 className="relative cursor-pointer"
@@ -398,13 +543,12 @@ export default function PlanMission({ onAddVisits }: PlanMissionProps) {
                 }}
               >
                 <div className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 flex items-center justify-between">
-                  <span>{startDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                  <span>{monthName}</span>
                   <Calendar className="w-4 h-4 text-slate-400" />
                 </div>
                 <input 
                   ref={startDateInputRef} 
                   type="date" 
-                  min={toDateInputValue(TODAY)} 
                   value={toDateInputValue(startDate)} 
                   onChange={e => handleStartDateChange(e.target.value)} 
                   onClick={e => {
@@ -416,10 +560,19 @@ export default function PlanMission({ onAddVisits }: PlanMissionProps) {
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
                 />
               </div>
-              <p className="text-[10px] text-slate-400 mt-1">Targets align from this date through end of {monthName}.</p>
+              <p className="text-[10px] text-slate-400 mt-1">Pick any month — past or future — to plan or review its weeks.</p>
             </div>
+            )}
 
             {/* Horizon tabs */}
+            {locationLocked && (
+              <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5">
+                <Lock className="w-4 h-4 text-blue-600 shrink-0" />
+                <p className="text-xs font-semibold text-blue-700">
+                  Assigned cluster — location is managed by admin (<span className="font-black">{assignedCluster}</span>)
+                </p>
+              </div>
+            )}
             <div className="flex gap-1 p-1 bg-slate-100 rounded-xl w-full md:w-auto md:inline-flex">
               {(['DAY', 'WEEK'] as MissionHorizon[]).map(h => (
                 <button key={h} type="button" onClick={() => setHorizon(h)} className={cn("px-5 py-2 rounded-lg text-xs font-semibold transition-all flex-1 md:flex-none", horizon === h ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700")}>{h}</button>
@@ -451,7 +604,6 @@ export default function PlanMission({ onAddVisits }: PlanMissionProps) {
                     <input 
                       ref={dayPickerInputRef} 
                       type="date" 
-                      min={toDateInputValue(TODAY)} 
                       value={toDateInputValue(startDate)} 
                       onChange={e => handleStartDateChange(e.target.value)} 
                       onClick={e => {
@@ -463,15 +615,16 @@ export default function PlanMission({ onAddVisits }: PlanMissionProps) {
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
                     />
                   </div>
-                  <p className="text-[10px] text-slate-400 mt-1">Choose the day you want to plan for.</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Choose any day — past, today, or future — to plan or review.</p>
                 </div>
 
                 {/* Location */}
                 <div className="bg-white border border-slate-200 rounded-2xl px-4 py-3">
                   <span className="text-xs font-semibold text-slate-600 flex items-center gap-1.5 mb-2">
                     <MapPin className="w-3.5 h-3.5 text-slate-400" /> Location
+                    {locationLocked && <Lock className="w-3 h-3 text-blue-500" />}
                   </span>
-                  <input type="text" placeholder="e.g. Banex Plaza, Wuse" value={dayLocation} onChange={e => setDayLocation(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all" />
+                  <input type="text" placeholder="e.g. Banex Plaza, Wuse" value={effectiveDayLocation} readOnly={locationLocked} onChange={e => setDayLocation(e.target.value)} className={cn("w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all", locationLocked && "opacity-70 cursor-not-allowed")} />
                 </div>
 
                 {/* Target */}
@@ -491,6 +644,19 @@ export default function PlanMission({ onAddVisits }: PlanMissionProps) {
                   <p className="text-[10px] text-slate-400 text-center mt-1">Set your daily visit target</p>
                 </div>
 
+                {/* Saved mission banner for the selected day */}
+                {selectedDayPlan && (
+                  <div className="flex items-start gap-2.5 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3">
+                    <CheckCircle className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs font-bold text-emerald-800">
+                        You&apos;ve planned {selectedDayPlan.targetCount} business{selectedDayPlan.targetCount === 1 ? '' : 'es'} at {selectedDayPlan.location}
+                      </p>
+                      <p className="text-[10px] text-emerald-600 font-medium mt-0.5">for {startDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}. Adjust below and save to update.</p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Action buttons */}
                 <div className="flex gap-2">
                   <button type="button" onClick={applyDayToWeek} className="flex-1 py-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold rounded-lg hover:bg-emerald-100 transition-colors flex items-center justify-center gap-1.5">
@@ -499,7 +665,7 @@ export default function PlanMission({ onAddVisits }: PlanMissionProps) {
                   </button>
                   <button type="button" onClick={saveDayOnly} className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-colors">
                     <Save className="w-3.5 h-3.5" />
-                    Save day only
+                    {selectedDayPlan ? 'Update Mission' : 'Save day only'}
                   </button>
                 </div>
               </div>
@@ -508,6 +674,19 @@ export default function PlanMission({ onAddVisits }: PlanMissionProps) {
             {/* === WEEK tab — full week planner === */}
             {horizon === 'WEEK' && (
               <div className="space-y-4">
+                {/* Saved week banner */}
+                {weekPlan && (
+                  <div className="flex items-start gap-2.5 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3">
+                    <CheckCircle className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs font-bold text-emerald-800">
+                        Weekly mission saved — {weekPlan.targetCount} businesses at {weekPlan.location}
+                      </p>
+                      <p className="text-[10px] text-emerald-600 font-medium mt-0.5">for {currentWeekRange}. Adjust below and save to update this week.</p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Week navigator */}
                 <div className="flex items-center justify-between bg-white border border-slate-200 rounded-2xl px-4 py-3">
                   <button type="button" disabled={currentWeekIdx === 0} onClick={() => setCurrentWeekIdx(i => Math.max(0, i - 1))} className={cn("w-8 h-8 flex items-center justify-center rounded-lg transition-colors", currentWeekIdx === 0 ? "text-slate-200" : "text-slate-500 hover:bg-slate-100")}>
@@ -534,17 +713,18 @@ export default function PlanMission({ onAddVisits }: PlanMissionProps) {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
                       <MapPin className="w-3.5 h-3.5 text-slate-400" /> Location
+                      {locationLocked && <Lock className="w-3 h-3 text-blue-500" />}
                     </span>
-                    <button type="button" onClick={() => setPerDayLocations(!perDayLocations)} className="relative inline-flex h-6 w-11 items-center rounded-full border border-slate-200 transition-colors">
+                    <button type="button" onClick={() => setPerDayLocations(!perDayLocations)} disabled={locationLocked} className={cn("relative inline-flex h-6 w-11 items-center rounded-full border border-slate-200 transition-colors", locationLocked && "opacity-50 cursor-not-allowed")}>
                       <span className={cn("inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform", perDayLocations ? "translate-x-6 bg-amber-500" : "translate-x-1 bg-blue-500")} />
                     </button>
                   </div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[11px] text-slate-400">{perDayLocations ? 'Custom location per day' : 'Same location for entire week'}</span>
-                    <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full", perDayLocations ? "bg-amber-50 text-amber-600" : "bg-blue-50 text-blue-600")}>{perDayLocations ? 'Per day' : 'Weekly'}</span>
+                    <span className="text-[11px] text-slate-400">{locationLocked ? 'Assigned cluster applies to all days' : perDayLocations ? 'Custom location per day' : 'Same location for entire week'}</span>
+                    <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full", locationLocked ? "bg-blue-50 text-blue-600" : perDayLocations ? "bg-amber-50 text-amber-600" : "bg-blue-50 text-blue-600")}>{locationLocked ? 'Assigned' : perDayLocations ? 'Per day' : 'Weekly'}</span>
                   </div>
                   {!perDayLocations && (
-                    <input type="text" placeholder="e.g. Banex Plaza, Wuse" value={weekLocations[currentWeekIdx] || ''} onChange={e => setWeekLocation(currentWeekIdx, e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all" />
+                    <input type="text" placeholder="e.g. Banex Plaza, Wuse" value={effectiveWeekLocation} readOnly={locationLocked} onChange={e => setWeekLocation(currentWeekIdx, e.target.value)} className={cn("w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all", locationLocked && "opacity-70 cursor-not-allowed")} />
                   )}
                 </div>
 
@@ -597,6 +777,9 @@ export default function PlanMission({ onAddVisits }: PlanMissionProps) {
                             <span className={cn("text-xs font-bold uppercase", d.isToday ? "text-blue-600" : d.dayIndex >= 5 ? "text-amber-600" : "text-slate-500")}>{d.label}</span>
                             <span className="text-[11px] text-slate-400 font-medium">{d.date}</span>
                             {d.isToday && <span className="text-[9px] font-bold bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full">TODAY</span>}
+                            {dayPlanDates.has(toDateInputValue(d.dateObj)) && (
+                              <button type="button" onClick={() => openDay(d)} className="text-[9px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full hover:bg-emerald-200 transition-colors">Planned</button>
+                            )}
                           </div>
                           <div className="flex items-center gap-1">
                             <button type="button" onClick={() => setWeekDayTarget(currentWeekIdx, globalIdx, d.target - 1)} className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"><Minus className="w-3.5 h-3.5" /></button>
@@ -605,7 +788,7 @@ export default function PlanMission({ onAddVisits }: PlanMissionProps) {
                           </div>
                         </div>
                         {perDayLocations && (
-                          <input type="text" placeholder="Location for this day" value={d.location} onChange={e => setWeekDayLocation(currentWeekIdx, globalIdx, e.target.value)} className="w-full mt-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-medium text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all" />
+                          <input type="text" placeholder="Location for this day" value={locationLocked ? assignedCluster : d.location} readOnly={locationLocked} onChange={e => setWeekDayLocation(currentWeekIdx, globalIdx, e.target.value)} className="w-full mt-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-medium text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 transition-all" />
                         )}
                       </div>
                     );
@@ -622,9 +805,12 @@ export default function PlanMission({ onAddVisits }: PlanMissionProps) {
                           <span className={cn("text-[10px] font-bold uppercase tracking-wider block", d.isToday ? "text-blue-600" : d.dayIndex >= 5 ? "text-amber-600" : "text-slate-400")}>{d.label}</span>
                           <span className="text-xs font-semibold text-slate-700">{d.date}</span>
                           {d.isToday && <span className="block mt-1 text-[9px] font-bold bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full inline-block">TODAY</span>}
+                          {dayPlanDates.has(toDateInputValue(d.dateObj)) && (
+                            <button type="button" onClick={() => openDay(d)} className="block mx-auto mt-1 text-[9px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full inline-block hover:bg-emerald-200 transition-colors">Planned</button>
+                          )}
                         </div>
                         {perDayLocations && (
-                          <input type="text" placeholder="Loc" value={d.location} onChange={e => setWeekDayLocation(currentWeekIdx, globalIdx, e.target.value)} className="w-full px-2 py-1.5 mb-3 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-medium text-center text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-blue-400 transition-all" />
+                          <input type="text" placeholder="Loc" value={locationLocked ? assignedCluster : d.location} readOnly={locationLocked} onChange={e => setWeekDayLocation(currentWeekIdx, globalIdx, e.target.value)} className="w-full px-2 py-1.5 mb-3 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-medium text-center text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-blue-400 transition-all" />
                         )}
                         <div className="flex items-center justify-center gap-1">
                           <button type="button" onClick={() => setWeekDayTarget(currentWeekIdx, globalIdx, d.target - 1)} className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"><Minus className="w-3 h-3" /></button>
@@ -656,7 +842,7 @@ export default function PlanMission({ onAddVisits }: PlanMissionProps) {
               <div className="pt-2 flex justify-end">
                 <button type="submit" className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl flex items-center gap-2 transition-colors">
                   <Save className="w-4 h-4" />
-                  Set Week Target
+                  {weekPlan ? 'Update Week Target' : 'Set Week Target'}
                 </button>
               </div>
             )}
@@ -674,6 +860,29 @@ export default function PlanMission({ onAddVisits }: PlanMissionProps) {
           <History className="w-4 h-4" /> View Target History
         </Link>
       </div>
+
+      {/* Saved missions — browse every day / week you've planned */}
+      {savedMissions.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-4">
+          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-1.5">
+            <History className="w-3.5 h-3.5" /> Saved Missions
+          </h3>
+          <div className="space-y-2">
+            {savedMissions.map(plan => (
+              <button key={plan.id || `${plan.horizon}-${plan.startDate}`} type="button" onClick={() => jumpToPlan(plan)} className="w-full flex items-center justify-between gap-3 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 hover:border-blue-300 transition-colors text-left">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className={cn("text-[9px] font-black px-1.5 py-0.5 rounded-md shrink-0", plan.horizon === 'DAY' ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700")}>{plan.horizon}</span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-slate-700 truncate">{formatPlanDate(plan)}</p>
+                    <p className="text-[10px] text-slate-400 truncate">{plan.location}</p>
+                  </div>
+                </div>
+                <span className="text-sm font-black text-slate-800 shrink-0">{plan.targetCount}<span className="text-[10px] font-medium text-slate-400"> biz</span></span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <AnimatePresence>
         {pendingPlan && (

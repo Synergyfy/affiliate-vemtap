@@ -563,7 +563,19 @@ export class UsersService {
   async getUserLocations(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, territoryId: true, marketMappingAssignments: { include: { cluster: true } } },
+      select: {
+        id: true,
+        territoryId: true,
+        marketMappingAssignments: {
+          where: {
+            OR: [
+              { expiresAt: null },
+              { expiresAt: { gt: new Date() } },
+            ],
+          },
+          include: { cluster: true },
+        },
+      },
     });
     if (!user) throw new NotFoundException("User not found");
     return user;
