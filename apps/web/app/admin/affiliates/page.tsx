@@ -35,7 +35,7 @@ import {
   ArrowUpDown,
   Copy
 } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useQueryClient } from '@tanstack/react-query';
@@ -49,28 +49,12 @@ import { useToast } from '@/hooks/toast';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api-client';
 import { useDebounce } from '@/hooks/use-debounce';
-import { useUsers, useUpdateUserStatus } from '@/services/useAdminHooks';
+import { useUsers, useUpdateUserStatus, useSendUserEmail, useAssignUserHierarchy } from '@/services/useAdminHooks';
+import { useAdminAssignments } from '@/services/useMarketMappingHooks';
 import { useUserAgreementHistory } from '@/services/useAgreementHooks';
 import { Role, User as UserType } from '@/types/api';
 
 const VEMTAP_BASE_URL = process.env.NEXT_PUBLIC_VEMTAP_URL || 'https://vemtap.com';
-
-const affiliateLocations: Record<string, { id: string; name: string }[]> = {
-  'aff-1': [
-    { id: 'banex', name: 'Banex Plaza' },
-    { id: 'garki-mkt', name: 'Garki Model Market' },
-  ],
-  'aff-2': [
-    { id: 'banex', name: 'Banex Plaza' },
-    { id: 'wuse-mkt', name: 'Wuse Main Market' },
-  ],
-  'aff-3': [
-    { id: 'banex', name: 'Banex Plaza' },
-  ],
-  'aff-4': [
-    { id: 'wuse-mkt', name: 'Wuse Main Market' },
-  ],
-};
 
 function AffiliatesManagement() {
   const { showToast } = useToast();
@@ -87,6 +71,7 @@ function AffiliatesManagement() {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'ACTIVE' | 'SUSPENDED'>('All');
+  const [page, setPage] = useState(1);
   const debouncedSearch = useDebounce(searchQuery, 500);
 
   const { data: usersResponse, isLoading } = useUsers({
@@ -94,8 +79,19 @@ function AffiliatesManagement() {
     isManager: activeTab === 'Line Managers' ? true : undefined,
     status: statusFilter === 'All' ? undefined : statusFilter,
     search: debouncedSearch || undefined,
-    limit: 50
+    limit: 50,
+    page,
   });
+
+  const { data: adminAssignments } = useAdminAssignments();
+  const locationsByUser = useMemo(() => {
+    const map: Record<string, { id: string; name: string }[]> = {};
+    (adminAssignments || []).forEach(a => {
+      if (!a.cluster) return;
+      (map[a.userId] = map[a.userId] || []).push({ id: a.cluster.id, name: a.cluster.name });
+    });
+    return map;
+  }, [adminAssignments]);
 
   const { data: agentsResponse } = useUsers({
     role: 'AGENT' as any,
@@ -104,6 +100,11 @@ function AffiliatesManagement() {
 
   const updateStatus = useUpdateUserStatus();
   const { data: userAgreements, isLoading: isLoadingUserAgs } = useUserAgreementHistory(selectedAffiliate?.id || '');
+
+  // Reset to first page when tab, search or filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab, debouncedSearch, statusFilter]);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   
@@ -121,6 +122,49 @@ function AffiliatesManagement() {
     currentStatus: '',
     type: 'upgrade'
   });
+
+  // Email Modal State
+  const [emailTarget, setEmailTarget] = useState<UserType | null>(null);
+
+  // Hierarchy Assignment Modal State
+  const [assignModal, setAssignModal] = useState<{ user: UserType; type: 'supervisor' | 'manager' } | null>(null);
+
+  const sendEmail = useSendUserEmail();
+  const assignHierarchy = useAssignUserHierarchy();
+
+  const handleSendEmail = async (subject: string, message: string) => {
+    if (!emailTarget) return;
+    try {
+      await sendEmail.mutateAsync({ userId: emailTarget.id, subject, message });
+      showToast(`Email sent to ${emailTarget.fullName}`, 'success');
+      setEmailTarget(null);
+    } catch (error) {
+      showToast('Failed to send email', 'error');
+    }
+  };
+
+  const handleAssign = async (targetId: string, targetName?: string) => {
+    if (!assignModal) return;
+    try {
+      await assignHierarchy.mutateAsync({
+        userId: assignModal.user.id,
+        ...(assignModal.type === 'supervisor' ? { supervisorId: targetId } : { managerId: targetId }),
+      });
+      showToast(`${assignModal.type === 'supervisor' ? 'Line Manager' : 'Manager'} assigned successfully`, 'success');
+      setSelectedAffiliate(prev => {
+        if (!prev) return prev;
+        const key = assignModal.type === 'supervisor' ? 'supervisor' : 'manager';
+        return {
+          ...prev,
+          [key]: targetName ? { id: targetId, fullName: targetName, email: '' } : undefined,
+        } as UserType;
+      });
+      setAssignModal(null);
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'users'], exact: false });
+    } catch (error) {
+      showToast(`Failed to assign ${assignModal.type === 'supervisor' ? 'Line Manager' : 'Manager'}`, 'error');
+    }
+  };
 
   const handleStatusChange = (id: string, name: string, currentStatus: string) => {
     const type = currentStatus === 'ACTIVE' ? 'suspend' : 'reactivate';
@@ -433,7 +477,7 @@ function AffiliatesManagement() {
                                   {user.status === 'ACTIVE' ? <ShieldAlert className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
                                   {user.status === 'ACTIVE' ? 'Suspend Account' : 'Reactivate Account'}
                                 </button>
-                                <button onClick={() => { showToast("Email sent", "success"); setActiveDropdown(null); }}
+                                <button onClick={() => { setEmailTarget(user); setActiveDropdown(null); }}
                                   className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-3 transition-colors">
                                   <Mail className="w-4 h-4" /> Send Email
                                 </button>
@@ -524,7 +568,7 @@ function AffiliatesManagement() {
                       </td>
                       <td className="p-4 text-center">
                         <div className="flex flex-wrap gap-1 justify-center max-w-[160px]">
-                          {(affiliateLocations[user.id] || []).slice(0, 2).map(loc => (
+                          {(locationsByUser[user.id] || []).slice(0, 2).map(loc => (
                             <Link
                               key={loc.id}
                               href={`/admin/market-mapping/assign/${loc.id}`}
@@ -533,10 +577,10 @@ function AffiliatesManagement() {
                               <MapPin className="w-2.5 h-2.5" /> {loc.name}
                             </Link>
                           ))}
-                          {(affiliateLocations[user.id] || []).length > 2 && (
-                            <span className="text-[9px] text-slate-400 font-bold px-1">+{affiliateLocations[user.id].length - 2} more</span>
+                          {(locationsByUser[user.id] || []).length > 2 && (
+                            <span className="text-[9px] text-slate-400 font-bold px-1">+{locationsByUser[user.id].length - 2} more</span>
                           )}
-                          {(affiliateLocations[user.id] || []).length === 0 && (
+                          {(locationsByUser[user.id] || []).length === 0 && (
                             <span className="text-[9px] text-slate-300">—</span>
                           )}
                         </div>
@@ -605,7 +649,7 @@ function AffiliatesManagement() {
                                 {user.status === 'ACTIVE' ? <ShieldAlert className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
                                 {user.status === 'ACTIVE' ? 'Suspend Account' : 'Reactivate Account'}
                               </button>
-                              <button onClick={() => { showToast("Email sent", "success"); setActiveDropdown(null); }}
+                              <button onClick={() => { setEmailTarget(user); setActiveDropdown(null); }}
                                 className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-3 transition-colors">
                                 <Mail className="w-4 h-4" /> Send Email
                               </button>
@@ -623,12 +667,22 @@ function AffiliatesManagement() {
           
           {/* Pagination */}
           <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-            <p className="text-xs text-slate-500 font-medium">Showing {usersResponse?.data?.length ?? (usersResponse?.data as any)?.data?.length ?? 0} of {usersResponse?.meta?.total ?? (usersResponse?.data as any)?.meta?.total ?? 0} affiliates</p>
+            <p className="text-xs text-slate-500 font-medium">
+              Showing {usersResponse?.data?.length ?? 0} of {usersResponse?.meta?.total ?? 0} {activeTab.toLowerCase()}
+            </p>
             <div className="flex items-center gap-2">
-              <button className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-400 cursor-not-allowed">Previous</button>
-              <button 
-                onClick={() => showToast("Next page", "info")}
-                className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50"
+              <button
+                disabled={page <= 1}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300"
+              >
+                Previous
+              </button>
+              <span className="text-xs font-bold text-slate-500">Page {page} of {usersResponse?.meta?.totalPages ?? 1}</span>
+              <button
+                disabled={(usersResponse?.meta?.totalPages ?? 1) <= page}
+                onClick={() => setPage(p => p + 1)}
+                className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300"
               >
                 Next
               </button>
@@ -671,6 +725,31 @@ function AffiliatesManagement() {
         affiliate={selectedAffiliate}
         onUpdate={handleAffiliateUpdate}
       />
+
+      {/* Send Email Modal */}
+      <AnimatePresence>
+        {emailTarget && (
+          <EmailUserModal
+            user={emailTarget}
+            isSending={sendEmail.isPending}
+            onClose={() => setEmailTarget(null)}
+            onSubmit={handleSendEmail}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Assign Line Manager / Manager Modal */}
+      <AnimatePresence>
+        {assignModal && (
+          <AssignHierarchyModal
+            user={assignModal.user}
+            type={assignModal.type}
+            isSaving={assignHierarchy.isPending}
+            onClose={() => setAssignModal(null)}
+            onAssign={handleAssign}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Profile Side Panel */}
       <AnimatePresence>
@@ -817,8 +896,8 @@ function AffiliatesManagement() {
                       <MapPin className="w-4 h-4 text-blue-500" /> Covered Locations
                     </h5>
                     <div className="space-y-2">
-                      {(affiliateLocations[selectedAffiliate.id] || []).length > 0 ? (
-                        affiliateLocations[selectedAffiliate.id].map(loc => (
+                      {(locationsByUser[selectedAffiliate.id] || []).length > 0 ? (
+                        locationsByUser[selectedAffiliate.id].map(loc => (
                           <Link
                             key={loc.id}
                             href={`/admin/affiliates/${selectedAffiliate.id}/history?locationId=${loc.id}`}
@@ -849,21 +928,21 @@ function AffiliatesManagement() {
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Current Role</p>
                           <p className="text-sm font-bold text-slate-900 mt-0.5">{selectedAffiliate.role}</p>
                         </div>
-                        <button onClick={() => showToast('Role change dialog opened', 'info')} className="px-3 py-1.5 bg-blue-600 text-white text-[10px] font-bold rounded-xl hover:bg-blue-700 transition-all">Change</button>
+                        <button onClick={() => setIsEditModalOpen(true)} className="px-3 py-1.5 bg-blue-600 text-white text-[10px] font-bold rounded-xl hover:bg-blue-700 transition-all">Change</button>
                       </div>
                       <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
                         <div>
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Assigned Line Manager</p>
-                          <p className="text-sm font-bold text-slate-900 mt-0.5">Not assigned</p>
+                          <p className="text-sm font-bold text-slate-900 mt-0.5">{selectedAffiliate.supervisor?.fullName || 'Not assigned'}</p>
                         </div>
-                        <button onClick={() => showToast('Line Manager assignment opened', 'info')} className="px-3 py-1.5 bg-violet-600 text-white text-[10px] font-bold rounded-xl hover:bg-violet-700 transition-all">Assign</button>
+                        <button onClick={() => setAssignModal({ user: selectedAffiliate, type: 'supervisor' })} className="px-3 py-1.5 bg-violet-600 text-white text-[10px] font-bold rounded-xl hover:bg-violet-700 transition-all">Assign</button>
                       </div>
                       <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Assigned Manager</p>
-                          <p className="text-sm font-bold text-slate-900 mt-0.5">Not assigned</p>
+                          <p className="text-sm font-bold text-slate-900 mt-0.5">{selectedAffiliate.manager?.fullName || 'Not assigned'}</p>
                         </div>
-                        <button onClick={() => showToast('Manager assignment opened', 'info')} className="px-3 py-1.5 bg-emerald-600 text-white text-[10px] font-bold rounded-xl hover:bg-emerald-700 transition-all">Assign</button>
+                        <button onClick={() => setAssignModal({ user: selectedAffiliate, type: 'manager' })} className="px-3 py-1.5 bg-emerald-600 text-white text-[10px] font-bold rounded-xl hover:bg-emerald-700 transition-all">Assign</button>
                       </div>
                     </div>
                   </div>
@@ -937,5 +1016,158 @@ export default function AffiliatesPage() {
     <Suspense>
       <AffiliatesManagement />
     </Suspense>
+  );
+}
+
+/* ---------- Send Email Modal ---------- */
+function EmailUserModal({ user, isSending, onClose, onSubmit }: {
+  user: UserType;
+  isSending: boolean;
+  onClose: () => void;
+  onSubmit: (subject: string, message: string) => Promise<void>;
+}) {
+  const [subject, setSubject] = useState('');
+  const [message, setMessage] = useState('');
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[300]"
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-3xl shadow-2xl z-[310] p-8 space-y-5"
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-black text-slate-900">Send Email</h3>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+            <X className="w-5 h-5 text-slate-400" />
+          </button>
+        </div>
+        <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+          <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-700">
+            {user.fullName?.charAt(0) || 'A'}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-slate-900 truncate">{user.fullName}</p>
+            <p className="text-xs text-slate-500 truncate">{user.email}</p>
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Subject</label>
+          <input
+            value={subject}
+            onChange={e => setSubject(e.target.value)}
+            placeholder="e.g. Welcome to Vemtap"
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-100"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Message</label>
+          <textarea
+            value={message}
+            onChange={e => setMessage(e.target.value)}
+            rows={5}
+            placeholder="Write your message..."
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-100 resize-none"
+          />
+        </div>
+        <div className="flex gap-3 pt-2">
+          <Button variant="outline" className="flex-1 h-11 rounded-xl font-bold" onClick={onClose}>Cancel</Button>
+          <Button
+            className="flex-1 h-11 rounded-xl font-bold"
+            isLoading={isSending}
+            disabled={isSending || !subject.trim() || !message.trim()}
+            onClick={() => onSubmit(subject, message)}
+          >
+            Send Email
+          </Button>
+        </div>
+      </motion.div>
+    </>
+  );
+}
+
+/* ---------- Assign Line Manager / Manager Modal ---------- */
+function AssignHierarchyModal({ user, type, isSaving, onClose, onAssign }: {
+  user: UserType;
+  type: 'supervisor' | 'manager';
+  isSaving: boolean;
+  onClose: () => void;
+  onAssign: (targetId: string, targetName?: string) => Promise<void>;
+}) {
+  const [targetId, setTargetId] = useState('');
+  const { data: candidatesResponse, isLoading } = useUsers({
+    role: (type === 'supervisor' ? 'SUPERVISOR' : 'MANAGER') as any,
+    limit: 100,
+  });
+  const candidates = (candidatesResponse?.data || []).filter(c => c.id !== user.id);
+  const selectedCandidate = candidates.find(c => c.id === targetId);
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[300]"
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-3xl shadow-2xl z-[310] p-8 space-y-5"
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-black text-slate-900">
+            Assign {type === 'supervisor' ? 'Line Manager' : 'Manager'}
+          </h3>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+            <X className="w-5 h-5 text-slate-400" />
+          </button>
+        </div>
+        <p className="text-sm text-slate-500 font-medium">
+          Assigning for <span className="font-bold text-slate-900">{user.fullName}</span>
+        </p>
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            Select {type === 'supervisor' ? 'Line Manager' : 'Manager'} *
+          </label>
+          <select
+            value={targetId}
+            onChange={e => setTargetId(e.target.value)}
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-100"
+          >
+            <option value="">-- Select --</option>
+            {isLoading ? (
+              <option disabled>Loading...</option>
+            ) : candidates.map(c => (
+              <option key={c.id} value={c.id}>{c.fullName} ({c.email})</option>
+            ))}
+          </select>
+          {!isLoading && candidates.length === 0 && (
+            <p className="text-xs text-slate-400 italic px-1">No {type === 'supervisor' ? 'line managers' : 'managers'} available yet.</p>
+          )}
+        </div>
+        <div className="flex gap-3 pt-2">
+          <Button variant="outline" className="flex-1 h-11 rounded-xl font-bold" onClick={onClose}>Cancel</Button>
+          <Button
+            className="flex-1 h-11 rounded-xl font-bold"
+            isLoading={isSaving}
+            disabled={isSaving || !targetId}
+            onClick={() => onAssign(targetId, selectedCandidate?.fullName)}
+          >
+            Assign
+          </Button>
+        </div>
+      </motion.div>
+    </>
   );
 }
