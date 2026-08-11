@@ -208,6 +208,8 @@ export function MarketMappingProvider({ children }: { children: React.ReactNode 
     if (entry.id) updatePlanMutation.mutate({ id: entry.id, status: entry.status === 'ACHIEVED' ? 'COMPLETED' : 'ARCHIVED' });
   }, [updatePlanMutation]);
 
+  const isTempId = (id?: string) => Boolean(id && (id.startsWith('biz-') || id.startsWith('v-')));
+
   const addVisits = useCallback((newVisits: PlannedVisit[]) => {
     setVisits(prev => [...prev, ...newVisits]);
     setStats(prev => ({
@@ -215,7 +217,10 @@ export function MarketMappingProvider({ children }: { children: React.ReactNode 
       plannedToday: prev.plannedToday + newVisits.length,
     }));
     newVisits.forEach(({ id: tempId, ...visit }) => createVisitMutation.mutate(visit, {
-      onSuccess: (created) => setVisits((current) => current.map((item) => item.id === tempId ? created : item)),
+      onSuccess: (created) => {
+        setVisits((current) => current.map((item) => item.id === tempId ? created : item));
+        setSelectedVisit((current) => (current?.id === tempId ? created : current));
+      },
     }));
   }, [createVisitMutation]);
 
@@ -232,8 +237,20 @@ export function MarketMappingProvider({ children }: { children: React.ReactNode 
         monthVisits: prev.monthVisits + 1
       }));
     }
-    if (updatedVisit.id) updateVisitMutation.mutate(updatedVisit);
-  }, [visits, updateVisitMutation]);
+    if (updatedVisit.id) {
+      if (isTempId(updatedVisit.id)) {
+        const { id: tempId, ...visitPayload } = updatedVisit;
+        createVisitMutation.mutate(visitPayload, {
+          onSuccess: (created) => {
+            setVisits((current) => current.map((item) => (item.id === tempId || item.id === updatedVisit.id ? created : item)));
+            setSelectedVisit((current) => (current?.id === tempId || current?.id === updatedVisit.id ? created : current));
+          },
+        });
+      } else {
+        updateVisitMutation.mutate(updatedVisit);
+      }
+    }
+  }, [visits, updateVisitMutation, createVisitMutation]);
 
   const addNote = useCallback((notePayload: { businessId?: string; content: string }) => {
     const visit = visits.find((item) => item.id === notePayload.businessId);
