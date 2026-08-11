@@ -250,6 +250,99 @@ describe("MarketMappingService", () => {
     });
   });
 
+  describe("getReports", () => {
+    const now = new Date();
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      mockPrismaService.user.findUnique.mockResolvedValue({ dailyLeadTarget: 20 });
+      mockPrismaService.marketMappingAdminConfig.findFirst.mockResolvedValue({ dailyTarget: 20 });
+      mockPrismaService.lead.findMany.mockResolvedValue([]);
+      mockPrismaService.business.findMany.mockResolvedValue([]);
+      mockPrismaService.marketMappingNote.findMany.mockResolvedValue([]);
+      mockPrismaService.marketMappingVisit.findMany.mockResolvedValue([]);
+    });
+
+    it("should score 0% on days with no activity and no mocked baselines", async () => {
+      const result = await service.getReports("user-1", "daily");
+
+      expect(result.weights.leadTarget).toBe(20);
+      expect(result.weights.riskThreshold).toBe(90);
+      expect(result.ledger[0].score).toBe(0);
+      expect(result.ledger[0].infoPct).toBe(0);
+      expect(result.ledger[0].gpsPct).toBe(0);
+      expect(result.ledger[0].infoComposite).toBe(0);
+      expect(result.ledger[0].met).toBe(false);
+    });
+
+    it("should use the user's real daily lead target", async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({ dailyLeadTarget: 15 });
+
+      const result = await service.getReports("user-1", "daily");
+
+      expect(result.weights.leadTarget).toBe(15);
+      expect(result.ledger[0].target).toBe(15);
+    });
+
+    it("should derive Business Info + GPS from real visit data", async () => {
+      mockPrismaService.marketMappingVisit.findMany.mockResolvedValue([
+        {
+          id: "visit-1",
+          name: "Complete Shop",
+          category: "Pharmacy",
+          phone: "08011111111",
+          ownerName: "Jane",
+          exactAddress: "Shop 3",
+          businessSize: "SMALL",
+          openingHours: "09:00-18:00",
+          contactPosition: "Owner",
+          gpsLat: "9.0765",
+          gpsLng: "7.4898",
+          visitedAt: now,
+          updatedAt: now,
+        },
+      ]);
+
+      const result = await service.getReports("user-1", "daily");
+
+      const today = result.ledger[0];
+      expect(today.visits).toBe(1);
+      expect(today.infoPct).toBe(100);
+      expect(today.gpsPct).toBe(100);
+      expect(today.infoComposite).toBe(100);
+      expect(today.score).toBe(21);
+    });
+
+    it("should not score business info on days with visits lacking profile fields or GPS", async () => {
+      mockPrismaService.marketMappingVisit.findMany.mockResolvedValue([
+        {
+          id: "visit-1",
+          name: "Bare Shop",
+          gpsLat: null,
+          gpsLng: null,
+          visitedAt: now,
+          updatedAt: now,
+        },
+      ]);
+
+      const result = await service.getReports("user-1", "daily");
+
+      const today = result.ledger[0];
+      expect(today.infoPct).toBe(0);
+      expect(today.gpsPct).toBe(0);
+    });
+
+    it("should score 0 when no target is configured", async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({ dailyLeadTarget: 0 });
+      mockPrismaService.marketMappingAdminConfig.findFirst.mockResolvedValue(null);
+
+      const result = await service.getReports("user-1", "daily");
+
+      expect(result.weights.leadTarget).toBe(0);
+      expect(result.ledger[0].score).toBe(0);
+    });
+  });
+
   describe("getAdminCapturedVisits", () => {
     it("should return all captured visits with GPS mapped to businesses", async () => {
       const visits = [

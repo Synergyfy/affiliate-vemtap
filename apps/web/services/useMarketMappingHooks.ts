@@ -121,6 +121,7 @@ export interface MarketMappingReportDay {
   visits: number;
   infoPct: number;
   gpsPct: number;
+  infoComposite: number;
   completionPct: number;
   isToday: boolean;
   score: number;

@@ -25,12 +25,6 @@ import ReportComments from '@/components/dashboard/ReportComments';
 import { useMarketMappingReportData } from '@/services/useMarketMappingHooks';
 import type { MarketMappingReport, MarketMappingReportDay, MarketMappingReportWeights } from '@/services/useMarketMappingHooks';
 
-// Fallback weights / targets (server returns these inside the report)
-const DEFAULT_WEIGHTS = { leads: 0.35, conversion: 0.3, businessInfo: 0.2, visits: 0.1, completion: 0.05 };
-const DEFAULT_RISK_THRESHOLD = 90;
-const DEFAULT_LEAD_TARGET = 20;
-const DEFAULT_CONVERSION_REFERENCE = 0.4;
-
 const METRIC_ROWS: Array<{ icon: LucideIcon; label: string; weightKey: keyof MarketMappingReportWeights; tip: string }> = [
   { icon: Users, label: 'Daily Lead Submission', weightKey: 'leads', tip: 'Submit at least 20 new leads every day. This is the single biggest driver of your score — if you submit fewer than 20 leads on a day, this part of your score drops.' },
   { icon: TrendingUp, label: 'Lead Conversion', weightKey: 'conversion', tip: 'How well your leads move forward — becoming Interested or Customers. The system references a 40% conversion rate; scoring above that pushes you to 100% here.' },
@@ -88,18 +82,18 @@ export default function WorkMetricReports({
 
   const rawWeights = monthly.data?.weights;
   const weights: MarketMappingReportWeights = {
-    leads: rawWeights?.leads ?? DEFAULT_WEIGHTS.leads,
-    conversion: rawWeights?.conversion ?? DEFAULT_WEIGHTS.conversion,
-    businessInfo: rawWeights?.businessInfo ?? DEFAULT_WEIGHTS.businessInfo,
-    visits: rawWeights?.visits ?? DEFAULT_WEIGHTS.visits,
-    completion: rawWeights?.completion ?? DEFAULT_WEIGHTS.completion,
-    riskThreshold: rawWeights?.riskThreshold ?? DEFAULT_RISK_THRESHOLD,
-    conversionReference: rawWeights?.conversionReference ?? DEFAULT_CONVERSION_REFERENCE,
-    leadTarget: rawWeights?.leadTarget ?? DEFAULT_LEAD_TARGET,
+    leads: rawWeights?.leads ?? 0,
+    conversion: rawWeights?.conversion ?? 0,
+    businessInfo: rawWeights?.businessInfo ?? 0,
+    visits: rawWeights?.visits ?? 0,
+    completion: rawWeights?.completion ?? 0,
+    riskThreshold: rawWeights?.riskThreshold ?? 0,
+    conversionReference: rawWeights?.conversionReference ?? 0,
+    leadTarget: rawWeights?.leadTarget ?? 0,
   };
-  const riskThreshold = weights.riskThreshold ?? DEFAULT_RISK_THRESHOLD;
-  const leadTarget = weights.leadTarget ?? DEFAULT_LEAD_TARGET;
-  const conversionReference = weights.conversionReference ?? DEFAULT_CONVERSION_REFERENCE;
+  const riskThreshold = weights.riskThreshold ?? 0;
+  const leadTarget = weights.leadTarget ?? 0;
+  const conversionReference = weights.conversionReference ?? 0;
 
   const ledger: MarketMappingReportDay[] = monthly.data?.ledger ?? [];
   const avg = (arr: MarketMappingReportDay[]) => (arr.length ? Math.round(arr.reduce((s, d) => s + d.score, 0) / arr.length) : 0);
@@ -131,7 +125,7 @@ export default function WorkMetricReports({
   const infoScore = (key: Scope) => {
     const days = key === 'daily' ? ledger.slice(0, 1) : key === 'weekly' ? ledger.slice(0, 7) : ledger;
     if (!days.length) return 0;
-    return Math.round(days.reduce((sum, d) => sum + (0.6 * d.infoPct + 0.4 * d.gpsPct), 0) / days.length);
+    return Math.round(days.reduce((sum, d) => sum + (d.infoComposite ?? 0), 0) / days.length);
   };
 
   const displayName = userName || user?.fullName || 'Affiliate';
@@ -143,13 +137,14 @@ export default function WorkMetricReports({
     const suffix = met
       ? 'You are on track. Keep the momentum going!'
       : `You scored ${score}% — ${gap}% below the ${riskThreshold}% threshold. This is at risk of penalties. Focus on the Work Metrics below to recover.`;
+    const targetPct = s.target > 0 ? Math.round((s.leads / s.target) * 100) : 0;
     if (key === 'daily') {
-      return `${s.leads >= s.target ? 'You met your daily lead target.' : `You collected ${s.leads} leads today against a ${s.target}-lead target (${Math.round((s.leads / s.target) * 100)}%).`} You captured ${s.conversions} conversions from ${s.visits} visits at a ${s.completionRate}% completion rate. ${suffix}`;
+      return `${s.target > 0 && s.leads >= s.target ? 'You met your daily lead target.' : `You collected ${s.leads} leads today against a ${s.target}-lead target (${targetPct}%).`} You captured ${s.conversions} conversions from ${s.visits} visits at a ${s.completionRate}% completion rate. ${suffix}`;
     }
     if (key === 'weekly') {
-      return `You generated ${s.leads} of ${s.target} leads this week (${Math.round((s.leads / s.target) * 100)}%), with ${s.conversions} conversions. Average weekly work score: ${score}%. ${suffix}`;
+      return `You generated ${s.leads} of ${s.target} leads this week (${targetPct}%), with ${s.conversions} conversions. Average weekly work score: ${score}%. ${suffix}`;
     }
-    return `Across the month you collected ${s.leads} leads against a ${s.target} target (${Math.round((s.leads / s.target) * 100)}%), with ${s.conversions} conversions and ${s.visits} visits. Average monthly work score: ${score}%. ${suffix}`;
+    return `Across the month you collected ${s.leads} leads against a ${s.target} target (${targetPct}%), with ${s.conversions} conversions and ${s.visits} visits. Average monthly work score: ${score}%. ${suffix}`;
   };
 
   const scopeOfKey = (key: Scope) => ({
@@ -403,9 +398,9 @@ export default function WorkMetricReports({
                         </div>
                         <div className="space-y-2">
                           <div>
-                            <div className="flex justify-between text-xs mb-1"><span className="text-slate-600">Lead Submission ({fmtWeight(weights.leads)}%)</span><span className="font-bold text-slate-900">{Math.min(100, Math.round((s.leads / s.target) * 100))}%</span></div>
+                            <div className="flex justify-between text-xs mb-1"><span className="text-slate-600">Lead Submission ({fmtWeight(weights.leads)}%)</span><span className="font-bold text-slate-900">{s.target > 0 ? Math.min(100, Math.round((s.leads / s.target) * 100)) : 0}%</span></div>
                             <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.min(100, Math.round((s.leads / s.target) * 100))}%` }} />
+                              <div className="h-full bg-blue-500 rounded-full" style={{ width: `${s.target > 0 ? Math.min(100, Math.round((s.leads / s.target) * 100)) : 0}%` }} />
                             </div>
                           </div>
                           <div>
@@ -421,9 +416,9 @@ export default function WorkMetricReports({
                             </div>
                           </div>
                           <div>
-                            <div className="flex justify-between text-xs mb-1"><span className="text-slate-600">Field Visits ({fmtWeight(weights.visits)}%)</span><span className="font-bold text-slate-900">{Math.min(100, Math.round((s.visits / s.target) * 100))}%</span></div>
+                            <div className="flex justify-between text-xs mb-1"><span className="text-slate-600">Field Visits ({fmtWeight(weights.visits)}%)</span><span className="font-bold text-slate-900">{s.target > 0 ? Math.min(100, Math.round((s.visits / s.target) * 100)) : 0}%</span></div>
                             <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${Math.min(100, Math.round((s.visits / s.target) * 100))}%` }} />
+                              <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${s.target > 0 ? Math.min(100, Math.round((s.visits / s.target) * 100)) : 0}%` }} />
                             </div>
                           </div>
                           <div>
