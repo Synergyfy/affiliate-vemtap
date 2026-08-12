@@ -186,9 +186,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 if (item.name === 'Line Manager') {
                   return user?.role === 'SUPERVISOR' || user?.role === 'MANAGER';
                 }
-                if (item.name === 'Referral Tools') {
-                  return user?.role !== 'AGENT';
-                }
                 if (item.name === 'Market Mapping') {
                   return user?.role !== 'AFFILIATE' && user?.role !== 'AGENT';
                 }
