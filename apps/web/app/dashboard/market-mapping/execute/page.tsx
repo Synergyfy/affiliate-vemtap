@@ -303,7 +303,7 @@ function SalesExecutiveExecutePage() {
                     </span>
                   </div>
 
-                  {!r.isPlaceholder && (r.ownerName || r.phone || r.exactAddress) && (
+                  {(!r.isPlaceholder && (r.ownerName || r.phone || r.exactAddress || (r.gpsLat && r.gpsLng))) && (
                     <div className="flex items-center gap-3 text-[11px] text-slate-500 mb-3 px-0.5 flex-wrap">
                       {r.ownerName && (
                         <span className="inline-flex items-center gap-1">
@@ -318,6 +318,11 @@ function SalesExecutiveExecutePage() {
                       {r.exactAddress && (
                         <span className="inline-flex items-center gap-1 truncate">
                           <MapPin className="w-3 h-3 text-slate-400" /> {r.exactAddress}
+                        </span>
+                      )}
+                      {r.gpsLat && r.gpsLng && (
+                        <span className="inline-flex items-center gap-1 font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200">
+                          <Navigation className="w-3 h-3 text-emerald-600" /> GPS Saved
                         </span>
                       )}
                     </div>

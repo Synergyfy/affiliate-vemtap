@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PlannedVisit, VisitStatus } from '@/types/affiliate-market-mapping';
 import { cn } from '@/lib/utils';
@@ -27,10 +27,24 @@ export default function PipelineView({ visits, onSelectVisit }: PipelineViewProp
   const { saveCapture } = useMarketMapping();
   const { data: config } = useMarketMappingConfig();
   const { showToast } = useToast();
-  const rawStatuses = config?.pipelineStatuses;
-  const pipelineStatuses = Array.isArray(rawStatuses) && rawStatuses.length > 0
-    ? rawStatuses.map((st: any) => typeof st === 'string' ? { id: st, name: st, color: 'bg-blue-500', bg: 'bg-blue-50', text: 'text-blue-600' } : st)
-    : DEFAULT_PIPELINE_STATUSES;
+
+  const pipelineStatuses = useMemo(() => {
+    const rawStatuses = config?.pipelineStatuses;
+    if (!Array.isArray(rawStatuses) || rawStatuses.length === 0) return DEFAULT_PIPELINE_STATUSES;
+    return rawStatuses.map((st: any) => {
+      const id = typeof st === 'string' ? st : (st.id || st.value || st.key || '');
+      const name = typeof st === 'string' ? st : (st.name || st.label || id);
+      const defaultMatch = DEFAULT_PIPELINE_STATUSES.find(d => d.id === id);
+      return {
+        id: id || defaultMatch?.id || 'NOT_YET',
+        name: name || defaultMatch?.name || id,
+        color: (typeof st === 'object' && st?.color) || defaultMatch?.color || 'bg-blue-500',
+        bg: (typeof st === 'object' && st?.bg) || defaultMatch?.bg || 'bg-blue-50',
+        text: (typeof st === 'object' && st?.text) || defaultMatch?.text || 'text-blue-600',
+      };
+    });
+  }, [config?.pipelineStatuses]);
+
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   
