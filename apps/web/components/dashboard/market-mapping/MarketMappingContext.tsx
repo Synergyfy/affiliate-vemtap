@@ -135,6 +135,13 @@ export function MarketMappingProvider({ children }: { children: React.ReactNode 
         endDate: p.endDate ? String(p.endDate) : undefined,
       }));
       setMissionPlans(formatted);
+      const todayKey = new Date().toISOString().slice(0, 10);
+      const dayPlan = formatted.find(
+        p => p.horizon === 'DAY' && (p.startDate || '').slice(0, 10) === todayKey
+      );
+      if (dayPlan) {
+        setStats(prev => ({ ...prev, plannedToday: dayPlan.targetCount }));
+      }
     }
   }, [apiPlans]);
 
@@ -156,6 +163,21 @@ export function MarketMappingProvider({ children }: { children: React.ReactNode 
   useEffect(() => {
     if (Array.isArray(apiVisits)) setVisits(apiVisits);
   }, [apiVisits]);
+
+  useEffect(() => {
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    const countToday = visits.filter((v: any) => {
+      const createdKey = v.createdAt ? new Date(v.createdAt).toLocaleDateString('en-CA') : '';
+      const visitedKey = v.visitedAt ? new Date(v.visitedAt).toLocaleDateString('en-CA') : '';
+      const updatedKey = v.updatedAt ? new Date(v.updatedAt).toLocaleDateString('en-CA') : '';
+      return createdKey === todayStr || visitedKey === todayStr || updatedKey === todayStr || !v.createdAt;
+    }).length;
+
+    setStats(prev => ({
+      ...prev,
+      visitedToday: countToday,
+    }));
+  }, [visits]);
 
   useEffect(() => {
     if (!apiPerformance) return;
@@ -188,6 +210,12 @@ export function MarketMappingProvider({ children }: { children: React.ReactNode 
       const others = prev.filter(p => !(p.horizon === plan.horizon && planDateKey(p.startDate) === planDateKey(plan.startDate)));
       return [...others, plan];
     });
+    if (plan.horizon === 'DAY') {
+      const todayKey = new Date().toISOString().slice(0, 10);
+      if ((plan.startDate || '').slice(0, 10) === todayKey) {
+        setStats(prev => ({ ...prev, plannedToday: plan.targetCount }));
+      }
+    }
     const payload = {
       targetVisits: plan.targetCount,
       targetLeads: plan.targetCount,

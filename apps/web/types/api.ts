@@ -408,6 +408,14 @@ export interface AffiliateStats {
   todayLeadsCount: number;
   monthlyLeadsCount: number;
   monthlyConversionsCount: number;
+  // Today's sales work stats
+  todaySalesPipelineCount: number;
+  todayMarketMappingCount: number;
+  todayBusinessesAdded: number;
+  todayVisitsCount: number;
+  todayFollowUpsDue: number;
+  todayDemosDue: number;
+  todayConversions: number;
 }
 
 export interface AffiliateForecast {

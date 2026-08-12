@@ -44,17 +44,47 @@ export class AffiliateStatsResponseDto {
   })
   todayClicks: number;
 
-  @ApiProperty({
-    example: "Active Earner",
-    description: "Current affiliate level based on referrals",
-  })
+  @ApiProperty({ example: 'Active Earner', description: 'Current affiliate level based on referrals' })
   currentLevel: string;
 
-  @ApiProperty({
-    example: "https://vemtap.com/signup",
-    description: "The base URL for affiliate referral signups",
-  })
+  @ApiProperty({ example: 'https://vemtap.com/signup', description: 'The base URL for affiliate referral signups' })
   referralSignupUrl: string;
+
+  @ApiProperty({ example: 5, description: 'Daily lead target set by admin or user' })
+  dailyLeadTarget: number;
+
+  @ApiProperty({ example: 20, description: 'Monthly conversion target set by admin or user' })
+  monthlyConversionTarget: number;
+
+  @ApiProperty({ example: 3, description: 'Number of leads submitted today' })
+  todayLeadsCount: number;
+
+  @ApiProperty({ example: 12, description: 'Total leads submitted this month' })
+  monthlyLeadsCount: number;
+
+  @ApiProperty({ example: 2, description: 'Businesses converted (active) this month' })
+  monthlyConversionsCount: number;
+
+  @ApiProperty({ example: 4, description: 'SalesPipeline entries created today (businesses added via pipeline)' })
+  todaySalesPipelineCount: number;
+
+  @ApiProperty({ example: 2, description: 'MarketMappingVisit entries created today (businesses added via field work)' })
+  todayMarketMappingCount: number;
+
+  @ApiProperty({ example: 6, description: 'Total businesses added today across both sources' })
+  todayBusinessesAdded: number;
+
+  @ApiProperty({ example: 3, description: 'Market mapping visits that happened today (visitedAt is today)' })
+  todayVisitsCount: number;
+
+  @ApiProperty({ example: 1, description: 'Follow-ups due today (FOLLOW_UP stage with followUpDate = today)' })
+  todayFollowUpsDue: number;
+
+  @ApiProperty({ example: 1, description: 'Demos scheduled for today (DEMO stage with demoScheduledDate = today)' })
+  todayDemosDue: number;
+
+  @ApiProperty({ example: 0, description: 'Entries that moved to CUSTOMER stage today' })
+  todayConversions: number;
 }
 
 export class GetLeaderboardQueryDto {

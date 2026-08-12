@@ -47,6 +47,30 @@ export default function PipelinePage() {
 
   const filteredVisits = useMemo(() => {
     if (horizonFilter === 'ALL') return visits;
+    if (horizonFilter === 'DAY') {
+      const todayKey = new Date().toISOString().slice(0, 10);
+      return visits.filter(v => {
+        // Only show businesses added (createdAt) today
+        const createdKey = v.createdAt ? String(v.createdAt).slice(0, 10) : null;
+        return createdKey === todayKey;
+      });
+    }
+    if (horizonFilter === 'WEEK') {
+      const today = new Date();
+      const dayOfWeek = today.getDay();
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+      monday.setHours(0, 0, 0, 0);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(23, 59, 59, 999);
+
+      return visits.filter(v => {
+        if (v.horizon === 'WEEK') return true;
+        const d = v.createdAt ? new Date(v.createdAt) : v.visitedAt ? new Date(v.visitedAt) : null;
+        return d ? d >= monday && d <= sunday : false;
+      });
+    }
     return visits.filter(v => v.horizon === horizonFilter);
   }, [visits, horizonFilter]);
 
