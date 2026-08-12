@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import { CACHE_MANAGER } from "@nestjs/cache-manager";
 import { ConfigService } from "@nestjs/config";
 import { Cache } from "cache-manager";
+import { SalesPipelineStage } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   AdminStatsResponseDto,
@@ -224,7 +225,25 @@ export class DashboardService {
 
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
-    const [user, activeReferrals, totalClicks, todayCommissions, todayClicks, todayLeadsCount, monthlyLeadsCount, monthlyConversionsCount] = await Promise.all([
+    const todayEnd = new Date(today);
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const [
+      user,
+      activeReferrals,
+      totalClicks,
+      todayCommissions,
+      todayClicks,
+      todayLeadsCount,
+      monthlyLeadsCount,
+      monthlyConversionsCount,
+      todaySalesPipelineCount,
+      todayMarketMappingCount,
+      todayVisitsCount,
+      todayFollowUpsDue,
+      todayDemosDue,
+      todayConversions,
+    ] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
         select: {
@@ -264,6 +283,43 @@ export class DashboardService {
       this.prisma.business.count({
         where: { affiliateId: userId, status: 'ACTIVE', createdAt: { gte: startOfMonth } },
       }),
+      // SalesPipeline entries created today (businesses added via sales pipeline)
+      this.prisma.salesPipeline.count({
+        where: { affiliateId: userId, createdAt: { gte: today, lte: todayEnd } },
+      }),
+      // MarketMappingVisit entries created today (businesses added via field work — includes placeholders)
+      this.prisma.marketMappingVisit.count({
+        where: { userId, createdAt: { gte: today, lte: todayEnd } },
+      }),
+      // MarketMappingVisit entries actually visited today (visitedAt is today)
+      this.prisma.marketMappingVisit.count({
+        where: { userId, visitedAt: { gte: today, lte: todayEnd } },
+      }),
+      // SalesPipeline entries with a followUpDate of today
+      this.prisma.salesPipeline.count({
+        where: {
+          affiliateId: userId,
+          followUpDate: { gte: today, lte: todayEnd },
+        },
+      }),
+      // SalesPipeline entries in DEMO_SCHEDULED stage or with a demoScheduledDate of today
+      this.prisma.salesPipeline.count({
+        where: {
+          affiliateId: userId,
+          OR: [
+            { pipelineStage: SalesPipelineStage.DEMO_SCHEDULED },
+            { demoScheduledDate: { gte: today, lte: todayEnd } },
+          ],
+        },
+      }),
+      // SalesPipeline entries that became CUSTOMER today
+      this.prisma.salesPipeline.count({
+        where: {
+          affiliateId: userId,
+          pipelineStage: SalesPipelineStage.CUSTOMER,
+          updatedAt: { gte: today, lte: todayEnd },
+        },
+      }),
     ]);
 
     const referralCount = user?.referralCount || 0;
@@ -289,6 +345,14 @@ export class DashboardService {
       todayLeadsCount,
       monthlyLeadsCount,
       monthlyConversionsCount,
+      // Today's sales work stats — used by the sales-work page
+      todaySalesPipelineCount,
+      todayMarketMappingCount,
+      todayBusinessesAdded: todaySalesPipelineCount + todayMarketMappingCount,
+      todayVisitsCount,
+      todayFollowUpsDue,
+      todayDemosDue,
+      todayConversions,
     };
   }
 

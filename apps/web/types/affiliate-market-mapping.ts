@@ -15,6 +15,9 @@ export interface PlannedVisit {
   contactPosition?: string;
   contactEmail?: string;
   horizon?: MissionHorizon;
+  createdAt?: string;
+  visitedAt?: string;
+  updatedAt?: string;
   // Business Profile
   dailyCustomers?: string;
   businessSize?: string;

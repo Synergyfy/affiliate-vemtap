@@ -11,6 +11,24 @@ export class FieldActivityService {
   async getActiveMission(userId: string) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const todayPlan = await this.prisma.marketMappingPlan.findFirst({
+      where: {
+        userId,
+        startDate: { gte: today, lte: todayEnd },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { dailyLeadTarget: true },
+    });
+
+    const targetCount = todayPlan?.targetVisits || user?.dailyLeadTarget || 20;
+    const location = todayPlan?.locationCluster || 'Assigned Territory';
 
     let mission = await this.prisma.fieldMission.findFirst({
       where: {
@@ -23,11 +41,34 @@ export class FieldActivityService {
       orderBy: { createdAt: 'desc' },
     });
 
-    if (!mission) {
+    if (mission) {
+      if (mission.targetCount !== targetCount || (todayPlan?.locationCluster && mission.location !== location)) {
+        const currentCount = mission.businesses.length;
+        if (targetCount > currentCount) {
+          const needed = targetCount - currentCount;
+          const newPlaceholders = Array.from({ length: needed }).map((_, i) => ({
+            name: `Placeholder ${currentCount + i + 1}`,
+            category: 'Unknown',
+            address: location,
+            isAnchor: false,
+            isPlaceholder: true,
+            status: 'NOT_YET',
+          }));
+          await this.prisma.fieldMissionBusiness.createMany({
+            data: newPlaceholders.map((p) => ({ ...p, missionId: mission!.id })),
+          });
+        }
+        mission = await this.prisma.fieldMission.update({
+          where: { id: mission.id },
+          data: { targetCount, location },
+          include: { businesses: true },
+        });
+      }
+    } else {
       // Find user's market mapping visits or create default mission
       const visits = await this.prisma.marketMappingVisit.findMany({
         where: { userId },
-        take: 15,
+        take: targetCount,
         orderBy: { createdAt: 'desc' },
       });
 
@@ -46,7 +87,7 @@ export class FieldActivityService {
         visitId: v.id,
         name: v.name,
         category: v.category || 'General',
-        address: v.address || v.exactAddress || 'Location',
+        address: v.address || v.exactAddress || location,
         gpsAddress: v.gpsAddress || undefined,
         isAnchor: v.isAnchor,
         isPlaceholder: false,
@@ -55,13 +96,13 @@ export class FieldActivityService {
         businessSize: v.businessSize || 'MEDIUM',
       }));
 
-      // Add placeholders up to 20 if needed
-      const placeholderCount = Math.max(0, 20 - businessesData.length);
+      // Add placeholders up to targetCount if needed
+      const placeholderCount = Math.max(0, targetCount - businessesData.length);
       for (let i = 1; i <= placeholderCount; i++) {
         businessesData.push({
           name: `Placeholder ${businessesData.length + 1}`,
           category: 'Unknown',
-          address: 'Assigned Territory',
+          address: location,
           isAnchor: false,
           isPlaceholder: true,
           status: 'NOT_YET',
@@ -72,8 +113,8 @@ export class FieldActivityService {
         data: {
           userId,
           name: `Daily Mission - ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
-          location: 'Assigned Territory',
-          targetCount: 20,
+          location,
+          targetCount,
           horizon: 'DAY',
           businesses: {
             create: businessesData,

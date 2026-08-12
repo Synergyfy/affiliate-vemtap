@@ -99,7 +99,20 @@ function SalesExecutiveExecutePage() {
   const [activeRow, setActiveRow] = useState<PlannedVisit | null>(null);
   const initRef = useRef(false);
 
-  const targetCount = mission?.targetCount || mission?.businesses?.length || 20;
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const dayPlan = marketMapping.missionPlans.find(p => p.horizon === 'DAY' && (p.startDate || '').slice(0, 10) === todayKey);
+  const weekPlan = marketMapping.missionPlans.find(p => {
+    if (p.horizon !== 'WEEK' || !p.startDate) return false;
+    const start = new Date(p.startDate);
+    const end = p.endDate ? new Date(p.endDate) : new Date(start.getTime() + 6 * 86400000);
+    return !isNaN(start.getTime()) && !isNaN(end.getTime()) && start <= today && today <= end;
+  });
+  const activePlan = dayPlan || weekPlan;
+
+  const targetCount = dayPlan?.targetCount || weekPlan?.targetCount || marketMapping.stats.plannedToday || mission?.targetCount || 20;
+  const activeLocation = activePlan?.location || marketMapping.stats.clusterName || mission?.location || 'Your daily plan';
+
   const completedCount = rows.filter(
     r => !r.isPlaceholder && (r.status === 'VISITED' || r.status === 'CONTACTED' || r.status === 'INTERESTED' || r.status === 'CUSTOMER')
   ).length;
@@ -107,14 +120,16 @@ function SalesExecutiveExecutePage() {
   const percentFilled = targetCount > 0 ? Math.min(100, Math.round((rows.length / targetCount) * 100)) : 0;
 
   useEffect(() => {
-    if (mission && !initRef.current) {
+    if (marketMapping.visits.length > 0) {
+      setRows(marketMapping.visits);
+    } else if (mission?.businesses && mission.businesses.length > 0 && !initRef.current) {
       setRows((mission.businesses ?? [])
         .map(toPlannedRow)
         .filter(b => !b.isPlaceholder)
       );
       initRef.current = true;
     }
-  }, [mission]);
+  }, [marketMapping.visits, mission]);
 
   const openAddBusiness = () => {
     const newVisit: PlannedVisit = {
@@ -123,7 +138,7 @@ function SalesExecutiveExecutePage() {
       category: 'Unknown',
       status: 'NOT_YET',
       isPlaceholder: true,
-      address: mission?.location || '',
+      address: activeLocation !== 'Your daily plan' ? activeLocation : '',
       horizon: 'DAY',
     };
     setActiveRow(newVisit);
@@ -194,7 +209,7 @@ function SalesExecutiveExecutePage() {
               Field Work
             </h1>
             <p className="text-xs text-slate-500 font-medium truncate">
-              {mission?.location || 'Your daily plan'} · {rows.length} of {targetCount} businesses listed
+              {activeLocation} · {rows.length} of {targetCount} businesses listed
             </p>
           </div>
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-black border border-emerald-100 shrink-0">
@@ -280,7 +295,7 @@ function SalesExecutiveExecutePage() {
                         )}
                       </div>
                       <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                        {r.category !== 'Unknown' ? r.category : 'Business'} · {r.address || mission?.location || 'No location'}
+                        {r.category !== 'Unknown' ? r.category : 'Business'} · {r.address || activeLocation || 'No location'}
                       </p>
                     </div>
                     <span className={cn('text-[10px] font-bold px-2 py-1 rounded-full shrink-0', badge.cls)}>
@@ -412,7 +427,7 @@ function ExecutePage() {
   }, [activeView, visits, activeHorizon, anchorRows, priorityRows, partnershipRows]);
 
   const addedCount = contextVisits.length;
-  const targetCount = activeView === 'default' ? (activePlan?.targetCount || 20) : contextVisits.length;
+  const targetCount = activeView === 'default' ? (activePlan?.targetCount || stats.plannedToday || 20) : contextVisits.length;
   const remaining = Math.max(0, targetCount - addedCount);
 
   const handleSave = (updatedVisit: any, closeDrawer = true) => {
