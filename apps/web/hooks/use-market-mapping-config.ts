@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api-client';
+import api from '@/services/api';
 import { MarketMappingConfig } from '@/types/api';
 
 export function useMarketMappingConfig() {

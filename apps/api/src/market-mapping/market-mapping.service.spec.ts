@@ -659,4 +659,26 @@ describe("MarketMappingService", () => {
       );
     });
   });
+
+  describe("updatePlan", () => {
+    it("should parse string startDate and endDate into Date objects when updating a mission plan", async () => {
+      mockPrismaService.marketMappingPlan.findFirst.mockResolvedValue({
+        id: "plan-1",
+        userId: "user-1",
+      });
+      mockPrismaService.marketMappingPlan.update.mockImplementation((args: any) =>
+        Promise.resolve({ id: "plan-1", ...args.data }),
+      );
+
+      const result = await service.updatePlan("plan-1", "user-1", {
+        startDate: "2026-08-11T00:00:00",
+        endDate: "2026-08-11T23:59:59",
+        targetVisits: 39,
+      });
+
+      expect(result.startDate).toEqual(new Date("2026-08-11T00:00:00"));
+      expect(result.endDate).toEqual(new Date("2026-08-11T23:59:59"));
+      expect(result.targetVisits).toBe(39);
+    });
+  });
 });

@@ -186,7 +186,7 @@ const VISIT_FIELDS = [
   'name', 'category', 'status', 'isPlaceholder', 'address', 'exactAddress',
   'phone', 'ownerName', 'contactPosition', 'contactEmail', 'horizon',
   'dailyCustomers', 'businessSize', 'openingHours', 'openingDays',
-  'gpsLat', 'gpsLng', 'nextVisitDate', 'nextVisitTime', 'decisionMakerMet',
+  'gpsLat', 'gpsLng', 'gpsAddress', 'nextVisitDate', 'nextVisitTime', 'decisionMakerMet',
   'interested', 'demoDone', 'visitNotes', 'isAnchor', 'planId',
 ] as const;
 
@@ -240,7 +240,9 @@ export const useCreateMissionPlan = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['market-mapping', 'plans'] });
+      queryClient.invalidateQueries({ queryKey: ['market-mapping'] });
+      queryClient.invalidateQueries({ queryKey: ['field-activity'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };
@@ -253,7 +255,9 @@ export const useUpdateMissionPlan = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['market-mapping', 'plans'] });
+      queryClient.invalidateQueries({ queryKey: ['market-mapping'] });
+      queryClient.invalidateQueries({ queryKey: ['field-activity'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 };

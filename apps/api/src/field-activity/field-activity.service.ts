@@ -17,7 +17,10 @@ export class FieldActivityService {
     const todayPlan = await this.prisma.marketMappingPlan.findFirst({
       where: {
         userId,
-        startDate: { gte: today, lte: todayEnd },
+        OR: [
+          { startDate: { gte: today, lte: todayEnd } },
+          { createdAt: { gte: today, lte: todayEnd } },
+        ],
       },
       orderBy: { createdAt: 'desc' },
     });

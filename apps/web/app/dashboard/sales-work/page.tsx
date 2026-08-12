@@ -106,9 +106,16 @@ export default function SalesWorkPage() {
     return items;
   }, [rawVisits, allLeads, todayIso]);
 
+  const getLocalDateKey = (dateStr?: string | Date) => {
+    if (!dateStr) return '';
+    const d = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
+    if (isNaN(d.getTime())) return String(dateStr).slice(0, 10);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
   const today = new Date();
-  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  const dayPlan = missionPlans.find(p => p.horizon === 'DAY' && (p.startDate || '').slice(0, 10) === todayKey);
+  const todayKey = getLocalDateKey(today);
+  const dayPlan = missionPlans.find(p => p.horizon === 'DAY' && getLocalDateKey(p.startDate || p.createdAt) === todayKey);
   const weekPlan = missionPlans.find(p => {
     if (p.horizon !== 'WEEK' || !p.startDate) return false;
     const start = new Date(p.startDate);
