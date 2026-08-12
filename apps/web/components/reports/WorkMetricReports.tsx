@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -50,7 +51,7 @@ const visitStatusInfo = (status: string) => {
 const fmtWeight = (val: number | undefined) => Math.round((val ?? 0) * 100);
 
 export default function WorkMetricReports({
-  backHref = '/dashboard/market-mapping/insights',
+  backHref = '/dashboard/market-mapping',
   userId,
   userName,
   userRole,
@@ -60,8 +61,17 @@ export default function WorkMetricReports({
   userName?: string;
   userRole?: string;
 }) {
+  const router = useRouter();
   const { user } = useAuth();
   const { showToast } = useToast();
+
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push(backHref);
+    }
+  };
   const [openReport, setOpenReport] = useState<Scope | null>('daily');
   const [missedOpen, setMissedOpen] = useState(false);
   const [scoreInfoOpen, setScoreInfoOpen] = useState(false);
@@ -259,12 +269,13 @@ export default function WorkMetricReports({
 
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link
-          href={backHref}
+        <button
+          type="button"
+          onClick={handleBack}
           className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
-        </Link>
+        </button>
         <div>
           <h1 className="text-xl font-black text-slate-900 flex items-center gap-2">
             <FileText className="w-5 h-5 text-blue-600" />

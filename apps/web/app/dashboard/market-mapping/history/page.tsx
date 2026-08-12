@@ -4,11 +4,21 @@ import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { useMarketMapping } from '@/components/dashboard/market-mapping/MarketMappingContext';
 import { ArrowLeft, Target, CheckCircle, XCircle, MapPin, Clock, Pencil } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { MissionPlan } from '@/types/affiliate-market-mapping';
 
 export default function TargetHistoryPage() {
+  const router = useRouter();
   const { missionHistory, missionPlans, performance } = useMarketMapping();
+
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/dashboard/market-mapping');
+    }
+  };
 
   const today = new Date();
   const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -63,12 +73,13 @@ export default function TargetHistoryPage() {
     <DashboardLayout>
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="flex items-center gap-3">
-          <Link
-            href="/dashboard/market-mapping"
+          <button
+            type="button"
+            onClick={handleBack}
             className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-          </Link>
+          </button>
           <div>
             <h1 className="text-xl font-black text-slate-900 flex items-center gap-2">
               <Target className="w-5 h-5 text-blue-600" />

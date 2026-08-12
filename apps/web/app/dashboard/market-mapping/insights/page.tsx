@@ -8,9 +8,19 @@ import MarketCompletionSummary from '@/components/dashboard/market-mapping/Marke
 import MissionControl from '@/components/dashboard/market-mapping/MissionControl';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function InsightsPage() {
+  const router = useRouter();
   const { stats, maturity, recommendations } = useMarketMapping();
+
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/dashboard/market-mapping');
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -18,12 +28,13 @@ export default function InsightsPage() {
 
         {/* Back Navigation */}
         <div className="flex items-center gap-3">
-          <Link 
-            href="/dashboard/market-mapping" 
+          <button 
+            type="button"
+            onClick={handleBack} 
             className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-          </Link>
+          </button>
           <div>
             <h1 className="text-xl font-black text-slate-900 flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-purple-600" />
