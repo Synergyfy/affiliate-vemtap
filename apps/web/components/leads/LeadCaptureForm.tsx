@@ -26,6 +26,7 @@ import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCreateLead, useUpdateLead } from '@/services/useLeadsHooks';
 import { useCheckDuplicate } from '@/services/useSalesPipeline';
+import { useUsers } from '@/services/useAdminHooks';
 import { DuplicateWarning } from '@/types/sales-pipeline';
 import DuplicateWarningModal from '@/components/sales/DuplicateWarningModal';
 import api from '@/services/api';
@@ -67,6 +68,15 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
   const { showToast } = useToast();
   const createLead = useCreateLead();
   const updateLead = useUpdateLead();
+
+  // Real agents for admin "Assign to Agent" section
+  const { data: agentsResponse, isLoading: isLoadingAgents } = useUsers({
+    role: 'AGENT' as any,
+    status: 'ACTIVE',
+    limit: 100,
+    enabled: isAdmin,
+  });
+  const agents = agentsResponse?.data || [];
 
   const {
     register,
@@ -242,10 +252,15 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
                 className="w-full px-4 py-4 bg-white/10 border border-white/20 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 transition-all text-white appearance-none"
               >
                 <option value="" className="text-slate-900">Select an active agent</option>
-                <option value="agent-1" className="text-slate-900">John Doe (VEM-001)</option>
-                <option value="agent-2" className="text-slate-900">Sarah Smith (VEM-002)</option>
-                <option value="agent-3" className="text-slate-900">Michael Bolan (VEM-003)</option>
-                <option value="agent-4" className="text-slate-900">David King (VEM-004)</option>
+                {isLoadingAgents ? (
+                  <option disabled className="text-slate-900">Loading agents...</option>
+                ) : agents.length === 0 ? (
+                  <option disabled className="text-slate-900">No active agents available</option>
+                ) : agents.map(agent => (
+                  <option key={agent.id} value={agent.id} className="text-slate-900">
+                    {agent.fullName} ({agent.referralCode})
+                  </option>
+                ))}
               </select>
               <p className="text-[10px] text-slate-400 px-1 mt-1 italic">This lead will appear instantly in the selected agent's dashboard.</p>
             </div>

@@ -13,10 +13,10 @@ import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { PlannedVisit, MissionHorizon, getCompletenessScore } from '@/types/affiliate-market-mapping';
-import { mockAnchorBusinesses, mockPriorityVisits, mockPartnershipVisits } from '@/lib/affiliate-mock';
 import { useMarketMapping } from '@/components/dashboard/market-mapping/MarketMappingContext';
 import BusinessCaptureDrawer from '@/components/dashboard/market-mapping/BusinessCaptureDrawer';
 import { useActiveMission } from '@/services/useFieldActivity';
+import { useMarketMappingAnchors, usePriorityVisits, usePartnerships } from '@/services/useMarketMappingHooks';
 import { FieldBusiness } from '@/types/field-activity';
 
 type ViewMode = 'default' | 'anchors' | 'priority' | 'partnership';
@@ -52,6 +52,38 @@ function toPlannedRow(b: FieldBusiness): PlannedVisit {
     visitNotes: b.visitNotes,
     isAnchor: b.isAnchor,
     horizon: 'DAY',
+  };
+}
+
+// Market mapping API visit → PlannedVisit
+function toVisitRow(v: any): PlannedVisit {
+  return {
+    id: v.id,
+    name: v.name,
+    category: v.category || '',
+    status: v.status || 'NOT_YET',
+    isPlaceholder: v.isPlaceholder ?? false,
+    address: v.address,
+    exactAddress: v.exactAddress,
+    phone: v.phone,
+    ownerName: v.ownerName,
+    contactPosition: v.contactPosition,
+    contactEmail: v.contactEmail,
+    horizon: v.horizon,
+    dailyCustomers: v.dailyCustomers,
+    businessSize: v.businessSize,
+    openingHours: v.openingHours,
+    openingDays: v.openingDays,
+    gpsLat: v.gpsLat,
+    gpsLng: v.gpsLng,
+    gpsAddress: v.gpsAddress,
+    nextVisitDate: v.nextVisitDate,
+    nextVisitTime: v.nextVisitTime,
+    decisionMakerMet: v.decisionMakerMet,
+    interested: v.interested,
+    demoDone: v.demoDone,
+    visitNotes: v.visitNotes,
+    isAnchor: v.isAnchor,
   };
 }
 
@@ -359,6 +391,9 @@ function ExecutePage() {
   const config = VIEW_CONFIG[activeView];
 
   const { stats, visits, selectedVisit, setSelectedVisit, saveCapture, missionPlans, performance, addVisits } = useMarketMapping();
+  const { data: anchorRows } = useMarketMappingAnchors();
+  const { data: priorityRows } = usePriorityVisits();
+  const { data: partnershipRows } = usePartnerships();
   const { showToast } = useToast();
   const [horizonFilter, setHorizonFilter] = useState<MissionHorizon>('DAY');
 
@@ -384,12 +419,12 @@ function ExecutePage() {
 
   const contextVisits = useMemo(() => {
     switch (activeView) {
-      case 'anchors': return mockAnchorBusinesses;
-      case 'priority': return mockPriorityVisits;
-      case 'partnership': return mockPartnershipVisits;
+      case 'anchors': return (anchorRows ?? []).map(toVisitRow);
+      case 'priority': return (priorityRows ?? []).map(toVisitRow);
+      case 'partnership': return (partnershipRows ?? []).map(toVisitRow);
       default: return visits.filter(v => v.horizon === activeHorizon);
     }
-  }, [activeView, visits, activeHorizon]);
+  }, [activeView, visits, activeHorizon, anchorRows, priorityRows, partnershipRows]);
 
   const addedCount = contextVisits.length;
   const targetCount = activeView === 'default' ? (activePlan?.targetCount || stats.plannedToday || 20) : contextVisits.length;
