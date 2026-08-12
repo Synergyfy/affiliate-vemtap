@@ -6,7 +6,7 @@ import WorkMetricReports from '@/components/reports/WorkMetricReports';
 export default function MyReportsPage() {
   return (
     <DashboardLayout>
-      <WorkMetricReports backHref="/dashboard/market-mapping/insights" />
+      <WorkMetricReports backHref="/dashboard/market-mapping" />
     </DashboardLayout>
   );
 }

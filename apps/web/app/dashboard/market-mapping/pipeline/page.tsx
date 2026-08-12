@@ -6,6 +6,7 @@ import PipelineView from '@/components/dashboard/market-mapping/PipelineView';
 import BusinessCaptureDrawer from '@/components/dashboard/market-mapping/BusinessCaptureDrawer';
 import { ArrowLeft, Navigation, LayoutGrid, Table, MapPin, Clock, CheckCircle2, Plus, Target, TrendingUp, UserCheck } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState, useMemo, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { PlannedVisit } from '@/types/affiliate-market-mapping';
@@ -30,11 +31,20 @@ const SUMMARY_STYLE = [
 ];
 
 export default function PipelinePage() {
+  const router = useRouter();
   const { visits, setSelectedVisit, selectedVisit, saveCapture, addVisits, missionPlans } = useMarketMapping();
   const { showToast } = useToast();
   const [horizonFilter, setHorizonFilter] = useState<'ALL' | 'DAY' | 'WEEK'>('ALL');
   const [viewMode, setViewMode] = useState<'pipeline' | 'table'>('pipeline');
   const [autoOpenCreate, setAutoOpenCreate] = useState(false);
+
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/dashboard/market-mapping');
+    }
+  };
 
   const activePlan = missionPlans[missionPlans.length - 1];
 
@@ -133,9 +143,9 @@ export default function PipelinePage() {
 
         {/* Header */}
         <div className="flex items-center gap-3 flex-wrap">
-          <Link href="/dashboard/market-mapping" className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors">
+          <button type="button" onClick={handleBack} className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors">
             <ArrowLeft className="w-5 h-5" />
-          </Link>
+          </button>
           <div className="min-w-0 flex-1">
             <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
               <Navigation className="w-5 h-5 text-indigo-600" />

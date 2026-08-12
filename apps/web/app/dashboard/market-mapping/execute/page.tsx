@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -90,6 +90,7 @@ function toVisitRow(v: any): PlannedVisit {
 // Sales Executive Field Activity Page — a full day list of businesses to
 // execute: visit, update info or add new businesses.
 function SalesExecutiveExecutePage() {
+  const router = useRouter();
   const { showToast } = useToast();
   const { user } = useAuth();
   const { data: mission } = useActiveMission();
@@ -192,18 +193,22 @@ function SalesExecutiveExecutePage() {
     }
   };
 
-  const backHref = user?.role === 'AFFILIATE' || user?.role === 'AGENT'
-    ? '/dashboard/sales-work'
-    : '/dashboard/market-mapping';
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/dashboard/market-mapping');
+    }
+  };
 
   return (
     <DashboardLayout>
       <div className="max-w-2xl mx-auto space-y-4 pb-24">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <Link href={backHref} className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors shrink-0">
+          <button type="button" onClick={handleBack} className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors shrink-0">
             <ArrowLeft className="w-5 h-5" />
-          </Link>
+          </button>
           <div className="min-w-0 flex-1">
             <h1 className="text-xl font-black text-slate-900 truncate">
               Field Work
@@ -386,14 +391,20 @@ function SalesExecutiveExecutePage() {
 // Original Execute Page (for non-SALES_EXECUTIVE users) - preserved unchanged
 function ExecutePage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { user } = useAuth();
   const viewParam = (searchParams.get('view') || 'default') as ViewMode;
-  const defaultFrom = user?.role === 'AFFILIATE' || user?.role === 'AGENT'
-    ? '/dashboard/sales-work'
-    : '/dashboard/market-mapping';
-  const fromPage = searchParams.get('from') || defaultFrom;
+  const fromParam = searchParams.get('from');
   const activeView = VIEW_CONFIG[viewParam] ? viewParam : 'default';
   const config = VIEW_CONFIG[activeView];
+
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push(fromParam || '/dashboard/market-mapping');
+    }
+  };
 
   const { stats, visits, selectedVisit, setSelectedVisit, saveCapture, missionPlans, performance, addVisits } = useMarketMapping();
   const { data: anchorRows } = useMarketMappingAnchors();
@@ -480,9 +491,9 @@ function ExecutePage() {
     <DashboardLayout>
       <div className="max-w-2xl mx-auto space-y-4">
         <div className="flex items-center gap-3">
-          <Link href={fromPage} className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors">
+          <button type="button" onClick={handleBack} className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors">
             <ArrowLeft className="w-5 h-5" />
-          </Link>
+          </button>
           <div>
             <h1 className="text-xl font-black text-slate-900 flex items-center gap-2">
               <config.icon className={cn('w-5 h-5', config.color)} />

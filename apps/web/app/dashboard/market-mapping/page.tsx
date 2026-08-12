@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { useMarketMapping } from '@/components/dashboard/market-mapping/MarketMappingContext';
 import {
@@ -14,7 +15,16 @@ import { useMarketMappingConfig } from '@/hooks/use-market-mapping-config';
 import { useToast } from '@/hooks/use-toast';
 
 export default function MarketMappingHubPage() {
+  const router = useRouter();
   const { stats, missionPlans, performance, visits, setPerformance } = useMarketMapping();
+
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/dashboard');
+    }
+  };
   const { data: config } = useMarketMappingConfig();
   const { showToast } = useToast();
   const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
@@ -99,7 +109,7 @@ export default function MarketMappingHubPage() {
       description: 'All businesses you captured — track status, progress and subscriptions.',
       color: 'bg-indigo-600',
       badge: null,
-      locked: true,
+      locked: false,
     },
     {
       href: '/dashboard/market-mapping/insights',
@@ -127,9 +137,9 @@ export default function MarketMappingHubPage() {
 
         {/* Header */}
         <div className="flex items-center gap-3">
-          <Link href="/dashboard" className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors shrink-0">
+          <button type="button" onClick={handleBack} className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors shrink-0">
             <ArrowLeft className="w-5 h-5" />
-          </Link>
+          </button>
           <div className="space-y-1">
             <h1 className="text-2xl font-black text-slate-900">Market Mapping</h1>
             <p className="text-sm text-slate-500 font-medium">{currentDate}</p>
@@ -306,7 +316,7 @@ export default function MarketMappingHubPage() {
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold text-amber-800">Add a location first</p>
                 <p className="text-[11px] text-amber-700 mt-0.5">
-                  Business leads (Field Work &amp; Pipeline) are locked until you set a location in Plan Mission — every captured business is tied to where you work.
+                  Field Work is locked until you set a location in Plan Mission — every captured business is tied to where you work.
                 </p>
                 <Link
                   href="/dashboard/market-mapping/plan"
