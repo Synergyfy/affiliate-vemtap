@@ -36,8 +36,8 @@ export default function MarketMappingHubPage() {
 
   const dayTarget = dayPlan?.targetCount || performance.dailyTarget || config?.dailyTarget || 0;
   const weekTarget = weekPlan?.targetCount || performance.weeklyTarget || config?.weeklyTarget || 0;
-  const dayProgress = performance.dailyProgress;
-  const weekProgress = performance.weeklyProgress;
+  const dayProgress = performance.todayVisits || stats.visitedToday || 0;
+  const weekProgress = performance.weekVisits || 0;
   const dayRemaining = Math.max(0, dayTarget - dayProgress);
   const weekRemaining = Math.max(0, weekTarget - weekProgress);
 

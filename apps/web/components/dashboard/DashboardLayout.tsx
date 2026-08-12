@@ -33,6 +33,7 @@ import AgreementSignModal from './AgreementSignModal';
 import DashboardTour from './DashboardTour';
 import NotificationDropdown from './NotificationDropdown';
 import { useUnreadNotificationCount } from '@/services/useNotificationHooks';
+import { MarketMappingProvider } from '@/components/dashboard/market-mapping/MarketMappingContext';
 import Image from 'next/image';
 
 interface DashboardContextType {
@@ -184,9 +185,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               .filter((item) => {
                 if (item.name === 'Line Manager') {
                   return user?.role === 'SUPERVISOR' || user?.role === 'MANAGER';
-                }
-                if (item.name === 'Referral Tools') {
-                  return user?.role !== 'AGENT';
                 }
                 if (item.name === 'Market Mapping') {
                   return user?.role !== 'AFFILIATE' && user?.role !== 'AGENT';
@@ -379,7 +377,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="p-4 md:p-8 lg:p-12 max-w-7xl mx-auto w-full">
             <OnboardingModal />
             <AgreementSignModal />
-            {children}
+            <MarketMappingProvider>
+              {children}
+            </MarketMappingProvider>
           </div>
         </main>
 

@@ -25,20 +25,131 @@ import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { cn } from '@/lib/utils';
 import { useSalesPipeline } from '@/services/useSalesPipeline';
 import { useActiveMission, useMissionProgress } from '@/services/useFieldActivity';
+import { useMarketMapping } from '@/components/dashboard/market-mapping/MarketMappingContext';
+import { useMarketMappingVisits } from '@/services/useMarketMappingHooks';
+import { useAffiliateStats } from '@/services/useDashboardHooks';
 import LeadDetailView from '@/components/sales/LeadDetailView';
+import BusinessCaptureDrawer from '@/components/dashboard/market-mapping/BusinessCaptureDrawer';
 import { SalesPipelineEntry } from '@/types/sales-pipeline';
+import { PlannedVisit } from '@/types/affiliate-market-mapping';
 
 export default function SalesWorkPage() {
   const router = useRouter();
+  const { missionPlans, stats, selectedVisit, setSelectedVisit, saveCapture } = useMarketMapping();
+  const { data: rawVisits = [] } = useMarketMappingVisits();
   const { data: pipelineData } = useSalesPipeline();
   const { data: mission } = useActiveMission();
   const { data: missionProgress } = useMissionProgress(mission?.id);
+  const { data: affiliateStats } = useAffiliateStats();
 
   const [selectedLead, setSelectedLead] = useState<SalesPipelineEntry | null>(null);
   const [isOffline, setIsOffline] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
 
   const allLeads: SalesPipelineEntry[] = pipelineData?.data || [];
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+
+  const businessesToVisit = useMemo(() => {
+    const existingNames = new Set<string>();
+    const items: Array<{
+      id: string;
+      name: string;
+      subtitle: string;
+      type: 'visit' | 'lead';
+      visit?: PlannedVisit;
+      lead?: SalesPipelineEntry;
+    }> = [];
+
+    // Primary source: visits from GET /market-mapping/visits
+    // Show NOT_YET visits created today, or any visit whose nextVisitDate is today
+    rawVisits
+      .filter((v) => {
+        const createdKey = v.createdAt ? String(v.createdAt).slice(0, 10) : '';
+        const nextKey = v.nextVisitDate ? String(v.nextVisitDate).slice(0, 10) : '';
+        const createdToday = createdKey === todayIso;
+        const nextVisitToday = nextKey === todayIso;
+
+        if (v.status === 'NOT_YET') return createdToday || nextVisitToday;
+        if (v.status === 'VISITED') return createdToday || nextVisitToday;
+        return false;
+      })
+      .forEach((visit) => {
+        const nameKey = visit.name.trim().toLowerCase();
+        existingNames.add(nameKey);
+        items.push({
+          id: visit.id,
+          name: visit.name,
+          subtitle: visit.address || visit.exactAddress || visit.category || 'Market Mapping',
+          type: 'visit',
+          visit,
+        });
+      });
+
+    // Secondary source: pipeline leads (NEW_LEAD / VISITED) not already listed
+    allLeads
+      .filter((l) => l.pipelineStage === 'NEW_LEAD' || l.pipelineStage === 'VISITED')
+      .forEach((lead) => {
+        const nameKey = lead.businessName.trim().toLowerCase();
+        if (!existingNames.has(nameKey)) {
+          existingNames.add(nameKey);
+          items.push({
+            id: lead.id,
+            name: lead.businessName,
+            subtitle: lead.location || lead.industry || 'Lead',
+            type: 'lead',
+            lead,
+          });
+        }
+      });
+
+    return items;
+  }, [rawVisits, allLeads, todayIso]);
+
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const dayPlan = missionPlans.find(p => p.horizon === 'DAY' && (p.startDate || '').slice(0, 10) === todayKey);
+  const weekPlan = missionPlans.find(p => {
+    if (p.horizon !== 'WEEK' || !p.startDate) return false;
+    const start = new Date(p.startDate);
+    const end = p.endDate ? new Date(p.endDate) : new Date(start.getTime() + 6 * 86400000);
+    return !isNaN(start.getTime()) && !isNaN(end.getTime()) && start <= today && today <= end;
+  });
+  const activePlan = dayPlan || weekPlan;
+
+  const targetCount = dayPlan?.targetCount || weekPlan?.targetCount || stats.plannedToday || mission?.targetCount || 20;
+  const activeLocation = activePlan?.location || stats.clusterName || mission?.location || '';
+
+  // Daily Mission progress: how many businesses the user ADDED today (from DB)
+  const visitedCount = affiliateStats?.todayBusinessesAdded ?? 0;
+  const percentDone = targetCount > 0 ? Math.min(100, Math.round((visitedCount / targetCount) * 100)) : 0;
+
+  // Today's Progress: all sourced from the DB via affiliateStats
+  const todayStats = useMemo(() => {
+    if (affiliateStats) {
+      return {
+        visitsToday: affiliateStats.todayVisitsCount ?? 0,
+        leadsCaptured: affiliateStats.todayBusinessesAdded ?? 0,
+        followUpsDue: affiliateStats.todayFollowUpsDue ?? 0,
+        demosDue: affiliateStats.todayDemosDue ?? 0,
+        conversions: affiliateStats.todayConversions ?? 0,
+      };
+    }
+    // Fallback to client-side computation while stats are loading
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    const todayLeads = allLeads.filter((l) => l.createdAt?.startsWith(todayStr.slice(0, 10)));
+    const todayVisits = rawVisits.filter((v: any) => {
+      const createdKey = v.createdAt ? new Date(v.createdAt).toLocaleDateString('en-CA') : '';
+      return createdKey === todayStr;
+    });
+    return {
+      visitsToday: todayVisits.filter((v: any) => v.status !== 'NOT_YET').length,
+      leadsCaptured: todayLeads.length + todayVisits.length,
+      followUpsDue: allLeads.filter((l) => l.pipelineStage === 'FOLLOW_UP').length,
+      demosDue: allLeads.filter((l) => l.pipelineStage === 'DEMO').length,
+      conversions: 0,
+    };
+  }, [affiliateStats, allLeads, rawVisits]);
 
   useEffect(() => {
     setIsOffline(!navigator.onLine);
@@ -51,21 +162,6 @@ export default function SalesWorkPage() {
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
-
-  const todayStats = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const todayLeads = allLeads.filter((l) => l.createdAt?.startsWith(today));
-    const visitsToday = todayLeads.filter((l) => l.pipelineStage === 'VISITED').length;
-    const leadsCaptured = todayLeads.filter((l) => l.pipelineStage === 'NEW_LEAD').length;
-    const followUpsDue = allLeads.filter((l) => l.pipelineStage === 'FOLLOW_UP').length;
-    const demosDue = allLeads.filter((l) => l.pipelineStage === 'DEMO').length;
-    const conversions = allLeads.filter((l) => l.pipelineStage === 'CUSTOMER' && l.updatedAt?.startsWith(today)).length;
-    return { visitsToday, leadsCaptured, followUpsDue, demosDue, conversions };
-  }, [allLeads]);
-
-  const percentDone = missionProgress?.totalBusinesses
-    ? Math.min(100, Math.round((Number(missionProgress?.visitedCount ?? 0) / missionProgress.totalBusinesses) * 100))
-    : 0;
 
   const handleLeadUpdated = () => setSelectedLead(null);
 
@@ -112,10 +208,10 @@ export default function SalesWorkPage() {
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-600">Plan Your Day</p>
               <p className="text-sm font-semibold text-slate-900 truncate">
-                {mission ? `${mission.targetCount ?? mission.businesses?.length ?? 0} businesses planned` : 'Mission not set yet'}
+                {activePlan || mission ? `${targetCount} businesses planned` : 'Mission not set yet'}
               </p>
               <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                {mission ? mission.location : 'Tap to set your location and targets'}
+                {activeLocation || 'Tap to set your location and targets'}
               </p>
             </div>
             <Link
@@ -123,7 +219,7 @@ export default function SalesWorkPage() {
               onClick={(e) => e.stopPropagation()}
               className="shrink-0 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-[11px] font-semibold transition-all"
             >
-              {mission ? 'Edit' : 'Plan'}
+              {activePlan || mission ? 'Edit' : 'Plan'}
             </Link>
             <ChevronDown className={cn('w-4 h-4 text-slate-400 shrink-0 transition-transform', planOpen && 'rotate-180')} />
           </button>
@@ -137,13 +233,13 @@ export default function SalesWorkPage() {
                 transition={{ duration: 0.2, ease: 'easeOut' }}
               >
                 <div className="px-3.5 pb-3.5 border-t border-slate-100 pt-3 space-y-3">
-                  {mission ? (
+                  {activePlan || mission ? (
                     <>
                       <div className="flex items-center gap-2 text-xs text-slate-600">
                         <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span className="truncate">{mission.location}</span>
+                        <span className="truncate">{activeLocation || 'Assigned Location'}</span>
                         <span className="ml-auto shrink-0 font-semibold text-slate-800">
-                          {missionProgress?.visitedCount ?? 0}/{missionProgress?.totalBusinesses ?? mission.targetCount ?? 0}
+                          {visitedCount}/{targetCount}
                         </span>
                       </div>
                       <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
@@ -152,7 +248,7 @@ export default function SalesWorkPage() {
                           style={{ width: `${percentDone}%` }}
                         />
                       </div>
-                      {mission.businesses && mission.businesses.length > 0 && (
+                      {mission?.businesses && mission.businesses.length > 0 && (
                         <div className="bg-slate-50 rounded-lg px-3 py-2.5">
                           <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Next business</p>
                           <p className="text-sm font-semibold text-slate-800 truncate">
@@ -202,7 +298,7 @@ export default function SalesWorkPage() {
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Field Work</p>
                 <h3 className="text-sm font-semibold text-slate-900 truncate">Record Businesses</h3>
                 <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                  {mission ? 'Open the field and record each visit' : 'Plan a mission first'}
+                  {activePlan || mission ? 'Open the field and record each visit' : 'Plan a mission first'}
                 </p>
               </div>
             </div>
@@ -211,10 +307,10 @@ export default function SalesWorkPage() {
               href="/dashboard/market-mapping/execute"
               className={cn(
                 'flex items-center justify-center gap-1.5 w-full py-2 rounded-lg text-white text-xs font-semibold transition-all active:scale-[0.99]',
-                mission ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-300 pointer-events-none'
+                activePlan || mission ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-300 pointer-events-none'
               )}
             >
-              {mission ? 'Go to Field Work' : 'Plan your mission first'}
+              {activePlan || mission ? 'Go to Field Work' : 'Plan your mission first'}
               <ChevronRight className="w-3.5 h-3.5" />
             </Link>
 
@@ -229,7 +325,7 @@ export default function SalesWorkPage() {
         </motion.div>
 
         {/* Today's Mission */}
-        {mission && (
+        {(activePlan || mission) && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -242,10 +338,12 @@ export default function SalesWorkPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Today&apos;s Mission</p>
-                <h3 className="text-sm font-semibold text-slate-900 truncate">{mission.name}</h3>
+                <h3 className="text-sm font-semibold text-slate-900 truncate">
+                  {activePlan ? `${activePlan.horizon === 'DAY' ? 'Daily' : 'Weekly'} Mission` : (mission?.name || 'Daily Mission')}
+                </h3>
                 <p className="text-[11px] text-slate-500 mt-0.5 truncate flex items-center gap-1">
-                  <MapPin className="w-3 h-3 shrink-0" />
-                  {mission.location}
+                  <MapPin className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+                  {activeLocation || mission?.location}
                 </p>
               </div>
             </div>
@@ -253,22 +351,17 @@ export default function SalesWorkPage() {
             <div className="flex items-center justify-between text-[11px] mb-1.5">
               <span className="text-slate-500">Progress</span>
               <span className="font-semibold text-slate-800">
-                {missionProgress?.visitedCount ?? 0} / {missionProgress?.totalBusinesses ?? mission.targetCount}
+                {visitedCount} / {targetCount}
               </span>
             </div>
             <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
               <div
                 className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, missionProgress?.percentComplete ?? 0)}%` }}
+                style={{ width: `${percentDone}%` }}
               />
             </div>
             <div className="flex items-center justify-between mt-2.5 text-[11px]">
-              <span className="text-slate-500">{missionProgress?.remaining ?? mission.targetCount} remaining</span>
-              {mission.businesses && mission.businesses.length > 0 && (
-                <span className="text-slate-500 truncate max-w-[55%]">
-                  Next: <span className="font-semibold text-slate-800">{mission.businesses[0].name}</span>
-                </span>
-              )}
+              <span className="text-slate-500">{Math.max(0, targetCount - visitedCount)} remaining</span>
             </div>
           </motion.div>
         )}
@@ -315,30 +408,35 @@ export default function SalesWorkPage() {
           <div className="flex items-center justify-between mb-2.5">
             <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Businesses to Visit</h3>
             <span className="text-[10px] font-semibold text-slate-500">
-              {allLeads.filter((l) => l.pipelineStage === 'NEW_LEAD' || l.pipelineStage === 'VISITED').length} pending
+              {businessesToVisit.length} pending
             </span>
           </div>
           <div className="space-y-1.5">
-            {allLeads
-              .filter((l) => l.pipelineStage === 'NEW_LEAD' || l.pipelineStage === 'VISITED')
+            {businessesToVisit
               .slice(0, 5)
-              .map((lead) => (
+              .map((item) => (
                 <button
-                  key={lead.id}
-                  onClick={() => setSelectedLead(lead)}
+                  key={item.id}
+                  onClick={() => {
+                    if (item.type === 'lead' && item.lead) {
+                      setSelectedLead(item.lead);
+                    } else if (item.type === 'visit' && item.visit) {
+                      setSelectedVisit(item.visit);
+                    }
+                  }}
                   className="w-full flex items-center gap-2.5 p-2 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors text-left"
                 >
                   <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
                     <Briefcase className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-semibold text-slate-900 truncate">{lead.businessName}</p>
-                    <p className="text-[11px] text-slate-500 truncate">{lead.location || lead.industry}</p>
+                    <p className="text-[13px] font-semibold text-slate-900 truncate">{item.name}</p>
+                    <p className="text-[11px] text-slate-500 truncate">{item.subtitle}</p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
                 </button>
               ))}
-            {allLeads.filter((l) => l.pipelineStage === 'NEW_LEAD' || l.pipelineStage === 'VISITED').length === 0 && (
+            {businessesToVisit.length === 0 && (
               <div className="text-center py-4">
                 <p className="text-[11px] text-slate-400">No businesses to visit right now</p>
               </div>
@@ -457,6 +555,18 @@ export default function SalesWorkPage() {
             lead={selectedLead}
             onClose={() => setSelectedLead(null)}
             onUpdated={handleLeadUpdated}
+          />
+        )}
+
+        {/* Business Capture Drawer */}
+        {selectedVisit && (
+          <BusinessCaptureDrawer
+            visit={selectedVisit}
+            onClose={() => setSelectedVisit(null)}
+            onSave={(updatedVisit) => {
+              saveCapture(updatedVisit);
+              setSelectedVisit(null);
+            }}
           />
         )}
       </div>

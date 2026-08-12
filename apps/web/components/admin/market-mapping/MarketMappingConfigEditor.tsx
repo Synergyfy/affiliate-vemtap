@@ -75,7 +75,6 @@ export default function MarketMappingConfigEditor() {
         contactPositions: config.contactPositions,
         pipelineStatuses: config.pipelineStatuses,
         interestOptions: config.interestOptions,
-        planTypes: config.planTypes,
         faqs: config.faqs,
         ticketStatuses: config.ticketStatuses,
         businessStatuses: config.businessStatuses,
@@ -274,13 +273,17 @@ export default function MarketMappingConfigEditor() {
 
       <Section title="Business Plan Types" open={showPlanTypes} onToggle={() => setShowPlanTypes(!showPlanTypes)}>
         <div className="flex items-center justify-between mb-2">
-          <p className="text-xs text-slate-500">Available subscription plans (synced with Vemtap API or admin configured).</p>
+          <p className="text-xs text-slate-500">Available subscription plans (synced automatically from VemTap backend API).</p>
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-bold uppercase tracking-wider">
+            Live Sync
+          </span>
         </div>
-        <div className="space-y-2">
+        <div className="flex flex-wrap gap-2">
           {mmConfig.planTypes.map((p, idx) => (
-            <div key={idx} className="flex items-center gap-3">
-              <input value={p.value} onChange={e => { const next = [...mmConfig.planTypes]; next[idx] = { ...next[idx], value: e.target.value }; setMmConfig(prev => ({ ...prev, planTypes: next })); }} className="w-28 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
-              <input value={p.label} onChange={e => { const next = [...mmConfig.planTypes]; next[idx] = { ...next[idx], label: e.target.value }; setMmConfig(prev => ({ ...prev, planTypes: next })); }} className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+            <div key={idx} className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+              <span className="font-mono font-bold text-slate-700">{p.value}</span>
+              <span className="text-slate-400">|</span>
+              <span className="font-medium text-slate-600">{p.label}</span>
             </div>
           ))}
         </div>

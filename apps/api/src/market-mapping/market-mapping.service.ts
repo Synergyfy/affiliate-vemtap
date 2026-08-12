@@ -219,18 +219,31 @@ export class MarketMappingService {
     const configData = await this.getConfig(userId);
     const territory = configData.territory;
 
-    const [leadCount, businessCount] = await Promise.all([
-      this.prisma.lead.count({ where: { affiliateId: userId } }),
-      this.prisma.business.count({ where: { affiliateId: userId } }),
-    ]);
-
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
 
-    const visitedTodayCount = await this.prisma.lead.count({
+    const [leadCount, businessCount, todayPlan] = await Promise.all([
+      this.prisma.lead.count({ where: { affiliateId: userId } }),
+      this.prisma.business.count({ where: { affiliateId: userId } }),
+      this.prisma.marketMappingPlan.findFirst({
+        where: {
+          userId,
+          startDate: { gte: todayStart, lte: todayEnd },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
+
+    const visitedTodayCount = await this.prisma.marketMappingVisit.count({
       where: {
-        affiliateId: userId,
-        updatedAt: { gte: todayStart },
+        userId,
+        OR: [
+          { createdAt: { gte: todayStart } },
+          { visitedAt: { gte: todayStart } },
+          { updatedAt: { gte: todayStart } },
+        ],
       },
     });
 
@@ -241,7 +254,7 @@ export class MarketMappingService {
       area: territory.area,
       cluster: territory.cluster,
       totalAssigned: territory.totalAssigned,
-      plannedToday: configData.userTargets.dailyLeadTarget,
+      plannedToday: todayPlan?.targetVisits ?? configData.userTargets.dailyLeadTarget,
       visitedToday: visitedTodayCount,
       customersAcquired: businessCount,
       prospects: Math.max(0, territory.prospectCount - businessCount),

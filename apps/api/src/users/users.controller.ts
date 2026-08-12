@@ -374,6 +374,13 @@ export class UsersController {
     return this.usersService.getUserPerformanceReport(id, period);
   }
 
+  @Get(":id/leads")
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: "Get affiliate sales leads, captured field visits & referred businesses (Admin only)" })
+  getUserLeadsAndBusinesses(@Param("id") id: string) {
+    return this.usersService.getUserLeadsAndBusinesses(id);
+  }
+
   @Get(":id/history")
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: "Get affiliate activity & target adjustment history (Admin only)" })

@@ -15,6 +15,7 @@ import type {
   AdminUserHistory,
   AdminUserLocations,
   AdminUserTeam,
+  AdminUserLeadsResponse,
 } from '@/types/api';
 
 export const useAdminUser = (userId?: string) => {
@@ -247,6 +248,18 @@ export const useUserReports = (userId?: string) => {
     queryFn: async () => {
       if (!userId) return null;
       const { data } = await api.get<AdminPerformanceReport>(`/users/${userId}/reports`);
+      return data;
+    },
+    enabled: !!userId,
+  });
+};
+
+export const useUserLeads = (userId?: string) => {
+  return useQuery<AdminUserLeadsResponse | null>({
+    queryKey: ['admin', 'users', userId, 'leads'],
+    queryFn: async () => {
+      if (!userId) return null;
+      const { data } = await api.get<AdminUserLeadsResponse>(`/users/${userId}/leads`);
       return data;
     },
     enabled: !!userId,

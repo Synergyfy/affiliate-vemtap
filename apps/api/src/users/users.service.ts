@@ -384,10 +384,16 @@ export class UsersService {
       where: { id },
       include: {
         referrer: {
-          select: { id: true, fullName: true, referralCode: true },
+          select: { id: true, fullName: true, referralCode: true, email: true },
+        },
+        supervisor: {
+          select: { id: true, fullName: true, email: true },
+        },
+        manager: {
+          select: { id: true, fullName: true, email: true },
         },
         _count: {
-          select: { referrals: true, businesses: true, leads: true },
+          select: { referrals: true, businesses: true, leads: true, marketMappingVisits: true, marketMappingAssignments: true },
         },
       },
     });
@@ -633,6 +639,45 @@ export class UsersService {
       leads: leads.slice(0, 10),
       businesses: businesses.slice(0, 10),
       commissions: commissions.slice(0, 10),
+    };
+  }
+
+  async getUserLeadsAndBusinesses(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException("User not found");
+
+    const [leads, businesses, visits] = await Promise.all([
+      this.prisma.lead.findMany({
+        where: { affiliateId: userId },
+        orderBy: { createdAt: "desc" },
+      }),
+      this.prisma.business.findMany({
+        where: { affiliateId: userId },
+        orderBy: { createdAt: "desc" },
+      }),
+      this.prisma.marketMappingVisit.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
+
+    const stats = {
+      totalLeads: leads.length,
+      potentialLeads: leads.filter((l) => l.status === "POTENTIAL").length,
+      contactedLeads: leads.filter((l) => l.status === "CONTACTED").length,
+      interestedLeads: leads.filter((l) => l.status === "INTERESTED").length,
+      completedLeads: leads.filter((l) => l.status === "COMPLETED").length,
+      totalVisits: visits.length,
+      totalReferredBusinesses: businesses.length,
+      activeBusinesses: businesses.filter((b) => b.status === "ACTIVE").length,
+    };
+
+    return {
+      userId,
+      stats,
+      leads,
+      businesses,
+      visits,
     };
   }
 
