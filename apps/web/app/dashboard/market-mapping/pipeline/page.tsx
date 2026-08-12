@@ -48,10 +48,9 @@ export default function PipelinePage() {
   const filteredVisits = useMemo(() => {
     if (horizonFilter === 'ALL') return visits;
     if (horizonFilter === 'DAY') {
-      const todayKey = new Date().toISOString().slice(0, 10);
+      const todayKey = new Date().toLocaleDateString('en-CA');
       return visits.filter(v => {
-        // Only show businesses added (createdAt) today
-        const createdKey = v.createdAt ? String(v.createdAt).slice(0, 10) : null;
+        const createdKey = v.createdAt ? new Date(v.createdAt).toLocaleDateString('en-CA') : v.visitedAt ? new Date(v.visitedAt).toLocaleDateString('en-CA') : null;
         return createdKey === todayKey;
       });
     }

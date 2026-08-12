@@ -46,7 +46,9 @@ const MarketMappingContext = createContext<MarketMappingContextType | undefined>
 
 function planDateKey(date?: string): string {
   if (!date) return '';
-  return String(date).slice(0, 10);
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return String(date).slice(0, 10);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 export function useMarketMapping() {
@@ -135,9 +137,10 @@ export function MarketMappingProvider({ children }: { children: React.ReactNode 
         endDate: p.endDate ? String(p.endDate) : undefined,
       }));
       setMissionPlans(formatted);
-      const todayKey = new Date().toISOString().slice(0, 10);
+      const today = new Date();
+      const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
       const dayPlan = formatted.find(
-        p => p.horizon === 'DAY' && (p.startDate || '').slice(0, 10) === todayKey
+        p => p.horizon === 'DAY' && planDateKey(p.startDate || p.createdAt) === todayKey
       );
       if (dayPlan) {
         setStats(prev => ({ ...prev, plannedToday: dayPlan.targetCount }));
@@ -211,8 +214,9 @@ export function MarketMappingProvider({ children }: { children: React.ReactNode 
       return [...others, plan];
     });
     if (plan.horizon === 'DAY') {
-      const todayKey = new Date().toISOString().slice(0, 10);
-      if ((plan.startDate || '').slice(0, 10) === todayKey) {
+      const today = new Date();
+      const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      if (planDateKey(plan.startDate || plan.createdAt) === todayKey) {
         setStats(prev => ({ ...prev, plannedToday: plan.targetCount }));
       }
     }
@@ -227,7 +231,19 @@ export function MarketMappingProvider({ children }: { children: React.ReactNode 
     if (plan.id) {
       updatePlanMutation.mutate({ id: plan.id, ...payload });
     } else {
-      createPlanMutation.mutate(payload);
+      createPlanMutation.mutate(payload, {
+        onSuccess: (created: any) => {
+          if (created?.id) {
+            setMissionPlans((prev) =>
+              prev.map((p) =>
+                p.horizon === plan.horizon && planDateKey(p.startDate) === planDateKey(plan.startDate)
+                  ? { ...p, id: String(created.id) }
+                  : p
+              )
+            );
+          }
+        },
+      });
     }
   }, [createPlanMutation, updatePlanMutation]);
 

@@ -230,7 +230,10 @@ export class MarketMappingService {
       this.prisma.marketMappingPlan.findFirst({
         where: {
           userId,
-          startDate: { gte: todayStart, lte: todayEnd },
+          OR: [
+            { startDate: { gte: todayStart, lte: todayEnd } },
+            { createdAt: { gte: todayStart, lte: todayEnd } },
+          ],
         },
         orderBy: { createdAt: "desc" },
       }),
@@ -293,9 +296,17 @@ export class MarketMappingService {
     });
     if (!plan) throw new NotFoundException("Mission plan not found");
 
+    const data: Prisma.MarketMappingPlanUpdateInput = { ...dto } as any;
+    if (dto.startDate) {
+      data.startDate = new Date(dto.startDate);
+    }
+    if (dto.endDate) {
+      data.endDate = new Date(dto.endDate);
+    }
+
     return this.prisma.marketMappingPlan.update({
       where: { id },
-      data: dto,
+      data,
     });
   }
 
