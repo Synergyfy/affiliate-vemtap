@@ -62,7 +62,7 @@ export default function AffiliateHistoryPage() {
     <AdminLayout>
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="flex items-center gap-3">
-          <Link href="/admin/affiliates" className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600"><ArrowLeft className="w-5 h-5" /></Link>
+          <Link href={`/admin/affiliates/${affiliateId}`} className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600"><ArrowLeft className="w-5 h-5" /></Link>
           <div className="w-12 h-12 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-lg">{userQuery.data.fullName.charAt(0)}</div>
           <div><h1 className="text-xl font-bold text-slate-900">{userQuery.data.fullName}</h1><p className="text-xs text-slate-500">{userQuery.data.email} - Full Activity History</p></div>
         </div>

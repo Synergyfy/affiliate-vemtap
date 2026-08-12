@@ -87,7 +87,46 @@ export interface User {
     referrals?: number;
     businesses?: number;
     leads?: number;
+    marketMappingVisits?: number;
+    marketMappingAssignments?: number;
   };
+}
+
+export interface MarketMappingVisit {
+  id: string;
+  userId: string;
+  name: string;
+  category?: string;
+  status: string;
+  address?: string;
+  exactAddress?: string;
+  phone?: string;
+  ownerName?: string;
+  contactPosition?: string;
+  contactEmail?: string;
+  gpsLat?: string;
+  gpsLng?: string;
+  gpsAddress?: string;
+  visitNotes?: string;
+  visitedAt?: string;
+  createdAt: string;
+}
+
+export interface AdminUserLeadsResponse {
+  userId: string;
+  stats: {
+    totalLeads: number;
+    potentialLeads: number;
+    contactedLeads: number;
+    interestedLeads: number;
+    completedLeads: number;
+    totalVisits: number;
+    totalReferredBusinesses: number;
+    activeBusinesses: number;
+  };
+  leads: Lead[];
+  businesses: Business[];
+  visits: MarketMappingVisit[];
 }
 
 export interface AdminPerformanceReport {
