@@ -127,8 +127,8 @@ export default function SalesWorkPage() {
   const targetCount = dayPlan?.targetCount || weekPlan?.targetCount || stats.plannedToday || mission?.targetCount || 20;
   const activeLocation = activePlan?.location || stats.clusterName || mission?.location || '';
 
-  // Daily Mission progress: how many businesses the user ADDED today (from DB)
-  const visitedCount = affiliateStats?.todayBusinessesAdded ?? 0;
+  // Daily Mission progress: how many leads were VISITED today (from DB)
+  const visitedCount = affiliateStats?.todayVisitsCount ?? 0;
   const percentDone = targetCount > 0 ? Math.min(100, Math.round((visitedCount / targetCount) * 100)) : 0;
 
   // Today's Progress: all sourced from the DB via affiliateStats
@@ -136,7 +136,7 @@ export default function SalesWorkPage() {
     if (affiliateStats) {
       return {
         visitsToday: affiliateStats.todayVisitsCount ?? 0,
-        leadsCaptured: affiliateStats.todayBusinessesAdded ?? 0,
+        leadsCaptured: affiliateStats.todayLeadsCount ?? 0,
         followUpsDue: affiliateStats.todayFollowUpsDue ?? 0,
         demosDue: affiliateStats.todayDemosDue ?? 0,
         conversions: affiliateStats.todayConversions ?? 0,
@@ -151,7 +151,7 @@ export default function SalesWorkPage() {
     });
     return {
       visitsToday: todayVisits.filter((v: any) => v.status !== 'NOT_YET').length,
-      leadsCaptured: todayLeads.length + todayVisits.length,
+      leadsCaptured: todayLeads.length,
       followUpsDue: allLeads.filter((l) => l.pipelineStage === 'FOLLOW_UP').length,
       demosDue: allLeads.filter((l) => l.pipelineStage === 'DEMO').length,
       conversions: 0,

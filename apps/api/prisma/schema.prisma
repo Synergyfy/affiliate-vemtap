@@ -57,7 +57,6 @@ model User {
   trainingProgress TrainingProgress[]
   shortLinks      ShortLink[]
   linkClicks      LinkClick[]
-  leads           Lead[]
   fraudAlerts     FraudAlert[] @relation("UserAlerts")
   resolvedAlerts  FraudAlert[] @relation("ResolvedAlerts")
   
@@ -106,7 +105,7 @@ model User {
   currentPerformanceScore  Decimal   @default(0)
 
   marketMappingPlans       MarketMappingPlan[]
-  marketMappingVisits      MarketMappingVisit[]
+  leads                    Lead[]
   marketMappingNotes       MarketMappingNote[]
   targetAdjustmentLogs     TargetAdjustmentHistory[] @relation("ManagerAdjustments")
   targetAdjustmentsReceived TargetAdjustmentHistory[] @relation("MemberAdjustments")
@@ -678,62 +677,10 @@ model LinkClick {
   @@index([createdAt])
 }
 
-model Lead {
-  id              String      @id @default(uuid())
-  businessName    String
-  industry        String?
-  businessAddress String?
-  location        String?
-  website         String?
-  contactName     String?
-  contactRole     String?
-  phone           String
-  email           String?
-  source          String?
-  otherSource     String?
-  priority        Priority    @default(MEDIUM)
-  status          LeadStatus  @default(POTENTIAL)
-  followUpDate    DateTime?
-  comments        String?
-  
-  affiliateId     String
-  affiliate       User        @relation(fields: [affiliateId], references: [id])
-  
-  assignedAgentId String?     // For Admin use
-
-  qualityScore     Int       @default(0)
-  qualifiedAt      DateTime?
-  rejectedAt       DateTime?
-  rejectionReason  String?
-  isDuplicate      Boolean   @default(false)
-  duplicateOfId    String?
-  duplicateOf      Lead?      @relation("DuplicateLeads", fields: [duplicateOfId], references: [id])
-  duplicates       Lead[]     @relation("DuplicateLeads")
-
-  demos           Demo[]
-
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  deletedAt       DateTime?
-
-  @@index([affiliateId])
-  @@index([status])
-  @@index([priority])
-  @@index([isDuplicate])
-}
-
 enum Priority {
   LOW
   MEDIUM
   HIGH
-}
-
-enum LeadStatus {
-  POTENTIAL
-  CONTACTED
-  INTERESTED
-  NOT_INTERESTED
-  COMPLETED
 }
 
 model Task {
@@ -956,7 +903,7 @@ model MarketMappingPlan {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  visits            MarketMappingVisit[]
+  leads             Lead[]
 
   @@index([userId])
   @@index([status])
@@ -1011,45 +958,59 @@ model FAQ {
   @@index([category])
 }
 
-model MarketMappingVisit {
+model Lead {
   id                 String   @id @default(uuid())
   userId             String
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   planId             String?
   plan               MarketMappingPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
-  name               String
-  category           String   @default("")
-  status             String   @default("NOT_YET")
-  isPlaceholder      Boolean  @default(false)
-  address            String?
-  exactAddress       String?
+
+  businessName       String
+  industry           String   @default("")
+  businessAddress    String?
+  location           String?
+  gpsAddress         String?
   phone              String?
-  ownerName          String?
-  contactPosition    String?
-  contactEmail       String?
+  email              String?
+  contactName        String?
+  contactRole        String?
   horizon            String?
   dailyCustomers     String?
   businessSize       String?
   openingHours       String?
-  openingDays       Json?
+  openingDays        Json?
   gpsLat             String?
   gpsLng             String?
-  gpsAddress         String?
   nextVisitDate      String?
   nextVisitTime      String?
   decisionMakerMet   Boolean?
   interested         String?
   demoDone           Boolean?
-  visitNotes         String?
+  comments           String?
   isAnchor           Boolean  @default(false)
+  isPlaceholder      Boolean  @default(false)
   visitedAt          DateTime?
+
+  status             String   @default("NOT_YET")
+  source             String   @default("Market Mapping")
+  followUpDate       DateTime?
+  priority           String   @default("MEDIUM")
+  assignedAgentId    String?
+  deletedAt          DateTime?
+
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+
+  demos              Demo[]
+  salesPipelines     SalesPipeline[]
+  marketMappingNotes MarketMappingNote[]
 
   @@index([userId])
   @@index([planId])
   @@index([status])
+  @@index([visitedAt])
   @@index([userId, createdAt])
+  @@index([deletedAt])
 }
 
 model MarketMappingNote {
@@ -1058,6 +1019,7 @@ model MarketMappingNote {
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   businessId    String?
   leadId        String?
+  lead          Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
   businessName  String
   reportKey     String?
   content       String    @db.Text
@@ -1267,7 +1229,7 @@ model ExceptionReport {
   type           ExceptionType
   description    String?         @db.Text
   workSessionId  String?
-  visitId        String?
+  leadId         String?
   evidence       Json?
   status         ExceptionStatus @default(PENDING)
   reviewedBy     String?
@@ -1436,7 +1398,7 @@ model FieldMissionBusiness {
   id             String        @id @default(uuid())
   missionId      String
   mission        FieldMission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
-  visitId        String?
+  leadId         String?
   name           String
   category       String
   address        String?
@@ -1450,7 +1412,7 @@ model FieldMissionBusiness {
   updatedAt      DateTime      @updatedAt
 
   @@index([missionId])
-  @@index([visitId])
+  @@index([leadId])
 }
 
 model FieldActivityTimelineEvent {
@@ -1459,7 +1421,7 @@ model FieldActivityTimelineEvent {
   user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   missionId   String?
   mission     FieldMission?          @relation(fields: [missionId], references: [id], onDelete: SetNull)
-  visitId     String?
+  leadId      String?
   eventType   FieldTimelineEventType
   title       String
   description String?
@@ -1475,8 +1437,8 @@ model VisitTransition {
   id                String           @id @default(uuid())
   userId            String
   user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  visitId           String
-  fromVisitId       String?
+  leadId            String
+  fromLeadId        String?
   transitionStatus  TransitionStatus @default(NORMAL)
   distanceMeters    Decimal?
   durationSeconds   Int?
@@ -1487,7 +1449,7 @@ model VisitTransition {
   updatedAt         DateTime         @updatedAt
 
   @@index([userId])
-  @@index([visitId])
+  @@index([leadId])
 }
 
 // ============================================================
@@ -1550,6 +1512,7 @@ model SalesPipeline {
   affiliateId          String
   affiliate            User                @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
   leadId               String?
+  lead                 Lead?               @relation(fields: [leadId], references: [id], onDelete: SetNull)
   businessName         String
   industry             String?
   location             String?

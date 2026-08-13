@@ -18,17 +18,17 @@ import { useOperationsStats } from '@/services/useOperationsHooks';
 
 export default function KPIStrip() {
   const { data: leadStats, isLoading: isLoadingLeads } = useLeadStats();
-  const { data: businessData, isLoading: isLoadingBusinesses } = useMyBusinesses({ limit: 1 });
+  const { isLoading: isLoadingBusinesses } = useMyBusinesses({ limit: 1 });
   const { data: operationsStats, isLoading: isLoadingOperations } = useOperationsStats();
 
   const isLoading = isLoadingLeads || isLoadingBusinesses || isLoadingOperations;
 
   const stats = [
     { label: 'Total Leads', value: leadStats?.total ?? 0, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', trend: 'Total' },
-    { label: 'Follow-ups', value: leadStats?.potential ?? 0, icon: PhoneCall, color: 'text-orange-600', bg: 'bg-orange-50', trend: 'Potential' },
-    { label: 'Interested', value: leadStats?.interested ?? 0, icon: PlayCircle, color: 'text-purple-600', bg: 'bg-purple-50', trend: 'Warm' },
-    { label: 'Businesses Won', value: businessData?.meta?.total ?? 0, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: 'Total' },
-    { label: 'Contacted', value: leadStats?.contacted ?? 0, icon: Rocket, color: 'text-blue-600', bg: 'bg-blue-50', trend: 'Active' },
+    { label: 'To Visit', value: leadStats?.notVisited ?? 0, icon: PhoneCall, color: 'text-orange-600', bg: 'bg-orange-50', trend: 'Not visited' },
+    { label: 'Interested', value: leadStats?.byStatus?.INTERESTED ?? 0, icon: PlayCircle, color: 'text-purple-600', bg: 'bg-purple-50', trend: 'Warm' },
+    { label: 'Visits', value: leadStats?.visited ?? 0, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: 'Visited' },
+    { label: 'Contacted', value: leadStats?.byStatus?.CONTACTED ?? 0, icon: Rocket, color: 'text-blue-600', bg: 'bg-blue-50', trend: 'Active' },
     { label: 'Pending Tasks', value: operationsStats?.pendingTasks ?? 0, icon: ListTodo, color: 'text-orange-600', bg: 'bg-orange-50', trend: 'Open' },
     { label: 'Upcoming Demos', value: operationsStats?.upcomingDemos ?? 0, icon: CalendarClock, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: 'Scheduled' },
   ];

@@ -205,7 +205,7 @@ export function MarketMappingProvider({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     if (!Array.isArray(apiHistory)) return;
-    setMissionHistory(apiHistory.map((p) => ({ id: p.id, horizon: p.endDate ? 'WEEK' : 'DAY', location: p.locationCluster || '', targetCount: p.targetVisits || 0, createdAt: p.createdAt, startDate: p.startDate ? String(p.startDate) : undefined, endDate: p.endDate ? String(p.endDate) : undefined, achieved: p.visits.filter((v) => v.status !== 'NOT_YET').length, status: p.status === 'COMPLETED' ? 'ACHIEVED' : 'INCOMPLETE', archivedAt: p.updatedAt || p.createdAt })) as MissionHistoryEntry[]);
+    setMissionHistory(apiHistory.map((p) => ({ id: p.id, horizon: p.endDate ? 'WEEK' : 'DAY', location: p.locationCluster || '', targetCount: p.targetVisits || 0, createdAt: p.createdAt, startDate: p.startDate ? String(p.startDate) : undefined, endDate: p.endDate ? String(p.endDate) : undefined, achieved: (p.leads ?? []).filter((v) => v.status !== 'NOT_YET').length, status: p.status === 'COMPLETED' ? 'ACHIEVED' : 'INCOMPLETE', archivedAt: p.updatedAt || p.createdAt })) as MissionHistoryEntry[]);
   }, [apiHistory]);
 
   const addMissionPlan = useCallback((plan: MissionPlan) => {

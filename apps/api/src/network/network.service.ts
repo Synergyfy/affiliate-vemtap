@@ -30,7 +30,7 @@ export class NetworkService {
            businesses: {
              select: { subscriptionAmount: true, createdAt: true },
            },
-           leads: { select: { createdAt: true } },
+            leads: { where: { isPlaceholder: false }, select: { createdAt: true } },
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -319,7 +319,7 @@ export class NetworkService {
       },
       include: {
         businesses: { select: { id: true, businessName: true, planType: true, status: true, subscriptionAmount: true, commissionAmount: true, createdAt: true } },
-        leads: { select: { id: true, businessName: true, status: true, priority: true, createdAt: true } },
+        leads: { where: { isPlaceholder: false }, select: { id: true, businessName: true, status: true, priority: true, createdAt: true } },
         activities: { take: 10, orderBy: { createdAt: 'desc' } },
         agentDemos: { select: { id: true, date: true, status: true } },
         targetAdjustmentsReceived: { orderBy: { createdAt: 'desc' }, take: 10 },

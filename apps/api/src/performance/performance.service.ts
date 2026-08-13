@@ -68,28 +68,40 @@ export class PerformanceService {
     now = new Date(),
   ) {
     const { start, end } = this.periodBounds(period, now);
-    const config = await this.getConfig();
-    const passThreshold = config?.leadQualityPassThreshold ?? 60;
 
     const leads = await this.prisma.lead.findMany({
-      where: { affiliateId: userId, createdAt: { gte: start, lte: end }, deletedAt: null },
+      where: {
+        userId,
+        createdAt: { gte: start, lte: end },
+        deletedAt: null,
+        isPlaceholder: false,
+      },
       select: {
         id: true,
-        qualityScore: true,
-        isDuplicate: true,
-        rejectedAt: true,
+        status: true,
+        phone: true,
+        gpsLat: true,
+        gpsLng: true,
       },
     });
 
     const submitted = leads.length;
-    const duplicates = leads.filter((l) => l.isDuplicate).length;
-    const rejected = leads.filter((l) => !l.isDuplicate && l.rejectedAt).length;
+    const visited = leads.filter((l) => l.status !== "NOT_YET").length;
+    // A lead is "qualified" once it has been visited and its contact + GPS info
+    // was captured (adequate to follow up).
     const qualified = leads.filter(
-      (l) => !l.isDuplicate && !l.rejectedAt && l.qualityScore >= passThreshold,
+      (l) => l.status !== "NOT_YET" && l.phone && l.gpsLat && l.gpsLng,
     ).length;
-    const invalid = Math.max(0, submitted - duplicates - rejected - qualified);
+    const invalid = leads.filter((l) => l.status === "NOT_YET" && !l.phone).length;
 
-    return { submitted, qualified, duplicates, rejected, invalid };
+    return {
+      submitted,
+      qualified,
+      visited,
+      duplicates: 0,
+      rejected: 0,
+      invalid,
+    };
   }
 
   async getLeadQualityScore(
@@ -98,11 +110,28 @@ export class PerformanceService {
     now = new Date(),
   ) {
     const { start, end } = this.periodBounds(period, now);
-    const rows = await this.prisma.lead.aggregate({
-      where: { affiliateId: userId, createdAt: { gte: start, lte: end }, deletedAt: null },
-      _avg: { qualityScore: true },
+    const leads = await this.prisma.lead.findMany({
+      where: {
+        userId,
+        createdAt: { gte: start, lte: end },
+        deletedAt: null,
+        isPlaceholder: false,
+      },
+      select: {
+        status: true,
+        phone: true,
+        gpsLat: true,
+        gpsLng: true,
+      },
     });
-    return Math.round(rows._avg.qualityScore ?? 0);
+    if (leads.length === 0) return 0;
+    return Math.round(
+      (leads.filter(
+        (l) => l.status !== "NOT_YET" && l.phone && l.gpsLat && l.gpsLng,
+      ).length /
+        leads.length) *
+        100,
+    );
   }
 
   private async getFieldActivity(
@@ -113,16 +142,23 @@ export class PerformanceService {
     const { start, end } = this.periodBounds(period, now);
     const config = await this.getConfig();
     const [gpsVisits, totalVisits] = await Promise.all([
-      this.prisma.marketMappingVisit.count({
+      this.prisma.lead.count({
         where: {
           userId,
+          deletedAt: null,
+          isPlaceholder: false,
           visitedAt: { gte: start, lte: end },
           gpsLat: { not: null },
           gpsLng: { not: null },
         },
       }),
-      this.prisma.marketMappingVisit.count({
-        where: { userId, visitedAt: { gte: start, lte: end } },
+      this.prisma.lead.count({
+        where: {
+          userId,
+          deletedAt: null,
+          isPlaceholder: false,
+          visitedAt: { gte: start, lte: end },
+        },
       }),
     ]);
     const visitTarget =
@@ -382,8 +418,13 @@ export class PerformanceService {
 
     const [leadStats, visits, demos, followUps, conversions] = await Promise.all([
       this.getLeadQualityStats(userId, PerformancePeriodType.DAILY, now),
-      this.prisma.marketMappingVisit.count({
-        where: { userId, visitedAt: { gte: start, lte: end } },
+      this.prisma.lead.count({
+        where: {
+          userId,
+          deletedAt: null,
+          isPlaceholder: false,
+          visitedAt: { gte: start, lte: end },
+        },
       }),
       this.prisma.demo.count({
         where: { agentId: userId, status: 'COMPLETED', date: { gte: start, lte: end } },
@@ -395,6 +436,7 @@ export class PerformanceService {
         where: {
           affiliateId: userId,
           status: BusinessStatus.ACTIVE,
+          subscriptionAmount: { gt: 0 },
           paidAt: { gte: start, lte: end },
         },
       }),
@@ -442,9 +484,11 @@ export class PerformanceService {
     const config = await this.getConfig();
     const maxGap = config?.maxTransitionGapMinutes ?? 45;
 
-    const visits = await this.prisma.marketMappingVisit.findMany({
+    const visits = await this.prisma.lead.findMany({
       where: {
         userId,
+        deletedAt: null,
+        isPlaceholder: false,
         visitedAt: { gte: start, lte: end },
         gpsLat: { not: null },
         gpsLng: { not: null },
@@ -470,8 +514,8 @@ export class PerformanceService {
       const longTransition = gapMinutes > estimatedTravelMinutes + maxGap;
 
       transitions.push({
-        from: prev.name,
-        to: next.name,
+        from: prev.businessName,
+        to: next.businessName,
         fromTime: prev.visitedAt,
         toTime: next.visitedAt,
         distanceMeters: Math.round(distance),

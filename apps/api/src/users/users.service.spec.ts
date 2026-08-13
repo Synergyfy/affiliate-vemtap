@@ -180,7 +180,7 @@ describe('UsersService', () => {
       await service.findAllAdmin({ skip: 0, take: 10 });
 
       expect(mockPrisma.user.findMany).toHaveBeenCalledWith(expect.objectContaining({
-        where: { role: 'AFFILIATE' }
+        where: expect.objectContaining({ role: { notIn: ['ADMIN', 'SUPER_ADMIN'] } }),
       }));
     });
   });

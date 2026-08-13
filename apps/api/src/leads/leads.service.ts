@@ -1,8 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateLeadDto, UpdateLeadDto, LeadFilterDto } from './dto/leads.dto';
-import { LeadStatus } from '@prisma/client';
-import { evaluateLeadQuality } from '../performance/lead-quality.util';
+import { isVisitedLeadStatus, normalizeLeadStatus } from '../common/lead.constants';
 
 @Injectable()
 export class LeadsService {
@@ -12,11 +11,18 @@ export class LeadsService {
     const isPrivileged = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
     const where: any = {
       deletedAt: null,
-      ...(isPrivileged ? {} : { affiliateId: user.id }),
+      isPlaceholder: false,
+      ...(isPrivileged ? {} : { userId: user.id }),
     };
 
     if (filters.status) {
       where.status = filters.status;
+    }
+
+    if (filters.visited === true) {
+      where.visitedAt = { not: null };
+    } else if (filters.visited === false) {
+      where.visitedAt = null;
     }
 
     if (filters.search) {
@@ -38,142 +44,101 @@ export class LeadsService {
     ]);
 
     return {
-      data,
+      data: data.map((lead) => ({ ...lead, visited: lead.visitedAt != null })),
       meta: {
         total,
         page: filters.page,
         limit: filters.limit || 10,
         totalPages: Math.ceil(total / (filters.limit || 10)),
       },
-
     };
   }
 
-
   async findOne(id: string, user: any) {
     const lead = await this.prisma.lead.findUnique({
-      where: { id, deletedAt: null },
+      where: { id },
     });
 
-    if (!lead) {
+    if (!lead || lead.deletedAt || lead.isPlaceholder) {
       throw new NotFoundException('Lead not found');
     }
 
     const isPrivileged = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
-    if (!isPrivileged && lead.affiliateId !== user.id) {
+    if (!isPrivileged && lead.userId !== user.id) {
       throw new ForbiddenException('You do not have access to this lead');
     }
 
-    return lead;
+    return { ...lead, visited: lead.visitedAt != null };
   }
 
   async create(userId: string, dto: CreateLeadDto) {
-    const quality = evaluateLeadQuality({
-      businessName: dto.businessName,
-      businessAddress: dto.businessAddress,
-      location: dto.location,
-      industry: dto.industry,
-      phone: dto.phone,
-      email: dto.email,
-      contactName: dto.contactName,
-      contactRole: dto.contactRole,
-      website: dto.website,
-    });
-
-    const config = await this.prisma.performanceConfig.findFirst();
-    const passThreshold = config?.leadQualityPassThreshold ?? 60;
+    const status = normalizeLeadStatus(dto.status);
     const now = new Date();
-
-    const existing = await this.prisma.lead.findFirst({
-      where: {
-        affiliateId: userId,
-        deletedAt: null,
-        businessName: { equals: dto.businessName, mode: 'insensitive' },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    const isDuplicate = !!existing;
-    const qualityScore = isDuplicate ? Math.min(quality.score, passThreshold - 1) : quality.score;
 
     const lead = await this.prisma.lead.create({
       data: {
-        ...dto,
-        affiliateId: userId,
+        businessName: dto.businessName,
+        industry: dto.industry || '',
+        businessAddress: dto.businessAddress || null,
+        location: dto.location || null,
+        phone: dto.phone || null,
+        email: dto.email || null,
+        contactName: dto.contactName || null,
+        contactRole: dto.contactRole || null,
+        source: dto.source || 'Market Mapping',
+        status,
         followUpDate: dto.followUpDate ? new Date(dto.followUpDate) : null,
-        qualityScore,
-        isDuplicate,
-        duplicateOfId: isDuplicate ? existing!.id : null,
-        qualifiedAt: !isDuplicate && qualityScore >= passThreshold ? now : null,
-        rejectedAt: !isDuplicate && qualityScore < passThreshold ? now : null,
-        rejectionReason: !isDuplicate && qualityScore < passThreshold
-          ? `Incomplete data (score ${qualityScore}/100)`
-          : null,
+        comments: dto.comments || null,
+        priority: dto.priority || 'MEDIUM',
+        assignedAgentId: dto.assignedAgentId || null,
+        gpsLat: dto.gpsLat || null,
+        gpsLng: dto.gpsLng || null,
+        gpsAddress: dto.gpsAddress || null,
+        userId,
+        visitedAt: isVisitedLeadStatus(status) ? now : null,
       },
     });
 
-    this.detectSubmissionAnomaly(userId, lead, dto).catch(() => undefined);
-
-    return { ...lead, quality: { score: qualityScore, breakdown: quality.breakdown, missing: quality.missing } };
-  }
-
-  private async detectSubmissionAnomaly(userId: string, lead: any, dto: CreateLeadDto) {
-    const config = await this.prisma.performanceConfig.findFirst();
-    const windowMin = config?.burstSubmissionWindowMinutes ?? 10;
-    const maxLeads = config?.burstSubmissionMaxLeads ?? 15;
-    const since = new Date(Date.now() - windowMin * 60000);
-
-    const [recentCount, sameLocationCount] = await Promise.all([
-      this.prisma.lead.count({
-        where: { affiliateId: userId, createdAt: { gte: since } },
-      }),
-      lead.isDuplicate
-        ? Promise.resolve(0)
-        : this.prisma.lead.count({
-            where: {
-              affiliateId: userId,
-              deletedAt: null,
-              location: dto.location ?? undefined,
-              id: { not: lead.id },
-            },
-          }),
-    ]);
-
-    const anomalies: { type: any; description: string; evidence?: any }[] = [];
-
-    if (recentCount >= maxLeads) {
-      anomalies.push({
-        type: 'BURST_SUBMISSION',
-        description: `${recentCount} leads submitted within ${windowMin} minutes`,
-        evidence: { count: recentCount, windowMinutes: windowMin },
-      });
-    }
-
-    if (sameLocationCount >= 3) {
-      anomalies.push({
-        type: 'SAME_LOCATION_MULTIPLE_BUSINESSES',
-        description: `${sameLocationCount + 1} businesses recorded at the same location`,
-        evidence: { location: dto.location, count: sameLocationCount + 1 },
-      });
-    }
-
-    for (const a of anomalies) {
-      await this.prisma.activityAnomaly.create({
-        data: { userId, ...a },
-      });
-    }
+    return { ...lead, visited: lead.visitedAt != null };
   }
 
   async update(id: string, user: any, dto: UpdateLeadDto) {
     const lead = await this.findOne(id, user);
 
-    return this.prisma.lead.update({
+    const status = normalizeLeadStatus(dto.status ?? lead.status);
+
+    const updated = await this.prisma.lead.update({
       where: { id },
       data: {
-        ...dto,
-        followUpDate: dto.followUpDate ? new Date(dto.followUpDate) : lead.followUpDate,
+        ...(dto.businessName !== undefined ? { businessName: dto.businessName } : {}),
+        ...(dto.industry !== undefined ? { industry: dto.industry } : {}),
+        ...(dto.businessAddress !== undefined ? { businessAddress: dto.businessAddress } : {}),
+        ...(dto.location !== undefined ? { location: dto.location } : {}),
+        ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
+        ...(dto.email !== undefined ? { email: dto.email } : {}),
+        ...(dto.contactName !== undefined ? { contactName: dto.contactName } : {}),
+        ...(dto.contactRole !== undefined ? { contactRole: dto.contactRole } : {}),
+        ...(dto.source !== undefined ? { source: dto.source } : {}),
+        ...(dto.comments !== undefined ? { comments: dto.comments } : {}),
+        ...(dto.priority !== undefined ? { priority: dto.priority } : {}),
+        ...(dto.gpsLat !== undefined ? { gpsLat: dto.gpsLat } : {}),
+        ...(dto.gpsLng !== undefined ? { gpsLng: dto.gpsLng } : {}),
+        ...(dto.gpsAddress !== undefined ? { gpsAddress: dto.gpsAddress } : {}),
+        ...(dto.assignedAgentId !== undefined ? { assignedAgentId: dto.assignedAgentId } : {}),
+        status,
+        visitedAt: isVisitedLeadStatus(status) && !lead.visitedAt
+          ? new Date()
+          : lead.visitedAt,
+        followUpDate:
+          dto.followUpDate !== undefined
+            ? dto.followUpDate
+              ? new Date(dto.followUpDate)
+              : null
+            : lead.followUpDate,
       },
     });
+
+    return { ...updated, visited: updated.visitedAt != null };
   }
 
   async remove(id: string, user: any) {
@@ -186,21 +151,31 @@ export class LeadsService {
 
   async getStats(user: any) {
     const isPrivileged = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
-    const where: any = isPrivileged ? {} : { affiliateId: user.id };
+    const where: any = {
+      deletedAt: null,
+      isPlaceholder: false,
+      ...(isPrivileged ? {} : { userId: user.id }),
+    };
 
-    const [total, contacted, interested, potential] = await Promise.all([
+    const [total, visited, notVisited, byStatus] = await Promise.all([
       this.prisma.lead.count({ where }),
-      this.prisma.lead.count({ where: { ...where, status: LeadStatus.CONTACTED } }),
-      this.prisma.lead.count({ where: { ...where, status: LeadStatus.INTERESTED } }),
-      this.prisma.lead.count({ where: { ...where, status: LeadStatus.POTENTIAL } }),
+      this.prisma.lead.count({ where: { ...where, visitedAt: { not: null } } }),
+      this.prisma.lead.count({ where: { ...where, visitedAt: null } }),
+      this.prisma.lead.groupBy({
+        by: ['status'],
+        where,
+        _count: { status: true },
+      }),
     ]);
 
     return {
       total,
-      contacted,
-      interested,
-      potential,
+      visited,
+      notVisited,
+      byStatus: byStatus.reduce(
+        (acc, row) => ({ ...acc, [row.status]: row._count.status }),
+        {} as Record<string, number>,
+      ),
     };
   }
-
 }

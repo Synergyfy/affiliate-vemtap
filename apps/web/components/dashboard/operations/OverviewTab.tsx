@@ -98,12 +98,12 @@ export default function OverviewTab({ onNavigate }: OverviewTabProps = {}) {
                 <div>
                   <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest">Interested Leads</h4>
                   <p className="text-2xl font-black text-slate-900">
-                    {isLoadingLeadStats ? '...' : leadStats?.interested ?? 0} Warm
+                    {isLoadingLeadStats ? '...' : leadStats?.byStatus?.INTERESTED ?? 0} Warm
                   </p>
                 </div>
               </div>
               <p className="text-xs text-slate-500 leading-relaxed mb-6">
-                You have {leadStats?.interested ?? 0} leads in the &quot;Interested&quot; stage. Follow up to convert them into active businesses.
+                You have {leadStats?.byStatus?.INTERESTED ?? 0} leads in the &quot;Interested&quot; stage. Follow up to convert them into active businesses.
               </p>
               <Button 
                 onClick={() => navigateTo('leads')}
@@ -120,14 +120,14 @@ export default function OverviewTab({ onNavigate }: OverviewTabProps = {}) {
                   <TrendingUp className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest">Potential Pipeline</h4>
+                  <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest">To Visit Pipeline</h4>
                   <p className="text-2xl font-black text-slate-900">
-                    {isLoadingLeadStats ? '...' : leadStats?.potential ?? 0} New
+                    {isLoadingLeadStats ? '...' : leadStats?.notVisited ?? 0} New
                   </p>
                 </div>
               </div>
               <p className="text-xs text-slate-500 leading-relaxed mb-6">
-                Your initial discovery pipeline has {leadStats?.potential ?? 0} businesses. Initiate first contact to move them forward.
+                Your discovery pipeline has {leadStats?.notVisited ?? 0} businesses not yet visited. Mark them visited to move them forward.
               </p>
               <Button 
                 onClick={() => navigateTo('leads')}

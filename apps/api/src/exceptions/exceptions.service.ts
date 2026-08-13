@@ -14,7 +14,7 @@ export class ExceptionsService {
         type: dto.type,
         description: dto.description,
         workSessionId: dto.workSessionId,
-        visitId: dto.visitId,
+        leadId: dto.leadId,
         status: ExceptionStatus.PENDING,
       },
     });

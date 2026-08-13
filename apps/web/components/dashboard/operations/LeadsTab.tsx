@@ -16,11 +16,12 @@ import { useLeads, useUpdateLead } from '@/services/useLeadsHooks';
 import { LeadStatus } from '@/types/api';
 
 const stages = [
-  { id: 'POTENTIAL', name: 'Potential', color: 'bg-blue-500' },
+  { id: 'NOT_YET', name: 'To Visit', color: 'bg-slate-500' },
+  { id: 'VISITED', name: 'Visited', color: 'bg-blue-500' },
   { id: 'CONTACTED', name: 'Contacted', color: 'bg-purple-500' },
   { id: 'INTERESTED', name: 'Interested', color: 'bg-emerald-500' },
   { id: 'NOT_INTERESTED', name: 'Not Interested', color: 'bg-red-500' },
-  { id: 'COMPLETED', name: 'Completed', color: 'bg-slate-500' },
+  { id: 'CUSTOMER', name: 'Customer', color: 'bg-amber-500' },
 ];
 
 interface StageColumnProps {

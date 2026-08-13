@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateSalesPipelineDto,
@@ -66,9 +66,26 @@ export class SalesService {
 
   async createPipeline(userId: string, dto: CreateSalesPipelineDto) {
     const entry = await this.prisma.$transaction(async (tx) => {
+      // Every captured business is a lead in the unified Lead table
+      const lead = await tx.lead.create({
+        data: {
+          userId,
+          businessName: dto.businessName,
+          industry: dto.industry || 'General',
+          location: dto.location || null,
+          businessAddress: dto.location || null,
+          contactName: dto.contactName || null,
+          phone: dto.phone || null,
+          email: dto.email || null,
+          source: dto.source || 'Direct Referral',
+          status: 'NOT_YET',
+        },
+      });
+
       const created = await tx.salesPipeline.create({
         data: {
           affiliateId: userId,
+          leadId: lead.id,
           businessName: dto.businessName,
           industry: dto.industry || null,
           location: dto.location || null,
@@ -81,19 +98,6 @@ export class SalesService {
           notes: dto.notes || null,
           pipelineStage: SalesPipelineStage.NEW_LEAD,
           leadQuality: SalesLeadQuality.NEW,
-        },
-      });
-
-      await tx.lead.create({
-        data: {
-          affiliateId: userId,
-          businessName: dto.businessName,
-          industry: dto.industry || 'General',
-          location: dto.location || null,
-          contactName: dto.contactName || null,
-          phone: dto.phone || '08000000000',
-          email: dto.email || null,
-          source: dto.source || 'Direct Referral',
         },
       });
 

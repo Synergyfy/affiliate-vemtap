@@ -195,14 +195,18 @@ describe('NetworkService', () => {
       mockUser.findUnique.mockResolvedValue({ id: userId, role: 'SUPERVISOR', createdAt: new Date(), isManagerMode: false });
       mockUser.count.mockResolvedValue(30);
       mockBusiness.count.mockResolvedValue(100);
-      mockUser.update.mockResolvedValue({ id: userId, role: 'MANAGER', isManagerMode: true });
+      mockUser.update.mockResolvedValue({ id: userId, role: 'MANAGER', managerQualificationExpiry: new Date() });
 
       const result = await service.toggleManagerMode(userId);
 
       expect(result.isManagerMode).toBe(true);
+      expect(result.role).toBe('MANAGER');
       expect(mockUser.update).toHaveBeenCalledWith({
         where: { id: userId },
-        data: expect.objectContaining({ isManagerMode: true }),
+        data: expect.objectContaining({
+          role: 'MANAGER',
+          managerQualificationExpiry: expect.any(Date),
+        }),
       });
     });
   });
