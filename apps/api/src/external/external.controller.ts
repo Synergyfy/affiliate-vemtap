@@ -8,7 +8,11 @@ import {
   HttpCode,
   HttpStatus,
   Query,
+  Headers,
+  Res,
+  UseInterceptors,
 } from "@nestjs/common";
+import type { Response } from "express";
 import {
   ApiTags,
   ApiOperation,
@@ -24,6 +28,8 @@ import { ProcessWithdrawalDto } from "./dto/process-withdrawal.dto";
 import { GetAffiliatesFilterDto } from "./dto/get-affiliates-filter.dto";
 import { AttachBusinessDto } from "./dto/attach-business.dto";
 import { ApiKeyGuard } from "../api-keys/guards/api-key.guard";
+import { RateLimitGuard } from "../common/guards/rate-limit.guard";
+import { TimeoutInterceptor } from "../common/interceptors/timeout.interceptor";
 
 @ApiTags("External — Vemtap Integration")
 @ApiSecurity("api-key")
@@ -32,7 +38,8 @@ import { ApiKeyGuard } from "../api-keys/guards/api-key.guard";
   description: "API key issued by an admin for external integrations",
   required: true,
 })
-@UseGuards(ApiKeyGuard)
+@UseGuards(ApiKeyGuard, RateLimitGuard)
+@UseInterceptors(TimeoutInterceptor)
 @Controller("external")
 export class ExternalController {
   constructor(private readonly externalService: ExternalService) {}
@@ -60,9 +67,15 @@ export class ExternalController {
   @Post("referrals/record")
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
-    summary: "Record a successful referral",
+    summary: "Record a payment commission event",
     description:
-      "Creates a Business record and triggers commission generation for the affiliate. Called by the Vemtap main backend after a successful business signup.",
+      "Credits the affiliate rate% × amountPaid for this payment. externalReference is the payment reference (unique per payment), so recurring payments are separate commission events. Idempotent on Idempotency-Key header and externalReference.",
+  })
+  @ApiHeader({
+    name: "Idempotency-Key",
+    description:
+      "Optional unique key for idempotent retries. Replays return the original success response without creating a duplicate.",
+    required: false,
   })
   @ApiBody({
     type: RecordReferralDto,
@@ -75,35 +88,44 @@ export class ExternalController {
           ownerName: "John Doe",
           email: "john@acme.com",
           phone: "08012345678",
-          planType: "BASIC",
+          planName: "Professional",
+          planId: "25a9b67b-63ed-4df8-b222-58d0a2e22715",
           address: "123 Business Way, Lagos",
-          businessType: "Retail",
+          businessId: "edcf9de7-2397-474b-8720-412a4cb95e78",
+          amountPaid: 15000,
+          isFirstPayment: true,
+          rate: 30,
+          externalReference: "SUB-edcf9de7-...-1786706909521",
         },
       },
     },
   })
   @ApiResponse({
     status: 201,
-    description: "Referral recorded and commission triggered",
+    description: "Payment commission credited",
     example: {
-      id: "business-uuid",
-      businessName: "Acme Ltd",
-      affiliateId: "affiliate-uuid",
-      commissionAmount: 450,
-      status: "TRIAL",
+      businessId: "business-uuid",
+      commissionTriggered: true,
+      deduplicated: false,
     },
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Idempotent replay — original success response returned",
   })
   @ApiResponse({
     status: 404,
     description: "Referral code not found",
   })
-  @ApiResponse({
-    status: 409,
-    description: "Business email already registered",
-  })
   @ApiResponse({ status: 401, description: "Invalid API key" })
-  async recordReferral(@Body() dto: RecordReferralDto) {
-    return this.externalService.recordReferral(dto);
+  async recordReferral(
+    @Body() dto: RecordReferralDto,
+    @Headers("idempotency-key") idempotencyKey?: string,
+    @Res({ passthrough: true }) res?: Response,
+  ) {
+    const result = await this.externalService.recordReferral(dto, idempotencyKey);
+    res?.status(result.deduplicated ? HttpStatus.OK : HttpStatus.CREATED);
+    return result;
   }
 
   @Post("withdrawals/process")
@@ -111,7 +133,13 @@ export class ExternalController {
   @ApiOperation({
     summary: "Create a withdrawal request for an affiliate",
     description:
-      "Creates a PENDING withdrawal — admin still approves in the dashboard. Validates KYC and bank details before creating.",
+      "Creates a PENDING withdrawal — admin still approves in the dashboard. Identifies the affiliate by email; bank details are supplied in the payload. Idempotent on Idempotency-Key header and externalReference.",
+  })
+  @ApiHeader({
+    name: "Idempotency-Key",
+    description:
+      "Optional unique key for idempotent retries. Replays return the original success response without creating a duplicate.",
+    required: false,
   })
   @ApiBody({
     type: ProcessWithdrawalDto,
@@ -119,8 +147,11 @@ export class ExternalController {
     examples: {
       default: {
         value: {
-          affiliateId: "affiliate-uuid",
+          email: "john@affiliate.com",
           amount: 50000,
+          bankName: "GTBank",
+          accountNumber: "0123456789",
+          accountName: "John Doe",
           externalReference: "VEM-WD-2024-001",
         },
       },
@@ -130,26 +161,32 @@ export class ExternalController {
     status: 201,
     description: "Withdrawal request created (PENDING)",
     example: {
-      id: "withdrawal-uuid",
-      amount: 50000,
+      withdrawalId: "withdrawal-uuid",
       status: "PENDING",
-      bankName: "GTBank",
-      accountNumber: "0123456789",
-      accountName: "John Doe",
-      createdAt: "2026-05-06T10:00:00.000Z",
+      deduplicated: false,
     },
   })
   @ApiResponse({
+    status: 200,
+    description: "Idempotent replay — original success response returned",
+  })
+  @ApiResponse({
     status: 400,
-    description: "Insufficient balance, missing KYC, or missing bank details",
+    description: "Insufficient balance, missing KYC, or invalid bank details",
   })
   @ApiResponse({
     status: 404,
     description: "Affiliate not found",
   })
   @ApiResponse({ status: 401, description: "Invalid API key" })
-  async processWithdrawal(@Body() dto: ProcessWithdrawalDto) {
-    return this.externalService.processWithdrawal(dto);
+  async processWithdrawal(
+    @Body() dto: ProcessWithdrawalDto,
+    @Headers("idempotency-key") idempotencyKey?: string,
+    @Res({ passthrough: true }) res?: Response,
+  ) {
+    const result = await this.externalService.processWithdrawal(dto, idempotencyKey);
+    res?.status(result.deduplicated ? HttpStatus.OK : HttpStatus.CREATED);
+    return result;
   }
 
   @Get("affiliates")

@@ -90,7 +90,7 @@ export interface MarketMappingHistoryResponse {
   endDate?: string | null;
   createdAt: string;
   updatedAt: string;
-  visits: Array<{ status: string }>;
+  leads: Array<{ status: string; visitedAt?: string | null }>;
 }
 
 export interface MarketMappingReportSummary {
@@ -102,6 +102,9 @@ export interface MarketMappingReportSummary {
   businessesReferred: number;
   avgLeadsPerDay: number;
   avgConversionRate: number;
+  target: number;
+  visitsTarget: number;
+  conversionTarget: number;
 }
 
 export interface MarketMappingReportWeights {
@@ -129,6 +132,7 @@ export interface MarketMappingReportDay {
   isToday: boolean;
   score: number;
   met: boolean;
+  optional: boolean;
 }
 
 export interface MarketMappingReport {
@@ -177,17 +181,57 @@ export const useMarketMappingVisits = () => {
     queryKey: ['market-mapping', 'visits'],
     queryFn: async () => {
       const { data } = await api.get('/market-mapping/visits');
-      return Array.isArray(data) ? data : data?.data ?? [];
+      const rows = Array.isArray(data) ? data : data?.data ?? [];
+      return rows.map(mapLeadToPlannedVisit);
     },
   });
 };
 
+/**
+ * Maps the unified API Lead (pipeline business) to the PlannedVisit shape used
+ * by the market-mapping UI.
+ */
+export const mapLeadToPlannedVisit = (lead: Record<string, any>): PlannedVisit => {
+  const mapped: PlannedVisit = {
+    id: lead.id,
+    name: lead.businessName ?? '',
+    category: lead.industry ?? '',
+    status: lead.status ?? 'NOT_YET',
+    isPlaceholder: !!lead.isPlaceholder,
+    address: lead.businessAddress ?? undefined,
+    exactAddress: lead.location ?? undefined,
+    phone: lead.phone ?? undefined,
+    ownerName: lead.contactName ?? undefined,
+    contactPosition: lead.contactRole ?? undefined,
+    contactEmail: lead.email ?? undefined,
+    horizon: lead.horizon,
+    createdAt: lead.createdAt,
+    visitedAt: lead.visitedAt ?? undefined,
+    updatedAt: lead.updatedAt,
+    dailyCustomers: lead.dailyCustomers ?? undefined,
+    businessSize: lead.businessSize ?? undefined,
+    openingHours: lead.openingHours ?? undefined,
+    openingDays: lead.openingDays ?? undefined,
+    gpsLat: lead.gpsLat ?? undefined,
+    gpsLng: lead.gpsLng ?? undefined,
+    gpsAddress: lead.gpsAddress ?? undefined,
+    nextVisitDate: lead.nextVisitDate ?? undefined,
+    nextVisitTime: lead.nextVisitTime ?? undefined,
+    decisionMakerMet: lead.decisionMakerMet ?? undefined,
+    interested: lead.interested ?? undefined,
+    demoDone: lead.demoDone ?? undefined,
+    visitNotes: lead.comments ?? undefined,
+    isAnchor: lead.isAnchor ?? false,
+  };
+  return mapped;
+};
+
 const VISIT_FIELDS = [
-  'name', 'category', 'status', 'isPlaceholder', 'address', 'exactAddress',
-  'phone', 'ownerName', 'contactPosition', 'contactEmail', 'horizon',
+  'businessName', 'industry', 'status', 'isPlaceholder', 'businessAddress',
+  'location', 'phone', 'contactName', 'contactRole', 'email', 'horizon',
   'dailyCustomers', 'businessSize', 'openingHours', 'openingDays',
   'gpsLat', 'gpsLng', 'gpsAddress', 'nextVisitDate', 'nextVisitTime', 'decisionMakerMet',
-  'interested', 'demoDone', 'visitNotes', 'isAnchor', 'planId',
+  'interested', 'demoDone', 'comments', 'isAnchor', 'planId', 'source',
 ] as const;
 
 const pickVisitFields = (payload: Record<string, unknown>): Record<string, unknown> => {
@@ -198,11 +242,30 @@ const pickVisitFields = (payload: Record<string, unknown>): Record<string, unkno
   return clean;
 };
 
+const toLeadPayload = (visit: Omit<PlannedVisit, 'id'>): Record<string, unknown> => {
+  const payload: Record<string, unknown> = {
+    businessName: visit.name,
+    industry: visit.category,
+    businessAddress: visit.address,
+    location: visit.exactAddress,
+    contactName: visit.ownerName,
+    contactRole: visit.contactPosition,
+    email: visit.contactEmail,
+    comments: visit.visitNotes,
+  };
+  for (const key of VISIT_FIELDS) {
+    if (payload[key] === undefined && (visit as Record<string, unknown>)[key] !== undefined) {
+      payload[key] = (visit as Record<string, unknown>)[key];
+    }
+  }
+  return pickVisitFields(payload);
+};
+
 export const useCreateMarketMappingVisit = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (payload: Omit<PlannedVisit, 'id'>) => {
-      const { data } = await api.post('/market-mapping/visits', pickVisitFields(payload as unknown as Record<string, unknown>));
+      const { data } = await api.post('/market-mapping/visits', toLeadPayload(payload));
       return data as PlannedVisit;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['market-mapping', 'visits'] }); },
@@ -213,7 +276,7 @@ export const useUpdateMarketMappingVisit = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...payload }: PlannedVisit) => {
-      const { data } = await api.patch(`/market-mapping/visits/${id}`, pickVisitFields(payload as unknown as Record<string, unknown>));
+      const { data } = await api.patch(`/market-mapping/visits/${id}`, toLeadPayload(payload));
       return data as PlannedVisit;
     },
     onSuccess: () => {

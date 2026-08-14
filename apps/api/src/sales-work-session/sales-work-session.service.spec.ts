@@ -5,12 +5,10 @@ import { AuditService } from '../prisma/audit.service';
 import { Role, WorkSessionStatus, GpsStatus } from '@prisma/client';
 import { StartWorkDto } from './dto/start-work.dto';
 import { EndWorkDto } from './dto/end-work.dto';
-import { ConflictException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 
 describe('SalesWorkSessionService', () => {
   let service: SalesWorkSessionService;
-  let prisma: PrismaService;
-  let auditService: AuditService;
 
   const mockPrisma = {
     salesWorkSession: {
@@ -42,8 +40,6 @@ describe('SalesWorkSessionService', () => {
     }).compile();
 
     service = module.get<SalesWorkSessionService>(SalesWorkSessionService);
-    prisma = module.get<PrismaService>(PrismaService);
-    auditService = module.get<AuditService>(AuditService);
 
     jest.clearAllMocks();
   });

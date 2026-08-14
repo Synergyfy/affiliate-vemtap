@@ -1,6 +1,7 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { normalizeLeadStatus } from "../common/lead.constants";
 import {
   CreateMissionPlanDto,
   UpdateMissionPlanDto,
@@ -14,19 +15,22 @@ import {
   ReassignAssignmentDto,
 } from "./dto/market-mapping.dto";
 
-type VisitWithUser = Prisma.MarketMappingVisitGetPayload<{
+type LeadWithUser = Prisma.LeadGetPayload<{
   include: { user: { select: { id: true; fullName: true } } };
 }>;
 
 @Injectable()
 export class MarketMappingService {
+  private readonly logger = new Logger(MarketMappingService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   private async fetchVemtapPlanTypes(): Promise<{ value: string; label: string }[] | null> {
     const vemtapUrl = process.env.VEMTAP_API_URL || process.env.VEMTAP_BASE_URL;
     if (!vemtapUrl) return null;
     try {
-      const apiKey = process.env.VEMTAP_API_KEY || "vem_3774d66ba1ac7392c877d121bb3c919b65df2c9d11b66555f2e4efe6";
+      const apiKey = process.env.VEMTAP_API_KEY;
+      if (!apiKey) return null;
       const res = await fetch(`${vemtapUrl}/plans`, {
         headers: { "x-api-key": apiKey, Accept: "application/json" },
       });
@@ -138,11 +142,16 @@ export class MarketMappingService {
     };
   }
 
+  /**
+   * All leads (captured pipeline businesses) for the user. Each item is marked
+   * with a `visited` flag — a lead is a "visit" once it has been marked visited.
+   */
   async getVisits(userId: string) {
-    return this.prisma.marketMappingVisit.findMany({
-      where: { userId },
+    const leads = await this.prisma.lead.findMany({
+      where: { userId, deletedAt: null },
       orderBy: [{ createdAt: "desc" }],
     });
+    return leads.map((lead) => ({ ...lead, visited: lead.visitedAt != null }));
   }
 
   private normalizeDatePart(d: Date): string {
@@ -185,33 +194,43 @@ export class MarketMappingService {
   async createVisit(userId: string, dto: CreateMarketMappingVisitDto) {
     this.assertValidNextVisit(dto.nextVisitDate, dto.nextVisitTime);
     const { openingDays, ...data } = dto;
-    return this.prisma.marketMappingVisit.create({
+    const status = normalizeLeadStatus(data.status);
+    const lead = await this.prisma.lead.create({
       data: {
         ...data,
+        status,
         userId,
         openingDays,
-        visitedAt: data.status && data.status !== "NOT_YET" ? new Date() : undefined,
+        visitedAt: status !== "NOT_YET" ? new Date() : undefined,
       },
     });
+    return { ...lead, visited: lead.visitedAt != null };
   }
 
   async updateVisit(id: string, userId: string, dto: UpdateMarketMappingVisitDto) {
-    const existing = await this.prisma.marketMappingVisit.findFirst({ where: { id, userId } });
+    const existing = await this.prisma.lead.findFirst({ where: { id, userId, deletedAt: null } });
     if (!existing) throw new NotFoundException("Market mapping visit not found");
     this.assertValidNextVisit(dto.nextVisitDate, dto.nextVisitTime, existing.nextVisitDate, existing.nextVisitTime);
     const { openingDays, ...data } = dto;
-    const becameVisited = data.status && data.status !== "NOT_YET" && !existing.visitedAt;
-    return this.prisma.marketMappingVisit.update({
+    const status = data.status !== undefined ? normalizeLeadStatus(data.status) : undefined;
+    const becameVisited = !!status && status !== "NOT_YET" && !existing.visitedAt;
+    const updated = await this.prisma.lead.update({
       where: { id },
-      data: { ...data, openingDays, visitedAt: becameVisited ? new Date() : undefined },
+      data: {
+        ...data,
+        ...(status !== undefined ? { status } : {}),
+        openingDays,
+        visitedAt: becameVisited ? new Date() : undefined,
+      },
     });
+    return { ...updated, visited: updated.visitedAt != null };
   }
 
   async getHistory(userId: string) {
     return this.prisma.marketMappingPlan.findMany({
       where: { userId },
       orderBy: { updatedAt: "desc" },
-      include: { visits: { select: { status: true } } },
+      include: { leads: { select: { status: true, visitedAt: true } } },
     });
   }
 
@@ -224,8 +243,10 @@ export class MarketMappingService {
     const todayEnd = new Date();
     todayEnd.setHours(23, 59, 59, 999);
 
-    const [leadCount, businessCount, todayPlan] = await Promise.all([
-      this.prisma.lead.count({ where: { affiliateId: userId } }),
+    const [leadCount, businessCount, todayPlan, visitedTodayCount] = await Promise.all([
+      this.prisma.lead.count({
+        where: { userId, deletedAt: null, isPlaceholder: false },
+      }),
       this.prisma.business.count({ where: { affiliateId: userId } }),
       this.prisma.marketMappingPlan.findFirst({
         where: {
@@ -237,18 +258,15 @@ export class MarketMappingService {
         },
         orderBy: { createdAt: "desc" },
       }),
+      this.prisma.lead.count({
+        where: {
+          userId,
+          deletedAt: null,
+          isPlaceholder: false,
+          visitedAt: { gte: todayStart, lte: todayEnd },
+        },
+      }),
     ]);
-
-    const visitedTodayCount = await this.prisma.marketMappingVisit.count({
-      where: {
-        userId,
-        OR: [
-          { createdAt: { gte: todayStart } },
-          { visitedAt: { gte: todayStart } },
-          { updatedAt: { gte: todayStart } },
-        ],
-      },
-    });
 
     return {
       country: territory.country,
@@ -311,23 +329,23 @@ export class MarketMappingService {
   }
 
   async getAnchors(userId: string) {
-    return this.prisma.marketMappingVisit.findMany({
-      where: { userId, isAnchor: true, status: "NOT_YET" },
+    return this.prisma.lead.findMany({
+      where: { userId, deletedAt: null, isAnchor: true, status: "NOT_YET" },
       orderBy: { updatedAt: "desc" },
     });
   }
 
   async getPriorityVisits(userId: string) {
-    return this.prisma.marketMappingVisit.findMany({
-      where: { userId, status: { in: ["NOT_YET", "INTERESTED"] } },
+    return this.prisma.lead.findMany({
+      where: { userId, deletedAt: null, status: { in: ["NOT_YET", "INTERESTED"] } },
       orderBy: [{ isAnchor: "desc" }, { updatedAt: "desc" }],
       take: 50,
     });
   }
 
   async getPartnerships(userId: string) {
-    return this.prisma.marketMappingVisit.findMany({
-      where: { userId, interested: "YES", status: { not: "CUSTOMER" } },
+    return this.prisma.lead.findMany({
+      where: { userId, deletedAt: null, interested: "YES", status: { not: "CUSTOMER" } },
       orderBy: { updatedAt: "desc" },
       take: 50,
     });
@@ -337,20 +355,22 @@ export class MarketMappingService {
     const configData = await this.getConfig(userId);
     const territory = configData.territory;
 
-    const visits = await this.getVisits(userId);
-    const total = visits.length;
-    const visited = visits.filter((visit) => visit.status !== "NOT_YET").length;
-    const interested = visits.filter((visit) => visit.status === "INTERESTED" || visit.interested === "YES").length;
-    const anchors = visits.filter((visit) => visit.isAnchor).length;
+    const leads = await this.prisma.lead.findMany({
+      where: { userId, deletedAt: null, isPlaceholder: false },
+    });
+    const total = leads.length;
+    const visited = leads.filter((lead) => lead.visitedAt != null).length;
+    const interested = leads.filter((lead) => lead.status === "INTERESTED" || lead.interested === "YES").length;
+    const anchors = leads.filter((lead) => lead.isAnchor).length;
     const maturity = {
       discovery: Math.min(100, total * 5), verification: total ? Math.round((visited / total) * 100) : 0,
-      sales: total ? Math.round((interested / total) * 100) : 0, customers: total ? Math.round((visits.filter((v) => v.status === "CUSTOMER").length / total) * 100) : 0,
-      partnerships: total ? Math.round((visits.filter((v) => v.interested === "YES").length / total) * 100) : 0,
+      sales: total ? Math.round((interested / total) * 100) : 0, customers: total ? Math.round((leads.filter((v) => v.status === "CUSTOMER").length / total) * 100) : 0,
+      partnerships: total ? Math.round((leads.filter((v) => v.interested === "YES").length / total) * 100) : 0,
       overall: total ? Math.round(((visited + interested + anchors) / (total * 3)) * 100) : 0,
     };
     const recommendations = [
-      ...(visits.filter((visit) => visit.isAnchor && visit.status === "NOT_YET").slice(0, 3).map((visit) => ({ id: visit.id, type: "UNTOUCHED_ANCHOR", title: visit.name, description: "Anchor business still requires a first visit.", rating: 5 }))),
-      ...(visits.filter((visit) => visit.status === "INTERESTED").slice(0, 3).map((visit) => ({ id: visit.id, type: "PRIORITY_VISIT", title: visit.name, description: "Interested business requires follow-up.", rating: 4 }))),
+      ...(leads.filter((lead) => lead.isAnchor && lead.status === "NOT_YET").slice(0, 3).map((lead) => ({ id: lead.id, type: "UNTOUCHED_ANCHOR", title: lead.businessName, description: "Anchor business still requires a first visit.", rating: 5 }))),
+      ...(leads.filter((lead) => lead.status === "INTERESTED").slice(0, 3).map((lead) => ({ id: lead.id, type: "PRIORITY_VISIT", title: lead.businessName, description: "Interested business requires follow-up.", rating: 4 }))),
     ];
     return {
       maturity,
@@ -391,15 +411,16 @@ export class MarketMappingService {
     const day = new Date(now); day.setHours(0, 0, 0, 0);
     const week = new Date(day); week.setDate(day.getDate() - 6);
     const month = new Date(day); month.setDate(day.getDate() - 29);
-    const [visits, user, monthBusinesses] = await Promise.all([
-      this.prisma.marketMappingVisit.findMany({ where: { userId } }),
+    const [leads, user, monthBusinesses] = await Promise.all([
+      this.prisma.lead.findMany({ where: { userId, deletedAt: null, isPlaceholder: false } }),
       this.prisma.user.findUnique({ where: { id: userId }, select: { dailyLeadTarget: true, monthlyConversionTarget: true } }),
-      this.prisma.business.findMany({ where: { affiliateId: userId, createdAt: { gte: month } }, select: { commissionAmount: true } }),
+      this.prisma.business.findMany({ where: { affiliateId: userId, status: "ACTIVE", subscriptionAmount: { gt: 0 }, createdAt: { gte: month } }, select: { commissionAmount: true } }),
     ]);
-    const countSince = (date: Date) => visits.filter((visit) => (visit.visitedAt || visit.updatedAt) >= date).length;
-    const completed = visits.filter((visit) => visit.status !== "NOT_YET").length;
-    const customers = visits.filter((visit) => visit.status === "CUSTOMER").length;
-    const proposalsSent = visits.filter((visit) => ["CONTACTED", "INTERESTED", "CUSTOMER"].includes(visit.status)).length;
+    const countSince = (date: Date) =>
+      leads.filter((lead) => lead.visitedAt && lead.visitedAt >= date).length;
+    const completed = leads.filter((lead) => lead.visitedAt != null).length;
+    const customers = leads.filter((lead) => lead.status === "CUSTOMER").length;
+    const proposalsSent = leads.filter((lead) => ["CONTACTED", "INTERESTED", "CUSTOMER"].includes(lead.status)).length;
     const dayVisits = countSince(day);
     const weekVisits = countSince(week);
     const monthVisits = countSince(month);
@@ -419,8 +440,8 @@ export class MarketMappingService {
       customersAcquired: customers,
       proposalsSent,
       conversionRatePercent: completed ? Math.round((customers / completed) * 100) : 0,
-      reportingScore: visits.length ? Math.round((completed / visits.length) * 100) : 0,
-      attendanceRate: visits.length ? Math.round((completed / visits.length) * 100) : 0,
+      reportingScore: leads.length ? Math.round((completed / leads.length) * 100) : 0,
+      attendanceRate: Math.min(100, Math.round((completed / Math.max(1, dailyTarget)) * 100)),
       monthRevenue,
       dailyTarget,
       weeklyTarget,
@@ -433,22 +454,69 @@ export class MarketMappingService {
 
   async getReports(userId: string, period: string = "monthly") {
     const now = new Date();
-    const start = new Date(now);
-    if (period === "daily") start.setHours(0, 0, 0, 0);
-    else if (period === "weekly") start.setDate(start.getDate() - 6);
-    else start.setDate(start.getDate() - 29);
+    const startOfDay = (d: Date) => {
+      const x = new Date(d);
+      x.setHours(0, 0, 0, 0);
+      return x;
+    };
+    const endOfDay = (d: Date) => {
+      const x = new Date(d);
+      x.setHours(23, 59, 59, 999);
+      return x;
+    };
+    const isWeekday = (d: Date) => {
+      const dow = d.getDay();
+      return dow >= 1 && dow <= 5;
+    };
 
-    const [leads, businesses, notes, visits, user, adminConfig] = await Promise.all([
-      this.prisma.lead.findMany({ where: { affiliateId: userId, createdAt: { gte: start } }, orderBy: { createdAt: "desc" } }),
-      this.prisma.business.findMany({ where: { affiliateId: userId, createdAt: { gte: start } }, orderBy: { createdAt: "desc" } }),
-      this.prisma.marketMappingNote.findMany({ where: { userId, createdAt: { gte: start } }, orderBy: { createdAt: "desc" } }),
-      this.prisma.marketMappingVisit.findMany({ where: { userId, OR: [{ visitedAt: { gte: start } }, { visitedAt: null, updatedAt: { gte: start } }] }, orderBy: { updatedAt: "desc" } }),
+    const todayStart = startOfDay(now);
+    const ledgerStart = startOfDay(now);
+    ledgerStart.setDate(ledgerStart.getDate() - 29);
+
+    // Calendar period windows for summary totals and target rollups.
+    let periodStart: Date;
+    let periodDays: Date[] = [];
+    if (period === "daily") {
+      periodStart = todayStart;
+      periodDays = [todayStart];
+    } else if (period === "weekly") {
+      const monday = startOfDay(now);
+      monday.setDate(monday.getDate() - ((now.getDay() + 6) % 7));
+      periodStart = monday;
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        periodDays.push(d);
+      }
+    } else {
+      periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      for (let i = 1; i <= lastDay; i++) {
+        periodDays.push(new Date(now.getFullYear(), now.getMonth(), i));
+      }
+    }
+
+    const [leads, businesses, notes, visits, user, adminConfig, plans] = await Promise.all([
+      this.prisma.lead.findMany({ where: { userId, deletedAt: null, isPlaceholder: false, createdAt: { gte: ledgerStart } }, orderBy: { createdAt: "desc" } }),
+      this.prisma.business.findMany({
+        where: {
+          affiliateId: userId,
+          status: "ACTIVE",
+          subscriptionAmount: { gt: 0 },
+          OR: [{ createdAt: { gte: ledgerStart } }, { paidAt: { gte: ledgerStart } }],
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      this.prisma.marketMappingNote.findMany({ where: { userId, createdAt: { gte: ledgerStart } }, orderBy: { createdAt: "desc" } }),
+      this.prisma.lead.findMany({ where: { userId, deletedAt: null, isPlaceholder: false, visitedAt: { gte: ledgerStart } }, orderBy: { visitedAt: "desc" } }),
       this.prisma.user.findUnique({ where: { id: userId }, select: { dailyLeadTarget: true } }),
       this.prisma.marketMappingAdminConfig.findFirst(),
+      this.prisma.marketMappingPlan.findMany({
+        where: { userId, OR: [{ startDate: { gte: ledgerStart } }, { endDate: { gte: ledgerStart } }] },
+      }),
     ]);
 
-    const daysCount = period === "daily" ? 1 : period === "weekly" ? 7 : 30;
-    const leadTarget = user?.dailyLeadTarget || adminConfig?.dailyTarget || 0;
+    const dailyFallback = user?.dailyLeadTarget || adminConfig?.dailyTarget || 0;
     const conversionReference = 0.4;
     const riskThreshold = 90;
     const WEIGHTS = {
@@ -463,45 +531,124 @@ export class MarketMappingService {
       if (target <= 0) return 0;
       return Math.min(100, Math.round((value / target) * 100));
     };
+
+    const countWorkingDays = (s: Date, e: Date) => {
+      let count = 0;
+      const cursor = startOfDay(s);
+      const end = endOfDay(e);
+      while (cursor.getTime() <= end.getTime()) {
+        if (isWeekday(cursor)) count++;
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      return count;
+    };
+
+    // Resolve the planned targets for a given day. A single-day mission plan wins,
+    // then a week plan (targets split across its working days), then the user's
+    // daily target on weekdays. Weekends with no plan are optional (target 0).
+    const targetForDay = (d: Date) => {
+      const dayStart = startOfDay(d).getTime();
+      const dayEnd = endOfDay(d).getTime();
+
+      const covering = plans.filter((p) => {
+        if (!p.startDate) return false;
+        const s = new Date(p.startDate).getTime();
+        const e = p.endDate ? new Date(p.endDate).getTime() : s;
+        return s <= dayEnd && e >= dayStart;
+      });
+
+      const dayPlan = covering.find((p) => {
+        const s = new Date(p.startDate!).getTime();
+        const e = p.endDate ? new Date(p.endDate).getTime() : s;
+        return e - s <= 86400000;
+      });
+
+      let leadsTarget = 0;
+      let visitsTarget = 0;
+      let conversionsTarget = 0;
+
+      if (dayPlan) {
+        leadsTarget = dayPlan.targetLeads || dayPlan.targetVisits || 0;
+        visitsTarget = dayPlan.targetVisits || dayPlan.targetLeads || 0;
+        conversionsTarget = dayPlan.targetConversions || 0;
+      } else {
+        const weekPlan = covering.find((p) => {
+          const s = new Date(p.startDate!).getTime();
+          const e = p.endDate ? new Date(p.endDate).getTime() : s;
+          return e - s > 86400000;
+        });
+        if (weekPlan) {
+          const s = new Date(weekPlan.startDate!);
+          const e = weekPlan.endDate ? new Date(weekPlan.endDate) : s;
+          const denom = Math.max(1, countWorkingDays(s, e));
+          leadsTarget = Math.round((weekPlan.targetLeads || weekPlan.targetVisits || 0) / denom);
+          visitsTarget = Math.round((weekPlan.targetVisits || weekPlan.targetLeads || 0) / denom);
+          conversionsTarget = Math.round((weekPlan.targetConversions || 0) / denom);
+        } else if (isWeekday(d)) {
+          leadsTarget = dailyFallback;
+          visitsTarget = dailyFallback;
+        }
+      }
+
+      return { leads: leadsTarget, visits: visitsTarget, conversions: conversionsTarget };
+    };
+
     const gpsPoints = (v: (typeof visits)[number]) => v.gpsLat != null && v.gpsLng != null && String(v.gpsLat).trim() !== "" && String(v.gpsLng).trim() !== "";
-    const INFO_FIELDS = (v: (typeof visits)[number]) => [v.category, v.phone, v.ownerName, v.address || v.exactAddress, v.businessSize, v.openingHours, v.contactPosition];
-    const totalEarnings = businesses.reduce((acc, b) => acc + Number(b.commissionAmount || 0), 0);
-    const avgLeadsPerDay = Math.round((leads.length / Math.max(1, daysCount)) * 10) / 10;
-    const avgConversionRate = leads.length > 0 ? Math.round((businesses.length / leads.length) * 100) : 0;
-    const completionRate = Math.min(100, Math.round((visits.filter(v => v.status !== "NOT_YET").length / Math.max(1, visits.length)) * 100));
+    const INFO_FIELDS = (v: (typeof visits)[number]) => [v.industry, v.phone, v.contactName, v.businessAddress || v.location, v.businessSize, v.openingHours, v.contactRole];
+
+    const businessDate = (b: (typeof businesses)[number]) => new Date(b.paidAt ?? b.createdAt);
+
+    const periodLeads = leads.filter((l) => new Date(l.createdAt) >= periodStart);
+    const periodVisits = visits.filter((v) => v.visitedAt && new Date(v.visitedAt) >= periodStart);
+    const periodBusinesses = businesses.filter((b) => businessDate(b) >= periodStart);
+    const periodNotes = notes.filter((n) => new Date(n.createdAt) >= periodStart);
+
+    const totalEarnings = periodBusinesses.reduce((acc, b) => acc + Number(b.commissionAmount || 0), 0);
+    const avgLeadsPerDay = Math.round((periodLeads.length / Math.max(1, periodDays.length)) * 10) / 10;
+    const avgConversionRate = periodLeads.length > 0 ? Math.round((periodBusinesses.length / periodLeads.length) * 100) : 0;
+
+    let leadsTargetSum = 0;
+    let visitsTargetSum = 0;
+    let conversionsTargetSum = 0;
+    for (const d of periodDays) {
+      const t = targetForDay(d);
+      leadsTargetSum += t.leads;
+      visitsTargetSum += t.visits;
+      conversionsTargetSum += t.conversions;
+    }
+    const completionRate = pctOfTarget(periodVisits.length, visitsTargetSum);
 
     // Calculate 30-day daily score ledger
     const ledger = [];
     for (let i = 0; i < 30; i++) {
       const dayDate = new Date(now);
       dayDate.setDate(dayDate.getDate() - i);
-      const dayStart = new Date(dayDate);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(dayDate);
-      dayEnd.setHours(23, 59, 59, 999);
+      const dayStart = startOfDay(dayDate);
+      const dayEnd = endOfDay(dayDate);
+      const dayTarget = targetForDay(dayStart).leads;
 
       const dayLeads = leads.filter((l) => new Date(l.createdAt) >= dayStart && new Date(l.createdAt) <= dayEnd).length;
-      const dayConversions = businesses.filter((b) => new Date(b.createdAt) >= dayStart && new Date(b.createdAt) <= dayEnd).length;
-      const dayVisits = visits.filter((v) => {
-        const d = v.visitedAt || v.updatedAt;
-        return d && new Date(d) >= dayStart && new Date(d) <= dayEnd;
+      const dayConversions = businesses.filter((b) => {
+        const d = businessDate(b);
+        return d >= dayStart && d <= dayEnd;
       }).length;
 
       const dayVisitsArr = visits.filter((v) => {
-        const d = v.visitedAt || v.updatedAt;
+        const d = v.visitedAt;
         return d && new Date(d) >= dayStart && new Date(d) <= dayEnd;
       });
+      const dayVisits = dayVisitsArr.length;
 
       const infoPct = dayVisitsArr.length > 0
         ? Math.round(dayVisitsArr.reduce((sum, v) => sum + INFO_FIELDS(v).filter((f) => f != null && String(f).trim() !== "").length, 0) / (dayVisitsArr.length * INFO_FIELDS(dayVisitsArr[0]).length) * 100)
         : 0;
       const gpsPct = dayVisitsArr.length > 0 ? Math.round((dayVisitsArr.filter(gpsPoints).length / dayVisitsArr.length) * 100) : 0;
-      const completionPct = pctOfTarget(dayVisitsArr.length, leadTarget);
+      const completionPct = pctOfTarget(dayVisits, dayTarget);
 
-      const leadPct = pctOfTarget(dayLeads, leadTarget);
+      const leadPct = pctOfTarget(dayLeads, dayTarget);
       const infoComposite = 0.6 * infoPct + 0.4 * gpsPct;
       const convPct = Math.min(100, (dayConversions / Math.max(1, dayLeads) / conversionReference) * 100);
-      const visitPct = pctOfTarget(dayVisitsArr.length, leadTarget);
+      const visitPct = pctOfTarget(dayVisits, dayTarget);
 
       const score = Math.round(
         WEIGHTS.leads * leadPct +
@@ -515,7 +662,7 @@ export class MarketMappingService {
         id: `day-${i}`,
         date: dayStart.toISOString().split("T")[0],
         leads: dayLeads,
-        target: leadTarget,
+        target: dayTarget,
         conversions: dayConversions,
         visits: dayVisits,
         infoPct,
@@ -525,20 +672,24 @@ export class MarketMappingService {
         isToday: i === 0,
         score,
         met: score >= riskThreshold,
+        optional: dayTarget <= 0,
       });
     }
 
     return {
       period,
       summary: {
-        totalLeads: leads.length,
-        totalConversions: businesses.length,
-        totalVisits: visits.length,
+        totalLeads: periodLeads.length,
+        totalConversions: periodBusinesses.length,
+        totalVisits: periodVisits.length,
         totalEarnings,
         completionRate,
-        businessesReferred: businesses.length,
+        businessesReferred: periodBusinesses.length,
         avgLeadsPerDay,
         avgConversionRate,
+        target: leadsTargetSum,
+        visitsTarget: visitsTargetSum,
+        conversionTarget: conversionsTargetSum,
       },
       weights: {
         leads: WEIGHTS.leads,
@@ -548,17 +699,17 @@ export class MarketMappingService {
         completion: WEIGHTS.completion,
         riskThreshold,
         conversionReference,
-        leadTarget,
+        leadTarget: dailyFallback,
       },
       ledger,
-      leads: leads.map((l) => ({
+      leads: periodLeads.map((l) => ({
         id: l.id,
         businessName: l.businessName,
         phone: l.phone,
         status: l.status,
         date: l.createdAt,
       })),
-      visitedBusinesses: businesses.map((b) => ({
+      visitedBusinesses: periodBusinesses.map((b) => ({
         id: b.id,
         businessName: b.businessName,
         ownerName: b.ownerName,
@@ -566,21 +717,21 @@ export class MarketMappingService {
         status: b.status,
         date: b.createdAt,
       })),
-      notes: notes.map((n) => ({
+      notes: periodNotes.map((n) => ({
         id: n.id,
         businessName: n.businessName,
         content: n.content,
         followUpDate: n.followUpDate,
         createdAt: n.createdAt,
       })),
-      visits: visits.map((visit) => ({
-        id: visit.id,
-        businessName: visit.name,
-        category: visit.category,
-        status: visit.status,
-        gpsAddress: visit.gpsAddress,
-        date: visit.visitedAt || visit.updatedAt,
-        notes: visit.visitNotes,
+      visits: periodVisits.map((lead) => ({
+        id: lead.id,
+        businessName: lead.businessName,
+        category: lead.industry,
+        status: lead.status,
+        gpsAddress: lead.gpsAddress,
+        date: lead.visitedAt,
+        notes: lead.comments,
       })),
     };
   }
@@ -684,19 +835,20 @@ export class MarketMappingService {
           select: { id: true, businessName: true, planType: true, status: true, ownerName: true, phone: true, affiliateId: true },
         });
 
-    const capturedVisits = assignedAffiliateIds.length === 0
+    const capturedLeads = assignedAffiliateIds.length === 0
       ? []
-      : await this.prisma.marketMappingVisit.findMany({
+      : await this.prisma.lead.findMany({
           where: {
             userId: { in: assignedAffiliateIds },
             isPlaceholder: false,
+            deletedAt: null,
           },
           take: 100,
           orderBy: { updatedAt: "desc" },
           include: { user: { select: { id: true, fullName: true } } },
         });
 
-    const capturedBusinesses = this.mapCapturedVisits(capturedVisits, assignedBusinesses, cluster);
+    const capturedBusinesses = this.mapCapturedLeads(capturedLeads, assignedBusinesses, cluster);
 
     return {
       cluster,
@@ -705,14 +857,14 @@ export class MarketMappingService {
   }
 
   async getAdminCapturedVisits() {
-    const visits = await this.prisma.marketMappingVisit.findMany({
-      where: { isPlaceholder: false },
+    const leads = await this.prisma.lead.findMany({
+      where: { isPlaceholder: false, deletedAt: null },
       take: 200,
       orderBy: { updatedAt: "desc" },
       include: { user: { select: { id: true, fullName: true } } },
     });
 
-    return this.mapCapturedVisits(visits, [], { id: "", name: "" });
+    return this.mapCapturedLeads(leads, [], { id: "", name: "" });
   }
 
   private mapVisitStatus(status?: string | null): string {
@@ -738,8 +890,8 @@ export class MarketMappingService {
     }
   }
 
-  private mapCapturedVisits(
-    visits: VisitWithUser[],
+  private mapCapturedLeads(
+    leads: LeadWithUser[],
     existingBusinesses: Array<{ phone?: string | null }>,
     cluster: { id: string; name: string },
   ) {
@@ -748,51 +900,51 @@ export class MarketMappingService {
     );
     const seenPhones = new Set<string>();
 
-    return visits
-      .filter((visit) => {
-        const lat = Number(visit.gpsLat);
-        const lng = Number(visit.gpsLng);
-        if (!visit.gpsLat || !visit.gpsLng || !Number.isFinite(lat) || !Number.isFinite(lng)) return false;
-        if (visit.phone && existingPhones.has(visit.phone)) return false;
-        if (visit.phone && seenPhones.has(visit.phone)) return false;
-        if (visit.phone) seenPhones.add(visit.phone);
+    return leads
+      .filter((lead) => {
+        const lat = Number(lead.gpsLat);
+        const lng = Number(lead.gpsLng);
+        if (!lead.gpsLat || !lead.gpsLng || !Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+        if (lead.phone && existingPhones.has(lead.phone)) return false;
+        if (lead.phone && seenPhones.has(lead.phone)) return false;
+        if (lead.phone) seenPhones.add(lead.phone);
         return true;
       })
-      .map((visit) => {
-        const status = this.mapVisitStatus(visit.status);
-        const nextVisit = visit.nextVisitDate || visit.nextVisitTime
-          ? `${visit.nextVisitDate || ""} ${visit.nextVisitTime || ""}`.trim()
+      .map((lead) => {
+        const status = this.mapVisitStatus(lead.status);
+        const nextVisit = lead.nextVisitDate || lead.nextVisitTime
+          ? `${lead.nextVisitDate || ""} ${lead.nextVisitTime || ""}`.trim()
           : undefined;
         return {
-          id: visit.id,
-          name: visit.name,
-          businessName: visit.name,
-          category: visit.category || "Business",
-          industry: visit.category || "",
-          size: visit.businessSize || "SMALL",
+          id: lead.id,
+          name: lead.businessName,
+          businessName: lead.businessName,
+          category: lead.industry || "Business",
+          industry: lead.industry || "",
+          size: lead.businessSize || "SMALL",
           status,
-          isAnchor: visit.isAnchor || false,
+          isAnchor: lead.isAnchor || false,
           anchorScore: 0,
           influenceScore: 0,
           isVerified: status === "CUSTOMER",
-          ownerName: visit.ownerName || "",
-          decisionMaker: visit.ownerName || "",
-          phone: visit.phone || "",
-          email: visit.contactEmail || "",
-          address: visit.exactAddress || visit.address || "",
+          ownerName: lead.contactName || "",
+          decisionMaker: lead.contactName || "",
+          phone: lead.phone || "",
+          email: lead.email || "",
+          address: lead.location || lead.businessAddress || "",
           clusterId: cluster.id,
           clusterName: cluster.name,
-          latitude: Number(visit.gpsLat),
-          longitude: Number(visit.gpsLng),
-          dailyCustomers: this.mapCustomerRangeToNumber(visit.dailyCustomers),
+          latitude: Number(lead.gpsLat),
+          longitude: Number(lead.gpsLng),
+          dailyCustomers: this.mapCustomerRangeToNumber(lead.dailyCustomers),
           monthlyCustomers: 0,
-          openingHours: visit.openingHours || undefined,
-          assignedAffiliateId: visit.userId,
-          assignedAffiliateName: visit.user?.fullName || "",
+          openingHours: lead.openingHours || undefined,
+          assignedAffiliateId: lead.userId,
+          assignedAffiliateName: lead.user?.fullName || "",
           priority: "LOW",
-          lastVisit: visit.visitedAt ? new Date(visit.visitedAt).toLocaleDateString() : undefined,
+          lastVisit: lead.visitedAt ? new Date(lead.visitedAt).toLocaleDateString() : undefined,
           nextVisit,
-          notes: visit.visitNotes || undefined,
+          notes: lead.comments || undefined,
           source: "CAPTURE",
         };
       });
@@ -998,10 +1150,10 @@ export class MarketMappingService {
 
     const [leads, businesses] = await Promise.all([
       this.prisma.lead.findMany({
-        where: { affiliateId: { in: assignedAffiliateIds } },
+        where: { userId: { in: assignedAffiliateIds }, deletedAt: null, isPlaceholder: false },
         take: 15,
         orderBy: { createdAt: "desc" },
-        include: { affiliate: { select: { fullName: true } } },
+        include: { user: { select: { fullName: true } } },
       }),
       this.prisma.business.findMany({
         where: { affiliateId: { in: assignedAffiliateIds } },
@@ -1014,7 +1166,7 @@ export class MarketMappingService {
     return {
       clusterId,
       submissions: [
-        ...leads.map((l) => ({ type: "LEAD", id: l.id, name: l.businessName, submittedBy: l.affiliate?.fullName, date: l.createdAt })),
+        ...leads.map((l) => ({ type: "LEAD", id: l.id, name: l.businessName, submittedBy: l.user?.fullName, date: l.createdAt })),
         ...businesses.map((b) => ({ type: "BUSINESS", id: b.id, name: b.businessName, submittedBy: b.affiliate?.fullName, date: b.createdAt })),
       ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
     };

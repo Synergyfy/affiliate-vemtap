@@ -56,6 +56,19 @@ import WorkMetricReports from '@/components/reports/WorkMetricReports';
 type Tab = 'overview' | 'leads' | 'reports' | 'locations' | 'history' | 'team';
 type LeadFilterTab = 'all' | 'leads' | 'visits' | 'businesses';
 
+/**
+ * Combined count of leads, field visits and referred businesses shown on the
+ * "Leads & Businesses" tab. Field visits are the visited subset of leads (the
+ * same unified Lead records), so they are counted once via the leads list.
+ */
+function countUniqueLeadItems(
+  leadsData: ReturnType<typeof useUserLeads>['data'],
+): number {
+  const leads = leadsData?.leads ?? [];
+  const businesses = leadsData?.businesses ?? [];
+  return leads.length + businesses.length;
+}
+
 export default function AffiliateDetailPage() {
   const params = useParams<{ affiliateId: string }>();
   const router = useRouter();
@@ -249,7 +262,6 @@ export default function AffiliateDetailPage() {
                 icon={<MapPin className="w-4 h-4 text-emerald-600" />}
                 label="Field Visits Captured"
                 value={
-                  user._count?.marketMappingVisits ??
                   leadsData?.stats?.totalVisits ??
                   0
                 }
@@ -317,12 +329,13 @@ export default function AffiliateDetailPage() {
               {tab === 'history' && <History className="w-3.5 h-3.5" />}
               {tab === 'team' && <Users className="w-3.5 h-3.5" />}
               {tab === 'leads' ? 'Leads & Businesses' : tab}
-              {tab === 'leads' && (leadsData?.stats?.totalLeads ?? 0) > 0 && (
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-blue-500 text-white">
-                  {(leadsData?.stats?.totalLeads ?? 0) +
-                    (leadsData?.stats?.totalVisits ?? 0)}
-                </span>
-              )}
+              {tab === 'leads' &&
+                (leadsData?.stats?.totalLeads ?? 0) + (leadsData?.stats?.totalVisits ?? 0) >
+                  0 && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-blue-500 text-white">
+                    {countUniqueLeadItems(leadsData)}
+                  </span>
+                )}
             </button>
           ))}
         </div>
@@ -475,7 +488,7 @@ function Overview({
           </div>
           <div className="p-3 bg-emerald-50/70 border border-emerald-100 rounded-2xl text-center">
             <p className="text-lg font-black text-emerald-700">
-              {leadsData?.stats?.totalVisits ?? user._count?.marketMappingVisits ?? 0}
+              {leadsData?.stats?.totalVisits ?? 0}
             </p>
             <p className="text-[10px] font-bold text-slate-500 uppercase">Field Visits</p>
           </div>
@@ -555,10 +568,10 @@ function LeadsPanel({
 
   const filteredVisits = visits.filter(
     (v) =>
-      v.name.toLowerCase().includes(search.toLowerCase()) ||
-      (v.ownerName && v.ownerName.toLowerCase().includes(search.toLowerCase())) ||
+      v.businessName.toLowerCase().includes(search.toLowerCase()) ||
+      (v.contactName && v.contactName.toLowerCase().includes(search.toLowerCase())) ||
       (v.phone && v.phone.includes(search)) ||
-      (v.address && v.address.toLowerCase().includes(search.toLowerCase()))
+      ((v.businessAddress || v.location || '') && (v.businessAddress || v.location || '').toLowerCase().includes(search.toLowerCase()))
   );
 
   const filteredBusinesses = businesses.filter(
@@ -603,7 +616,7 @@ function LeadsPanel({
               : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
           )}
         >
-          All Items ({leads.length + visits.length + businesses.length})
+          All Items ({countUniqueLeadItems(leadsData)})
         </button>
         <button
           onClick={() => setFilterTab('leads')}
@@ -667,7 +680,7 @@ function LeadsPanel({
                     <span
                       className={cn(
                         'text-[10px] font-black px-2 py-0.5 rounded-full uppercase',
-                        lead.status === 'COMPLETED'
+                        lead.status === 'CUSTOMER'
                           ? 'bg-emerald-100 text-emerald-700'
                           : lead.status === 'INTERESTED'
                           ? 'bg-blue-100 text-blue-700'
@@ -714,7 +727,7 @@ function LeadsPanel({
       )}
 
       {/* Field Visits Listing */}
-      {(filterTab === 'all' || filterTab === 'visits') && (
+      {filterTab === 'visits' && (
         <div className="space-y-3 pt-4 border-t border-slate-100">
           <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
             <Navigation className="w-3.5 h-3.5 text-emerald-600" /> Captured Field Visits ({filteredVisits.length})
@@ -732,9 +745,9 @@ function LeadsPanel({
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h4 className="font-bold text-slate-900 text-sm">{visit.name}</h4>
+                      <h4 className="font-bold text-slate-900 text-sm">{visit.businessName}</h4>
                       <p className="text-xs text-slate-500 font-medium">
-                        {visit.category || 'Business'} · Owner: {visit.ownerName || 'N/A'}
+                        {visit.industry || 'Business'} · Owner: {visit.contactName || 'N/A'}
                       </p>
                     </div>
                     <span className="text-[10px] font-black px-2 py-0.5 rounded-full uppercase bg-emerald-100 text-emerald-800">
@@ -748,9 +761,9 @@ function LeadsPanel({
                         <Phone className="w-3 h-3 text-emerald-600" /> {visit.phone}
                       </span>
                     )}
-                    {visit.address && (
+                    {(visit.businessAddress || visit.location) && (
                       <span className="flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-emerald-600" /> {visit.address}
+                        <MapPin className="w-3 h-3 text-emerald-600" /> {visit.businessAddress || visit.location}
                       </span>
                     )}
                     {visit.gpsLat && visit.gpsLng && (
@@ -760,9 +773,9 @@ function LeadsPanel({
                     )}
                   </div>
 
-                  {visit.visitNotes && (
+                  {visit.comments && (
                     <p className="text-xs text-slate-600 bg-white/80 p-2 rounded-xl border border-emerald-100">
-                      {visit.visitNotes}
+                      {visit.comments}
                     </p>
                   )}
 

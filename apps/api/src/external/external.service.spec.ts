@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ExternalService } from './external.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { BusinessesService } from '../businesses/businesses.service';
-import { WithdrawalsService } from '../withdrawals/withdrawals.service';
 import { AuditService } from '../prisma/audit.service';
 import { NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PlanType, UserStatus } from '@prisma/client';
@@ -32,10 +31,6 @@ describe('ExternalService', () => {
     generateCommissions: jest.fn(),
   };
 
-  const mockWithdrawalsService = {
-    create: jest.fn(),
-  };
-
   const mockAuditService = {
     log: jest.fn(),
   };
@@ -46,7 +41,6 @@ describe('ExternalService', () => {
         ExternalService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: BusinessesService, useValue: mockBusinessesService },
-        { provide: WithdrawalsService, useValue: mockWithdrawalsService },
         { provide: AuditService, useValue: mockAuditService },
       ],
     }).compile();

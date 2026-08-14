@@ -10,6 +10,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -29,6 +30,8 @@ import {
   RevenueTrendResponseDto,
 } from './dto/agent-response.dto';
 import { ApiKeyGuard } from '../api-keys/guards/api-key.guard';
+import { RateLimitGuard } from '../common/guards/rate-limit.guard';
+import { TimeoutInterceptor } from '../common/interceptors/timeout.interceptor';
 
 @ApiTags('agents')
 @ApiHeader({
@@ -37,7 +40,8 @@ import { ApiKeyGuard } from '../api-keys/guards/api-key.guard';
   required: true,
 })
 @Controller('agents')
-@UseGuards(ApiKeyGuard)
+@UseGuards(ApiKeyGuard, RateLimitGuard)
+@UseInterceptors(TimeoutInterceptor)
 export class AgentsController {
   constructor(private readonly agentsService: AgentsService) {}
 

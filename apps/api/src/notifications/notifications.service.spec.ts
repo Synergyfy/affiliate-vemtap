@@ -104,7 +104,7 @@ describe('NotificationsService', () => {
           where: expect.objectContaining({
             OR: [
               { referralCount: { gte: 10 } },
-              { isManagerMode: true },
+              { role: { in: ['SUPERVISOR', 'MANAGER'] } },
             ],
           }),
         }),

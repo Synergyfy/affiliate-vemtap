@@ -38,7 +38,7 @@ export default function FollowUpsTab() {
     business: lead.businessName,
     contact: lead.contactName,
     dueDate: lead.followUpDate ? new Date(lead.followUpDate).toLocaleString() : 'N/A',
-    priority: lead.priority.charAt(0) + lead.priority.slice(1).toLowerCase(),
+    priority: lead.priority ? lead.priority.charAt(0) + lead.priority.slice(1).toLowerCase() : 'Medium',
     status: 'Pending',
     leadData: lead,
   }));
@@ -49,7 +49,7 @@ export default function FollowUpsTab() {
 
   const handleComplete = async (id: string) => {
     try {
-      await updateLead.mutateAsync({ id, data: { status: 'COMPLETED' as any } });
+      await updateLead.mutateAsync({ id, data: { status: 'CUSTOMER' as any } });
       showToast('Follow-up marked as completed', 'success');
     } catch {
       showToast('Failed to complete follow-up', 'error');

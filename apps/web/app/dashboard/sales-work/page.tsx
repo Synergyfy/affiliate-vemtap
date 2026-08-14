@@ -127,8 +127,8 @@ export default function SalesWorkPage() {
   const targetCount = dayPlan?.targetCount || weekPlan?.targetCount || stats.plannedToday || mission?.targetCount || 20;
   const activeLocation = activePlan?.location || stats.clusterName || mission?.location || '';
 
-  // Daily Mission progress: how many businesses the user ADDED today (from DB)
-  const visitedCount = affiliateStats?.todayBusinessesAdded ?? 0;
+  // Daily Mission progress: how many leads were VISITED today (from DB)
+  const visitedCount = affiliateStats?.todayVisitsCount ?? 0;
   const percentDone = targetCount > 0 ? Math.min(100, Math.round((visitedCount / targetCount) * 100)) : 0;
 
   // Today's Progress: all sourced from the DB via affiliateStats
@@ -136,7 +136,7 @@ export default function SalesWorkPage() {
     if (affiliateStats) {
       return {
         visitsToday: affiliateStats.todayVisitsCount ?? 0,
-        leadsCaptured: affiliateStats.todayBusinessesAdded ?? 0,
+        leadsCaptured: affiliateStats.todayLeadsCount ?? 0,
         followUpsDue: affiliateStats.todayFollowUpsDue ?? 0,
         demosDue: affiliateStats.todayDemosDue ?? 0,
         conversions: affiliateStats.todayConversions ?? 0,
@@ -149,11 +149,14 @@ export default function SalesWorkPage() {
       const createdKey = v.createdAt ? new Date(v.createdAt).toLocaleDateString('en-CA') : '';
       return createdKey === todayStr;
     });
+    const dueToday = (d?: string) => d && new Date(d).toLocaleDateString('en-CA') === todayStr;
     return {
       visitsToday: todayVisits.filter((v: any) => v.status !== 'NOT_YET').length,
-      leadsCaptured: todayLeads.length + todayVisits.length,
-      followUpsDue: allLeads.filter((l) => l.pipelineStage === 'FOLLOW_UP').length,
-      demosDue: allLeads.filter((l) => l.pipelineStage === 'DEMO').length,
+      leadsCaptured: todayLeads.length,
+      followUpsDue: allLeads.filter((l) => l.followUpDate && dueToday(l.followUpDate)).length,
+      demosDue: allLeads.filter(
+        (l) => l.pipelineStage === 'DEMO_SCHEDULED' || (l.demoScheduledDate && dueToday(l.demoScheduledDate)),
+      ).length,
       conversions: 0,
     };
   }, [affiliateStats, allLeads, rawVisits]);
@@ -465,7 +468,7 @@ export default function SalesWorkPage() {
             </div>
             <div className="space-y-1.5">
               {allLeads
-                .filter((l) => l.pipelineStage === 'FOLLOW_UP')
+                .filter((l) => l.followUpDate && new Date(l.followUpDate).toLocaleDateString('en-CA') === new Date().toLocaleDateString('en-CA'))
                 .slice(0, 5)
                 .map((lead) => (
                   <button
@@ -503,7 +506,7 @@ export default function SalesWorkPage() {
             </div>
             <div className="space-y-1.5">
               {allLeads
-                .filter((l) => l.pipelineStage === 'DEMO')
+                .filter((l) => l.pipelineStage === 'DEMO_SCHEDULED' || (l.demoScheduledDate && new Date(l.demoScheduledDate).toLocaleDateString('en-CA') === new Date().toLocaleDateString('en-CA')))
                 .slice(0, 5)
                 .map((lead) => (
                   <button

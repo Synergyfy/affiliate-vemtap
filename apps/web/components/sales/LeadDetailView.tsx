@@ -103,10 +103,10 @@ export default function LeadDetailView({ lead, onClose, onUpdated }: LeadDetailV
     if (lead.pipelineStage === 'INTERESTED') {
       return { label: 'Schedule Follow-up', icon: <Clock className="w-4 h-4" />, action: () => setShowFollowUpModal(true) };
     }
-    if (lead.pipelineStage === 'FOLLOW_UP') {
+    if (lead.followUpDate) {
       return { label: 'Complete Follow-up', icon: <CheckCircle2 className="w-4 h-4" />, action: () => setShowCompleteFollowUpModal(true) };
     }
-    if (lead.pipelineStage === 'DEMO') {
+    if (lead.pipelineStage === 'DEMO_SCHEDULED') {
       return { label: 'Complete Demo', icon: <CheckCircle2 className="w-4 h-4" />, action: () => setShowCompleteDemoModal(true) };
     }
     return null;

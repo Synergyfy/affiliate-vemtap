@@ -261,8 +261,8 @@ export class OperationsService {
       this.prisma.task.count({ where: { ...(isPrivileged ? {} : { assignedToId: userId }), status: TaskStatus.PENDING } }),
       this.prisma.demo.count({ where: { ...(isPrivileged ? {} : { agentId: userId }), status: DemoStatus.SCHEDULED } }),
       this.prisma.onboarding.count({ where: { ...(isPrivileged ? {} : { business: { affiliateId: userId } }), status: { in: [OnboardingStatus.PENDING, OnboardingStatus.IN_PROGRESS] } } }),
-      this.prisma.lead.count({ where: { ...(isPrivileged ? {} : { affiliateId: userId }) } }),
-      this.prisma.lead.count({ where: { ...(isPrivileged ? {} : { affiliateId: userId }), status: 'CONTACTED' } }),
+      this.prisma.lead.count({ where: { ...(isPrivileged ? {} : { userId }), deletedAt: null, isPlaceholder: false } }),
+      this.prisma.lead.count({ where: { ...(isPrivileged ? {} : { userId }), deletedAt: null, isPlaceholder: false, status: { in: ['CONTACTED', 'INTERESTED', 'CUSTOMER'] } } }),
       this.prisma.business.aggregate({
         where: { ...(isPrivileged ? {} : { affiliateId: userId }) },
         _sum: { subscriptionAmount: true },

@@ -11,6 +11,7 @@ describe('NetworkService', () => {
   const mockUser = {
     findUnique: jest.fn(),
     findMany: jest.fn(),
+    findFirst: jest.fn(),
     count: jest.fn(),
     update: jest.fn(),
   };
@@ -179,6 +180,42 @@ describe('NetworkService', () => {
     });
   });
 
+  describe('getTeamMemberDetail', () => {
+    it('computes visits from visited leads (visitedAt), not demos', async () => {
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+
+      mockUser.findFirst.mockResolvedValue({
+        id: 'member-1',
+        fullName: 'Team Member',
+        email: 'tm@test.com',
+        phone: '08000000000',
+        avatar: null,
+        role: 'AGENT',
+        status: 'ACTIVE',
+        createdAt: new Date(),
+        dailyLeadTarget: 5,
+        monthlyConversionTarget: 2,
+        totalEarnings: 0,
+        businesses: [],
+        leads: [
+          { id: 'l1', businessName: 'A', status: 'VISITED', priority: 'MEDIUM', createdAt: today, visitedAt: today },
+          { id: 'l2', businessName: 'B', status: 'NOT_YET', priority: 'LOW', createdAt: today, visitedAt: null },
+          { id: 'l3', businessName: 'C', status: 'CONTACTED', priority: 'HIGH', createdAt: yesterday, visitedAt: yesterday },
+        ],
+        activities: [],
+        agentDemos: [{ id: 'd1', date: today, status: 'COMPLETED' }],
+        targetAdjustmentsReceived: [],
+      });
+
+      const result = await service.getTeamMemberDetail('manager-1', 'member-1');
+
+      // Only the lead visited today (l1) counts; demo d1 and non-visited leads are excluded.
+      expect(result.dailyVisitsCount).toBe(1);
+      expect(result.weeklyVisitsCount).toBe(2);
+    });
+  });
+
   describe('toggleManagerMode', () => {
     it('should throw if milestones not reached', async () => {
       const userId = 'user-1';
@@ -195,14 +232,18 @@ describe('NetworkService', () => {
       mockUser.findUnique.mockResolvedValue({ id: userId, role: 'SUPERVISOR', createdAt: new Date(), isManagerMode: false });
       mockUser.count.mockResolvedValue(30);
       mockBusiness.count.mockResolvedValue(100);
-      mockUser.update.mockResolvedValue({ id: userId, role: 'MANAGER', isManagerMode: true });
+      mockUser.update.mockResolvedValue({ id: userId, role: 'MANAGER', managerQualificationExpiry: new Date() });
 
       const result = await service.toggleManagerMode(userId);
 
       expect(result.isManagerMode).toBe(true);
+      expect(result.role).toBe('MANAGER');
       expect(mockUser.update).toHaveBeenCalledWith({
         where: { id: userId },
-        data: expect.objectContaining({ isManagerMode: true }),
+        data: expect.objectContaining({
+          role: 'MANAGER',
+          managerQualificationExpiry: expect.any(Date),
+        }),
       });
     });
   });

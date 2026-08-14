@@ -19,6 +19,10 @@ describe("MarketMappingService", () => {
     lead: {
       count: jest.fn(),
       findMany: jest.fn(),
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
     },
     business: {
       count: jest.fn(),
@@ -47,12 +51,6 @@ describe("MarketMappingService", () => {
       delete: jest.fn(),
       deleteMany: jest.fn(),
     },
-    marketMappingVisit: {
-      findMany: jest.fn(),
-      create: jest.fn(),
-      findFirst: jest.fn(),
-      update: jest.fn(),
-    },
     marketMappingAdminConfig: {
       findFirst: jest.fn(),
       create: jest.fn(),
@@ -76,100 +74,73 @@ describe("MarketMappingService", () => {
     expect(service).toBeDefined();
   });
 
-  it("should return config with fallback territory", async () => {
-    mockPrismaService.user.findUnique.mockResolvedValue({
-      territoryId: "NG-LAG-IKJ-01",
-      dailyLeadTarget: 5,
-      monthlyConversionTarget: 20,
-    });
-    mockPrismaService.marketMappingTerritoryConfig.findUnique.mockResolvedValue({
-      territoryCode: "NG-LAG-IKJ-01",
-      name: "Ikeja Central Business District",
-      country: "Nigeria",
-      state: "Lagos",
-      city: "Ikeja",
-      area: "Allen / Opebi",
-      cluster: "Tech & Retail Cluster 1",
-      totalAssigned: 120,
-      anchorCount: 15,
-      prospectCount: 85,
-      maturityJson: {},
-    });
-    mockPrismaService.marketMappingAdminConfig.findFirst.mockResolvedValue({
-      id: "config-1",
-      categories: ["Pharmacy"],
-      openingDays: ["Mon"],
-      customerRanges: [{ value: "LOW", label: "Low" }],
-      businessSizes: [{ value: "SMALL", label: "Small" }],
-      contactPositions: ["Owner"],
-      pipelineStatuses: [{ id: "NOT_YET", name: "Not yet" }],
-      interestOptions: [{ value: "YES", label: "Yes" }],
-      planTypes: [{ value: "BASIC", label: "Basic" }],
-      faqs: [],
-      ticketStatuses: [],
-      businessStatuses: [],
-      paymentStatuses: [],
-      dailyTarget: 5,
-      weeklyTarget: 25,
-      monthlyTarget: 20,
-      fieldDefaults: { autoAssignLead: true, requireGps: true },
-    });
-    mockPrismaService.marketMappingAssignment.findFirst.mockResolvedValue(null);
-
-    const result = await service.getConfig("user-1");
-    expect(result.territory.territoryCode).toBe("NG-LAG-IKJ-01");
-    expect(result.userTargets.dailyLeadTarget).toBe(5);
-    expect(result.assignment).toBeNull();
-    expect(result.assignedCluster).toBe("Tech & Retail Cluster 1");
-  });
-
-  it("should expose the admin cluster assignment in config", async () => {
-    mockPrismaService.user.findUnique.mockResolvedValue({
-      territoryId: "NG-LAG-IKJ-01",
-      dailyLeadTarget: 5,
-      monthlyConversionTarget: 20,
-    });
-    mockPrismaService.marketMappingTerritoryConfig.findUnique.mockResolvedValue({
-      territoryCode: "NG-LAG-IKJ-01",
-      cluster: "Tech & Retail Cluster 1",
-      country: "Nigeria",
-      state: "Lagos",
-      city: "Ikeja",
-      area: "Allen / Opebi",
-      totalAssigned: 120,
-      anchorCount: 15,
-      prospectCount: 85,
-      maturityJson: {},
-    });
-    mockPrismaService.marketMappingAdminConfig.findFirst.mockResolvedValue({
-      id: "config-1",
-      categories: [],
-      openingDays: [],
-      customerRanges: [],
-      businessSizes: [],
-      contactPositions: [],
-      pipelineStatuses: [],
-      interestOptions: [],
-      planTypes: [],
-      faqs: [],
-      ticketStatuses: [],
-      businessStatuses: [],
-      paymentStatuses: [],
-      dailyTarget: 5,
-      weeklyTarget: 25,
-      monthlyTarget: 20,
-      fieldDefaults: {},
-    });
-    mockPrismaService.marketMappingAssignment.findFirst.mockResolvedValue({
-      userId: "user-1",
-      clusterId: "cluster-9",
-      allowUserEdit: false,
-      cluster: { id: "cluster-9", name: "Ikeja Cluster A" },
+  describe("getConfig", () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        territoryId: "NG-LAG-IKJ-01",
+        dailyLeadTarget: 5,
+        monthlyConversionTarget: 20,
+      });
+      mockPrismaService.marketMappingTerritoryConfig.findUnique.mockResolvedValue({
+        territoryCode: "NG-LAG-IKJ-01",
+        country: "Nigeria",
+        state: "Lagos",
+        city: "Ikeja",
+        area: "Allen / Opebi",
+        cluster: "Tech & Retail Cluster 1",
+        totalAssigned: 120,
+        anchorCount: 15,
+        prospectCount: 85,
+        maturityJson: {},
+      });
+      mockPrismaService.marketMappingAdminConfig.findFirst.mockResolvedValue({
+        id: "cfg-1",
+        categories: ["Pharmacy"],
+        businessCategories: ["Pharmacy"],
+        openingDays: ["Mon"],
+        customerRanges: [],
+        businessSizes: [],
+        contactPositions: [],
+        pipelineStatuses: [],
+        interestOptions: [],
+        planTypes: [],
+        faqs: [],
+        ticketStatuses: [],
+        businessStatuses: [],
+        paymentStatuses: [],
+        dailyTarget: 5,
+        weeklyTarget: 25,
+        monthlyTarget: 20,
+        fieldDefaults: {},
+        updatedAt: new Date(),
+      });
+      mockPrismaService.marketMappingAssignment.findFirst.mockResolvedValue(null);
     });
 
-    const result = await service.getConfig("user-1");
-    expect(result.assignment).toEqual({ clusterId: "cluster-9", clusterName: "Ikeja Cluster A", allowUserEdit: false });
-    expect(result.assignedCluster).toBe("Ikeja Cluster A");
+    it("should return config with user targets", async () => {
+      const result = await service.getConfig("user-1");
+
+      expect(result.dailyTarget).toBe(5);
+      expect(result.monthlyTarget).toBe(20);
+      expect(result.userTargets.dailyLeadTarget).toBe(5);
+      expect(result.assignedCluster).toBe("Tech & Retail Cluster 1");
+    });
+
+    it("should fall back to defaults when no admin config exists", async () => {
+      mockPrismaService.marketMappingAdminConfig.findFirst.mockResolvedValue(null);
+      mockPrismaService.marketMappingAdminConfig.create.mockResolvedValue({
+        id: "cfg-new",
+        dailyTarget: 5,
+        weeklyTarget: 25,
+        monthlyTarget: 20,
+      });
+
+      const result = await service.getConfig("user-1");
+
+      expect(mockPrismaService.marketMappingAdminConfig.create).toHaveBeenCalled();
+      expect(result.dailyTarget).toBe(5);
+    });
   });
 
   describe("getClusterDetail", () => {
@@ -192,25 +163,25 @@ describe("MarketMappingService", () => {
       },
     ];
 
-    const capturedVisits = [
+    const capturedLeads = [
       {
         id: "visit-1",
-        name: "Captured Shop",
-        category: "Pharmacy",
+        businessName: "Captured Shop",
+        industry: "Pharmacy",
         status: "INTERESTED",
         isAnchor: false,
         isPlaceholder: false,
-        address: null,
-        exactAddress: "Shop 3",
+        businessAddress: null,
+        location: "Shop 3",
         phone: "08022222222",
-        ownerName: "Jane",
-        contactEmail: "jane@example.com",
+        contactName: "Jane",
+        email: "jane@example.com",
         gpsLat: "9.0765",
         gpsLng: "7.4898",
         dailyCustomers: "HIGH",
         businessSize: "SMALL",
         openingHours: "09:00-18:00",
-        visitNotes: "Follow up next week",
+        comments: "Follow up next week",
         visitedAt: new Date("2026-08-01T10:00:00Z"),
         nextVisitDate: null,
         nextVisitTime: null,
@@ -219,7 +190,7 @@ describe("MarketMappingService", () => {
       },
       {
         id: "visit-dup",
-        name: "Converted Shop",
+        businessName: "Converted Shop",
         status: "VISITED",
         phone: "08011111111",
         gpsLat: "9.0",
@@ -229,7 +200,7 @@ describe("MarketMappingService", () => {
       },
       {
         id: "visit-nogps",
-        name: "No GPS Shop",
+        businessName: "No GPS Shop",
         status: "VISITED",
         phone: "08033333333",
         gpsLat: null,
@@ -239,7 +210,7 @@ describe("MarketMappingService", () => {
       },
       {
         id: "visit-badcoords",
-        name: "Bad Coords Shop",
+        businessName: "Bad Coords Shop",
         status: "VISITED",
         phone: "08044444444",
         gpsLat: "not-a-number",
@@ -253,7 +224,7 @@ describe("MarketMappingService", () => {
       jest.clearAllMocks();
       mockPrismaService.marketMappingHierarchy.findUnique.mockResolvedValue(cluster);
       mockPrismaService.business.findMany.mockResolvedValue(existingBusinesses);
-      mockPrismaService.marketMappingVisit.findMany.mockResolvedValue(capturedVisits);
+      mockPrismaService.lead.findMany.mockResolvedValue(capturedLeads);
     });
 
     it("should throw NotFoundException when cluster does not exist", async () => {
@@ -262,7 +233,7 @@ describe("MarketMappingService", () => {
       await expect(service.getClusterDetail("missing")).rejects.toThrow(NotFoundException);
     });
 
-    it("should include captured visits with GPS as mapped businesses with real coordinates", async () => {
+    it("should include captured leads with GPS as mapped businesses with real coordinates", async () => {
       const result = await service.getClusterDetail("cluster-1");
 
       expect(result.businesses).toHaveLength(2);
@@ -284,19 +255,19 @@ describe("MarketMappingService", () => {
       });
     });
 
-    it("should dedupe captured visits whose phone matches an existing business", async () => {
+    it("should dedupe captured leads whose phone matches an existing business", async () => {
       const result = await service.getClusterDetail("cluster-1");
 
       expect(result.businesses.some((b) => b.id === "visit-dup")).toBe(false);
     });
 
-    it("should exclude captured visits without GPS coordinates", async () => {
+    it("should exclude captured leads without GPS coordinates", async () => {
       const result = await service.getClusterDetail("cluster-1");
 
       expect(result.businesses.some((b) => b.id === "visit-nogps")).toBe(false);
     });
 
-    it("should exclude captured visits with non-numeric GPS coordinates", async () => {
+    it("should exclude captured leads with non-numeric GPS coordinates", async () => {
       const result = await service.getClusterDetail("cluster-1");
 
       expect(result.businesses.some((b) => b.id === "visit-badcoords")).toBe(false);
@@ -311,22 +282,208 @@ describe("MarketMappingService", () => {
 
       const result = await service.getClusterDetail("cluster-1");
 
-      expect(mockPrismaService.marketMappingVisit.findMany).not.toHaveBeenCalled();
+      expect(mockPrismaService.lead.findMany).not.toHaveBeenCalled();
       expect(result.businesses).toEqual([]);
     });
   });
 
+  describe("createVisit / updateVisit (pipeline leads)", () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it("creates a lead with NOT_YET status and no visitedAt", async () => {
+      mockPrismaService.lead.create.mockResolvedValue({
+        id: "lead-1",
+        businessName: "Shop One",
+        status: "NOT_YET",
+        visitedAt: null,
+      });
+
+      const result = await service.createVisit("user-1", {
+        businessName: "Shop One",
+        industry: "Pharmacy",
+        status: "NOT_YET",
+      } as any);
+
+      expect(mockPrismaService.lead.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          userId: "user-1",
+          businessName: "Shop One",
+          status: "NOT_YET",
+          visitedAt: undefined,
+        }),
+      });
+      expect(result.visited).toBe(false);
+    });
+
+    it("stamps visitedAt when a lead is created already visited (engaged status)", async () => {
+      mockPrismaService.lead.create.mockResolvedValue({
+        id: "lead-1",
+        businessName: "Shop One",
+        status: "INTERESTED",
+        visitedAt: new Date(),
+      });
+
+      const result = await service.createVisit("user-1", {
+        businessName: "Shop One",
+        status: "INTERESTED",
+      } as any);
+
+      expect(mockPrismaService.lead.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          status: "INTERESTED",
+          visitedAt: expect.any(Date),
+        }),
+      });
+      expect(result.visited).toBe(true);
+    });
+
+    it("stamps visitedAt when a lead transitions from NOT_YET to VISITED", async () => {
+      mockPrismaService.lead.findFirst.mockResolvedValue({
+        id: "lead-1",
+        userId: "user-1",
+        status: "NOT_YET",
+        visitedAt: null,
+      });
+      mockPrismaService.lead.update.mockResolvedValue({
+        id: "lead-1",
+        businessName: "Shop One",
+        status: "VISITED",
+        visitedAt: new Date(),
+      });
+
+      const result = await service.updateVisit("lead-1", "user-1", { status: "VISITED" } as any);
+
+      expect(mockPrismaService.lead.update).toHaveBeenCalledWith({
+        where: { id: "lead-1" },
+        data: expect.objectContaining({
+          status: "VISITED",
+          visitedAt: expect.any(Date),
+        }),
+      });
+      expect(result.visited).toBe(true);
+    });
+
+    it("keeps visitedAt unchanged when updating an already visited lead", async () => {
+      const visitedAt = new Date();
+      mockPrismaService.lead.findFirst.mockResolvedValue({
+        id: "lead-1",
+        userId: "user-1",
+        status: "INTERESTED",
+        visitedAt,
+      });
+      mockPrismaService.lead.update.mockResolvedValue({
+        id: "lead-1",
+        status: "CUSTOMER",
+        visitedAt,
+      });
+
+      const result = await service.updateVisit("lead-1", "user-1", { status: "CUSTOMER" } as any);
+
+      expect(mockPrismaService.lead.update).toHaveBeenCalledWith({
+        where: { id: "lead-1" },
+        data: expect.objectContaining({ status: "CUSTOMER", visitedAt: undefined }),
+      });
+      expect(result.visited).toBe(true);
+    });
+
+    it("throws NotFoundException when updating a lead that does not exist", async () => {
+      mockPrismaService.lead.findFirst.mockResolvedValue(null);
+
+      await expect(service.updateVisit("missing", "user-1", { status: "VISITED" } as any)).rejects.toThrow(NotFoundException);
+    });
+
+    it("maps legacy POTENTIAL to NOT_YET on create", async () => {
+      mockPrismaService.lead.create.mockResolvedValue({
+        id: "lead-1",
+        businessName: "Shop One",
+        status: "NOT_YET",
+        visitedAt: null,
+      });
+
+      const result = await service.createVisit("user-1", {
+        businessName: "Shop One",
+        status: "POTENTIAL",
+      } as any);
+
+      expect(mockPrismaService.lead.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          status: "NOT_YET",
+          visitedAt: undefined,
+        }),
+      });
+      expect(result.visited).toBe(false);
+    });
+
+    it("maps legacy COMPLETED to CUSTOMER on update", async () => {
+      mockPrismaService.lead.findFirst.mockResolvedValue({
+        id: "lead-1",
+        userId: "user-1",
+        status: "INTERESTED",
+        visitedAt: new Date(),
+      });
+      mockPrismaService.lead.update.mockResolvedValue({
+        id: "lead-1",
+        status: "CUSTOMER",
+        visitedAt: new Date(),
+      });
+
+      const result = await service.updateVisit("lead-1", "user-1", { status: "COMPLETED" } as any);
+
+      expect(mockPrismaService.lead.update).toHaveBeenCalledWith({
+        where: { id: "lead-1" },
+        data: expect.objectContaining({ status: "CUSTOMER", visitedAt: undefined }),
+      });
+      expect(result.visited).toBe(true);
+    });
+
+    it("does not reset an existing lead to NOT_YET when status is omitted on update", async () => {
+      const visitedAt = new Date();
+      mockPrismaService.lead.findFirst.mockResolvedValue({
+        id: "lead-1",
+        userId: "user-1",
+        status: "CONTACTED",
+        visitedAt,
+      });
+      mockPrismaService.lead.update.mockResolvedValue({
+        id: "lead-1",
+        status: "CONTACTED",
+        visitedAt,
+      });
+
+      const result = await service.updateVisit("lead-1", "user-1", { comments: "updated" } as any);
+
+      const updateArgs = mockPrismaService.lead.update.mock.calls[0][0];
+      expect(updateArgs.data).not.toHaveProperty("status");
+      expect(mockPrismaService.lead.update).toHaveBeenCalledWith({
+        where: { id: "lead-1" },
+        data: expect.objectContaining({ comments: "updated", visitedAt: undefined }),
+      });
+      expect(result.visited).toBe(true);
+    });
+  });
+
   describe("getReports", () => {
-    const now = new Date();
+    let now: Date;
 
     beforeEach(() => {
+      // Pin the clock to a Friday so weekday / optional-weekend behaviour is deterministic.
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date(2026, 7, 14, 12, 0, 0));
+      now = new Date();
+
       jest.clearAllMocks();
       mockPrismaService.user.findUnique.mockResolvedValue({ dailyLeadTarget: 20 });
       mockPrismaService.marketMappingAdminConfig.findFirst.mockResolvedValue({ dailyTarget: 20 });
       mockPrismaService.lead.findMany.mockResolvedValue([]);
       mockPrismaService.business.findMany.mockResolvedValue([]);
       mockPrismaService.marketMappingNote.findMany.mockResolvedValue([]);
-      mockPrismaService.marketMappingVisit.findMany.mockResolvedValue([]);
+      mockPrismaService.marketMappingPlan.findMany.mockResolvedValue([]);
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
     });
 
     it("should score 0% on days with no activity and no mocked baselines", async () => {
@@ -350,24 +507,28 @@ describe("MarketMappingService", () => {
       expect(result.ledger[0].target).toBe(15);
     });
 
-    it("should derive Business Info + GPS from real visit data", async () => {
-      mockPrismaService.marketMappingVisit.findMany.mockResolvedValue([
-        {
-          id: "visit-1",
-          name: "Complete Shop",
-          category: "Pharmacy",
-          phone: "08011111111",
-          ownerName: "Jane",
-          exactAddress: "Shop 3",
-          businessSize: "SMALL",
-          openingHours: "09:00-18:00",
-          contactPosition: "Owner",
-          gpsLat: "9.0765",
-          gpsLng: "7.4898",
-          visitedAt: now,
-          updatedAt: now,
-        },
-      ]);
+    it("should derive Business Info + GPS from real visit (visited lead) data", async () => {
+      // getReports calls prisma.lead.findMany twice: leads (createdAt) then visits (visitedAt)
+      mockPrismaService.lead.findMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          {
+            id: "lead-1",
+            businessName: "Complete Shop",
+            industry: "Pharmacy",
+            phone: "08011111111",
+            contactName: "Jane",
+            location: "Shop 3",
+            businessSize: "SMALL",
+            openingHours: "09:00-18:00",
+            contactRole: "Owner",
+            gpsLat: "9.0765",
+            gpsLng: "7.4898",
+            status: "INTERESTED",
+            visitedAt: now,
+            updatedAt: now,
+          },
+        ]);
 
       const result = await service.getReports("user-1", "daily");
 
@@ -380,16 +541,19 @@ describe("MarketMappingService", () => {
     });
 
     it("should not score business info on days with visits lacking profile fields or GPS", async () => {
-      mockPrismaService.marketMappingVisit.findMany.mockResolvedValue([
-        {
-          id: "visit-1",
-          name: "Bare Shop",
-          gpsLat: null,
-          gpsLng: null,
-          visitedAt: now,
-          updatedAt: now,
-        },
-      ]);
+      mockPrismaService.lead.findMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          {
+            id: "lead-1",
+            businessName: "Bare Shop",
+            gpsLat: null,
+            gpsLng: null,
+            status: "NOT_YET",
+            visitedAt: now,
+            updatedAt: now,
+          },
+        ]);
 
       const result = await service.getReports("user-1", "daily");
 
@@ -407,34 +571,103 @@ describe("MarketMappingService", () => {
       expect(result.weights.leadTarget).toBe(0);
       expect(result.ledger[0].score).toBe(0);
     });
+
+    it("should use a planned day mission as the day's lead target", async () => {
+      const todayStart = new Date(now);
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date(now);
+      todayEnd.setHours(23, 59, 59, 999);
+      mockPrismaService.marketMappingPlan.findMany.mockResolvedValue([
+        {
+          id: "plan-1",
+          targetVisits: 30,
+          targetLeads: 30,
+          targetConversions: 2,
+          startDate: todayStart,
+          endDate: todayEnd,
+        },
+      ]);
+
+      const result = await service.getReports("user-1", "daily");
+
+      expect(result.ledger[0].target).toBe(30);
+      expect(result.summary.target).toBe(30);
+      expect(result.summary.visitsTarget).toBe(30);
+      expect(result.summary.conversionTarget).toBe(2);
+    });
+
+    it("should sum weekly targets across working days only", async () => {
+      const result = await service.getReports("user-1", "weekly");
+
+      // Week of Mon Aug 10 – Sun Aug 16 2026: 5 weekdays * 20, weekends optional.
+      expect(result.summary.target).toBe(100);
+      expect(result.summary.visitsTarget).toBe(100);
+    });
+
+    it("should sum monthly targets across the whole calendar month", async () => {
+      const result = await service.getReports("user-1", "monthly");
+
+      // August 2026 has 21 weekdays, each fallback 20.
+      expect(result.summary.target).toBe(420);
+    });
+
+    it("should mark unplanned weekend days as optional with zero target", async () => {
+      const result = await service.getReports("user-1", "monthly");
+
+      // ledger[4] = Mon Aug 10, ledger[5] = Sun Aug 9, ledger[6] = Sat Aug 8.
+      expect(result.ledger[4].optional).toBe(false);
+      expect(result.ledger[5].optional).toBe(true);
+      expect(result.ledger[5].target).toBe(0);
+      expect(result.ledger[6].optional).toBe(true);
+    });
+
+    it("should count conversions by paidAt as well as createdAt", async () => {
+      mockPrismaService.business.findMany.mockResolvedValue([
+        {
+          id: "biz-1",
+          businessName: "Paying Shop",
+          ownerName: "Owner",
+          planType: "BASIC",
+          status: "ACTIVE",
+          commissionAmount: 100,
+          createdAt: new Date(now.getTime() - 10 * 86400000),
+          paidAt: now,
+        },
+      ]);
+
+      const result = await service.getReports("user-1", "daily");
+
+      expect(result.summary.totalConversions).toBe(1);
+      expect(result.ledger[0].conversions).toBe(1);
+    });
   });
 
   describe("getAdminCapturedVisits", () => {
-    it("should return all captured visits with GPS mapped to businesses", async () => {
-      const visits = [
+    it("should return all captured leads with GPS mapped to businesses", async () => {
+      const leads = [
         {
           id: "visit-1",
-          name: "Captured Shop",
-          category: "Pharmacy",
+          businessName: "Captured Shop",
+          industry: "Pharmacy",
           status: "INTERESTED",
           isAnchor: false,
           isPlaceholder: false,
-          address: null,
-          exactAddress: "Shop 3",
+          businessAddress: null,
+          location: "Shop 3",
           phone: "08022222222",
-          ownerName: "Jane",
+          contactName: "Jane",
           gpsLat: "8.482322",
           gpsLng: "4.595859",
           dailyCustomers: "HIGH",
           businessSize: "SMALL",
-          visitNotes: "Follow up next week",
+          comments: "Follow up next week",
           visitedAt: new Date("2026-08-01T10:00:00Z"),
           userId: "user-1",
           user: { id: "user-1", fullName: "Affiliate One" },
         },
         {
           id: "visit-nogps",
-          name: "No GPS Shop",
+          businessName: "No GPS Shop",
           status: "VISITED",
           phone: "08033333333",
           gpsLat: null,
@@ -443,7 +676,7 @@ describe("MarketMappingService", () => {
           user: { id: "user-2", fullName: "Affiliate Two" },
         },
       ];
-      mockPrismaService.marketMappingVisit.findMany.mockResolvedValue(visits);
+      mockPrismaService.lead.findMany.mockResolvedValue(leads);
 
       const result = await service.getAdminCapturedVisits();
 
@@ -460,9 +693,9 @@ describe("MarketMappingService", () => {
       });
     });
 
-    it("should return empty array when no captured visits have GPS", async () => {
-      mockPrismaService.marketMappingVisit.findMany.mockResolvedValue([
-        { id: "visit-x", name: "X", gpsLat: null, gpsLng: null },
+    it("should return empty array when no captured leads have GPS", async () => {
+      mockPrismaService.lead.findMany.mockResolvedValue([
+        { id: "visit-x", businessName: "X", gpsLat: null, gpsLng: null },
       ]);
 
       const result = await service.getAdminCapturedVisits();
@@ -481,51 +714,51 @@ describe("MarketMappingService", () => {
 
     it("should reject a past nextVisitDate on create", async () => {
       await expect(
-        service.createVisit("user-1", { name: "Shop", nextVisitDate: "2020-01-01" } as any),
+        service.createVisit("user-1", { businessName: "Shop", nextVisitDate: "2020-01-01" } as any),
       ).rejects.toThrow(BadRequestException);
     });
 
     it("should reject a past nextVisitTime on today's date on create", async () => {
       await expect(
-        service.createVisit("user-1", { name: "Shop", nextVisitDate: todayStr, nextVisitTime: "00:00" } as any),
+        service.createVisit("user-1", { businessName: "Shop", nextVisitDate: todayStr, nextVisitTime: "00:00" } as any),
       ).rejects.toThrow(BadRequestException);
     });
 
     it("should accept a future nextVisitDate on create", async () => {
-      const created = { id: "visit-1", name: "Shop", nextVisitDate: "2999-01-01" };
-      mockPrismaService.marketMappingVisit.create.mockResolvedValue(created);
+      const created = { id: "lead-1", businessName: "Shop", nextVisitDate: "2999-01-01" };
+      mockPrismaService.lead.create.mockResolvedValue(created);
 
-      const result = await service.createVisit("user-1", { name: "Shop", nextVisitDate: "2999-01-01" } as any);
+      const result = await service.createVisit("user-1", { businessName: "Shop", nextVisitDate: "2999-01-01" } as any);
 
-      expect(result).toEqual(created);
+      expect(result).toMatchObject(created);
     });
 
     it("should reject a changed past nextVisitDate on update", async () => {
-      mockPrismaService.marketMappingVisit.findFirst.mockResolvedValue({
-        id: "visit-1",
+      mockPrismaService.lead.findFirst.mockResolvedValue({
+        id: "lead-1",
         userId: "user-1",
         nextVisitDate: "2999-01-01",
         nextVisitTime: null,
       });
 
       await expect(
-        service.updateVisit("visit-1", "user-1", { nextVisitDate: "2020-01-01" } as any),
+        service.updateVisit("lead-1", "user-1", { nextVisitDate: "2020-01-01" } as any),
       ).rejects.toThrow(BadRequestException);
     });
 
     it("should allow an unchanged legacy past nextVisitDate on update", async () => {
-      mockPrismaService.marketMappingVisit.findFirst.mockResolvedValue({
-        id: "visit-1",
+      mockPrismaService.lead.findFirst.mockResolvedValue({
+        id: "lead-1",
         userId: "user-1",
         nextVisitDate: "2020-01-01",
         nextVisitTime: null,
       });
-      const updated = { id: "visit-1", nextVisitDate: "2020-01-01" };
-      mockPrismaService.marketMappingVisit.update.mockResolvedValue(updated);
+      const updated = { id: "lead-1", nextVisitDate: "2020-01-01" };
+      mockPrismaService.lead.update.mockResolvedValue(updated);
 
-      const result = await service.updateVisit("visit-1", "user-1", { nextVisitDate: "2020-01-01" } as any);
+      const result = await service.updateVisit("lead-1", "user-1", { nextVisitDate: "2020-01-01" } as any);
 
-      expect(result).toEqual(updated);
+      expect(result).toMatchObject(updated);
     });
   });
 

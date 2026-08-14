@@ -167,18 +167,20 @@ export function MarketMappingProvider({ children }: { children: React.ReactNode 
     if (Array.isArray(apiVisits)) setVisits(apiVisits);
   }, [apiVisits]);
 
+  // visitedToday is authoritative from the backend (lead.visitedAt based). Only
+  // fall back to a client-side count from visitedAt while it is not loaded yet;
+  // edits/creates alone must never count as a visit.
   useEffect(() => {
     const todayStr = new Date().toLocaleDateString('en-CA');
     const countToday = visits.filter((v: any) => {
-      const createdKey = v.createdAt ? new Date(v.createdAt).toLocaleDateString('en-CA') : '';
-      const visitedKey = v.visitedAt ? new Date(v.visitedAt).toLocaleDateString('en-CA') : '';
-      const updatedKey = v.updatedAt ? new Date(v.updatedAt).toLocaleDateString('en-CA') : '';
-      return createdKey === todayStr || visitedKey === todayStr || updatedKey === todayStr || !v.createdAt;
+      if (!v.visitedAt) return false;
+      const visitedKey = new Date(v.visitedAt).toLocaleDateString('en-CA');
+      return visitedKey === todayStr;
     }).length;
 
     setStats(prev => ({
       ...prev,
-      visitedToday: countToday,
+      visitedToday: countToday || prev.visitedToday,
     }));
   }, [visits]);
 
@@ -205,7 +207,7 @@ export function MarketMappingProvider({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     if (!Array.isArray(apiHistory)) return;
-    setMissionHistory(apiHistory.map((p) => ({ id: p.id, horizon: p.endDate ? 'WEEK' : 'DAY', location: p.locationCluster || '', targetCount: p.targetVisits || 0, createdAt: p.createdAt, startDate: p.startDate ? String(p.startDate) : undefined, endDate: p.endDate ? String(p.endDate) : undefined, achieved: p.visits.filter((v) => v.status !== 'NOT_YET').length, status: p.status === 'COMPLETED' ? 'ACHIEVED' : 'INCOMPLETE', archivedAt: p.updatedAt || p.createdAt })) as MissionHistoryEntry[]);
+    setMissionHistory(apiHistory.map((p) => ({ id: p.id, horizon: p.endDate ? 'WEEK' : 'DAY', location: p.locationCluster || '', targetCount: p.targetVisits || 0, createdAt: p.createdAt, startDate: p.startDate ? String(p.startDate) : undefined, endDate: p.endDate ? String(p.endDate) : undefined, achieved: (p.leads ?? []).filter((v) => v.status !== 'NOT_YET').length, status: p.status === 'COMPLETED' ? 'ACHIEVED' : 'INCOMPLETE', archivedAt: p.updatedAt || p.createdAt })) as MissionHistoryEntry[]);
   }, [apiHistory]);
 
   const addMissionPlan = useCallback((plan: MissionPlan) => {
