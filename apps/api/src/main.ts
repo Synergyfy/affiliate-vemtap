@@ -5,6 +5,7 @@ import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import * as cookieParser from "cookie-parser";
 import { AppModule } from "./app.module";
 import { ObservabilityLoggingInterceptor } from "./observability/observability.interceptor";
+import { PrismaExceptionFilter } from "./common/filters/prisma-exception.filter";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -30,10 +31,14 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
-      forbidNonWhitelisted: true,
+      // Unknown fields are stripped (whitelist) but NOT rejected, so external
+      // partners like Vemtap can send extra fields without 400s.
+      forbidNonWhitelisted: false,
       transform: true,
     }),
   );
+
+  app.useGlobalFilters(new PrismaExceptionFilter());
 
   app.setGlobalPrefix("api");
 

@@ -3,11 +3,12 @@ import { AgentsController } from './agents.controller';
 import { AgentsService } from './agents.service';
 import { ApiKeysModule } from '../api-keys/api-keys.module';
 import { ApiKeyGuard } from '../api-keys/guards/api-key.guard';
+import { RateLimitGuard } from '../common/guards/rate-limit.guard';
 
 @Module({
   imports: [ApiKeysModule],
   controllers: [AgentsController],
-  providers: [AgentsService, ApiKeyGuard],
+  providers: [AgentsService, ApiKeyGuard, RateLimitGuard],
   exports: [AgentsService],
 })
 export class AgentsModule {}

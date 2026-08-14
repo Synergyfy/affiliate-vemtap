@@ -4,7 +4,7 @@ import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 import * as cookieParser from 'cookie-parser';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { Role, UserStatus, PlanType } from '@prisma/client';
+import { Role, UserStatus, PlanType, KycStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 describe('External Endpoints (e2e)', () => {
@@ -28,6 +28,8 @@ describe('External Endpoints (e2e)', () => {
     prismaService = app.get<PrismaService>(PrismaService);
 
     // Cleanup first to avoid any conflicts
+    await prismaService.externalSyncLog.deleteMany({});
+    await prismaService.withdrawal.deleteMany({});
     await prismaService.commission.deleteMany({});
     await prismaService.business.deleteMany({});
     await prismaService.apiKey.deleteMany({});
@@ -100,6 +102,24 @@ describe('External Endpoints (e2e)', () => {
       },
     });
 
+    // KYC-verified affiliate with withdrawable earnings (for withdrawal tests)
+    await prismaService.user.create({
+      data: {
+        email: 'carol@affiliate.com',
+        fullName: 'Carol Nwosu',
+        phone: '+2348044444444',
+        password: passwordHash,
+        role: Role.AFFILIATE,
+        referralCode: 'VEM-CN101',
+        status: UserStatus.ACTIVE,
+        kycStatus: KycStatus.VERIFIED,
+        pendingEarnings: 100000,
+        bankName: 'GTBank',
+        accountNumber: '0123456789',
+        accountName: 'Carol Nwosu',
+      },
+    });
+
     // Create a mock active API key
     const prefixId = '3774d66b';
     const secret = 'a1ac7392c877d121bb3c919b65df2c9d11b66555f2e4efe6';
@@ -119,6 +139,8 @@ describe('External Endpoints (e2e)', () => {
   });
 
   afterAll(async () => {
+    await prismaService.externalSyncLog.deleteMany({});
+    await prismaService.withdrawal.deleteMany({});
     await prismaService.commission.deleteMany({});
     await prismaService.business.deleteMany({});
     await prismaService.apiKey.deleteMany({});
@@ -151,7 +173,7 @@ describe('External Endpoints (e2e)', () => {
       expect(res.body).toHaveProperty('meta');
       expect(Array.isArray(res.body.data)).toBe(true);
       // It should only fetch role = AFFILIATE, and return active, suspended, deactivated
-      expect(res.body.data.length).toBe(3);
+      expect(res.body.data.length).toBe(4);
 
       const john = res.body.data.find((a: any) => a.email === 'john@affiliate.com');
       expect(john).toBeDefined();
@@ -160,7 +182,7 @@ describe('External Endpoints (e2e)', () => {
       expect(john.status).toBe(UserStatus.ACTIVE);
 
       expect(res.body.meta).toEqual({
-        total: 3,
+        total: 4,
         page: 1,
         limit: 50,
         totalPages: 1,
@@ -218,9 +240,9 @@ describe('External Endpoints (e2e)', () => {
         .set('x-api-key', rawApiKey)
         .expect(200);
 
-      expect(res.body.data.length).toBe(1); // Since there are 3 total affiliates
+      expect(res.body.data.length).toBe(2); // Since there are 4 total affiliates
       expect(res.body.meta).toEqual({
-        total: 3,
+        total: 4,
         page: 2,
         limit: 2,
         totalPages: 2,
@@ -370,6 +392,308 @@ describe('External Endpoints (e2e)', () => {
           businessType: 'Technology',
         })
         .expect(409);
+    });
+  });
+
+  describe('POST /external/referrals/record', () => {
+    const basePayload = {
+      referralCode: 'VEM-JD123',
+      businessName: 'Referral Biz Ltd',
+      ownerName: 'John Doe',
+      email: 'biz1@example.com',
+      phone: '08012345001',
+      planName: 'Professional',
+      planId: '25a9b67b-63ed-4df8-b222-58d0a2e22715',
+      businessId: 'edcf9de7-2397-474b-8720-412a4cb95e78',
+      amountPaid: 15000,
+      isFirstPayment: true,
+      rate: 30,
+    };
+
+    it('should credit first-payment commission (rate x amountPaid) and create the business', async () => {
+      const affiliateBefore = await prismaService.user.findUnique({
+        where: { email: 'john@affiliate.com' },
+      });
+      const earningsBefore = Number(affiliateBefore!.pendingEarnings);
+      const referralCountBefore = affiliateBefore!.referralCount;
+
+      const res = await request(app.getHttpServer())
+        .post('/external/referrals/record')
+        .set('x-api-key', rawApiKey)
+        .send({ ...basePayload, externalReference: 'SUB-PAY-1001' })
+        .expect(201);
+
+      expect(res.body.businessId).toBeDefined();
+      expect(res.body.commissionTriggered).toBe(true);
+      expect(res.body.deduplicated).toBe(false);
+
+      const business = await prismaService.business.findUnique({
+        where: { id: res.body.businessId },
+      });
+      expect(business).toBeDefined();
+      expect(business!.planName).toBe('Professional');
+      expect(business!.planId).toBe('25a9b67b-63ed-4df8-b222-58d0a2e22715');
+      expect(business!.externalBusinessId).toBe('edcf9de7-2397-474b-8720-412a4cb95e78');
+      expect(business!.externalReference).toBe('SUB-PAY-1001');
+      expect(Number(business!.subscriptionAmount)).toBe(15000);
+      // 30% of 15000 = 4500
+      expect(Number(business!.commissionAmount)).toBe(4500);
+
+      const commissions = await prismaService.commission.findMany({
+        where: { businessId: res.body.businessId },
+      });
+      expect(commissions.length).toBe(1);
+      expect(Number(commissions[0].amount)).toBe(4500);
+
+      const affiliate = await prismaService.user.findUnique({
+        where: { email: 'john@affiliate.com' },
+      });
+      expect(Number(affiliate!.pendingEarnings)).toBe(earningsBefore + 4500);
+      expect(Number(affiliate!.totalEarnings)).toBe(earningsBefore + 4500);
+      expect(affiliate!.referralCount).toBe(referralCountBefore + 1);
+    });
+
+    it('should replay the same Idempotency-Key without double-crediting', async () => {
+      const payload = {
+        ...basePayload,
+        businessName: 'Replay Biz Ltd',
+        email: 'biz2@example.com',
+        businessId: 'biz-uuid-replay',
+        amountPaid: 5000,
+        isFirstPayment: true,
+        rate: 30,
+        externalReference: 'SUB-PAY-2001',
+      };
+
+      const first = await request(app.getHttpServer())
+        .post('/external/referrals/record')
+        .set('x-api-key', rawApiKey)
+        .set('Idempotency-Key', 'affiliate-ref:SUB-PAY-2001')
+        .send(payload)
+        .expect(201);
+
+      const replay = await request(app.getHttpServer())
+        .post('/external/referrals/record')
+        .set('x-api-key', rawApiKey)
+        .set('Idempotency-Key', 'affiliate-ref:SUB-PAY-2001')
+        .send(payload)
+        .expect(200);
+
+      expect(replay.body.businessId).toBe(first.body.businessId);
+      expect(replay.body.deduplicated).toBe(true);
+
+      const count = await prismaService.business.count({
+        where: { email: 'biz2@example.com' },
+      });
+      expect(count).toBe(1);
+
+      const commissions = await prismaService.commission.findMany({
+        where: { businessId: first.body.businessId },
+      });
+      expect(commissions.length).toBe(1); // not double-credited
+    });
+
+    it('should dedupe on externalReference even with a fresh Idempotency-Key', async () => {
+      const payload = {
+        ...basePayload,
+        businessName: 'Ref Dedup Ltd',
+        email: 'biz3@example.com',
+        businessId: 'biz-uuid-dedup',
+        amountPaid: 3000,
+        isFirstPayment: true,
+        rate: 30,
+        externalReference: 'SUB-PAY-3001',
+      };
+
+      const first = await request(app.getHttpServer())
+        .post('/external/referrals/record')
+        .set('x-api-key', rawApiKey)
+        .send(payload)
+        .expect(201);
+
+      const replay = await request(app.getHttpServer())
+        .post('/external/referrals/record')
+        .set('x-api-key', rawApiKey)
+        .send(payload)
+        .expect(200);
+
+      expect(replay.body.businessId).toBe(first.body.businessId);
+      expect(replay.body.deduplicated).toBe(true);
+
+      const count = await prismaService.business.count({
+        where: { email: 'biz3@example.com' },
+      });
+      expect(count).toBe(1);
+    });
+
+    it('should credit recurring payments separately (no duplicate business, no 409)', async () => {
+      const affiliateBefore = await prismaService.user.findUnique({
+        where: { email: 'john@affiliate.com' },
+      });
+      const earningsBefore = Number(affiliateBefore!.pendingEarnings);
+      const referralCountBefore = affiliateBefore!.referralCount;
+
+      const firstPayload = {
+        ...basePayload,
+        businessName: 'Recurring Biz Ltd',
+        email: 'biz4@example.com',
+        businessId: 'biz-uuid-recurring',
+        amountPaid: 10000,
+        isFirstPayment: true,
+        rate: 30,
+        externalReference: 'SUB-PAY-4001',
+      };
+
+      const first = await request(app.getHttpServer())
+        .post('/external/referrals/record')
+        .set('x-api-key', rawApiKey)
+        .send(firstPayload)
+        .expect(201);
+
+      // Recurring payment for the SAME business, new payment reference
+      const recurring = await request(app.getHttpServer())
+        .post('/external/referrals/record')
+        .set('x-api-key', rawApiKey)
+        .send({
+          ...firstPayload,
+          isFirstPayment: false,
+          rate: 10,
+          amountPaid: 10000,
+          externalReference: 'SUB-PAY-4002',
+        })
+        .expect(201);
+
+      // Same business record reused
+      expect(recurring.body.businessId).toBe(first.body.businessId);
+
+      const businesses = await prismaService.business.findMany({
+        where: { email: 'biz4@example.com' },
+      });
+      expect(businesses.length).toBe(1); // one business, multiple payments
+
+      const commissions = await prismaService.commission.findMany({
+        where: { businessId: first.body.businessId },
+      });
+      // 30% of 10000 (first) + 10% of 10000 (recurring) = 3000 + 1000 = 4000
+      expect(commissions.length).toBe(2);
+      const total = commissions.reduce((sum, c) => sum + Number(c.amount), 0);
+      expect(total).toBe(4000);
+
+      const affiliateAfter = await prismaService.user.findUnique({
+        where: { email: 'john@affiliate.com' },
+      });
+      expect(Number(affiliateAfter!.pendingEarnings)).toBe(earningsBefore + 4000);
+      expect(affiliateAfter!.referralCount).toBe(referralCountBefore + 1); // only first payment counts as a new referral
+    });
+
+    it('should return 404 for an unknown referral code (terminal)', async () => {
+      await request(app.getHttpServer())
+        .post('/external/referrals/record')
+        .set('x-api-key', rawApiKey)
+        .send({
+          ...basePayload,
+          referralCode: 'VEM-UNKNOWN',
+          email: 'ghost@example.com',
+          businessId: 'biz-uuid-ghost',
+          externalReference: 'SUB-PAY-5001',
+        })
+        .expect(404);
+    });
+  });
+  describe('POST /external/withdrawals/process', () => {
+    it('should create a withdrawal by affiliate email', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/external/withdrawals/process')
+        .set('x-api-key', rawApiKey)
+        .send({
+          email: 'carol@affiliate.com',
+          amount: 20000,
+          bankName: 'GTBank',
+          accountNumber: '0123456789',
+          accountName: 'Carol Nwosu',
+          externalReference: 'VEM-WD-5001',
+        })
+        .expect(201);
+
+      expect(res.body.withdrawalId).toBeDefined();
+      expect(res.body.status).toBe('PENDING');
+      expect(res.body.deduplicated).toBe(false);
+
+      const withdrawal = await prismaService.withdrawal.findUnique({
+        where: { id: res.body.withdrawalId },
+      });
+      expect(withdrawal).toBeDefined();
+      expect(withdrawal!.externalReference).toBe('VEM-WD-5001');
+      expect(withdrawal!.bankName).toBe('GTBank');
+      expect(Number(withdrawal!.amount)).toBe(20000);
+    });
+
+    it('should dedupe a replayed withdrawal on externalReference', async () => {
+      const first = await request(app.getHttpServer())
+        .post('/external/withdrawals/process')
+        .set('x-api-key', rawApiKey)
+        .set('Idempotency-Key', 'idem-wd-6001')
+        .send({
+          email: 'carol@affiliate.com',
+          amount: 10000,
+          bankName: 'GTBank',
+          accountNumber: '0123456789',
+          accountName: 'Carol Nwosu',
+          externalReference: 'VEM-WD-6001',
+        })
+        .expect(201);
+
+      const replay = await request(app.getHttpServer())
+        .post('/external/withdrawals/process')
+        .set('x-api-key', rawApiKey)
+        .set('Idempotency-Key', 'idem-wd-6001')
+        .send({
+          email: 'carol@affiliate.com',
+          amount: 10000,
+          bankName: 'GTBank',
+          accountNumber: '0123456789',
+          accountName: 'Carol Nwosu',
+          externalReference: 'VEM-WD-6001',
+        })
+        .expect(200);
+
+      expect(replay.body.withdrawalId).toBe(first.body.withdrawalId);
+      expect(replay.body.deduplicated).toBe(true);
+
+      const count = await prismaService.withdrawal.count({
+        where: { externalReference: 'VEM-WD-6001' },
+      });
+      expect(count).toBe(1);
+    });
+
+    it('should return 400 when the affiliate has insufficient pending earnings', async () => {
+      await request(app.getHttpServer())
+        .post('/external/withdrawals/process')
+        .set('x-api-key', rawApiKey)
+        .send({
+          email: 'carol@affiliate.com',
+          amount: 999999999,
+          bankName: 'GTBank',
+          accountNumber: '0123456789',
+          accountName: 'Carol Nwosu',
+          externalReference: 'VEM-WD-7001',
+        })
+        .expect(400);
+    });
+
+    it('should return 404 for an unknown affiliate email', async () => {
+      await request(app.getHttpServer())
+        .post('/external/withdrawals/process')
+        .set('x-api-key', rawApiKey)
+        .send({
+          email: 'nobody@affiliate.com',
+          amount: 1000,
+          bankName: 'GTBank',
+          accountNumber: '0123456789',
+          accountName: 'Nobody',
+          externalReference: 'VEM-WD-7002',
+        })
+        .expect(404);
     });
   });
 });

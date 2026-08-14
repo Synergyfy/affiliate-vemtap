@@ -172,6 +172,10 @@ model Business {
   address         String?
   businessType    String?
   planType        PlanType @default(BASIC)
+  planName        String?   // Opaque plan name from Vemtap (dynamic, admin-defined)
+  planId          String?   // Opaque plan id from Vemtap (commission tiers key off this)
+  externalReference String? // Payment reference from Vemtap (unique per payment event)
+  externalBusinessId String? // Vemtap's business UUID (links recurring payments to the same business)
   
   referralCode    String
   affiliateId     String
@@ -199,6 +203,8 @@ model Business {
   @@index([referralCode])
   @@index([status])
   @@index([status, createdAt])
+  @@index([externalReference])
+  @@index([externalBusinessId])
 }
 
 enum PlanType {
@@ -269,6 +275,8 @@ model Withdrawal {
   accountNumber   String
   accountName     String
   
+  externalReference String? // Unique per-withdrawal key from Vemtap for idempotency
+  
   status          WithdrawalStatus @default(PENDING)
   adminNotes      String?
   processedAt     DateTime?
@@ -283,6 +291,7 @@ model Withdrawal {
   @@index([userId])
   @@index([status])
   @@index([bulkRunId])
+  @@index([externalReference])
 }
 
 model BulkWithdrawalRun {
@@ -519,6 +528,10 @@ model PlatformSettings {
   // Fraud guard toggle
   fraudGuardActive        Boolean @default(false)
 
+  // Dynamic plan pricing/commission map, keyed by Vemtap planId.
+  // e.g. { "plan_01HXYZ": { "price": 9999, "commissionRate": 0.15 } }
+  planPricingJson         Json?
+
   updatedAt               DateTime @updatedAt
 }
 
@@ -591,6 +604,42 @@ model AuditLog {
   @@index([userId])
   @@index([adminId])
   @@index([entity])
+}
+
+// Idempotency ledger for external Vemtap sync calls. Survives restarts so that
+// replays of the same Idempotency-Key or externalReference return the original
+// success response instead of creating duplicate records.
+model ExternalSyncLog {
+  id                String            @id @default(uuid())
+
+  scope             ExternalSyncScope
+  idempotencyKey    String?           // Idempotency-Key header from Vemtap
+  externalReference String?           // Unique reference supplied by Vemtap
+
+  status            ExternalSyncStatus @default(SUCCESS)
+  responseJson      Json?             // Original success response (for replay)
+  errorJson         Json?             // Failure details for reconciliation
+
+  businessId        String?
+  withdrawalId      String?
+
+  createdAt         DateTime          @default(now())
+
+  @@unique([scope, idempotencyKey])
+  @@unique([scope, externalReference])
+  @@index([scope, createdAt])
+  @@index([businessId])
+  @@index([withdrawalId])
+}
+
+enum ExternalSyncScope {
+  REFERRAL
+  WITHDRAWAL
+}
+
+enum ExternalSyncStatus {
+  SUCCESS
+  FAILED
 }
 
 model MarketingTool {
