@@ -465,15 +465,25 @@ describe("MarketMappingService", () => {
   });
 
   describe("getReports", () => {
-    const now = new Date();
+    let now: Date;
 
     beforeEach(() => {
+      // Pin the clock to a Friday so weekday / optional-weekend behaviour is deterministic.
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date(2026, 7, 14, 12, 0, 0));
+      now = new Date();
+
       jest.clearAllMocks();
       mockPrismaService.user.findUnique.mockResolvedValue({ dailyLeadTarget: 20 });
       mockPrismaService.marketMappingAdminConfig.findFirst.mockResolvedValue({ dailyTarget: 20 });
       mockPrismaService.lead.findMany.mockResolvedValue([]);
       mockPrismaService.business.findMany.mockResolvedValue([]);
       mockPrismaService.marketMappingNote.findMany.mockResolvedValue([]);
+      mockPrismaService.marketMappingPlan.findMany.mockResolvedValue([]);
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
     });
 
     it("should score 0% on days with no activity and no mocked baselines", async () => {
@@ -560,6 +570,75 @@ describe("MarketMappingService", () => {
 
       expect(result.weights.leadTarget).toBe(0);
       expect(result.ledger[0].score).toBe(0);
+    });
+
+    it("should use a planned day mission as the day's lead target", async () => {
+      const todayStart = new Date(now);
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date(now);
+      todayEnd.setHours(23, 59, 59, 999);
+      mockPrismaService.marketMappingPlan.findMany.mockResolvedValue([
+        {
+          id: "plan-1",
+          targetVisits: 30,
+          targetLeads: 30,
+          targetConversions: 2,
+          startDate: todayStart,
+          endDate: todayEnd,
+        },
+      ]);
+
+      const result = await service.getReports("user-1", "daily");
+
+      expect(result.ledger[0].target).toBe(30);
+      expect(result.summary.target).toBe(30);
+      expect(result.summary.visitsTarget).toBe(30);
+      expect(result.summary.conversionTarget).toBe(2);
+    });
+
+    it("should sum weekly targets across working days only", async () => {
+      const result = await service.getReports("user-1", "weekly");
+
+      // Week of Mon Aug 10 – Sun Aug 16 2026: 5 weekdays * 20, weekends optional.
+      expect(result.summary.target).toBe(100);
+      expect(result.summary.visitsTarget).toBe(100);
+    });
+
+    it("should sum monthly targets across the whole calendar month", async () => {
+      const result = await service.getReports("user-1", "monthly");
+
+      // August 2026 has 21 weekdays, each fallback 20.
+      expect(result.summary.target).toBe(420);
+    });
+
+    it("should mark unplanned weekend days as optional with zero target", async () => {
+      const result = await service.getReports("user-1", "monthly");
+
+      // ledger[4] = Mon Aug 10, ledger[5] = Sun Aug 9, ledger[6] = Sat Aug 8.
+      expect(result.ledger[4].optional).toBe(false);
+      expect(result.ledger[5].optional).toBe(true);
+      expect(result.ledger[5].target).toBe(0);
+      expect(result.ledger[6].optional).toBe(true);
+    });
+
+    it("should count conversions by paidAt as well as createdAt", async () => {
+      mockPrismaService.business.findMany.mockResolvedValue([
+        {
+          id: "biz-1",
+          businessName: "Paying Shop",
+          ownerName: "Owner",
+          planType: "BASIC",
+          status: "ACTIVE",
+          commissionAmount: 100,
+          createdAt: new Date(now.getTime() - 10 * 86400000),
+          paidAt: now,
+        },
+      ]);
+
+      const result = await service.getReports("user-1", "daily");
+
+      expect(result.summary.totalConversions).toBe(1);
+      expect(result.ledger[0].conversions).toBe(1);
     });
   });
 

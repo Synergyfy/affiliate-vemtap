@@ -370,7 +370,13 @@ export class UsersService {
             select: { id: true, fullName: true, email: true },
           },
           _count: {
-            select: { referrals: true, businesses: true, leads: true },
+            select: {
+              referrals: true,
+              businesses: true,
+              leads: {
+                where: { deletedAt: null, isPlaceholder: false },
+              },
+            },
           },
         },
       }),
@@ -393,7 +399,14 @@ export class UsersService {
           select: { id: true, fullName: true, email: true },
         },
         _count: {
-          select: { referrals: true, businesses: true, leads: true, marketMappingAssignments: true },
+          select: {
+            referrals: true,
+            businesses: true,
+            leads: {
+              where: { deletedAt: null, isPlaceholder: false },
+            },
+            marketMappingAssignments: true,
+          },
         },
       },
     });

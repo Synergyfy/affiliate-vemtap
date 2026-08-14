@@ -395,23 +395,43 @@ export class FieldActivityService {
           });
         }
       } else if (leadInfo.businessName && leadInfo.phone) {
-        // Capture a brand new lead during field work when it isn't already in the pipeline
-        const created = await tx.lead.create({
-          data: {
+        // Capture a brand new lead during field work when it isn't already in
+        // the pipeline. Guard against creating a duplicate when a lead for the
+        // same business already exists (matched by phone or business name).
+        const existing = await tx.lead.findFirst({
+          where: {
             userId,
-            businessName: leadInfo.businessName,
-            industry: leadInfo.category || 'General',
-            phone: leadInfo.phone,
-            email: leadInfo.email || null,
-            contactName: leadInfo.contactName || null,
-            source: 'Field Activity',
-            status: leadStatus,
-            visitedAt: new Date(),
-            gpsLat: dto.latitude != null ? String(dto.latitude) : null,
-            gpsLng: dto.longitude != null ? String(dto.longitude) : null,
-            comments: dto.visitNotes || null,
+            deletedAt: null,
+            OR: [
+              { phone: { contains: leadInfo.phone } },
+              {
+                businessName: {
+                  equals: leadInfo.businessName,
+                  mode: "insensitive",
+                },
+              },
+            ],
           },
         });
+
+        const created = existing
+          ? existing
+          : await tx.lead.create({
+              data: {
+                userId,
+                businessName: leadInfo.businessName,
+                industry: leadInfo.category || 'General',
+                phone: leadInfo.phone,
+                email: leadInfo.email || null,
+                contactName: leadInfo.contactName || null,
+                source: 'Field Activity',
+                status: leadStatus,
+                visitedAt: new Date(),
+                gpsLat: dto.latitude != null ? String(dto.latitude) : null,
+                gpsLng: dto.longitude != null ? String(dto.longitude) : null,
+                comments: dto.visitNotes || null,
+              },
+            });
 
         // Backfill the mission business -> lead link for the new capture
         if (targetBusiness) {

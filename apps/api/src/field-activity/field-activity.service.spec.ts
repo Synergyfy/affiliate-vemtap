@@ -158,4 +158,29 @@ describe("FieldActivityService.completeVisit", () => {
       data: { leadId: "lead-new" },
     });
   });
+
+  it("links an existing lead instead of creating a duplicate during field capture", async () => {
+    mockPrisma.$transaction.mockImplementation(async (cb: any) => cb(mockPrisma));
+    jest.spyOn(service, "getActiveMission").mockResolvedValue({
+      id: "mission-1",
+      businesses: [{ id: "biz-1", leadId: null, status: "NOT_YET" }],
+    } as any);
+    mockPrisma.lead.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({ id: "lead-existing", userId: "user-1", status: "NOT_YET", visitedAt: null });
+    mockPrisma.lead.create.mockResolvedValue({ id: "lead-new" });
+    mockPrisma.fieldActivityTimelineEvent.findFirst.mockResolvedValue(null);
+    mockPrisma.fieldMissionBusiness.update.mockResolvedValue({});
+
+    await service.completeVisit("user-1", {
+      visitId: "biz-1",
+      leadData: { businessName: "New Shop", phone: "0801234567" },
+    } as any);
+
+    expect(mockPrisma.lead.create).not.toHaveBeenCalled();
+    expect(mockPrisma.fieldMissionBusiness.update).toHaveBeenCalledWith({
+      where: { id: "biz-1" },
+      data: { leadId: "lead-existing" },
+    });
+  });
 });

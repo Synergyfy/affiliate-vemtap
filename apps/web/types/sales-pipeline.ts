@@ -12,8 +12,8 @@ export type SalesPipelineStage =
   | 'VISITED'
   | 'CONTACTED'
   | 'INTERESTED'
-  | 'FOLLOW_UP'
-  | 'DEMO'
+  | 'DEMO_SCHEDULED'
+  | 'PROPOSAL_SENT'
   | 'CUSTOMER';
 
 export type SalesExitState =
@@ -191,8 +191,8 @@ export const PIPELINE_STAGES: Record<SalesPipelineStage, { label: string; color:
   VISITED: { label: 'Visited', color: 'bg-blue-500', icon: 'MapPin' },
   CONTACTED: { label: 'Contacted', color: 'bg-purple-500', icon: 'Phone' },
   INTERESTED: { label: 'Interested', color: 'bg-emerald-500', icon: 'CheckCircle' },
-  FOLLOW_UP: { label: 'Follow-up', color: 'bg-orange-500', icon: 'Clock' },
-  DEMO: { label: 'Demo', color: 'bg-indigo-500', icon: 'PlayCircle' },
+  DEMO_SCHEDULED: { label: 'Demo Scheduled', color: 'bg-indigo-500', icon: 'PlayCircle' },
+  PROPOSAL_SENT: { label: 'Proposal Sent', color: 'bg-orange-500', icon: 'Clock' },
   CUSTOMER: { label: 'Customer', color: 'bg-amber-500', icon: 'Star' },
 };
 
@@ -201,8 +201,8 @@ export const PIPELINE_ORDER: SalesPipelineStage[] = [
   'VISITED',
   'CONTACTED',
   'INTERESTED',
-  'FOLLOW_UP',
-  'DEMO',
+  'DEMO_SCHEDULED',
+  'PROPOSAL_SENT',
   'CUSTOMER',
 ];
 

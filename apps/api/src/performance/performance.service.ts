@@ -82,17 +82,18 @@ export class PerformanceService {
         phone: true,
         gpsLat: true,
         gpsLng: true,
+        visitedAt: true,
       },
     });
 
     const submitted = leads.length;
-    const visited = leads.filter((l) => l.status !== "NOT_YET").length;
+    const visited = leads.filter((l) => l.visitedAt != null).length;
     // A lead is "qualified" once it has been visited and its contact + GPS info
     // was captured (adequate to follow up).
     const qualified = leads.filter(
-      (l) => l.status !== "NOT_YET" && l.phone && l.gpsLat && l.gpsLng,
+      (l) => l.visitedAt != null && l.phone && l.gpsLat && l.gpsLng,
     ).length;
-    const invalid = leads.filter((l) => l.status === "NOT_YET" && !l.phone).length;
+    const invalid = leads.filter((l) => l.visitedAt == null && !l.phone).length;
 
     return {
       submitted,
@@ -122,12 +123,13 @@ export class PerformanceService {
         phone: true,
         gpsLat: true,
         gpsLng: true,
+        visitedAt: true,
       },
     });
     if (leads.length === 0) return 0;
     return Math.round(
       (leads.filter(
-        (l) => l.status !== "NOT_YET" && l.phone && l.gpsLat && l.gpsLng,
+        (l) => l.visitedAt != null && l.phone && l.gpsLat && l.gpsLng,
       ).length /
         leads.length) *
         100,
@@ -208,6 +210,7 @@ export class PerformanceService {
         where: {
           affiliateId: userId,
           status: BusinessStatus.ACTIVE,
+          subscriptionAmount: { gt: 0 },
           paidAt: { gte: start, lte: end },
         },
       }),
@@ -215,6 +218,7 @@ export class PerformanceService {
         where: {
           affiliateId: userId,
           status: BusinessStatus.ACTIVE,
+          subscriptionAmount: { gt: 0 },
           paidAt: { gte: start, lte: end },
         },
         _sum: { subscriptionAmount: true },

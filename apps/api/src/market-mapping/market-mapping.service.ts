@@ -359,7 +359,7 @@ export class MarketMappingService {
       where: { userId, deletedAt: null, isPlaceholder: false },
     });
     const total = leads.length;
-    const visited = leads.filter((lead) => lead.status !== "NOT_YET").length;
+    const visited = leads.filter((lead) => lead.visitedAt != null).length;
     const interested = leads.filter((lead) => lead.status === "INTERESTED" || lead.interested === "YES").length;
     const anchors = leads.filter((lead) => lead.isAnchor).length;
     const maturity = {
@@ -418,7 +418,7 @@ export class MarketMappingService {
     ]);
     const countSince = (date: Date) =>
       leads.filter((lead) => lead.visitedAt && lead.visitedAt >= date).length;
-    const completed = leads.filter((lead) => lead.status !== "NOT_YET").length;
+    const completed = leads.filter((lead) => lead.visitedAt != null).length;
     const customers = leads.filter((lead) => lead.status === "CUSTOMER").length;
     const proposalsSent = leads.filter((lead) => ["CONTACTED", "INTERESTED", "CUSTOMER"].includes(lead.status)).length;
     const dayVisits = countSince(day);
@@ -454,22 +454,69 @@ export class MarketMappingService {
 
   async getReports(userId: string, period: string = "monthly") {
     const now = new Date();
-    const start = new Date(now);
-    if (period === "daily") start.setHours(0, 0, 0, 0);
-    else if (period === "weekly") start.setDate(start.getDate() - 6);
-    else start.setDate(start.getDate() - 29);
+    const startOfDay = (d: Date) => {
+      const x = new Date(d);
+      x.setHours(0, 0, 0, 0);
+      return x;
+    };
+    const endOfDay = (d: Date) => {
+      const x = new Date(d);
+      x.setHours(23, 59, 59, 999);
+      return x;
+    };
+    const isWeekday = (d: Date) => {
+      const dow = d.getDay();
+      return dow >= 1 && dow <= 5;
+    };
 
-    const [leads, businesses, notes, visits, user, adminConfig] = await Promise.all([
-      this.prisma.lead.findMany({ where: { userId, deletedAt: null, isPlaceholder: false, createdAt: { gte: start } }, orderBy: { createdAt: "desc" } }),
-      this.prisma.business.findMany({ where: { affiliateId: userId, status: "ACTIVE", subscriptionAmount: { gt: 0 }, createdAt: { gte: start } }, orderBy: { createdAt: "desc" } }),
-      this.prisma.marketMappingNote.findMany({ where: { userId, createdAt: { gte: start } }, orderBy: { createdAt: "desc" } }),
-      this.prisma.lead.findMany({ where: { userId, deletedAt: null, isPlaceholder: false, visitedAt: { gte: start } }, orderBy: { visitedAt: "desc" } }),
+    const todayStart = startOfDay(now);
+    const ledgerStart = startOfDay(now);
+    ledgerStart.setDate(ledgerStart.getDate() - 29);
+
+    // Calendar period windows for summary totals and target rollups.
+    let periodStart: Date;
+    let periodDays: Date[] = [];
+    if (period === "daily") {
+      periodStart = todayStart;
+      periodDays = [todayStart];
+    } else if (period === "weekly") {
+      const monday = startOfDay(now);
+      monday.setDate(monday.getDate() - ((now.getDay() + 6) % 7));
+      periodStart = monday;
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        periodDays.push(d);
+      }
+    } else {
+      periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      for (let i = 1; i <= lastDay; i++) {
+        periodDays.push(new Date(now.getFullYear(), now.getMonth(), i));
+      }
+    }
+
+    const [leads, businesses, notes, visits, user, adminConfig, plans] = await Promise.all([
+      this.prisma.lead.findMany({ where: { userId, deletedAt: null, isPlaceholder: false, createdAt: { gte: ledgerStart } }, orderBy: { createdAt: "desc" } }),
+      this.prisma.business.findMany({
+        where: {
+          affiliateId: userId,
+          status: "ACTIVE",
+          subscriptionAmount: { gt: 0 },
+          OR: [{ createdAt: { gte: ledgerStart } }, { paidAt: { gte: ledgerStart } }],
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      this.prisma.marketMappingNote.findMany({ where: { userId, createdAt: { gte: ledgerStart } }, orderBy: { createdAt: "desc" } }),
+      this.prisma.lead.findMany({ where: { userId, deletedAt: null, isPlaceholder: false, visitedAt: { gte: ledgerStart } }, orderBy: { visitedAt: "desc" } }),
       this.prisma.user.findUnique({ where: { id: userId }, select: { dailyLeadTarget: true } }),
       this.prisma.marketMappingAdminConfig.findFirst(),
+      this.prisma.marketMappingPlan.findMany({
+        where: { userId, OR: [{ startDate: { gte: ledgerStart } }, { endDate: { gte: ledgerStart } }] },
+      }),
     ]);
 
-    const daysCount = period === "daily" ? 1 : period === "weekly" ? 7 : 30;
-    const leadTarget = user?.dailyLeadTarget || adminConfig?.dailyTarget || 0;
+    const dailyFallback = user?.dailyLeadTarget || adminConfig?.dailyTarget || 0;
     const conversionReference = 0.4;
     const riskThreshold = 90;
     const WEIGHTS = {
@@ -484,25 +531,107 @@ export class MarketMappingService {
       if (target <= 0) return 0;
       return Math.min(100, Math.round((value / target) * 100));
     };
+
+    const countWorkingDays = (s: Date, e: Date) => {
+      let count = 0;
+      const cursor = startOfDay(s);
+      const end = endOfDay(e);
+      while (cursor.getTime() <= end.getTime()) {
+        if (isWeekday(cursor)) count++;
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      return count;
+    };
+
+    // Resolve the planned targets for a given day. A single-day mission plan wins,
+    // then a week plan (targets split across its working days), then the user's
+    // daily target on weekdays. Weekends with no plan are optional (target 0).
+    const targetForDay = (d: Date) => {
+      const dayStart = startOfDay(d).getTime();
+      const dayEnd = endOfDay(d).getTime();
+
+      const covering = plans.filter((p) => {
+        if (!p.startDate) return false;
+        const s = new Date(p.startDate).getTime();
+        const e = p.endDate ? new Date(p.endDate).getTime() : s;
+        return s <= dayEnd && e >= dayStart;
+      });
+
+      const dayPlan = covering.find((p) => {
+        const s = new Date(p.startDate!).getTime();
+        const e = p.endDate ? new Date(p.endDate).getTime() : s;
+        return e - s <= 86400000;
+      });
+
+      let leadsTarget = 0;
+      let visitsTarget = 0;
+      let conversionsTarget = 0;
+
+      if (dayPlan) {
+        leadsTarget = dayPlan.targetLeads || dayPlan.targetVisits || 0;
+        visitsTarget = dayPlan.targetVisits || dayPlan.targetLeads || 0;
+        conversionsTarget = dayPlan.targetConversions || 0;
+      } else {
+        const weekPlan = covering.find((p) => {
+          const s = new Date(p.startDate!).getTime();
+          const e = p.endDate ? new Date(p.endDate).getTime() : s;
+          return e - s > 86400000;
+        });
+        if (weekPlan) {
+          const s = new Date(weekPlan.startDate!);
+          const e = weekPlan.endDate ? new Date(weekPlan.endDate) : s;
+          const denom = Math.max(1, countWorkingDays(s, e));
+          leadsTarget = Math.round((weekPlan.targetLeads || weekPlan.targetVisits || 0) / denom);
+          visitsTarget = Math.round((weekPlan.targetVisits || weekPlan.targetLeads || 0) / denom);
+          conversionsTarget = Math.round((weekPlan.targetConversions || 0) / denom);
+        } else if (isWeekday(d)) {
+          leadsTarget = dailyFallback;
+          visitsTarget = dailyFallback;
+        }
+      }
+
+      return { leads: leadsTarget, visits: visitsTarget, conversions: conversionsTarget };
+    };
+
     const gpsPoints = (v: (typeof visits)[number]) => v.gpsLat != null && v.gpsLng != null && String(v.gpsLat).trim() !== "" && String(v.gpsLng).trim() !== "";
     const INFO_FIELDS = (v: (typeof visits)[number]) => [v.industry, v.phone, v.contactName, v.businessAddress || v.location, v.businessSize, v.openingHours, v.contactRole];
-    const totalEarnings = businesses.reduce((acc, b) => acc + Number(b.commissionAmount || 0), 0);
-    const avgLeadsPerDay = Math.round((leads.length / Math.max(1, daysCount)) * 10) / 10;
-    const avgConversionRate = leads.length > 0 ? Math.round((businesses.length / leads.length) * 100) : 0;
-    const completionRate = Math.min(100, Math.round((visits.filter(v => v.status !== "NOT_YET").length / Math.max(1, visits.length)) * 100));
+
+    const businessDate = (b: (typeof businesses)[number]) => new Date(b.paidAt ?? b.createdAt);
+
+    const periodLeads = leads.filter((l) => new Date(l.createdAt) >= periodStart);
+    const periodVisits = visits.filter((v) => v.visitedAt && new Date(v.visitedAt) >= periodStart);
+    const periodBusinesses = businesses.filter((b) => businessDate(b) >= periodStart);
+    const periodNotes = notes.filter((n) => new Date(n.createdAt) >= periodStart);
+
+    const totalEarnings = periodBusinesses.reduce((acc, b) => acc + Number(b.commissionAmount || 0), 0);
+    const avgLeadsPerDay = Math.round((periodLeads.length / Math.max(1, periodDays.length)) * 10) / 10;
+    const avgConversionRate = periodLeads.length > 0 ? Math.round((periodBusinesses.length / periodLeads.length) * 100) : 0;
+
+    let leadsTargetSum = 0;
+    let visitsTargetSum = 0;
+    let conversionsTargetSum = 0;
+    for (const d of periodDays) {
+      const t = targetForDay(d);
+      leadsTargetSum += t.leads;
+      visitsTargetSum += t.visits;
+      conversionsTargetSum += t.conversions;
+    }
+    const completionRate = pctOfTarget(periodVisits.length, visitsTargetSum);
 
     // Calculate 30-day daily score ledger
     const ledger = [];
     for (let i = 0; i < 30; i++) {
       const dayDate = new Date(now);
       dayDate.setDate(dayDate.getDate() - i);
-      const dayStart = new Date(dayDate);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(dayDate);
-      dayEnd.setHours(23, 59, 59, 999);
+      const dayStart = startOfDay(dayDate);
+      const dayEnd = endOfDay(dayDate);
+      const dayTarget = targetForDay(dayStart).leads;
 
       const dayLeads = leads.filter((l) => new Date(l.createdAt) >= dayStart && new Date(l.createdAt) <= dayEnd).length;
-      const dayConversions = businesses.filter((b) => new Date(b.createdAt) >= dayStart && new Date(b.createdAt) <= dayEnd).length;
+      const dayConversions = businesses.filter((b) => {
+        const d = businessDate(b);
+        return d >= dayStart && d <= dayEnd;
+      }).length;
 
       const dayVisitsArr = visits.filter((v) => {
         const d = v.visitedAt;
@@ -514,12 +643,12 @@ export class MarketMappingService {
         ? Math.round(dayVisitsArr.reduce((sum, v) => sum + INFO_FIELDS(v).filter((f) => f != null && String(f).trim() !== "").length, 0) / (dayVisitsArr.length * INFO_FIELDS(dayVisitsArr[0]).length) * 100)
         : 0;
       const gpsPct = dayVisitsArr.length > 0 ? Math.round((dayVisitsArr.filter(gpsPoints).length / dayVisitsArr.length) * 100) : 0;
-      const completionPct = pctOfTarget(dayVisitsArr.length, leadTarget);
+      const completionPct = pctOfTarget(dayVisits, dayTarget);
 
-      const leadPct = pctOfTarget(dayLeads, leadTarget);
+      const leadPct = pctOfTarget(dayLeads, dayTarget);
       const infoComposite = 0.6 * infoPct + 0.4 * gpsPct;
       const convPct = Math.min(100, (dayConversions / Math.max(1, dayLeads) / conversionReference) * 100);
-      const visitPct = pctOfTarget(dayVisitsArr.length, leadTarget);
+      const visitPct = pctOfTarget(dayVisits, dayTarget);
 
       const score = Math.round(
         WEIGHTS.leads * leadPct +
@@ -533,7 +662,7 @@ export class MarketMappingService {
         id: `day-${i}`,
         date: dayStart.toISOString().split("T")[0],
         leads: dayLeads,
-        target: leadTarget,
+        target: dayTarget,
         conversions: dayConversions,
         visits: dayVisits,
         infoPct,
@@ -543,20 +672,24 @@ export class MarketMappingService {
         isToday: i === 0,
         score,
         met: score >= riskThreshold,
+        optional: dayTarget <= 0,
       });
     }
 
     return {
       period,
       summary: {
-        totalLeads: leads.length,
-        totalConversions: businesses.length,
-        totalVisits: visits.length,
+        totalLeads: periodLeads.length,
+        totalConversions: periodBusinesses.length,
+        totalVisits: periodVisits.length,
         totalEarnings,
         completionRate,
-        businessesReferred: businesses.length,
+        businessesReferred: periodBusinesses.length,
         avgLeadsPerDay,
         avgConversionRate,
+        target: leadsTargetSum,
+        visitsTarget: visitsTargetSum,
+        conversionTarget: conversionsTargetSum,
       },
       weights: {
         leads: WEIGHTS.leads,
@@ -566,17 +699,17 @@ export class MarketMappingService {
         completion: WEIGHTS.completion,
         riskThreshold,
         conversionReference,
-        leadTarget,
+        leadTarget: dailyFallback,
       },
       ledger,
-      leads: leads.map((l) => ({
+      leads: periodLeads.map((l) => ({
         id: l.id,
         businessName: l.businessName,
         phone: l.phone,
         status: l.status,
         date: l.createdAt,
       })),
-      visitedBusinesses: businesses.map((b) => ({
+      visitedBusinesses: periodBusinesses.map((b) => ({
         id: b.id,
         businessName: b.businessName,
         ownerName: b.ownerName,
@@ -584,14 +717,14 @@ export class MarketMappingService {
         status: b.status,
         date: b.createdAt,
       })),
-      notes: notes.map((n) => ({
+      notes: periodNotes.map((n) => ({
         id: n.id,
         businessName: n.businessName,
         content: n.content,
         followUpDate: n.followUpDate,
         createdAt: n.createdAt,
       })),
-      visits: visits.map((lead) => ({
+      visits: periodVisits.map((lead) => ({
         id: lead.id,
         businessName: lead.businessName,
         category: lead.industry,

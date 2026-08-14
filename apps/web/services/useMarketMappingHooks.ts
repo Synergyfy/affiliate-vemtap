@@ -102,6 +102,9 @@ export interface MarketMappingReportSummary {
   businessesReferred: number;
   avgLeadsPerDay: number;
   avgConversionRate: number;
+  target: number;
+  visitsTarget: number;
+  conversionTarget: number;
 }
 
 export interface MarketMappingReportWeights {
@@ -129,6 +132,7 @@ export interface MarketMappingReportDay {
   isToday: boolean;
   score: number;
   met: boolean;
+  optional: boolean;
 }
 
 export interface MarketMappingReport {
