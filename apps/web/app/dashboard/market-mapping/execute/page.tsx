@@ -99,6 +99,9 @@ function SalesExecutiveExecutePage() {
   const [rows, setRows] = useState<PlannedVisit[]>([]);
   const [activeRow, setActiveRow] = useState<PlannedVisit | null>(null);
   const initRef = useRef(false);
+  const createdIdMapRef = useRef<Map<string, string>>(new Map());
+  const pendingCreateRef = useRef<Set<string>>(new Set());
+  const pendingDraftRef = useRef<Map<string, PlannedVisit>>(new Map());
 
   const today = new Date();
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -146,16 +149,23 @@ function SalesExecutiveExecutePage() {
   };
 
   const handleCloseWithoutSave = () => {
-    if (activeRow?.isPlaceholder && marketMapping.visits.some(v => v.id === activeRow.id)) {
-      marketMapping.setVisits(prev => prev.filter(v => v.id !== activeRow.id));
-      marketMapping.setStats(prev => ({ ...prev, plannedToday: Math.max(0, prev.plannedToday - 1) }));
+    if (activeRow?.isPlaceholder) {
+      const realId = createdIdMapRef.current.get(activeRow.id);
+      const isSaved = marketMapping.visits.some(v => v.id === activeRow.id || (realId && v.id === realId));
+      if (isSaved) {
+        marketMapping.setVisits(prev => prev.filter(v => v.id !== activeRow.id && v.id !== realId));
+        marketMapping.setStats(prev => ({ ...prev, plannedToday: Math.max(0, prev.plannedToday - 1) }));
+      }
     }
     setActiveRow(null);
   };
 
   const handleRecordSaved = (updated: PlannedVisit, closeDrawer = true) => {
-    const exists = rows.some(p => p.id === updated.id);
-    const hasInfo = getCompletenessScore(updated) > 0;
+    const realId = createdIdMapRef.current.get(updated.id);
+    const resolved: PlannedVisit = realId ? { ...updated, id: realId } : updated;
+    const isPendingCreate = pendingCreateRef.current.has(updated.id);
+    const exists = rows.some(p => p.id === resolved.id) || !!realId;
+    const hasInfo = getCompletenessScore(resolved) > 0;
 
     if (!exists && !hasInfo) {
       if (closeDrawer) setActiveRow(null);
@@ -163,22 +173,33 @@ function SalesExecutiveExecutePage() {
       return;
     }
 
-    if (exists) {
-      marketMapping.saveCapture(updated);
+    if (isPendingCreate) {
+      pendingDraftRef.current.set(updated.id, resolved);
+    } else if (exists) {
+      marketMapping.saveCapture(resolved);
     } else {
-      marketMapping.addVisits([updated]);
+      pendingCreateRef.current.add(updated.id);
+      marketMapping.addVisits([resolved], (tempId, created) => {
+        pendingCreateRef.current.delete(tempId);
+        createdIdMapRef.current.set(tempId, created.id);
+        const draft = pendingDraftRef.current.get(tempId);
+        if (draft) {
+          pendingDraftRef.current.delete(tempId);
+          marketMapping.saveCapture({ ...draft, id: created.id });
+        }
+      });
     }
 
     setRows(prev =>
-      prev.some(p => p.id === updated.id)
-        ? prev.map(p => (p.id === updated.id ? updated : p))
-        : [...prev, updated]
+      prev.some(p => p.id === resolved.id)
+        ? prev.map(p => (p.id === resolved.id ? resolved : p))
+        : [...prev, resolved]
     );
     if (closeDrawer) {
       setActiveRow(null);
       showToast('Business information saved.', 'success');
     } else {
-      setActiveRow(updated);
+      setActiveRow(resolved);
     }
   };
 
