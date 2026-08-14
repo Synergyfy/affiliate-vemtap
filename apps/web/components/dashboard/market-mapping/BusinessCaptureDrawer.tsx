@@ -276,6 +276,7 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = useCallback(async (skipToNext = false) => {
+    if (isSaving) return;
     const nextVisitError = getNextVisitError(
       formData.nextVisitDate,
       formData.nextVisitTime,
@@ -303,7 +304,7 @@ export default function BusinessCaptureDrawer({ visit, onClose, onSave }: Busine
     } finally {
       setIsSaving(false);
     }
-  }, [formData, activeTab, onSave, isAnchor, visit, showToast]);
+  }, [formData, activeTab, onSave, isAnchor, visit, showToast, isSaving]);
 
   const filteredCategories = useMemo(() => {
     if (!categorySearch) return categories;

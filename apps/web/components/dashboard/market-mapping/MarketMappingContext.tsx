@@ -29,7 +29,7 @@ interface MarketMappingContextType {
   notes: BusinessNote[];
   selectedVisit: PlannedVisit | null;
   setSelectedVisit: (v: PlannedVisit | null) => void;
-  addVisits: (newVisits: PlannedVisit[]) => void;
+  addVisits: (newVisits: PlannedVisit[], onCreated?: (tempId: string, created: PlannedVisit) => void) => void;
   saveCapture: (updatedVisit: PlannedVisit) => void;
   missionPlans: MissionPlan[];
   addMissionPlan: (plan: MissionPlan) => void;
@@ -254,9 +254,9 @@ export function MarketMappingProvider({ children }: { children: React.ReactNode 
     if (entry.id) updatePlanMutation.mutate({ id: entry.id, status: entry.status === 'ACHIEVED' ? 'COMPLETED' : 'ARCHIVED' });
   }, [updatePlanMutation]);
 
-  const isTempId = (id?: string) => Boolean(id && (id.startsWith('biz-') || id.startsWith('v-')));
+  const isTempId = (id?: string) => Boolean(id && (id.startsWith('biz-') || id.startsWith('v-') || id.startsWith('exec-')));
 
-  const addVisits = useCallback((newVisits: PlannedVisit[]) => {
+  const addVisits = useCallback((newVisits: PlannedVisit[], onCreated?: (tempId: string, created: PlannedVisit) => void) => {
     setVisits(prev => [...prev, ...newVisits]);
     setStats(prev => ({
       ...prev,
@@ -266,6 +266,7 @@ export function MarketMappingProvider({ children }: { children: React.ReactNode 
       onSuccess: (created) => {
         setVisits((current) => current.map((item) => item.id === tempId ? created : item));
         setSelectedVisit((current) => (current?.id === tempId ? created : current));
+        onCreated?.(tempId, created);
       },
     }));
   }, [createVisitMutation]);
