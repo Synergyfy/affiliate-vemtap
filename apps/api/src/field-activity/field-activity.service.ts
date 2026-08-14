@@ -1,11 +1,59 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { StartVisitPayloadDto, CompleteVisitPayloadDto, TransitionExplanationDto } from './dto/field-activity.dto';
-import { FieldTimelineEventType, TransitionStatus } from '@prisma/client';
+import { FieldTimelineEventType, TransitionStatus, VisitTransition } from '@prisma/client';
 import { haversineDistance } from '../performance/lead-quality.util';
+
+/**
+ * Maps a field-work visit outcome to a valid Lead pipeline status. Field
+ * outcomes like MANAGER_UNAVAILABLE / FOLLOW_UP_REQUIRED / OTHER are not valid
+ * Lead statuses, so they collapse into VISITED (the visit still happened).
+ */
+export function mapVisitOutcomeToLeadStatus(
+  outcome?: string | null,
+): string {
+  switch (outcome) {
+    case 'CUSTOMER':
+      return 'CUSTOMER';
+    case 'INTERESTED':
+      return 'INTERESTED';
+    case 'NOT_INTERESTED':
+      return 'NOT_INTERESTED';
+    default:
+      return 'VISITED';
+  }
+}
+
+/**
+ * Funnel precedence for the unified lead pipeline. Field outcomes that map to
+ * VISITED must never downgrade a lead that is already further along (e.g. a
+ * CONTACTED lead must not regress to VISITED when the field outcome is
+ * FOLLOW_UP_REQUIRED). Explicit terminal outcomes (CUSTOMER / NOT_INTERESTED)
+ * always apply.
+ */
+const FIELD_LEAD_STATUS_ORDER: Record<string, number> = {
+  NOT_YET: 0,
+  VISITED: 1,
+  CONTACTED: 2,
+  INTERESTED: 3,
+  CUSTOMER: 4,
+};
+
+export function shouldApplyFieldLeadStatus(
+  currentStatus: string,
+  incomingStatus: string,
+): boolean {
+  if (incomingStatus === 'CUSTOMER' || incomingStatus === 'NOT_INTERESTED') {
+    return true;
+  }
+  return (FIELD_LEAD_STATUS_ORDER[incomingStatus] ?? 0) >
+    (FIELD_LEAD_STATUS_ORDER[currentStatus] ?? 0);
+}
 
 @Injectable()
 export class FieldActivityService {
+  private readonly logger = new Logger(FieldActivityService.name);
+
   constructor(private prisma: PrismaService) {}
 
   async getActiveMission(userId: string) {
@@ -68,15 +116,15 @@ export class FieldActivityService {
         });
       }
     } else {
-      // Find user's market mapping visits or create default mission
-      const visits = await this.prisma.marketMappingVisit.findMany({
-        where: { userId },
+      // Find user's leads (market mapping pipeline businesses) or create default mission
+      const leads = await this.prisma.lead.findMany({
+        where: { userId, deletedAt: null },
         take: targetCount,
         orderBy: { createdAt: 'desc' },
       });
 
       const businessesData: Array<{
-        visitId?: string;
+        leadId?: string;
         name: string;
         category: string;
         address?: string;
@@ -86,11 +134,11 @@ export class FieldActivityService {
         status: string;
         dailyCustomers?: string;
         businessSize?: string;
-      }> = visits.map((v) => ({
-        visitId: v.id,
-        name: v.name,
-        category: v.category || 'General',
-        address: v.address || v.exactAddress || location,
+      }> = leads.map((v) => ({
+        leadId: v.id,
+        name: v.businessName,
+        category: v.industry || 'General',
+        address: v.businessAddress || v.location || location,
         gpsAddress: v.gpsAddress || undefined,
         isAnchor: v.isAnchor,
         isPlaceholder: false,
@@ -150,7 +198,7 @@ export class FieldActivityService {
       completedAt: mission.completedAt,
       businesses: mission.businesses.map((b) => ({
         id: b.id,
-        visitId: b.visitId,
+        leadId: b.leadId,
         name: b.name,
         category: b.category,
         address: b.address,
@@ -228,7 +276,7 @@ export class FieldActivityService {
       data: {
         userId,
         missionId,
-        visitId: dto.visitId,
+        leadId: dto.visitId,
         eventType: FieldTimelineEventType.VISIT_STARTED,
         title: 'Visit Started',
         description: `Started field visit for target ID ${dto.visitId}`,
@@ -248,40 +296,29 @@ export class FieldActivityService {
 
     // Update business in mission
     const targetBusiness = activeMission.businesses.find(
-      (b) => b.id === dto.visitId || b.visitId === dto.visitId,
+      (b) => b.id === dto.visitId || b.leadId === dto.visitId,
     );
 
     const outcomeStatus = dto.visitOutcome || 'VISITED';
+    const leadStatus = mapVisitOutcomeToLeadStatus(outcomeStatus);
 
-    if (targetBusiness) {
-      await this.prisma.fieldMissionBusiness.update({
-        where: { id: targetBusiness.id },
-        data: { status: outcomeStatus },
-      });
-    }
-
-    if (targetBusiness?.visitId || dto.visitId) {
-      const visitRecord = await this.prisma.marketMappingVisit.findFirst({
-        where: { id: targetBusiness?.visitId || dto.visitId, userId },
-      });
-      if (visitRecord) {
-        await this.prisma.marketMappingVisit.update({
-          where: { id: visitRecord.id },
-          data: {
-            status: outcomeStatus,
-            visitedAt: new Date(),
-            visitNotes: dto.visitNotes || visitRecord.visitNotes,
-            gpsLat: dto.latitude != null ? String(dto.latitude) : visitRecord.gpsLat,
-            gpsLng: dto.longitude != null ? String(dto.longitude) : visitRecord.gpsLng,
-          },
-        });
-      }
-    }
+    // Resolve the linked lead before any writes
+    const leadRecord =
+      targetBusiness?.leadId || dto.visitId
+        ? await this.prisma.lead.findFirst({
+            where: {
+              id: targetBusiness?.leadId || dto.visitId,
+              userId,
+              deletedAt: null,
+            },
+          })
+        : null;
+    const leadInfo = dto.leadData || {};
 
     // Evaluate Transition Status (Distance & Time check with last completed visit)
     let transitionStatus: TransitionStatus = TransitionStatus.NORMAL;
     let distanceMeters: number | null = null;
-    let durationSeconds: number | null = dto.durationSeconds ?? null;
+    const durationSeconds: number | null = dto.durationSeconds ?? null;
 
     const lastEvent = await this.prisma.fieldActivityTimelineEvent.findFirst({
       where: {
@@ -313,76 +350,157 @@ export class FieldActivityService {
       }
     }
 
-    let transitionRecord = null;
-    if (transitionStatus !== TransitionStatus.NORMAL) {
-      transitionRecord = await this.prisma.visitTransition.create({
-        data: {
-          userId,
-          visitId: dto.visitId,
-          fromVisitId: lastEvent?.visitId || null,
-          transitionStatus,
-          distanceMeters,
-          durationSeconds,
-          gpsAccuracy: dto.accuracy != null ? dto.accuracy : null,
-        },
-      });
+    const { transitionRecord } = await this.prisma.$transaction(async (tx) => {
+      let transitionRecord: VisitTransition | null = null;
 
-      await this.prisma.fieldActivityTimelineEvent.create({
+      if (targetBusiness) {
+        await tx.fieldMissionBusiness.update({
+          where: { id: targetBusiness.id },
+          data: { status: outcomeStatus },
+        });
+      }
+
+      if (leadRecord) {
+        const resolvedStatus = shouldApplyFieldLeadStatus(
+          leadRecord.status,
+          leadStatus,
+        )
+          ? leadStatus
+          : leadRecord.status;
+
+        await tx.lead.update({
+          where: { id: leadRecord.id },
+          data: {
+            status: resolvedStatus,
+            visitedAt: new Date(),
+            comments: dto.visitNotes || leadRecord.comments,
+            gpsLat: dto.latitude != null ? String(dto.latitude) : leadRecord.gpsLat,
+            gpsLng: dto.longitude != null ? String(dto.longitude) : leadRecord.gpsLng,
+            phone: leadInfo.phone || leadRecord.phone,
+            contactName: leadInfo.contactName || leadRecord.contactName,
+            email: leadInfo.email || leadRecord.email,
+          },
+        });
+
+        // Link the mission business to the lead when the visit came in via a
+        // lead id but the business row didn't carry the link.
+        if (
+          targetBusiness &&
+          !targetBusiness.leadId &&
+          leadRecord.id !== targetBusiness.id
+        ) {
+          await tx.fieldMissionBusiness.update({
+            where: { id: targetBusiness.id },
+            data: { leadId: leadRecord.id },
+          });
+        }
+      } else if (leadInfo.businessName && leadInfo.phone) {
+        // Capture a brand new lead during field work when it isn't already in
+        // the pipeline. Guard against creating a duplicate when a lead for the
+        // same business already exists (matched by phone or business name).
+        const existing = await tx.lead.findFirst({
+          where: {
+            userId,
+            deletedAt: null,
+            OR: [
+              { phone: { contains: leadInfo.phone } },
+              {
+                businessName: {
+                  equals: leadInfo.businessName,
+                  mode: "insensitive",
+                },
+              },
+            ],
+          },
+        });
+
+        const created = existing
+          ? existing
+          : await tx.lead.create({
+              data: {
+                userId,
+                businessName: leadInfo.businessName,
+                industry: leadInfo.category || 'General',
+                phone: leadInfo.phone,
+                email: leadInfo.email || null,
+                contactName: leadInfo.contactName || null,
+                source: 'Field Activity',
+                status: leadStatus,
+                visitedAt: new Date(),
+                gpsLat: dto.latitude != null ? String(dto.latitude) : null,
+                gpsLng: dto.longitude != null ? String(dto.longitude) : null,
+                comments: dto.visitNotes || null,
+              },
+            });
+
+        // Backfill the mission business -> lead link for the new capture
+        if (targetBusiness) {
+          await tx.fieldMissionBusiness.update({
+            where: { id: targetBusiness.id },
+            data: { leadId: created.id },
+          });
+        }
+      }
+
+      if (transitionStatus !== TransitionStatus.NORMAL) {
+        transitionRecord = await tx.visitTransition.create({
+          data: {
+            userId,
+            leadId: dto.visitId,
+            fromLeadId: lastEvent?.leadId || null,
+            transitionStatus,
+            distanceMeters,
+            durationSeconds,
+            gpsAccuracy: dto.accuracy != null ? dto.accuracy : null,
+          },
+        });
+
+        await tx.fieldActivityTimelineEvent.create({
+          data: {
+            userId,
+            missionId: activeMission.id,
+            leadId: dto.visitId,
+            eventType: FieldTimelineEventType.TRANSITION_UNUSUAL,
+            title: 'Unusual Visit Transition Detected',
+            description: `Transition flagged: ${transitionStatus}. Distance: ${distanceMeters}m.`,
+          },
+        });
+      }
+
+      // Log completion event
+      await tx.fieldActivityTimelineEvent.create({
         data: {
           userId,
           missionId: activeMission.id,
-          visitId: dto.visitId,
-          eventType: FieldTimelineEventType.TRANSITION_UNUSUAL,
-          title: 'Unusual Visit Transition Detected',
-          description: `Transition flagged: ${transitionStatus}. Distance: ${distanceMeters}m.`,
+          leadId: dto.visitId,
+          eventType: FieldTimelineEventType.VISIT_COMPLETED,
+          title: 'Visit Completed',
+          description: `Completed visit with outcome: ${outcomeStatus}`,
+          metadata: {
+            latitude: dto.latitude,
+            longitude: dto.longitude,
+            accuracy: dto.accuracy,
+            durationSeconds: dto.durationSeconds,
+          },
         },
       });
-    }
 
-    // Log completion event
-    await this.prisma.fieldActivityTimelineEvent.create({
-      data: {
-        userId,
-        missionId: activeMission.id,
-        visitId: dto.visitId,
-        eventType: FieldTimelineEventType.VISIT_COMPLETED,
-        title: 'Visit Completed',
-        description: `Completed visit with outcome: ${outcomeStatus}`,
-        metadata: {
-          latitude: dto.latitude,
-          longitude: dto.longitude,
-          accuracy: dto.accuracy,
-          durationSeconds: dto.durationSeconds,
-        },
-      },
+      // Log lead capture event when lead data is provided
+      if (dto.leadData && dto.leadData.businessName && dto.leadData.phone) {
+        await tx.fieldActivityTimelineEvent.create({
+          data: {
+            userId,
+            missionId: activeMission.id,
+            leadId: dto.visitId,
+            eventType: FieldTimelineEventType.LEAD_CAPTURED,
+            title: 'New Lead Captured',
+            description: `Captured lead "${dto.leadData.businessName}" during visit.`,
+          },
+        });
+      }
+
+      return { transitionRecord };
     });
-
-    // Create lead if leadData is provided
-    if (dto.leadData && dto.leadData.businessName && dto.leadData.phone) {
-      await this.prisma.lead.create({
-        data: {
-          affiliateId: userId,
-          businessName: dto.leadData.businessName,
-          industry: dto.leadData.category || 'General',
-          contactName: dto.leadData.contactName || null,
-          phone: dto.leadData.phone,
-          email: dto.leadData.email || null,
-          source: 'Field Activity',
-          status: outcomeStatus === 'CUSTOMER' ? 'COMPLETED' : 'INTERESTED',
-        },
-      });
-
-      await this.prisma.fieldActivityTimelineEvent.create({
-        data: {
-          userId,
-          missionId: activeMission.id,
-          visitId: dto.visitId,
-          eventType: FieldTimelineEventType.LEAD_CAPTURED,
-          title: 'New Lead Captured',
-          description: `Captured lead "${dto.leadData.businessName}" during visit.`,
-        },
-      });
-    }
 
     return {
       visitId: dto.visitId,
@@ -401,10 +519,10 @@ export class FieldActivityService {
     const activeMission = await this.getActiveMission(userId);
     const progress = await this.getMissionProgress(userId, activeMission.id);
 
-    const business = activeMission.businesses.find((b) => b.id === visitId || b.visitId === visitId) || activeMission.businesses[0];
+    const business = activeMission.businesses.find((b) => b.id === visitId || b.leadId === visitId) || activeMission.businesses[0];
 
     const transition = await this.prisma.visitTransition.findFirst({
-      where: { userId, visitId },
+      where: { userId, leadId: visitId },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -428,7 +546,7 @@ export class FieldActivityService {
 
   async submitTransitionExplanation(userId: string, visitId: string, dto: TransitionExplanationDto) {
     const transition = await this.prisma.visitTransition.findFirst({
-      where: { userId, visitId },
+      where: { userId, leadId: visitId },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -444,7 +562,7 @@ export class FieldActivityService {
       await this.prisma.visitTransition.create({
         data: {
           userId,
-          visitId,
+          leadId: visitId,
           transitionStatus: TransitionStatus.UNUSUAL_DISTANCE,
           explanationReason: dto.reason,
           explanationNotes: dto.notes || null,

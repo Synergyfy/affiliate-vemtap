@@ -1,6 +1,7 @@
-import { IsString, IsOptional, IsEnum, IsEmail, IsDateString, IsUUID } from 'class-validator';
-import { LeadStatus, Priority } from '@prisma/client';
+import { IsString, IsOptional, IsEmail, IsDateString, IsBoolean, IsIn, IsUUID } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { LEAD_STATUSES, ALLOWED_LEAD_STATUSES } from '../../common/lead.constants';
 
 export class CreateLeadDto {
   @ApiProperty({ example: 'Vemtap Solutions' })
@@ -22,11 +23,6 @@ export class CreateLeadDto {
   @IsString()
   location?: string;
 
-  @ApiPropertyOptional({ example: 'https://vemtap.com' })
-  @IsOptional()
-  @IsString()
-  website?: string;
-
   @ApiPropertyOptional({ example: 'John Doe' })
   @IsOptional()
   @IsString()
@@ -38,8 +34,9 @@ export class CreateLeadDto {
   contactRole?: string;
 
   @ApiProperty({ example: '+2348000000000' })
+  @IsOptional()
   @IsString()
-  phone: string;
+  phone?: string;
 
   @ApiPropertyOptional({ example: 'john@example.com' })
   @IsOptional()
@@ -51,20 +48,10 @@ export class CreateLeadDto {
   @IsString()
   source?: string;
 
-  @ApiPropertyOptional({ example: 'Referral from Michael' })
+  @ApiPropertyOptional({ enum: ALLOWED_LEAD_STATUSES, default: 'NOT_YET' })
   @IsOptional()
-  @IsString()
-  otherSource?: string;
-
-  @ApiProperty({ enum: Priority, default: Priority.MEDIUM })
-  @IsEnum(Priority)
-  @IsOptional()
-  priority?: Priority;
-
-  @ApiProperty({ enum: LeadStatus, default: LeadStatus.POTENTIAL })
-  @IsEnum(LeadStatus)
-  @IsOptional()
-  status?: LeadStatus;
+  @IsIn(ALLOWED_LEAD_STATUSES)
+  status?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -80,6 +67,26 @@ export class CreateLeadDto {
   @IsOptional()
   @IsUUID()
   assignedAgentId?: string;
+
+  @ApiPropertyOptional({ example: 'HIGH' })
+  @IsOptional()
+  @IsString()
+  priority?: string;
+
+  @ApiPropertyOptional({ example: 'Lagos' })
+  @IsOptional()
+  @IsString()
+  gpsAddress?: string;
+
+  @ApiPropertyOptional({ example: '6.5244' })
+  @IsOptional()
+  @IsString()
+  gpsLat?: string;
+
+  @ApiPropertyOptional({ example: '3.3792' })
+  @IsOptional()
+  @IsString()
+  gpsLng?: string;
 }
 
 import { PartialType } from '@nestjs/swagger';
@@ -90,11 +97,15 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
 
 export class LeadFilterDto extends PaginationDto {
   @IsOptional()
-  @IsEnum(LeadStatus)
-  status?: LeadStatus;
+  @IsIn(LEAD_STATUSES)
+  status?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => value === "true" || value === true)
+  @IsBoolean()
+  visited?: boolean;
 
   @IsOptional()
   @IsString()
   search?: string;
 }
-

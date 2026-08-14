@@ -370,7 +370,13 @@ export class UsersService {
             select: { id: true, fullName: true, email: true },
           },
           _count: {
-            select: { referrals: true, businesses: true, leads: true },
+            select: {
+              referrals: true,
+              businesses: true,
+              leads: {
+                where: { deletedAt: null, isPlaceholder: false },
+              },
+            },
           },
         },
       }),
@@ -393,7 +399,14 @@ export class UsersService {
           select: { id: true, fullName: true, email: true },
         },
         _count: {
-          select: { referrals: true, businesses: true, leads: true, marketMappingVisits: true, marketMappingAssignments: true },
+          select: {
+            referrals: true,
+            businesses: true,
+            leads: {
+              where: { deletedAt: null, isPlaceholder: false },
+            },
+            marketMappingAssignments: true,
+          },
         },
       },
     });
@@ -621,16 +634,20 @@ export class UsersService {
     if (!user) throw new NotFoundException("User not found");
 
     const [leads, businesses, commissions] = await Promise.all([
-      this.prisma.lead.findMany({ where: { affiliateId: userId } }),
+      this.prisma.lead.findMany({ where: { userId, deletedAt: null, isPlaceholder: false } }),
       this.prisma.business.findMany({ where: { affiliateId: userId } }),
       this.prisma.commission.findMany({ where: { userId } }),
     ]);
+
+    const conversions = businesses.filter(
+      (b) => b.status === "ACTIVE" && Number(b.subscriptionAmount) > 0,
+    );
 
     return {
       userId,
       period,
       totalLeads: leads.length,
-      totalConversions: businesses.length,
+      totalConversions: conversions.length,
       totalEarnings: Number(user.totalEarnings || 0),
       dailyTarget: user.dailyLeadTarget,
       monthlyTarget: user.monthlyConversionTarget,
@@ -646,27 +663,27 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException("User not found");
 
-    const [leads, businesses, visits] = await Promise.all([
+    // The unified Lead table is the source for both leads (all captured
+    // businesses) and visits (leads that have been visited).
+    const [leads, businesses] = await Promise.all([
       this.prisma.lead.findMany({
-        where: { affiliateId: userId },
+        where: { userId, deletedAt: null, isPlaceholder: false },
         orderBy: { createdAt: "desc" },
       }),
       this.prisma.business.findMany({
         where: { affiliateId: userId },
         orderBy: { createdAt: "desc" },
       }),
-      this.prisma.marketMappingVisit.findMany({
-        where: { userId },
-        orderBy: { createdAt: "desc" },
-      }),
     ]);
+
+    const visits = leads.filter((l) => l.visitedAt !== null);
 
     const stats = {
       totalLeads: leads.length,
-      potentialLeads: leads.filter((l) => l.status === "POTENTIAL").length,
+      potentialLeads: leads.filter((l) => l.status === "NOT_YET").length,
       contactedLeads: leads.filter((l) => l.status === "CONTACTED").length,
       interestedLeads: leads.filter((l) => l.status === "INTERESTED").length,
-      completedLeads: leads.filter((l) => l.status === "COMPLETED").length,
+      completedLeads: leads.filter((l) => l.status === "CUSTOMER").length,
       totalVisits: visits.length,
       totalReferredBusinesses: businesses.length,
       activeBusinesses: businesses.filter((b) => b.status === "ACTIVE").length,

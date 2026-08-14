@@ -1,9 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from './api';
-import { Lead, LeadStats, LeadStatus, LeadPriority, PaginatedResponse } from '../types/api';
+import { Lead, LeadStats, LeadStatus, PaginatedResponse } from '../types/api';
 
 export interface LeadFilters {
   status?: LeadStatus;
+  visited?: boolean;
   search?: string;
   limit?: number;
   page?: number;

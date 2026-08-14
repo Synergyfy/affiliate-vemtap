@@ -180,7 +180,26 @@ describe('UsersService', () => {
       await service.findAllAdmin({ skip: 0, take: 10 });
 
       expect(mockPrisma.user.findMany).toHaveBeenCalledWith(expect.objectContaining({
-        where: { role: 'AFFILIATE' }
+        where: expect.objectContaining({ role: { notIn: ['ADMIN', 'SUPER_ADMIN'] } }),
+      }));
+    });
+
+    it('excludes placeholders and soft-deleted leads from the _count.leads select', async () => {
+      (mockPrisma.user as any).findMany = jest.fn().mockResolvedValue([]);
+      (mockPrisma.user as any).count = jest.fn().mockResolvedValue(0);
+
+      await service.findAllAdmin({ skip: 0, take: 10 });
+
+      expect(mockPrisma.user.findMany).toHaveBeenCalledWith(expect.objectContaining({
+        select: expect.objectContaining({
+          _count: expect.objectContaining({
+            select: expect.objectContaining({
+              leads: {
+                where: { deletedAt: null, isPlaceholder: false },
+              },
+            }),
+          }),
+        }),
       }));
     });
   });

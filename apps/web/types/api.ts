@@ -8,36 +8,57 @@ export type FraudStatus = 'OPEN' | 'CONFIRMED' | 'RESOLVED';
 export type NotificationType = 'SYSTEM' | 'COMMISSION' | 'REFERRAL' | 'SECURITY';
 export type ProgressStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
 export type LeadPriority = 'LOW' | 'MEDIUM' | 'HIGH';
-export type LeadStatus = 'POTENTIAL' | 'CONTACTED' | 'INTERESTED' | 'NOT_INTERESTED' | 'COMPLETED';
+export type LeadStatus = 'NOT_YET' | 'VISITED' | 'CONTACTED' | 'INTERESTED' | 'NOT_INTERESTED' | 'CUSTOMER';
 
+/**
+ * Unified lead — every business captured through the pipeline (market
+ * mapping), entered directly, or via the sales pipeline. A lead is a "visit"
+ * once it has been marked visited (visitedAt set / status != NOT_YET).
+ */
 export interface Lead {
   id: string;
+  userId: string;
   businessName: string;
   industry: string;
-  businessAddress?: string;
-  location?: string;
-  website?: string;
-  contactName: string;
-  contactRole?: string;
-  phone: string;
-  email?: string;
+  businessAddress?: string | null;
+  location?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  contactName?: string | null;
+  contactRole?: string | null;
   source: string;
-  otherSource?: string;
-  priority: LeadPriority;
+  priority?: string;
   status: LeadStatus;
-  followUpDate?: string;
-  comments?: string;
-  affiliateId: string;
-  assignedAgentId?: string;
+  followUpDate?: string | null;
+  comments?: string | null;
+  assignedAgentId?: string | null;
+  gpsLat?: string | null;
+  gpsLng?: string | null;
+  gpsAddress?: string | null;
+  openingHours?: string | null;
+  openingDays?: string[] | null;
+  dailyCustomers?: string | null;
+  businessSize?: string | null;
+  horizon?: string | null;
+  nextVisitDate?: string | null;
+  nextVisitTime?: string | null;
+  decisionMakerMet?: boolean | null;
+  interested?: string | null;
+  demoDone?: boolean | null;
+  isAnchor?: boolean;
+  isPlaceholder?: boolean;
+  visitedAt?: string | null;
+  deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  visited?: boolean;
 }
 
 export interface LeadStats {
   total: number;
-  contacted: number;
-  interested: number;
-  potential: number;
+  visited: number;
+  notVisited: number;
+  byStatus: Record<string, number>;
 }
 
 export interface Meta {
@@ -87,7 +108,6 @@ export interface User {
     referrals?: number;
     businesses?: number;
     leads?: number;
-    marketMappingVisits?: number;
     marketMappingAssignments?: number;
   };
 }
@@ -95,19 +115,19 @@ export interface User {
 export interface MarketMappingVisit {
   id: string;
   userId: string;
-  name: string;
-  category?: string;
+  businessName: string;
+  industry: string;
   status: string;
-  address?: string;
-  exactAddress?: string;
+  businessAddress?: string;
+  location?: string;
   phone?: string;
-  ownerName?: string;
-  contactPosition?: string;
-  contactEmail?: string;
+  contactName?: string;
+  contactRole?: string;
+  email?: string;
   gpsLat?: string;
   gpsLng?: string;
   gpsAddress?: string;
-  visitNotes?: string;
+  comments?: string;
   visitedAt?: string;
   createdAt: string;
 }
@@ -126,7 +146,7 @@ export interface AdminUserLeadsResponse {
   };
   leads: Lead[];
   businesses: Business[];
-  visits: MarketMappingVisit[];
+  visits: Lead[];
 }
 
 export interface AdminPerformanceReport {
@@ -445,6 +465,7 @@ export interface AffiliateStats {
   dailyLeadTarget: number;
   monthlyConversionTarget: number;
   todayLeadsCount: number;
+  weeklyLeadsCount: number;
   monthlyLeadsCount: number;
   monthlyConversionsCount: number;
   // Today's sales work stats

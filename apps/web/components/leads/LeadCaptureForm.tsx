@@ -36,15 +36,13 @@ const leadSchema = z.object({
   industry: z.string().optional().or(z.literal('')),
   businessAddress: z.string().optional(),
   location: z.string().optional(),
-  website: z.string().optional(),
   contactName: z.string().optional().or(z.literal('')),
   contactRole: z.string().optional(),
   phone: z.string().min(1, 'Phone number is required'),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
   source: z.string().optional().or(z.literal('')),
-  otherSource: z.string().optional(),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH']).default('MEDIUM'),
-  status: z.enum(['POTENTIAL', 'CONTACTED', 'INTERESTED', 'NOT_INTERESTED', 'COMPLETED']).default('POTENTIAL'),
+  status: z.enum(['NOT_YET', 'VISITED', 'CONTACTED', 'INTERESTED', 'NOT_INTERESTED', 'CUSTOMER']).default('NOT_YET'),
   followUpDate: z.string().optional(),
   comments: z.string().optional(),
   assignedAgentId: z.string().optional(),
@@ -90,7 +88,7 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
     defaultValues: {
       priority: 'MEDIUM',
       source: 'Social Media',
-      status: 'POTENTIAL'
+      status: 'NOT_YET'
     }
   });
 
@@ -100,15 +98,13 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
         businessName: lead.businessName || '',
         industry: lead.industry || '',
         location: lead.location || '',
-        website: lead.website || '',
         contactName: lead.contactName || '',
         contactRole: lead.contactRole || '',
         phone: lead.phone || '',
         email: lead.email || '',
         source: lead.source || 'Social Media',
-        otherSource: lead.otherSource || '',
         priority: lead.priority || 'MEDIUM',
-        status: lead.status || 'POTENTIAL',
+        status: lead.status || 'NOT_YET',
         followUpDate: lead.followUpDate || '',
         comments: lead.comments || '',
         assignedAgentId: lead.assignedAgentId || '',
@@ -117,12 +113,11 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
       reset({
         priority: 'MEDIUM',
         source: 'Social Media',
-        status: 'POTENTIAL'
+        status: 'NOT_YET'
       });
     }
   }, [lead, reset]);
 
-  const selectedSource = watch('source');
   const selectedPriority = watch('priority');
 
   useEffect(() => {
@@ -346,10 +341,10 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Website</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Comments</label>
               <div className="relative">
                 <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input {...register('website')} className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm" placeholder="www.example.com" />
+                <input {...register('comments')} className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm" placeholder="Additional details..." />
               </div>
             </div>
           </div>
@@ -411,20 +406,15 @@ export default function LeadCaptureForm({ agentId, isPublic = false, isAdmin = f
                 <option value="Others">Others</option>
               </select>
             </div>
-            {selectedSource === 'Others' && (
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Specify Other Source</label>
-                <input {...register('otherSource')} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm" placeholder="Please specify..." />
-              </div>
-            )}
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Current Status</label>
               <select {...register('status')} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold outline-none">
-                <option value="POTENTIAL">Potential</option>
+                <option value="NOT_YET">To Visit</option>
+                <option value="VISITED">Visited</option>
                 <option value="CONTACTED">Contacted</option>
                 <option value="INTERESTED">Interested</option>
                 <option value="NOT_INTERESTED">Not Interested</option>
-                <option value="COMPLETED">Completed</option>
+                <option value="CUSTOMER">Customer</option>
               </select>
             </div>
             <div className="space-y-2">

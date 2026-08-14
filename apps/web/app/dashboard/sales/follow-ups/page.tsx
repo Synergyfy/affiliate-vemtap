@@ -128,7 +128,7 @@ export default function SalesFollowUpsPage() {
             onClose={() => setCompletingFollowUp(null)}
             leadId={completingFollowUp.leadId}
             leadName="Lead"
-            currentStage="FOLLOW_UP"
+            currentStage="INTERESTED"
             onComplete={handleCompleted}
           />
         )}

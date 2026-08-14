@@ -50,7 +50,7 @@ export default function FollowUpCompletionModal({
     try {
       await completeFollowUp.mutateAsync({ leadId, outcome, notes: notes || undefined });
       if (outcome === 'DEMO_REQUESTED') {
-        await updateStage.mutateAsync({ leadId, stage: 'DEMO' });
+        await updateStage.mutateAsync({ leadId, stage: 'DEMO_SCHEDULED' });
         showToast('Demo requested — moved to Demo stage', 'success');
       } else if (outcome === 'CONVERTED') {
         await updateStage.mutateAsync({ leadId, stage: 'CUSTOMER' });

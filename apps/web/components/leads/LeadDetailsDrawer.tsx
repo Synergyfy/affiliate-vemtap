@@ -42,8 +42,8 @@ export default function LeadDetailsDrawer({ isOpen, onClose, lead, onEdit }: Lea
       case 'VISITED': return { label: 'Contact Lead', color: 'bg-purple-600' };
       case 'CONTACTED': return { label: 'Schedule Follow-up', color: 'bg-orange-600' };
       case 'INTERESTED': return { label: 'Schedule Demo', color: 'bg-indigo-600' };
-      case 'FOLLOW_UP': return { label: 'Complete Follow-up', color: 'bg-emerald-600' };
-      case 'DEMO': return { label: 'Convert to Customer', color: 'bg-amber-600' };
+      case 'DEMO_SCHEDULED': return { label: 'Complete Demo', color: 'bg-emerald-600' };
+      case 'PROPOSAL_SENT': return { label: 'Send Proposal', color: 'bg-orange-600' };
       case 'CUSTOMER': return { label: 'View Subscription', color: 'bg-slate-800' };
       default: return { label: 'Update Status', color: 'bg-slate-600' };
     }

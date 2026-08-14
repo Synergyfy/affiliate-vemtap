@@ -25,12 +25,19 @@ export class NetworkService {
            monthlyConversionTarget: true,
           totalEarnings: true,
            _count: {
-             select: { referrals: true, businesses: true, leads: true },
-          },
-           businesses: {
-             select: { subscriptionAmount: true, createdAt: true },
+             select: {
+               referrals: true,
+               businesses: true,
+               leads: { where: { deletedAt: null, isPlaceholder: false } },
+            },
            },
-           leads: { select: { createdAt: true } },
+            businesses: {
+              select: { subscriptionAmount: true, createdAt: true },
+            },
+             leads: {
+               where: { deletedAt: null, isPlaceholder: false },
+               select: { createdAt: true },
+             },
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -319,7 +326,10 @@ export class NetworkService {
       },
       include: {
         businesses: { select: { id: true, businessName: true, planType: true, status: true, subscriptionAmount: true, commissionAmount: true, createdAt: true } },
-        leads: { select: { id: true, businessName: true, status: true, priority: true, createdAt: true } },
+        leads: {
+          where: { deletedAt: null, isPlaceholder: false },
+          select: { id: true, businessName: true, status: true, priority: true, createdAt: true, visitedAt: true },
+        },
         activities: { take: 10, orderBy: { createdAt: 'desc' } },
         agentDemos: { select: { id: true, date: true, status: true } },
         targetAdjustmentsReceived: { orderBy: { createdAt: 'desc' }, take: 10 },
@@ -337,8 +347,8 @@ export class NetworkService {
     const dailyConversionsCount = member.businesses.filter((business) => business.createdAt >= today && business.status === 'ACTIVE').length;
     const weeklyConversionsCount = member.businesses.filter((business) => business.createdAt >= week && business.status === 'ACTIVE').length;
     const monthlyConversionsCount = member.businesses.filter((business) => business.createdAt >= month && business.status === 'ACTIVE').length;
-    const dailyVisitsCount = member.agentDemos.filter((demo) => demo.date >= today && demo.status === 'COMPLETED').length;
-    const weeklyVisitsCount = member.agentDemos.filter((demo) => demo.date >= week && demo.status === 'COMPLETED').length;
+    const dailyVisitsCount = member.leads.filter((lead) => lead.visitedAt && lead.visitedAt >= today).length;
+    const weeklyVisitsCount = member.leads.filter((lead) => lead.visitedAt && lead.visitedAt >= week).length;
     const monthlyBreakdown = Array.from({ length: 6 }, (_, index) => {
       const monthStart = new Date(today.getFullYear(), today.getMonth() - (5 - index), 1);
       const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);

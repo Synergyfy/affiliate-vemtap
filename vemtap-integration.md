@@ -10,25 +10,15 @@ The VEMTAP affiliate backend exposes agent management endpoints that the VEMTAP 
 
 ## Authentication
 
-Two authentication methods are supported. You only need one.
-
-### Option A: Shared Secret (Preferred — for VEMTAP main backend)
-
-Send the `x-vemtap-secret` header on every request. This is the same auth mechanism used by `POST /api/integration/vemtap/payment`.
+The agent management endpoints are authenticated with the `x-api-key` header, which is validated against the `VEMTAP_AFFILIATE_KEY` environment variable (or a DB-issued API key).
 
 ```
-x-vemtap-secret: <VEMTAP_SHARED_SECRET>
+x-api-key: <VEMTAP_AFFILIATE_KEY>
 ```
 
-The shared secret is configured via the `VEMTAP_SHARED_SECRET` environment variable on the affiliate backend.
-
-### Option B: JWT Bearer Token
-
-```
-Authorization: Bearer <jwt-token>
-```
-
-The JWT must belong to a user with `ADMIN`, `SUPER_ADMIN`, or `MANAGER` role.
+> Note: The `/agents/*` and `/external/*` paths both use `x-api-key`. The separate
+> `x-vemtap-secret` header is only used by the payment webhook
+> (`POST /integration/vemtap/payment`).
 
 ---
 
@@ -50,7 +40,7 @@ Returns paginated agents with computed metrics (network size, revenue generated,
 **Request:**
 ```
 GET /api/agents?page=1&perPage=10
-x-vemtap-secret: <shared_secret>
+x-api-key: <VEMTAP_AFFILIATE_KEY>
 ```
 
 **Response (200):**
@@ -104,7 +94,7 @@ Returns full agent profile including subordinates and businesses.
 **Request:**
 ```
 GET /api/agents/uuid-string
-x-vemtap-secret: <shared_secret>
+x-api-key: <VEMTAP_AFFILIATE_KEY>
 ```
 
 **Response (200):**
@@ -172,7 +162,7 @@ Returns 12 months of historical revenue data for the bar chart.
 **Request:**
 ```
 GET /api/agents/uuid-string/revenue
-x-vemtap-secret: <shared_secret>
+x-api-key: <VEMTAP_AFFILIATE_KEY>
 ```
 
 **Response (200):**
@@ -206,7 +196,7 @@ Creates a new agent user in the system.
 **Request:**
 ```
 POST /api/agents
-x-vemtap-secret: <shared_secret>
+x-api-key: <VEMTAP_AFFILIATE_KEY>
 Content-Type: application/json
 
 {
@@ -249,7 +239,7 @@ Updates one or more fields on an existing agent.
 **Request:**
 ```
 PATCH /api/agents/uuid-string
-x-vemtap-secret: <shared_secret>
+x-api-key: <VEMTAP_AFFILIATE_KEY>
 Content-Type: application/json
 
 {
@@ -272,7 +262,7 @@ Soft-deletes an agent by setting their status to `DEACTIVATED`.
 **Request:**
 ```
 DELETE /api/agents/uuid-string
-x-vemtap-secret: <shared_secret>
+x-api-key: <VEMTAP_AFFILIATE_KEY>
 ```
 
 **Response (204):** No content. Successful deactivation.
@@ -286,7 +276,7 @@ x-vemtap-secret: <shared_secret>
 | `200` | Success | Process response body |
 | `201` | Created | Agent created successfully |
 | `204` | No Content | Agent deleted successfully |
-| `401` | Unauthorized | Missing or invalid `x-vemtap-secret` header or JWT token |
+| `401` | Unauthorized | Missing or invalid `x-api-key` header |
 | `404` | Not Found | Agent with given ID does not exist |
 | `409` | Conflict | Email or phone already in use (POST/PATCH) |
 | `5xx` | Server Error | Internal affiliate backend error |
@@ -316,11 +306,11 @@ x-vemtap-secret: <shared_secret>
 ## Example Integration (Node.js)
 
 ```typescript
-const SECRET = process.env.AFFILIATE_SHARED_SECRET;
+const SECRET = process.env.VEMTAP_AFFILIATE_KEY;
 const BASE = 'https://affiliate-api.vemtap.com/api';
 
 const headers = {
-  'x-vemtap-secret': SECRET,
+  'x-api-key': SECRET,
   'Content-Type': 'application/json',
 };
 

@@ -17,10 +17,10 @@ export class CreateExceptionDto {
   @IsUUID()
   workSessionId?: string;
 
-  @ApiPropertyOptional({ description: 'Related visit id' })
+  @ApiPropertyOptional({ description: 'Related lead (pipeline business) id' })
   @IsOptional()
   @IsUUID()
-  visitId?: string;
+  leadId?: string;
 }
 
 export class ReviewExceptionDto {

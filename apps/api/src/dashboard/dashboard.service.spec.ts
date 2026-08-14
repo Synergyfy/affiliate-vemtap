@@ -55,6 +55,9 @@ describe("DashboardService", () => {
             lead: {
               count: jest.fn(),
             },
+            salesPipeline: {
+              count: jest.fn(),
+            },
           },
         },
         {
@@ -312,6 +315,44 @@ describe("DashboardService", () => {
 
       const result = await service.getAffiliateStats("user");
       expect(result.currentLevel).toBe("Master Affiliate");
+    });
+
+    it("counts daily/weekly/monthly leads, visits and conversions from the unified lead/business tables", async () => {
+      const userId = "user123";
+      jest.spyOn(prisma.user, "findUnique").mockResolvedValue({
+        totalEarnings: 0,
+        pendingEarnings: 0,
+        referralCount: 0,
+      } as any);
+      jest.spyOn(prisma.business, "count")
+        .mockResolvedValueOnce(2) // activeReferrals
+        .mockResolvedValueOnce(10) // monthlyConversions
+        .mockResolvedValueOnce(4); // todayConversions (vemtap ACTIVE + real amount)
+      jest.spyOn(prisma.linkClick, "count")
+        .mockResolvedValueOnce(100) // totalClicks
+        .mockResolvedValueOnce(15); // todayClicks
+      jest.spyOn(prisma.commission, "aggregate").mockResolvedValue({ _sum: { amount: 0 } } as any);
+      jest.spyOn(prisma.lead, "count")
+        .mockResolvedValueOnce(7) // todayLeads
+        .mockResolvedValueOnce(31) // weeklyLeads
+        .mockResolvedValueOnce(120) // monthlyLeads
+        .mockResolvedValueOnce(8) // todayMarketMappingCount (created today)
+        .mockResolvedValueOnce(6); // todayVisitsCount (visitedAt today)
+      jest.spyOn(prisma.salesPipeline, "count")
+        .mockResolvedValueOnce(3) // todaySalesPipelineCount
+        .mockResolvedValueOnce(2) // todayFollowUpsDue
+        .mockResolvedValueOnce(1); // todayDemosDue
+
+      const result = await service.getAffiliateStats(userId);
+
+      expect(result.todayLeadsCount).toBe(7);
+      expect(result.weeklyLeadsCount).toBe(31);
+      expect(result.monthlyLeadsCount).toBe(120);
+      expect(result.monthlyConversionsCount).toBe(10);
+      expect(result.todayVisitsCount).toBe(6);
+      expect(result.todayConversions).toBe(4);
+      // todayBusinessesAdded = todayLeadsCount (pipeline businesses are leads)
+      expect(result.todayBusinessesAdded).toBe(7);
     });
   });
 });

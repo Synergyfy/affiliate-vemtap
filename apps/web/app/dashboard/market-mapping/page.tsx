@@ -90,7 +90,7 @@ export default function MarketMappingHubPage() {
       title: 'Plan Mission',
       description: 'Set targets and locations for your daily or weekly goals.',
       color: 'bg-blue-600',
-      badge: null,
+      badge: !dayPlan ? `You haven't configured a daily mission for today. Using default target of ${dayTarget}.` : null,
       locked: false,
     },
     {
@@ -303,6 +303,7 @@ export default function MarketMappingHubPage() {
 
         {/* Location status — tells users why business leads are locked/unlocked */}
         <div className="space-y-3">
+
           {hasLocation ? (
             <div className="flex items-start gap-2.5 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3">
               <MapPin className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />

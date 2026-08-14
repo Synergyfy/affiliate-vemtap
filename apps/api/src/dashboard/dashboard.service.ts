@@ -225,6 +225,9 @@ export class DashboardService {
 
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - 6);
+
     const todayEnd = new Date(today);
     todayEnd.setHours(23, 59, 59, 999);
 
@@ -235,6 +238,7 @@ export class DashboardService {
       todayCommissions,
       todayClicks,
       todayLeadsCount,
+      weeklyLeadsCount,
       monthlyLeadsCount,
       monthlyConversionsCount,
       todaySalesPipelineCount,
@@ -271,29 +275,41 @@ export class DashboardService {
       this.prisma.linkClick.count({
         where: { userId, createdAt: { gte: today } },
       }),
-      // Leads submitted today by this user
+      // Leads (pipeline businesses + direct entries + sales pipeline) submitted today
       this.prisma.lead.count({
-        where: { affiliateId: userId, createdAt: { gte: today } },
+        where: { userId, deletedAt: null, isPlaceholder: false, createdAt: { gte: today } },
+      }),
+      // Leads submitted this week by this user
+      this.prisma.lead.count({
+        where: { userId, deletedAt: null, isPlaceholder: false, createdAt: { gte: startOfWeek } },
       }),
       // Leads submitted this month by this user
       this.prisma.lead.count({
-        where: { affiliateId: userId, createdAt: { gte: startOfMonth } },
+        where: { userId, deletedAt: null, isPlaceholder: false, createdAt: { gte: startOfMonth } },
       }),
-      // Businesses (conversions) created this month linked to this user
+      // Conversions this month: successful Vemtap referrals (ACTIVE businesses with a real amount)
       this.prisma.business.count({
-        where: { affiliateId: userId, status: 'ACTIVE', createdAt: { gte: startOfMonth } },
+        where: {
+          affiliateId: userId,
+          status: 'ACTIVE',
+          subscriptionAmount: { gt: 0 },
+          OR: [
+            { createdAt: { gte: startOfMonth } },
+            { paidAt: { gte: startOfMonth } },
+          ],
+        },
       }),
-      // SalesPipeline entries created today (businesses added via sales pipeline)
+      // SalesPipeline entries created today (direct referral sales funnel)
       this.prisma.salesPipeline.count({
         where: { affiliateId: userId, createdAt: { gte: today, lte: todayEnd } },
       }),
-      // MarketMappingVisit entries created today (businesses added via field work — includes placeholders)
-      this.prisma.marketMappingVisit.count({
-        where: { userId, createdAt: { gte: today, lte: todayEnd } },
+      // Leads (pipeline businesses) created today — market mapping is the lead source
+      this.prisma.lead.count({
+        where: { userId, deletedAt: null, isPlaceholder: false, createdAt: { gte: today, lte: todayEnd } },
       }),
-      // MarketMappingVisit entries actually visited today (visitedAt is today)
-      this.prisma.marketMappingVisit.count({
-        where: { userId, visitedAt: { gte: today, lte: todayEnd } },
+      // Visits today: leads actually visited today
+      this.prisma.lead.count({
+        where: { userId, deletedAt: null, isPlaceholder: false, visitedAt: { gte: today, lte: todayEnd } },
       }),
       // SalesPipeline entries with a followUpDate of today
       this.prisma.salesPipeline.count({
@@ -312,12 +328,16 @@ export class DashboardService {
           ],
         },
       }),
-      // SalesPipeline entries that became CUSTOMER today
-      this.prisma.salesPipeline.count({
+      // Conversions today: successful Vemtap referrals recorded today
+      this.prisma.business.count({
         where: {
           affiliateId: userId,
-          pipelineStage: SalesPipelineStage.CUSTOMER,
-          updatedAt: { gte: today, lte: todayEnd },
+          status: 'ACTIVE',
+          subscriptionAmount: { gt: 0 },
+          OR: [
+            { createdAt: { gte: today, lte: todayEnd } },
+            { paidAt: { gte: today, lte: todayEnd } },
+          ],
         },
       }),
     ]);
@@ -343,12 +363,13 @@ export class DashboardService {
       dailyLeadTarget: user?.dailyLeadTarget || 0,
       monthlyConversionTarget: user?.monthlyConversionTarget || 0,
       todayLeadsCount,
+      weeklyLeadsCount,
       monthlyLeadsCount,
       monthlyConversionsCount,
       // Today's sales work stats — used by the sales-work page
       todaySalesPipelineCount,
       todayMarketMappingCount,
-      todayBusinessesAdded: todaySalesPipelineCount + todayMarketMappingCount,
+      todayBusinessesAdded: todayLeadsCount,
       todayVisitsCount,
       todayFollowUpsDue,
       todayDemosDue,

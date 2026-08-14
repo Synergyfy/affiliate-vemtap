@@ -1,5 +1,6 @@
 import { IsString, IsOptional, IsInt, Min, IsDateString, IsBoolean, IsArray, IsIn } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
+import { ALLOWED_LEAD_STATUSES } from "../../common/lead.constants";
 
 export class CreateMissionPlanDto {
   @ApiProperty({ example: 20, description: "Target visits for mission" })
@@ -38,19 +39,17 @@ export class CreateMissionPlanDto {
   endDate?: string;
 }
 
-export class CreateMarketMappingVisitDto {
-  @IsString()
-  name: string;
-
-  @IsOptional() @IsString() category?: string;
-  @IsOptional() @IsIn(["NOT_YET", "VISITED", "CONTACTED", "INTERESTED", "NOT_INTERESTED", "CUSTOMER"]) status?: string;
+export class MarketMappingVisitFieldsDto {
+  @IsOptional() @IsString() businessName?: string;
+  @IsOptional() @IsString() industry?: string;
+  @IsOptional() @IsIn(ALLOWED_LEAD_STATUSES) status?: string;
   @IsOptional() @IsBoolean() isPlaceholder?: boolean;
-  @IsOptional() @IsString() address?: string;
-  @IsOptional() @IsString() exactAddress?: string;
+  @IsOptional() @IsString() businessAddress?: string;
+  @IsOptional() @IsString() location?: string;
   @IsOptional() @IsString() phone?: string;
-  @IsOptional() @IsString() ownerName?: string;
-  @IsOptional() @IsString() contactPosition?: string;
-  @IsOptional() @IsString() contactEmail?: string;
+  @IsOptional() @IsString() contactName?: string;
+  @IsOptional() @IsString() contactRole?: string;
+  @IsOptional() @IsString() email?: string;
   @IsOptional() @IsString() horizon?: string;
   @IsOptional() @IsString() dailyCustomers?: string;
   @IsOptional() @IsString() businessSize?: string;
@@ -64,12 +63,18 @@ export class CreateMarketMappingVisitDto {
   @IsOptional() @IsBoolean() decisionMakerMet?: boolean;
   @IsOptional() @IsString() interested?: string;
   @IsOptional() @IsBoolean() demoDone?: boolean;
-  @IsOptional() @IsString() visitNotes?: string;
+  @IsOptional() @IsString() comments?: string;
   @IsOptional() @IsBoolean() isAnchor?: boolean;
   @IsOptional() @IsString() planId?: string;
+  @IsOptional() @IsString() source?: string;
 }
 
-export class UpdateMarketMappingVisitDto extends CreateMarketMappingVisitDto { }
+export class CreateMarketMappingVisitDto extends MarketMappingVisitFieldsDto {
+  @IsString()
+  businessName: string;
+}
+
+export class UpdateMarketMappingVisitDto extends MarketMappingVisitFieldsDto {}
 
 export class UpdateMissionPlanDto {
   @ApiProperty({ required: false, example: 25 })

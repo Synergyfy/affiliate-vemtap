@@ -106,18 +106,21 @@ export default function WorkMetricReports({
   const conversionReference = weights.conversionReference ?? 0;
 
   const ledger: MarketMappingReportDay[] = monthly.data?.ledger ?? [];
-  const avg = (arr: MarketMappingReportDay[]) => (arr.length ? Math.round(arr.reduce((s, d) => s + d.score, 0) / arr.length) : 0);
+  const avg = (arr: MarketMappingReportDay[]) => {
+    const active = arr.filter((d) => !d.optional);
+    return active.length ? Math.round(active.reduce((s, d) => s + d.score, 0) / active.length) : 0;
+  };
   const todayScore = ledger.length > 0 ? ledger[0].score : 0;
   const weekScore = avg(ledger.slice(0, 7));
   const monthScore = avg(ledger);
-  const missedDays = ledger.filter((d) => d.score < riskThreshold);
+  const missedDays = ledger.filter((d) => !d.optional && d.score < riskThreshold);
   const missedCount = missedDays.length;
 
   const statsOf = (r: MarketMappingReport | undefined) => {
     const summary = r?.summary;
     return {
       leads: summary?.totalLeads ?? 0,
-      target: leadTarget,
+      target: summary?.target ?? leadTarget,
       conversions: summary?.totalConversions ?? 0,
       visits: summary?.totalVisits ?? 0,
       completionRate: summary?.completionRate ?? 0,
@@ -125,6 +128,7 @@ export default function WorkMetricReports({
       earnings: summary?.totalEarnings ?? 0,
       avgLeadsPerDay: summary?.avgLeadsPerDay ?? 0,
       avgConversionRate: summary?.avgConversionRate ?? 0,
+      visitsTarget: summary?.visitsTarget ?? leadTarget,
     };
   };
 
@@ -134,8 +138,9 @@ export default function WorkMetricReports({
 
   const infoScore = (key: Scope) => {
     const days = key === 'daily' ? ledger.slice(0, 1) : key === 'weekly' ? ledger.slice(0, 7) : ledger;
-    if (!days.length) return 0;
-    return Math.round(days.reduce((sum, d) => sum + (d.infoComposite ?? 0), 0) / days.length);
+    const active = days.filter((d) => !d.optional);
+    if (!active.length) return 0;
+    return Math.round(active.reduce((sum, d) => sum + (d.infoComposite ?? 0), 0) / active.length);
   };
 
   const displayName = userName || user?.fullName || 'Affiliate';
@@ -427,9 +432,9 @@ export default function WorkMetricReports({
                             </div>
                           </div>
                           <div>
-                            <div className="flex justify-between text-xs mb-1"><span className="text-slate-600">Field Visits ({fmtWeight(weights.visits)}%)</span><span className="font-bold text-slate-900">{s.target > 0 ? Math.min(100, Math.round((s.visits / s.target) * 100)) : 0}%</span></div>
+                            <div className="flex justify-between text-xs mb-1"><span className="text-slate-600">Field Visits ({fmtWeight(weights.visits)}%)</span><span className="font-bold text-slate-900">{s.visitsTarget > 0 ? Math.min(100, Math.round((s.visits / s.visitsTarget) * 100)) : 0}%</span></div>
                             <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${s.target > 0 ? Math.min(100, Math.round((s.visits / s.target) * 100)) : 0}%` }} />
+                              <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${s.visitsTarget > 0 ? Math.min(100, Math.round((s.visits / s.visitsTarget) * 100)) : 0}%` }} />
                             </div>
                           </div>
                           <div>
