@@ -354,6 +354,7 @@ export default function AffiliateDetailPage() {
             user={user}
             activities={activities}
             leadsData={leadsData}
+            locations={locations}
           />
         )}
 
@@ -445,23 +446,68 @@ function Overview({
   user,
   activities,
   leadsData,
+  locations,
 }: {
   report: AdminPerformanceReport | null | undefined;
   user: User;
   activities: AdminActivity[];
   leadsData: ReturnType<typeof useUserLeads>['data'];
+  locations?: AdminLocationAssignment[];
 }) {
+  const activeAssignment = (locations || []).find((l) => !l.expiresAt || new Date(l.expiresAt) > new Date());
+  const effectiveDailyTarget = activeAssignment?.dailyLeadTarget ? activeAssignment.dailyLeadTarget : user.dailyLeadTarget;
+  const effectiveMonthlyTarget = activeAssignment?.monthlyConversionTarget ? activeAssignment.monthlyConversionTarget : user.monthlyConversionTarget;
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* Performance Targets */}
       <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-        <h2 className="font-black text-slate-900 mb-4 flex items-center gap-2 text-base">
-          <Target className="w-5 h-5 text-violet-600" />
-          Performance Targets &amp; Scores
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-black text-slate-900 flex items-center gap-2 text-base">
+            <Target className="w-5 h-5 text-violet-600" />
+            Performance Targets &amp; Scores
+          </h2>
+          {activeAssignment && (
+            <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-purple-100 text-purple-700">
+              Cluster: {activeAssignment.cluster?.name || 'Assigned'}
+            </span>
+          )}
+        </div>
         <div className="grid grid-cols-2 gap-3">
-          <Metric label="Daily lead target" value={user.dailyLeadTarget ?? 'Not set'} />
-          <Metric label="Monthly conv target" value={user.monthlyConversionTarget ?? 'Not set'} />
+          <Metric
+            label="Daily lead target"
+            value={
+              effectiveDailyTarget ? (
+                <span>
+                  {effectiveDailyTarget}
+                  {activeAssignment?.dailyLeadTarget ? (
+                    <span className="text-[10px] font-medium text-purple-600 block">via Cluster Target</span>
+                  ) : (
+                    <span className="text-[10px] font-medium text-slate-400 block">User Profile Target</span>
+                  )}
+                </span>
+              ) : (
+                'Not set'
+              )
+            }
+          />
+          <Metric
+            label="Monthly conv target"
+            value={
+              effectiveMonthlyTarget ? (
+                <span>
+                  {effectiveMonthlyTarget}
+                  {activeAssignment?.monthlyConversionTarget ? (
+                    <span className="text-[10px] font-medium text-purple-600 block">via Cluster Target</span>
+                  ) : (
+                    <span className="text-[10px] font-medium text-slate-400 block">User Profile Target</span>
+                  )}
+                </span>
+              ) : (
+                'Not set'
+              )
+            }
+          />
           <Metric
             label="Reporting score"
             value={report ? `${report.reportingScore}%` : 'Unavailable'}

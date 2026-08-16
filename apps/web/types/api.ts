@@ -18,6 +18,7 @@ export type LeadStatus = 'NOT_YET' | 'VISITED' | 'CONTACTED' | 'INTERESTED' | 'N
 export interface Lead {
   id: string;
   userId: string;
+  user?: User;
   businessName: string;
   industry: string;
   businessAddress?: string | null;
@@ -52,6 +53,35 @@ export interface Lead {
   createdAt: string;
   updatedAt: string;
   visited?: boolean;
+}
+
+export interface HarvestStats {
+  totalHarvested: number;
+  totalWithPhone: number;
+  totalConverted: number;
+  totalPipeline: number;
+  statusBreakdown: Record<string, number>;
+}
+
+export interface HarvestResponse {
+  data: Lead[];
+  meta: Meta;
+  stats: HarvestStats;
+}
+
+export interface HarvestFilterParams {
+  search?: string;
+  role?: string;
+  userId?: string;
+  status?: string;
+  location?: string;
+  hasPhone?: boolean;
+  startDate?: string;
+  endDate?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  page?: number;
+  limit?: number;
 }
 
 export interface LeadStats {
@@ -171,6 +201,9 @@ export interface AdminLocationAssignment {
   dailyLeadTarget: number;
   weeklyLeadTarget: number;
   monthlyConversionTarget: number;
+  allowUserEdit?: boolean;
+  duration?: string;
+  expiresAt?: string | null;
   cluster: {
     id: string;
     name: string;
@@ -309,7 +342,20 @@ export interface MarketMappingConfig {
   dailyTarget: number;
   weeklyTarget: number;
   monthlyTarget: number;
-  assignment?: { clusterId: string; clusterName: string; allowUserEdit: boolean } | null;
+  isTargetLocked?: boolean;
+  targetSource?: 'CLUSTER_ASSIGNMENT' | 'USER_ADMIN_SET' | 'CUSTOM' | 'GLOBAL_DEFAULT';
+  assignment?: {
+    id?: string;
+    clusterId: string;
+    clusterName: string;
+    allowUserEdit: boolean;
+    dailyLeadTarget?: number;
+    weeklyLeadTarget?: number;
+    monthlyConversionTarget?: number;
+    duration?: string;
+    expiresAt?: string | null;
+    assignedAt?: string;
+  } | null;
   assignedCluster?: string;
 }
 
@@ -464,6 +510,8 @@ export interface AffiliateStats {
   // Agent target metrics
   dailyLeadTarget: number;
   monthlyConversionTarget: number;
+  isTargetLocked?: boolean;
+  assignedCluster?: string | null;
   todayLeadsCount: number;
   weeklyLeadsCount: number;
   monthlyLeadsCount: number;

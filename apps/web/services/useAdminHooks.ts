@@ -1,13 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from './api';
-import { 
-  AdminStats, 
-  PaginatedResponse, 
-  Withdrawal, 
-  User, 
+import {
+  AdminStats,
+  PaginatedResponse,
+  Withdrawal,
+  User,
   PlatformSettings,
   ChartDataPoint,
-  Business
+  Business,
+  HarvestResponse,
+  HarvestFilterParams
 } from '@/types/api';
 import { WithdrawalStatus, Role } from '@/types/api';
 import type {
@@ -17,6 +19,28 @@ import type {
   AdminUserTeam,
   AdminUserLeadsResponse,
 } from '@/types/api';
+
+export const useHarvestLeads = (params?: HarvestFilterParams) => {
+  return useQuery<HarvestResponse>({
+    queryKey: ['admin', 'harvest', params],
+    queryFn: async () => {
+      const { data } = await api.get('/leads/harvest', { params });
+      return data;
+    },
+  });
+};
+
+export const downloadHarvestExport = async (params?: HarvestFilterParams) => {
+  const response = await api.get('/leads/harvest/export', { params, responseType: 'blob' });
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `harvested_contacts_${new Date().toISOString().slice(0, 10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+};
+
 
 export const useAdminUser = (userId?: string) => {
   return useQuery<User | null>({
@@ -50,14 +74,14 @@ export const useAdminCharts = () => {
   });
 };
 
-export const useWithdrawals = (params?: { 
-  status?: WithdrawalStatus; 
-  userId?: string; 
-  search?: string; 
-  startDate?: string; 
-  endDate?: string; 
-  limit?: number; 
-  page?: number; 
+export const useWithdrawals = (params?: {
+  status?: WithdrawalStatus;
+  userId?: string;
+  search?: string;
+  startDate?: string;
+  endDate?: string;
+  limit?: number;
+  page?: number;
 }) => {
   return useQuery<PaginatedResponse<Withdrawal>>({
     queryKey: ['admin', 'withdrawals', params],
@@ -96,12 +120,12 @@ export const useUpdateWithdrawalAmount = () => {
   });
 };
 
-export const useUsers = (params?: { 
-  role?: Role; 
-  status?: string; 
-  search?: string; 
-  limit?: number; 
-  page?: number; 
+export const useUsers = (params?: {
+  role?: Role;
+  status?: string;
+  search?: string;
+  limit?: number;
+  page?: number;
   isManager?: boolean;
   enabled?: boolean;
 }) => {
@@ -168,11 +192,11 @@ export const useUpdateSettings = () => {
   });
 };
 
-export const useBusinesses = (params?: { 
-  status?: string; 
-  search?: string; 
-  limit?: number; 
-  page?: number; 
+export const useBusinesses = (params?: {
+  status?: string;
+  search?: string;
+  limit?: number;
+  page?: number;
 }) => {
   return useQuery<PaginatedResponse<Business>>({
     queryKey: ['admin', 'businesses', params],
@@ -350,7 +374,7 @@ export const downloadBusinessesExport = async () => {
   const url = window.URL.createObjectURL(new Blob([response.data]));
   const link = document.createElement('a');
   link.href = url;
-  link.setAttribute('download', `businesses_export_${new Date().toISOString().slice(0,10)}.csv`);
+  link.setAttribute('download', `businesses_export_${new Date().toISOString().slice(0, 10)}.csv`);
   document.body.appendChild(link);
   link.click();
   link.remove();
