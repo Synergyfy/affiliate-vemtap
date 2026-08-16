@@ -313,4 +313,57 @@ describe("Leads -> Visits -> Conversions funnel (e2e)", () => {
       .send({ status: "INTERESTED" })
       .expect(403);
   });
+
+  describe("Admin Business Contacts & Leads Harvesting", () => {
+    it("allows admin to harvest all leads with creator user metadata and aggregate stats", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/leads/harvest")
+        .set("Cookie", adminCookies)
+        .expect(200);
+
+      expect(res.body.data).toBeInstanceOf(Array);
+      expect(res.body.data.length).toBeGreaterThanOrEqual(1);
+      expect(res.body.meta).toBeDefined();
+      expect(res.body.stats).toBeDefined();
+      expect(res.body.stats.totalHarvested).toBeGreaterThanOrEqual(1);
+
+      // Verify that creator user info is attached
+      const sample = res.body.data[0];
+      expect(sample.user).toBeDefined();
+      expect(sample.user.fullName).toBeDefined();
+      expect(sample.user.role).toBeDefined();
+    });
+
+    it("rejects non-admin from accessing the harvest endpoint with 403", async () => {
+      await request(app.getHttpServer())
+        .get("/leads/harvest")
+        .set("Cookie", affiliateCookies)
+        .expect(403);
+    });
+
+    it("filters harvested leads by role, search, and status", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/leads/harvest")
+        .query({ role: Role.AFFILIATE, search: "Funnel", status: "NOT_YET" })
+        .set("Cookie", adminCookies)
+        .expect(200);
+
+      expect(res.body.data).toBeInstanceOf(Array);
+      for (const item of res.body.data) {
+        expect(item.user.role).toBe(Role.AFFILIATE);
+      }
+    });
+
+    it("exports harvested leads as CSV file with creator metadata", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/leads/harvest/export")
+        .set("Cookie", adminCookies)
+        .expect(200);
+
+      expect(res.headers["content-type"]).toContain("text/csv");
+      expect(res.text).toContain("Business Name,Contact Name");
+      expect(res.text).toContain("Added By Name,Added By Role");
+    });
+  });
 });
+

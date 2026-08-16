@@ -125,9 +125,63 @@ describe("MarketMappingService", () => {
       expect(result.monthlyTarget).toBe(20);
       expect(result.userTargets.dailyLeadTarget).toBe(5);
       expect(result.assignedCluster).toBe("Tech & Retail Cluster 1");
+      expect(result.isTargetLocked).toBe(false);
+      expect(result.targetSource).toBe("USER_ADMIN_SET");
+    });
+
+    it("should lock target when active cluster assignment has allowUserEdit: false", async () => {
+      mockPrismaService.marketMappingAssignment.findFirst.mockResolvedValue({
+        id: "asgn-1",
+        clusterId: "cl-wuse",
+        dailyLeadTarget: 15,
+        weeklyLeadTarget: 75,
+        monthlyConversionTarget: 30,
+        allowUserEdit: false,
+        duration: "ONE_WEEK",
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        assignedAt: new Date(),
+        cluster: { id: "cl-wuse", name: "Wuse Market" },
+      });
+
+      const result = await service.getConfig("user-1");
+
+      expect(result.dailyTarget).toBe(15);
+      expect(result.weeklyTarget).toBe(75);
+      expect(result.monthlyTarget).toBe(30);
+      expect(result.isTargetLocked).toBe(true);
+      expect(result.targetSource).toBe("CLUSTER_ASSIGNMENT");
+      expect(result.assignedCluster).toBe("Wuse Market");
+      expect(result.assignment?.clusterName).toBe("Wuse Market");
+    });
+
+    it("should allow editing (isTargetLocked: false) when active cluster assignment has allowUserEdit: true", async () => {
+      mockPrismaService.marketMappingAssignment.findFirst.mockResolvedValue({
+        id: "asgn-1",
+        clusterId: "cl-wuse",
+        dailyLeadTarget: 15,
+        weeklyLeadTarget: 75,
+        monthlyConversionTarget: 30,
+        allowUserEdit: true,
+        duration: "ONE_WEEK",
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        assignedAt: new Date(),
+        cluster: { id: "cl-wuse", name: "Wuse Market" },
+      });
+
+      const result = await service.getConfig("user-1");
+
+      expect(result.dailyTarget).toBe(15);
+      expect(result.isTargetLocked).toBe(false);
+      expect(result.targetSource).toBe("CLUSTER_ASSIGNMENT");
+      expect(result.assignment?.allowUserEdit).toBe(true);
     });
 
     it("should fall back to defaults when no admin config exists", async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        territoryId: "NG-LAG-IKJ-01",
+        dailyLeadTarget: 0,
+        monthlyConversionTarget: 0,
+      });
       mockPrismaService.marketMappingAdminConfig.findFirst.mockResolvedValue(null);
       mockPrismaService.marketMappingAdminConfig.create.mockResolvedValue({
         id: "cfg-new",
@@ -140,6 +194,8 @@ describe("MarketMappingService", () => {
 
       expect(mockPrismaService.marketMappingAdminConfig.create).toHaveBeenCalled();
       expect(result.dailyTarget).toBe(5);
+      expect(result.isTargetLocked).toBe(false);
+      expect(result.targetSource).toBe("GLOBAL_DEFAULT");
     });
   });
 
@@ -480,6 +536,7 @@ describe("MarketMappingService", () => {
       mockPrismaService.business.findMany.mockResolvedValue([]);
       mockPrismaService.marketMappingNote.findMany.mockResolvedValue([]);
       mockPrismaService.marketMappingPlan.findMany.mockResolvedValue([]);
+      mockPrismaService.marketMappingAssignment.findMany.mockResolvedValue([]);
     });
 
     afterEach(() => {
@@ -498,13 +555,68 @@ describe("MarketMappingService", () => {
       expect(result.ledger[0].met).toBe(false);
     });
 
-    it("should use the user's real daily lead target", async () => {
+    it("should use the user's real daily lead target when not assigned to a cluster", async () => {
       mockPrismaService.user.findUnique.mockResolvedValue({ dailyLeadTarget: 15 });
 
       const result = await service.getReports("user-1", "daily");
 
       expect(result.weights.leadTarget).toBe(15);
       expect(result.ledger[0].target).toBe(15);
+    });
+
+    it("should prioritize active cluster assignment targets for days within the assignment duration", async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({ dailyLeadTarget: 5 });
+      mockPrismaService.marketMappingAssignment.findMany.mockResolvedValue([
+        {
+          id: "asgn-1",
+          clusterId: "cl-banex",
+          dailyLeadTarget: 30,
+          weeklyLeadTarget: 150,
+          monthlyConversionTarget: 50,
+          assignedAt: new Date(2026, 7, 10),
+          expiresAt: new Date(2026, 7, 17),
+          cluster: { id: "cl-banex", name: "Banex Plaza" },
+        },
+      ]);
+
+      const result = await service.getReports("user-1", "daily");
+
+      expect(result.ledger[0].target).toBe(30);
+      expect(result.ledger[0].clusterName).toBe("Banex Plaza");
+    });
+
+    it("should allow user custom plan target in getReports when cluster assignment has allowUserEdit: true", async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({ dailyLeadTarget: 5 });
+      mockPrismaService.marketMappingAssignment.findMany.mockResolvedValue([
+        {
+          id: "asgn-1",
+          clusterId: "cl-banex",
+          dailyLeadTarget: 30,
+          weeklyLeadTarget: 150,
+          monthlyConversionTarget: 50,
+          allowUserEdit: true,
+          assignedAt: new Date(2026, 7, 10),
+          expiresAt: new Date(2026, 7, 17),
+          cluster: { id: "cl-banex", name: "Banex Plaza" },
+        },
+      ]);
+      mockPrismaService.marketMappingPlan.findMany.mockResolvedValue([
+        {
+          id: "plan-custom",
+          userId: "user-1",
+          horizon: "DAY",
+          targetLeads: 45,
+          targetVisits: 45,
+          targetConversions: 5,
+          startDate: new Date(2026, 7, 14),
+          endDate: new Date(2026, 7, 14),
+        },
+      ]);
+
+      const result = await service.getReports("user-1", "daily");
+
+      expect(result.ledger[0].target).toBe(45);
+      expect(result.summary.target).toBe(45);
     });
 
     it("should derive Business Info + GPS from real visit (visited lead) data", async () => {
@@ -604,11 +716,12 @@ describe("MarketMappingService", () => {
       expect(result.summary.visitsTarget).toBe(100);
     });
 
-    it("should sum monthly targets across the whole calendar month", async () => {
+    it("should sum monthly targets across elapsed month-to-date working days", async () => {
       const result = await service.getReports("user-1", "monthly");
 
-      // August 2026 has 21 weekdays, each fallback 20.
-      expect(result.summary.target).toBe(420);
+      // Month-to-date (Aug 1 – Aug 14 2026) has 10 weekdays * 20.
+      expect(result.summary.target).toBe(200);
+      expect(result.summary.visitsTarget).toBe(200);
     });
 
     it("should mark unplanned weekend days as optional with zero target", async () => {
@@ -893,11 +1006,83 @@ describe("MarketMappingService", () => {
     });
   });
 
-  describe("updatePlan", () => {
-    it("should parse string startDate and endDate into Date objects when updating a mission plan", async () => {
+  describe("createPlan and updatePlan target locking", () => {
+    it("should enforce admin cluster targets on createPlan when user is in an active cluster", async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({ dailyLeadTarget: 5 });
+      mockPrismaService.marketMappingAdminConfig.findFirst.mockResolvedValue({ dailyTarget: 5 });
+      mockPrismaService.marketMappingAssignment.findFirst.mockResolvedValue({
+        id: "asgn-1",
+        clusterId: "cl-wuse",
+        dailyLeadTarget: 25,
+        weeklyLeadTarget: 125,
+        monthlyConversionTarget: 50,
+        allowUserEdit: false,
+        duration: "ONE_WEEK",
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        cluster: { id: "cl-wuse", name: "Wuse Market" },
+      });
+      mockPrismaService.marketMappingPlan.create.mockImplementation((args: any) =>
+        Promise.resolve({ id: "plan-new", ...args.data }),
+      );
+
+      const result = await service.createPlan("user-1", {
+        targetVisits: 100, // User attempts to override
+        targetLeads: 100,
+        targetConversions: 20,
+        locationCluster: "Custom Mall",
+      });
+
+      expect(result.targetVisits).toBe(25);
+      expect(result.targetLeads).toBe(25);
+      expect(result.locationCluster).toBe("Wuse Market");
+    });
+
+    it("should allow user custom targets on createPlan when active cluster has allowUserEdit: true", async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({ dailyLeadTarget: 5 });
+      mockPrismaService.marketMappingAdminConfig.findFirst.mockResolvedValue({ dailyTarget: 5 });
+      mockPrismaService.marketMappingAssignment.findFirst.mockResolvedValue({
+        id: "asgn-1",
+        clusterId: "cl-wuse",
+        dailyLeadTarget: 25,
+        weeklyLeadTarget: 125,
+        monthlyConversionTarget: 50,
+        allowUserEdit: true,
+        duration: "ONE_WEEK",
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        cluster: { id: "cl-wuse", name: "Wuse Market" },
+      });
+      mockPrismaService.marketMappingPlan.create.mockImplementation((args: any) =>
+        Promise.resolve({ id: "plan-new", ...args.data }),
+      );
+
+      const result = await service.createPlan("user-1", {
+        targetVisits: 40,
+        targetLeads: 40,
+        targetConversions: 10,
+        locationCluster: "Custom Cluster",
+      });
+
+      expect(result.targetVisits).toBe(40);
+      expect(result.targetLeads).toBe(40);
+      expect(result.locationCluster).toBe("Wuse Market");
+    });
+
+    it("should parse string startDate and endDate into Date objects when updating a mission plan and enforce cluster target", async () => {
       mockPrismaService.marketMappingPlan.findFirst.mockResolvedValue({
         id: "plan-1",
         userId: "user-1",
+      });
+      mockPrismaService.user.findUnique.mockResolvedValue({ dailyLeadTarget: 5 });
+      mockPrismaService.marketMappingAssignment.findFirst.mockResolvedValue({
+        id: "asgn-1",
+        clusterId: "cl-wuse",
+        dailyLeadTarget: 25,
+        weeklyLeadTarget: 125,
+        monthlyConversionTarget: 50,
+        allowUserEdit: false,
+        duration: "ONE_WEEK",
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        cluster: { id: "cl-wuse", name: "Wuse Market" },
       });
       mockPrismaService.marketMappingPlan.update.mockImplementation((args: any) =>
         Promise.resolve({ id: "plan-1", ...args.data }),
@@ -906,12 +1091,13 @@ describe("MarketMappingService", () => {
       const result = await service.updatePlan("plan-1", "user-1", {
         startDate: "2026-08-11T00:00:00",
         endDate: "2026-08-11T23:59:59",
-        targetVisits: 39,
+        targetVisits: 99,
       });
 
       expect(result.startDate).toEqual(new Date("2026-08-11T00:00:00"));
       expect(result.endDate).toEqual(new Date("2026-08-11T23:59:59"));
-      expect(result.targetVisits).toBe(39);
+      expect(result.targetVisits).toBe(25);
+      expect(result.locationCluster).toBe("Wuse Market");
     });
   });
 });

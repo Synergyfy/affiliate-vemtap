@@ -90,10 +90,10 @@ export class CreateLeadDto {
 }
 
 import { PartialType } from '@nestjs/swagger';
+import { Role } from '@prisma/client';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 
 export class UpdateLeadDto extends PartialType(CreateLeadDto) {}
-
-import { PaginationDto } from '../../common/dto/pagination.dto';
 
 export class LeadFilterDto extends PaginationDto {
   @IsOptional()
@@ -109,3 +109,57 @@ export class LeadFilterDto extends PaginationDto {
   @IsString()
   search?: string;
 }
+
+export class HarvestLeadsFilterDto extends PaginationDto {
+  @ApiPropertyOptional({ description: 'Search term across business, contact person, phone, email, and user name' })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @ApiPropertyOptional({ enum: Role, description: 'Filter by role of user who added the lead' })
+  @IsOptional()
+  @IsString()
+  role?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by specific user ID' })
+  @IsOptional()
+  @IsUUID()
+  userId?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by pipeline status' })
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by location or address' })
+  @IsOptional()
+  @IsString()
+  location?: string;
+
+  @ApiPropertyOptional({ description: 'Filter only leads with a valid phone number' })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  hasPhone?: boolean;
+
+  @ApiPropertyOptional({ description: 'Filter created on or after date' })
+  @IsOptional()
+  @IsDateString()
+  startDate?: string;
+
+  @ApiPropertyOptional({ description: 'Filter created on or before date' })
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
+
+  @ApiPropertyOptional({ enum: ['createdAt', 'businessName', 'status', 'contactName'], default: 'createdAt' })
+  @IsOptional()
+  @IsString()
+  sortBy?: string = 'createdAt';
+
+  @ApiPropertyOptional({ enum: ['asc', 'desc'], default: 'desc' })
+  @IsOptional()
+  @IsString()
+  sortOrder?: 'asc' | 'desc' = 'desc';
+}
+
