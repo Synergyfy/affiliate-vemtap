@@ -9,7 +9,10 @@ import {
   ChartDataPoint,
   Business,
   HarvestResponse,
-  HarvestFilterParams
+  HarvestFilterParams,
+  DuplicateLeadsResponse,
+  DuplicateFilterParams,
+  Lead
 } from '@/types/api';
 import { WithdrawalStatus, Role } from '@/types/api';
 import type {
@@ -26,6 +29,46 @@ export const useHarvestLeads = (params?: HarvestFilterParams) => {
     queryFn: async () => {
       const { data } = await api.get('/leads/harvest', { params });
       return data;
+    },
+  });
+};
+
+export const useDuplicateLeads = (params?: DuplicateFilterParams) => {
+  return useQuery<DuplicateLeadsResponse>({
+    queryKey: ['admin', 'duplicate-leads', params],
+    queryFn: async () => {
+      const { data } = await api.get('/leads/duplicates', { params });
+      return data;
+    },
+  });
+};
+
+export const useUpdateLeadAdmin = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ leadId, data }: { leadId: string; data: Partial<Lead> }) => {
+      const res = await api.patch(`/leads/${leadId}`, data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'harvest'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'duplicate-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+    },
+  });
+};
+
+export const useDeleteLeadAdmin = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (leadId: string) => {
+      const res = await api.delete(`/leads/${leadId}`);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'harvest'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'duplicate-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
     },
   });
 };

@@ -287,4 +287,68 @@ describe("LeadsService", () => {
       });
     });
   });
+
+  describe("findDuplicates", () => {
+    it("groups identical phone numbers and similar business names into duplicate clusters", async () => {
+      const mockLeads = [
+        {
+          id: "lead-1",
+          businessName: "Mama Put Enterprise",
+          phone: "08012345678",
+          email: "mamaput@gmail.com",
+          contactName: "Mrs Bola",
+          location: "Ikeja, Lagos",
+          status: "CUSTOMER",
+          createdAt: new Date("2026-01-01"),
+          user: { fullName: "Agent John", role: "AGENT" },
+        },
+        {
+          id: "lead-2",
+          businessName: "Mama Put Restaurant & Kitchen",
+          phone: "+2348012345678",
+          email: "mamaput@gmail.com",
+          contactName: "Bola",
+          location: "Ikeja Lagos",
+          status: "NOT_YET",
+          createdAt: new Date("2026-01-05"),
+          user: { fullName: "Affiliate Mike", role: "AFFILIATE" },
+        },
+        {
+          id: "lead-3",
+          businessName: "Mama Put Ltd",
+          phone: "08012345678",
+          email: null,
+          contactName: "Mrs. Bola A.",
+          location: "Ikeja",
+          status: "CONTACTED",
+          createdAt: new Date("2026-01-10"),
+          user: { fullName: "Agent Sarah", role: "AGENT" },
+        },
+        {
+          id: "lead-4",
+          businessName: "Completely Unique Tech Services",
+          phone: "08099999999",
+          email: "uniquetech@gmail.com",
+          contactName: "David",
+          location: "Abuja",
+          status: "VISITED",
+          createdAt: new Date("2026-01-02"),
+          user: { fullName: "Agent John", role: "AGENT" },
+        },
+      ];
+
+      mockPrisma.lead.findMany.mockResolvedValue(mockLeads);
+
+      const result = await service.findDuplicates({ threshold: 70 });
+
+      expect(result.stats.totalClusters).toBe(1);
+      expect(result.stats.totalDuplicateLeads).toBe(3);
+      expect(result.clusters[0].leadCount).toBe(3);
+      expect(result.clusters[0].primaryLeadId).toBe("lead-1"); // Converted lead is chosen as primary
+      expect(result.clusters[0].leads[0].isPrimary).toBe(true);
+      expect(result.clusters[0].leads[0].similarityPercentage).toBe(100);
+      expect(result.clusters[0].leads[1].similarityPercentage).toBeGreaterThanOrEqual(90);
+      expect(result.clusters[0].matchReasons).toContain("Identical Phone Number");
+    });
+  });
 });
