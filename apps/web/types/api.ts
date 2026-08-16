@@ -8,7 +8,7 @@ export type FraudStatus = 'OPEN' | 'CONFIRMED' | 'RESOLVED';
 export type NotificationType = 'SYSTEM' | 'COMMISSION' | 'REFERRAL' | 'SECURITY';
 export type ProgressStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
 export type LeadPriority = 'LOW' | 'MEDIUM' | 'HIGH';
-export type LeadStatus = 'NOT_YET' | 'VISITED' | 'CONTACTED' | 'INTERESTED' | 'NOT_INTERESTED' | 'CUSTOMER';
+export type LeadStatus = 'NOT_YET' | 'VISITED' | 'CONTACTED' | 'INTERESTED' | 'NOT_INTERESTED' | 'CUSTOMER' | 'DEMO_SCHEDULED' | 'DEMO_DONE' | 'CONVERTED' | 'LOST' | (string & {});
 
 /**
  * Unified lead — every business captured through the pipeline (market
@@ -81,6 +81,40 @@ export interface HarvestFilterParams {
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   page?: number;
+  limit?: number;
+}
+
+export interface DuplicateLeadItem extends Lead {
+  similarityPercentage: number;
+  isPrimary: boolean;
+  reasons: string[];
+}
+
+export interface DuplicateCluster {
+  clusterId: string;
+  primaryLeadId: string;
+  primaryBusinessName: string;
+  leadCount: number;
+  maxSimilarity: number;
+  matchReasons: string[];
+  leads: DuplicateLeadItem[];
+}
+
+export interface DuplicateStats {
+  totalClusters: number;
+  totalDuplicateLeads: number;
+  highConfidenceClusters: number;
+  threshold: number;
+}
+
+export interface DuplicateLeadsResponse {
+  clusters: DuplicateCluster[];
+  stats: DuplicateStats;
+}
+
+export interface DuplicateFilterParams {
+  threshold?: number;
+  search?: string;
   limit?: number;
 }
 

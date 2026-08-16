@@ -364,6 +364,25 @@ describe("Leads -> Visits -> Conversions funnel (e2e)", () => {
       expect(res.text).toContain("Business Name,Contact Name");
       expect(res.text).toContain("Added By Name,Added By Role");
     });
+
+    it("allows admin to detect duplicate leads clustered with similarity scores", async () => {
+      const res = await request(app.getHttpServer())
+        .get("/leads/duplicates")
+        .query({ threshold: 60 })
+        .set("Cookie", adminCookies)
+        .expect(200);
+
+      expect(res.body.clusters).toBeInstanceOf(Array);
+      expect(res.body.stats).toBeDefined();
+      expect(res.body.stats.threshold).toBe(60);
+    });
+
+    it("rejects non-admin from accessing duplicates endpoint with 403", async () => {
+      await request(app.getHttpServer())
+        .get("/leads/duplicates")
+        .set("Cookie", affiliateCookies)
+        .expect(403);
+    });
   });
 });
 

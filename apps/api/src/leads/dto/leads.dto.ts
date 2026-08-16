@@ -1,5 +1,5 @@
-import { IsString, IsOptional, IsEmail, IsDateString, IsBoolean, IsIn, IsUUID } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsString, IsOptional, IsEmail, IsDateString, IsBoolean, IsIn, IsUUID, IsNumber, Min, Max } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { LEAD_STATUSES, ALLOWED_LEAD_STATUSES } from '../../common/lead.constants';
 
@@ -161,5 +161,28 @@ export class HarvestLeadsFilterDto extends PaginationDto {
   @IsOptional()
   @IsString()
   sortOrder?: 'asc' | 'desc' = 'desc';
+}
+
+export class DuplicateLeadsFilterDto {
+  @ApiPropertyOptional({ description: 'Similarity threshold percentage (40 - 100)', default: 70 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(40)
+  @Max(100)
+  threshold?: number = 70;
+
+  @ApiPropertyOptional({ description: 'Search term to filter duplicates by business name, phone, or email' })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @ApiPropertyOptional({ description: 'Maximum duplicate clusters to return', default: 100 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  @Max(500)
+  limit?: number = 100;
 }
 
