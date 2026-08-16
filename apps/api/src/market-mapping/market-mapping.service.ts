@@ -90,8 +90,6 @@ export class MarketMappingService {
     }
 
     const adminConfig = await this.getAdminConfig();
-    const dailyTarget = user?.dailyLeadTarget || adminConfig.dailyTarget || 5;
-    const monthlyTarget = user?.monthlyConversionTarget || adminConfig.monthlyTarget || 20;
 
     const assignment = await this.prisma.marketMappingAssignment.findFirst({
       where: {
@@ -104,6 +102,34 @@ export class MarketMappingService {
       include: { cluster: { select: { id: true, name: true } } },
       orderBy: { createdAt: "desc" },
     });
+
+    let dailyTarget: number;
+    let weeklyTarget: number;
+    let monthlyTarget: number;
+    let isTargetLocked = false;
+    let targetSource: "CLUSTER_ASSIGNMENT" | "USER_ADMIN_SET" | "GLOBAL_DEFAULT" = "GLOBAL_DEFAULT";
+
+    const hasAssignmentTarget = assignment && (assignment.dailyLeadTarget > 0 || assignment.weeklyLeadTarget > 0 || assignment.monthlyConversionTarget > 0);
+
+    if (assignment && hasAssignmentTarget) {
+      dailyTarget = assignment.dailyLeadTarget > 0 ? assignment.dailyLeadTarget : (user?.dailyLeadTarget || adminConfig.dailyTarget || 5);
+      weeklyTarget = assignment.weeklyLeadTarget > 0 ? assignment.weeklyLeadTarget : (dailyTarget * 5);
+      monthlyTarget = assignment.monthlyConversionTarget > 0 ? assignment.monthlyConversionTarget : (user?.monthlyConversionTarget || adminConfig.monthlyTarget || 20);
+      isTargetLocked = assignment.allowUserEdit === false;
+      targetSource = "CLUSTER_ASSIGNMENT";
+    } else if (user?.dailyLeadTarget && user.dailyLeadTarget > 0) {
+      dailyTarget = user.dailyLeadTarget;
+      weeklyTarget = dailyTarget * 5;
+      monthlyTarget = user.monthlyConversionTarget || adminConfig.monthlyTarget || 20;
+      isTargetLocked = false;
+      targetSource = "USER_ADMIN_SET";
+    } else {
+      dailyTarget = adminConfig.dailyTarget || 5;
+      weeklyTarget = adminConfig.weeklyTarget || (dailyTarget * 5);
+      monthlyTarget = adminConfig.monthlyTarget || 20;
+      isTargetLocked = false;
+      targetSource = "GLOBAL_DEFAULT";
+    }
 
     return {
       businessCategories: adminConfig.businessCategories,
@@ -119,13 +145,22 @@ export class MarketMappingService {
       businessStatuses: adminConfig.businessStatuses,
       paymentStatuses: adminConfig.paymentStatuses,
       dailyTarget,
-      weeklyTarget: dailyTarget * 5,
+      weeklyTarget,
       monthlyTarget,
+      isTargetLocked,
+      targetSource,
       assignment: assignment
         ? {
+            id: assignment.id,
             clusterId: assignment.clusterId,
             clusterName: assignment.cluster?.name || "",
             allowUserEdit: assignment.allowUserEdit,
+            dailyLeadTarget: assignment.dailyLeadTarget,
+            weeklyLeadTarget: assignment.weeklyLeadTarget,
+            monthlyConversionTarget: assignment.monthlyConversionTarget,
+            duration: assignment.duration,
+            expiresAt: assignment.expiresAt?.toISOString() || null,
+            assignedAt: assignment.assignedAt?.toISOString() || assignment.createdAt?.toISOString(),
           }
         : null,
       assignedCluster: assignment?.cluster?.name || config.cluster,
@@ -294,16 +329,34 @@ export class MarketMappingService {
   }
 
   async createPlan(userId: string, dto: CreateMissionPlanDto) {
+    const start = dto.startDate ? new Date(dto.startDate) : new Date();
+    const end = dto.endDate
+      ? new Date(dto.endDate)
+      : new Date(start.getFullYear(), start.getMonth(), start.getDate(), 23, 59, 59, 999);
+
+    const configData = await this.getConfig(userId);
+    let targetVisits = dto.targetVisits;
+    let targetLeads = dto.targetLeads;
+    let locationCluster = dto.locationCluster || "Assigned Cluster";
+
+    if (configData.isTargetLocked) {
+      targetVisits = configData.dailyTarget;
+      targetLeads = configData.dailyTarget;
+    }
+    if (configData.assignment?.clusterName) {
+      locationCluster = configData.assignment.clusterName;
+    }
+
     return this.prisma.marketMappingPlan.create({
       data: {
         userId,
-        targetVisits: dto.targetVisits,
-        targetLeads: dto.targetLeads,
-        targetConversions: dto.targetConversions,
-        locationCluster: dto.locationCluster || "Assigned Cluster",
+        targetVisits: targetVisits ?? configData.dailyTarget,
+        targetLeads: targetLeads ?? configData.dailyTarget,
+        targetConversions: dto.targetConversions ?? configData.monthlyTarget,
+        locationCluster,
         notes: dto.notes,
-        startDate: dto.startDate ? new Date(dto.startDate) : new Date(),
-        endDate: dto.endDate ? new Date(dto.endDate) : undefined,
+        startDate: start,
+        endDate: end,
       },
     });
   }
@@ -314,12 +367,25 @@ export class MarketMappingService {
     });
     if (!plan) throw new NotFoundException("Mission plan not found");
 
+    const configData = await this.getConfig(userId);
     const data: Prisma.MarketMappingPlanUpdateInput = { ...dto } as any;
+
+    if (configData.isTargetLocked) {
+      data.targetVisits = configData.dailyTarget;
+      data.targetLeads = configData.dailyTarget;
+    }
+    if (configData.assignment?.clusterName) {
+      data.locationCluster = configData.assignment.clusterName;
+    }
+
     if (dto.startDate) {
       data.startDate = new Date(dto.startDate);
     }
     if (dto.endDate) {
       data.endDate = new Date(dto.endDate);
+    } else if (dto.startDate && !plan.endDate) {
+      const s = new Date(dto.startDate);
+      data.endDate = new Date(s.getFullYear(), s.getMonth(), s.getDate(), 23, 59, 59, 999);
     }
 
     return this.prisma.marketMappingPlan.update({
@@ -407,13 +473,13 @@ export class MarketMappingService {
   }
 
   async getPerformance(userId: string) {
+    const configData = await this.getConfig(userId);
     const now = new Date();
     const day = new Date(now); day.setHours(0, 0, 0, 0);
     const week = new Date(day); week.setDate(day.getDate() - 6);
     const month = new Date(day); month.setDate(day.getDate() - 29);
-    const [leads, user, monthBusinesses] = await Promise.all([
+    const [leads, monthBusinesses] = await Promise.all([
       this.prisma.lead.findMany({ where: { userId, deletedAt: null, isPlaceholder: false } }),
-      this.prisma.user.findUnique({ where: { id: userId }, select: { dailyLeadTarget: true, monthlyConversionTarget: true } }),
       this.prisma.business.findMany({ where: { affiliateId: userId, status: "ACTIVE", subscriptionAmount: { gt: 0 }, createdAt: { gte: month } }, select: { commissionAmount: true } }),
     ]);
     const countSince = (date: Date) =>
@@ -425,9 +491,9 @@ export class MarketMappingService {
     const weekVisits = countSince(week);
     const monthVisits = countSince(month);
 
-    const dailyTarget = user?.dailyLeadTarget || 0;
-    const weeklyTarget = dailyTarget * 5;
-    const monthlyTarget = user?.monthlyConversionTarget || 0;
+    const dailyTarget = configData.dailyTarget;
+    const weeklyTarget = configData.weeklyTarget;
+    const monthlyTarget = configData.monthlyTarget;
 
     const monthRevenue = monthBusinesses.reduce((sum, business) => sum + Number(business.commissionAmount || 0), 0);
     const pct = (value: number, target: number) => target > 0 ? Math.min(100, Math.round((value / target) * 100)) : 0;
@@ -473,30 +539,31 @@ export class MarketMappingService {
     const ledgerStart = startOfDay(now);
     ledgerStart.setDate(ledgerStart.getDate() - 29);
 
-    // Calendar period windows for summary totals and target rollups.
+    // Period-to-date windows for summary totals and target rollups (Daily, Week-to-Date, Month-to-Date).
     let periodStart: Date;
-    let periodDays: Date[] = [];
+    const periodDays: Date[] = [];
     if (period === "daily") {
       periodStart = todayStart;
-      periodDays = [todayStart];
+      periodDays.push(todayStart);
     } else if (period === "weekly") {
       const monday = startOfDay(now);
       monday.setDate(monday.getDate() - ((now.getDay() + 6) % 7));
       periodStart = monday;
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(monday);
-        d.setDate(monday.getDate() + i);
-        periodDays.push(d);
+      const cursor = new Date(monday);
+      while (cursor.getTime() <= todayStart.getTime()) {
+        periodDays.push(new Date(cursor));
+        cursor.setDate(cursor.getDate() + 1);
       }
     } else {
       periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-      for (let i = 1; i <= lastDay; i++) {
-        periodDays.push(new Date(now.getFullYear(), now.getMonth(), i));
+      const cursor = new Date(periodStart);
+      while (cursor.getTime() <= todayStart.getTime()) {
+        periodDays.push(new Date(cursor));
+        cursor.setDate(cursor.getDate() + 1);
       }
     }
 
-    const [leads, businesses, notes, visits, user, adminConfig, plans] = await Promise.all([
+    const [leads, businesses, notes, visits, user, adminConfig, plans, assignments] = await Promise.all([
       this.prisma.lead.findMany({ where: { userId, deletedAt: null, isPlaceholder: false, createdAt: { gte: ledgerStart } }, orderBy: { createdAt: "desc" } }),
       this.prisma.business.findMany({
         where: {
@@ -509,10 +576,21 @@ export class MarketMappingService {
       }),
       this.prisma.marketMappingNote.findMany({ where: { userId, createdAt: { gte: ledgerStart } }, orderBy: { createdAt: "desc" } }),
       this.prisma.lead.findMany({ where: { userId, deletedAt: null, isPlaceholder: false, visitedAt: { gte: ledgerStart } }, orderBy: { visitedAt: "desc" } }),
-      this.prisma.user.findUnique({ where: { id: userId }, select: { dailyLeadTarget: true } }),
+      this.prisma.user.findUnique({ where: { id: userId }, select: { dailyLeadTarget: true, monthlyConversionTarget: true } }),
       this.prisma.marketMappingAdminConfig.findFirst(),
       this.prisma.marketMappingPlan.findMany({
         where: { userId, OR: [{ startDate: { gte: ledgerStart } }, { endDate: { gte: ledgerStart } }] },
+      }),
+      this.prisma.marketMappingAssignment.findMany({
+        where: {
+          userId,
+          OR: [
+            { expiresAt: null },
+            { expiresAt: { gte: ledgerStart } },
+          ],
+        },
+        include: { cluster: { select: { id: true, name: true } } },
+        orderBy: { createdAt: "desc" },
       }),
     ]);
 
@@ -543,12 +621,21 @@ export class MarketMappingService {
       return count;
     };
 
-    // Resolve the planned targets for a given day. A single-day mission plan wins,
-    // then a week plan (targets split across its working days), then the user's
-    // daily target on weekdays. Weekends with no plan are optional (target 0).
+    // Resolve the planned targets for a given day.
+    // 1. Active Cluster Assignment for that day (if any and has targets) -> STRICT / LOCKED for that cluster
+    // 2. User's single-day mission plan
+    // 3. User's multi-day / weekly mission plan
+    // 4. Default weekday fallback (user.dailyLeadTarget or platform default)
     const targetForDay = (d: Date) => {
       const dayStart = startOfDay(d).getTime();
       const dayEnd = endOfDay(d).getTime();
+
+      const coveringAssignment = assignments.find((a) => {
+        const start = a.assignedAt || a.createdAt;
+        const s = new Date(start).getTime();
+        const e = a.expiresAt ? new Date(a.expiresAt).getTime() : Infinity;
+        return s <= dayEnd && e >= dayStart;
+      });
 
       const covering = plans.filter((p) => {
         if (!p.startDate) return false;
@@ -566,8 +653,43 @@ export class MarketMappingService {
       let leadsTarget = 0;
       let visitsTarget = 0;
       let conversionsTarget = 0;
+      const clusterName = coveringAssignment?.cluster?.name;
 
-      if (dayPlan) {
+      if (coveringAssignment && (coveringAssignment.dailyLeadTarget > 0 || coveringAssignment.weeklyLeadTarget > 0 || coveringAssignment.monthlyConversionTarget > 0)) {
+        if (coveringAssignment.allowUserEdit === false) {
+          // Locked by admin: strictly enforce cluster targets
+          if (isWeekday(d) || dayPlan) {
+            leadsTarget = coveringAssignment.dailyLeadTarget > 0 ? coveringAssignment.dailyLeadTarget : dailyFallback;
+            visitsTarget = coveringAssignment.dailyLeadTarget > 0 ? coveringAssignment.dailyLeadTarget : dailyFallback;
+            conversionsTarget = coveringAssignment.monthlyConversionTarget > 0 ? Math.max(1, Math.round(coveringAssignment.monthlyConversionTarget / 20)) : 0;
+          }
+        } else {
+          // Editable: custom mission plan takes precedence if planned, otherwise defaults to cluster target
+          if (dayPlan) {
+            leadsTarget = dayPlan.targetLeads || dayPlan.targetVisits || 0;
+            visitsTarget = dayPlan.targetVisits || dayPlan.targetLeads || 0;
+            conversionsTarget = dayPlan.targetConversions || 0;
+          } else {
+            const weekPlan = covering.find((p) => {
+              const s = new Date(p.startDate!).getTime();
+              const e = p.endDate ? new Date(p.endDate).getTime() : s;
+              return e - s > 86400000;
+            });
+            if (weekPlan) {
+              const s = new Date(weekPlan.startDate!);
+              const e = weekPlan.endDate ? new Date(weekPlan.endDate) : s;
+              const denom = Math.max(1, countWorkingDays(s, e));
+              leadsTarget = Math.round((weekPlan.targetLeads || weekPlan.targetVisits || 0) / denom);
+              visitsTarget = Math.round((weekPlan.targetVisits || weekPlan.targetLeads || 0) / denom);
+              conversionsTarget = Math.round((weekPlan.targetConversions || 0) / denom);
+            } else if (isWeekday(d)) {
+              leadsTarget = coveringAssignment.dailyLeadTarget > 0 ? coveringAssignment.dailyLeadTarget : dailyFallback;
+              visitsTarget = coveringAssignment.dailyLeadTarget > 0 ? coveringAssignment.dailyLeadTarget : dailyFallback;
+              conversionsTarget = coveringAssignment.monthlyConversionTarget > 0 ? Math.max(1, Math.round(coveringAssignment.monthlyConversionTarget / 20)) : 0;
+            }
+          }
+        }
+      } else if (dayPlan) {
         leadsTarget = dayPlan.targetLeads || dayPlan.targetVisits || 0;
         visitsTarget = dayPlan.targetVisits || dayPlan.targetLeads || 0;
         conversionsTarget = dayPlan.targetConversions || 0;
@@ -590,7 +712,7 @@ export class MarketMappingService {
         }
       }
 
-      return { leads: leadsTarget, visits: visitsTarget, conversions: conversionsTarget };
+      return { leads: leadsTarget, visits: visitsTarget, conversions: conversionsTarget, clusterName };
     };
 
     const gpsPoints = (v: (typeof visits)[number]) => v.gpsLat != null && v.gpsLng != null && String(v.gpsLat).trim() !== "" && String(v.gpsLng).trim() !== "";
@@ -625,7 +747,8 @@ export class MarketMappingService {
       dayDate.setDate(dayDate.getDate() - i);
       const dayStart = startOfDay(dayDate);
       const dayEnd = endOfDay(dayDate);
-      const dayTarget = targetForDay(dayStart).leads;
+      const dayTargetInfo = targetForDay(dayStart);
+      const dayTarget = dayTargetInfo.leads;
 
       const dayLeads = leads.filter((l) => new Date(l.createdAt) >= dayStart && new Date(l.createdAt) <= dayEnd).length;
       const dayConversions = businesses.filter((b) => {
@@ -665,6 +788,7 @@ export class MarketMappingService {
         target: dayTarget,
         conversions: dayConversions,
         visits: dayVisits,
+        clusterName: dayTargetInfo.clusterName,
         infoPct,
         gpsPct,
         infoComposite: Math.round(infoComposite),

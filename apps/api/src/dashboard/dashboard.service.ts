@@ -247,6 +247,8 @@ export class DashboardService {
       todayFollowUpsDue,
       todayDemosDue,
       todayConversions,
+      assignment,
+      adminConfig,
     ] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
@@ -340,6 +342,15 @@ export class DashboardService {
           ],
         },
       }),
+      this.prisma.marketMappingAssignment.findFirst({
+        where: {
+          userId,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
+        include: { cluster: true },
+        orderBy: { assignedAt: 'desc' },
+      }),
+      this.prisma.marketMappingAdminConfig.findFirst(),
     ]);
 
     const referralCount = user?.referralCount || 0;
@@ -348,6 +359,19 @@ export class DashboardService {
     else if (referralCount >= 50) currentLevel = "Elite Partner";
     else if (referralCount >= 20) currentLevel = "Active Earner";
     else if (referralCount >= 10) currentLevel = "Rising Star";
+
+    // Unified target resolution:
+    // 1. Active cluster assignment target
+    // 2. User profile target set by admin
+    // 3. Global platform default
+    const assignmentDaily = assignment?.dailyLeadTarget ?? 0;
+    const assignmentMonthly = assignment?.monthlyConversionTarget ?? 0;
+    const resolvedDailyLeadTarget = assignmentDaily > 0
+      ? assignmentDaily
+      : (user?.dailyLeadTarget && user.dailyLeadTarget > 0 ? user.dailyLeadTarget : (adminConfig?.dailyTarget ?? 0));
+    const resolvedMonthlyConversionTarget = assignmentMonthly > 0
+      ? assignmentMonthly
+      : (user?.monthlyConversionTarget && user.monthlyConversionTarget > 0 ? user.monthlyConversionTarget : (adminConfig?.monthlyTarget ?? 0));
 
     return {
       totalEarnings: Number(user?.totalEarnings || 0),
@@ -360,8 +384,10 @@ export class DashboardService {
       totalClicks,
       referralSignupUrl: this.configService.get<string>('VEMTAP_SIGNUP_URL') || 'https://vemtap.com/signup',
       // Agent target metrics
-      dailyLeadTarget: user?.dailyLeadTarget || 0,
-      monthlyConversionTarget: user?.monthlyConversionTarget || 0,
+      dailyLeadTarget: resolvedDailyLeadTarget,
+      monthlyConversionTarget: resolvedMonthlyConversionTarget,
+      isTargetLocked: assignment ? !assignment.allowUserEdit : false,
+      assignedCluster: assignment?.cluster?.name ?? null,
       todayLeadsCount,
       weeklyLeadsCount,
       monthlyLeadsCount,

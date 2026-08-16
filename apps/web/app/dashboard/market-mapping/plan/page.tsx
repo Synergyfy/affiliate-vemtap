@@ -50,7 +50,7 @@ function PlanPageInner() {
               Plan Your Mission
             </h1>
             <p className="text-xs text-slate-500 font-medium">
-              Set your start date and daily targets. Week totals auto-calculate.
+              Choose any day to set your daily visit target and location.
             </p>
           </div>
         </div>

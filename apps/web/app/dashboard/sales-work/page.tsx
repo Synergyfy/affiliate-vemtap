@@ -124,8 +124,8 @@ export default function SalesWorkPage() {
   });
   const activePlan = dayPlan || weekPlan;
 
-  const targetCount = dayPlan?.targetCount || weekPlan?.targetCount || stats.plannedToday || mission?.targetCount || 20;
-  const activeLocation = activePlan?.location || stats.clusterName || mission?.location || '';
+  const targetCount = dayPlan?.targetCount || weekPlan?.targetCount || affiliateStats?.dailyLeadTarget || stats.plannedToday || mission?.targetCount || 20;
+  const activeLocation = activePlan?.location || affiliateStats?.assignedCluster || stats.clusterName || mission?.location || '';
 
   // Daily Mission progress: how many leads were VISITED today (from DB)
   const visitedCount = affiliateStats?.todayVisitsCount ?? 0;

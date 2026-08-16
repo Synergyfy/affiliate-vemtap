@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateLeadDto, UpdateLeadDto, LeadFilterDto } from './dto/leads.dto';
+import { CreateLeadDto, UpdateLeadDto, LeadFilterDto, HarvestLeadsFilterDto } from './dto/leads.dto';
 import { isVisitedLeadStatus, normalizeLeadStatus } from '../common/lead.constants';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class LeadsService {
@@ -39,6 +40,19 @@ export class LeadsService {
         take: filters.take,
         skip: filters.skip,
         orderBy: { createdAt: 'desc' },
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              phone: true,
+              role: true,
+              referralCode: true,
+              avatar: true,
+            },
+          },
+        },
       }),
       this.prisma.lead.count({ where }),
     ]);
@@ -52,6 +66,226 @@ export class LeadsService {
         totalPages: Math.ceil(total / (filters.limit || 10)),
       },
     };
+  }
+
+  async findHarvest(filters: HarvestLeadsFilterDto) {
+    const where = this.buildHarvestWhereClause(filters);
+    const sortBy = filters.sortBy || 'createdAt';
+    const sortOrder = filters.sortOrder || 'desc';
+
+    const [data, total, totalWithPhone, convertedCount, activePipelineCount, statusGroups] = await Promise.all([
+      this.prisma.lead.findMany({
+        where,
+        take: filters.take,
+        skip: filters.skip,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              phone: true,
+              role: true,
+              referralCode: true,
+              avatar: true,
+              status: true,
+            },
+          },
+        },
+      }),
+      this.prisma.lead.count({ where }),
+      this.prisma.lead.count({
+        where: {
+          ...where,
+          phone: { not: null },
+          NOT: { phone: '' },
+        },
+      }),
+      this.prisma.lead.count({
+        where: {
+          ...where,
+          status: { in: ['CONVERTED', 'CUSTOMER'] },
+        },
+      }),
+      this.prisma.lead.count({
+        where: {
+          ...where,
+          status: { in: ['NOT_YET', 'VISITED', 'CONTACTED', 'INTERESTED', 'DEMO_SCHEDULED', 'DEMO_DONE'] },
+        },
+      }),
+      this.prisma.lead.groupBy({
+        by: ['status'],
+        where: {
+          deletedAt: null,
+          isPlaceholder: false,
+        },
+        _count: { id: true },
+      }),
+    ]);
+
+    return {
+      data: data.map((lead) => ({ ...lead, visited: lead.visitedAt != null })),
+      meta: {
+        total,
+        page: filters.page,
+        limit: filters.limit || 10,
+        totalPages: Math.ceil(total / (filters.limit || 10)),
+      },
+      stats: {
+        totalHarvested: total,
+        totalWithPhone,
+        totalConverted: convertedCount,
+        totalPipeline: activePipelineCount,
+        statusBreakdown: statusGroups.reduce(
+          (acc, curr) => ({ ...acc, [curr.status]: curr._count.id }),
+          {} as Record<string, number>,
+        ),
+      },
+    };
+  }
+
+  private buildHarvestWhereClause(filters: HarvestLeadsFilterDto): Prisma.LeadWhereInput {
+    const where: Prisma.LeadWhereInput = {
+      deletedAt: null,
+      isPlaceholder: false,
+    };
+
+    if (filters.role) {
+      where.user = {
+        role: filters.role as any,
+      };
+    }
+
+    if (filters.userId) {
+      where.userId = filters.userId;
+    }
+
+    if (filters.status && filters.status !== 'ALL') {
+      where.status = {
+        equals: filters.status,
+        mode: 'insensitive',
+      };
+    }
+
+    if (filters.location) {
+      where.OR = [
+        { location: { contains: filters.location, mode: 'insensitive' } },
+        { businessAddress: { contains: filters.location, mode: 'insensitive' } },
+        { gpsAddress: { contains: filters.location, mode: 'insensitive' } },
+      ];
+    }
+
+    if (filters.hasPhone) {
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
+        { phone: { not: null } },
+        { phone: { not: '' } },
+      ];
+    }
+
+    if (filters.startDate || filters.endDate) {
+      where.createdAt = {
+        ...(filters.startDate && { gte: new Date(filters.startDate) }),
+        ...(filters.endDate && { lte: new Date(filters.endDate) }),
+      };
+    }
+
+    if (filters.search) {
+      const q = filters.search.trim();
+      const searchConditions: Prisma.LeadWhereInput[] = [
+        { businessName: { contains: q, mode: 'insensitive' } },
+        { contactName: { contains: q, mode: 'insensitive' } },
+        { phone: { contains: q } },
+        { email: { contains: q, mode: 'insensitive' } },
+        { location: { contains: q, mode: 'insensitive' } },
+        { businessAddress: { contains: q, mode: 'insensitive' } },
+        { user: { fullName: { contains: q, mode: 'insensitive' } } },
+        { user: { email: { contains: q, mode: 'insensitive' } } },
+        { user: { phone: { contains: q } } },
+      ];
+
+      if (where.OR) {
+        where.AND = [
+          ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
+          { OR: searchConditions },
+        ];
+      } else {
+        where.OR = searchConditions;
+      }
+    }
+
+    return where;
+  }
+
+  async exportHarvest(filters: HarvestLeadsFilterDto): Promise<string> {
+    const where = this.buildHarvestWhereClause(filters);
+    const sortBy = filters.sortBy || 'createdAt';
+    const sortOrder = filters.sortOrder || 'desc';
+
+    const leads = await this.prisma.lead.findMany({
+      where,
+      orderBy: { [sortBy]: sortOrder },
+      take: 10000,
+      include: {
+        user: {
+          select: {
+            fullName: true,
+            email: true,
+            phone: true,
+            role: true,
+            referralCode: true,
+          },
+        },
+      },
+    });
+
+    const headers = [
+      'Business Name',
+      'Contact Name',
+      'Contact Role',
+      'Phone Number',
+      'Email',
+      'Location',
+      'Business Address',
+      'Industry',
+      'Pipeline Status',
+      'Source',
+      'Added By Name',
+      'Added By Role',
+      'Added By Phone',
+      'Added By Email',
+      'Referral Code',
+      'Date Added',
+    ].join(',');
+
+    const escapeCsv = (str?: string | null) => {
+      if (!str) return '""';
+      return `"${String(str).replace(/"/g, '""')}"`;
+    };
+
+    const rows = leads.map((lead) =>
+      [
+        escapeCsv(lead.businessName),
+        escapeCsv(lead.contactName),
+        escapeCsv(lead.contactRole),
+        escapeCsv(lead.phone),
+        escapeCsv(lead.email),
+        escapeCsv(lead.location),
+        escapeCsv(lead.businessAddress),
+        escapeCsv(lead.industry),
+        escapeCsv(lead.status),
+        escapeCsv(lead.source),
+        escapeCsv(lead.user?.fullName),
+        escapeCsv(lead.user?.role),
+        escapeCsv(lead.user?.phone),
+        escapeCsv(lead.user?.email),
+        escapeCsv(lead.user?.referralCode),
+        escapeCsv(lead.createdAt.toISOString()),
+      ].join(','),
+    );
+
+    return [headers, ...rows].join('\n');
   }
 
   async findOne(id: string, user: any) {
@@ -179,3 +413,4 @@ export class LeadsService {
     };
   }
 }
+

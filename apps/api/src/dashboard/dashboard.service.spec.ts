@@ -58,6 +58,12 @@ describe("DashboardService", () => {
             salesPipeline: {
               count: jest.fn(),
             },
+            marketMappingAssignment: {
+              findFirst: jest.fn(),
+            },
+            marketMappingAdminConfig: {
+              findFirst: jest.fn(),
+            },
           },
         },
         {
@@ -353,6 +359,36 @@ describe("DashboardService", () => {
       expect(result.todayConversions).toBe(4);
       // todayBusinessesAdded = todayLeadsCount (pipeline businesses are leads)
       expect(result.todayBusinessesAdded).toBe(7);
+    });
+
+    it("resolves targets from active cluster assignment in getAffiliateStats", async () => {
+      const userId = "user123";
+      jest.spyOn(prisma.user, "findUnique").mockResolvedValue({
+        totalEarnings: 0,
+        pendingEarnings: 0,
+        referralCount: 0,
+        dailyLeadTarget: 5,
+        monthlyConversionTarget: 10,
+      } as any);
+      jest.spyOn(prisma.business, "count").mockResolvedValue(0);
+      jest.spyOn(prisma.linkClick, "count").mockResolvedValue(0);
+      jest.spyOn(prisma.commission, "aggregate").mockResolvedValue({ _sum: { amount: 0 } } as any);
+      jest.spyOn(prisma.lead, "count").mockResolvedValue(0);
+      jest.spyOn(prisma.salesPipeline, "count").mockResolvedValue(0);
+      jest.spyOn(prisma.marketMappingAssignment, "findFirst").mockResolvedValue({
+        id: "asgn-1",
+        dailyLeadTarget: 25,
+        monthlyConversionTarget: 50,
+        allowUserEdit: false,
+        cluster: { name: "Wuse Market" },
+      } as any);
+
+      const result = await service.getAffiliateStats(userId);
+
+      expect(result.dailyLeadTarget).toBe(25);
+      expect(result.monthlyConversionTarget).toBe(50);
+      expect(result.isTargetLocked).toBe(true);
+      expect(result.assignedCluster).toBe("Wuse Market");
     });
   });
 });

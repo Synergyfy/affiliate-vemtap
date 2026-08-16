@@ -144,7 +144,8 @@ export default function WorkMetricReports({
   };
 
   const displayName = userName || user?.fullName || 'Affiliate';
-  const displayRole = userRole || user?.role || 'AGENT';
+  const rawRole = userRole || user?.role || 'AGENT';
+  const displayRole = rawRole === 'SUPERVISOR' ? 'Line Manager' : rawRole;
 
   const getSectionSummary = (key: Scope, s: ReturnType<typeof statsOf>, score: number) => {
     const met = score >= riskThreshold;
@@ -159,7 +160,7 @@ export default function WorkMetricReports({
     if (key === 'weekly') {
       return `You generated ${s.leads} of ${s.target} leads this week (${targetPct}%), with ${s.conversions} conversions. Average weekly work score: ${score}%. ${suffix}`;
     }
-    return `Across the month you collected ${s.leads} leads against a ${s.target} target (${targetPct}%), with ${s.conversions} conversions and ${s.visits} visits. Average monthly work score: ${score}%. ${suffix}`;
+    return `Across the month to date, you collected ${s.leads} leads against a ${s.target} target (${targetPct}%), with ${s.conversions} conversions and ${s.visits} visits. Average monthly work score: ${score}%. ${suffix}`;
   };
 
   const scopeOfKey = (key: Scope) => ({
