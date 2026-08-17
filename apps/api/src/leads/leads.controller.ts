@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { Response } from 'express';
 import { LeadsService } from './leads.service';
-import { CreateLeadDto, UpdateLeadDto, LeadFilterDto, HarvestLeadsFilterDto } from './dto/leads.dto';
+import { CreateLeadDto, UpdateLeadDto, LeadFilterDto, HarvestLeadsFilterDto, DuplicateLeadsFilterDto } from './dto/leads.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -32,6 +32,13 @@ export class LeadsController {
   @ApiOperation({ summary: 'Create a new lead' })
   create(@CurrentUser() user: any, @Body() createLeadDto: CreateLeadDto) {
     return this.leadsService.create(user.id, createLeadDto);
+  }
+
+  @Get('duplicates')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Detect and cluster duplicate leads across all affiliates with similarity % scores (Admin only)' })
+  findDuplicates(@Query() filters: DuplicateLeadsFilterDto) {
+    return this.leadsService.findDuplicates(filters);
   }
 
   @Get('harvest')
