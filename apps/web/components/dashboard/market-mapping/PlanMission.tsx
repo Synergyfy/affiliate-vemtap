@@ -33,6 +33,13 @@ function toDateInputValue(d: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+function planDateKey(date?: string | Date): string {
+  if (!date) return '';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return String(date).slice(0, 10);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export default function PlanMission({ onAddVisits, initialPlan }: PlanMissionProps) {
   const dayPickerInputRef = useRef<HTMLInputElement>(null);
   const [startDate, setStartDate] = useState<Date>(TODAY);
@@ -49,15 +56,19 @@ export default function PlanMission({ onAddVisits, initialPlan }: PlanMissionPro
   const locationLocked = !!config?.assignment;
   const assignedCluster = config?.assignedCluster || '';
   const targetLocked = !!config?.isTargetLocked;
+  const minDailyTarget = config?.minDailyTarget ?? config?.dailyTarget ?? 5;
 
-  // Effective location and target used for saving — admin configuration overrides any typed values when locked.
+  // Effective location and target used for saving — admin configuration overrides any typed values when locked,
+  // and user cannot set below minDailyTarget when unlocked.
   const effectiveDayLocation = locationLocked ? assignedCluster : dayLocation;
-  const effectiveDayTarget = targetLocked ? (config?.dailyTarget || dayTarget || 5) : dayTarget;
+  const effectiveDayTarget = targetLocked
+    ? (config?.dailyTarget || minDailyTarget)
+    : Math.max(minDailyTarget, dayTarget || minDailyTarget);
 
-  // DAY plan already saved for the currently selected day
+  // DAY plan already saved for the currently selected day (enforcing one target per day)
   const selectedDayPlan = useMemo(() => {
     const key = toDateInputValue(startDate);
-    return missionPlans.find(p => p.horizon === 'DAY' && (p.startDate || '').slice(0, 10) === key) || null;
+    return missionPlans.find(p => p.horizon === 'DAY' && planDateKey(p.startDate || p.createdAt) === key) || null;
   }, [missionPlans, startDate]);
 
   // Load a saved day mission whenever the selected date changes
@@ -66,10 +77,13 @@ export default function PlanMission({ onAddVisits, initialPlan }: PlanMissionPro
     const key = toDateInputValue(startDate);
     if (key === lastLoadedDayRef.current) return;
     lastLoadedDayRef.current = key;
-    const plan = missionPlans.find(p => p.horizon === 'DAY' && (p.startDate || '').slice(0, 10) === key);
-    setDayTarget(targetLocked ? (config?.dailyTarget || 5) : (plan?.targetCount ?? (config?.dailyTarget || 5)));
+    const plan = missionPlans.find(p => p.horizon === 'DAY' && planDateKey(p.startDate || p.createdAt) === key);
+    const initialTarget = targetLocked
+      ? (config?.dailyTarget || minDailyTarget)
+      : Math.max(minDailyTarget, plan?.targetCount ?? (config?.dailyTarget || minDailyTarget));
+    setDayTarget(initialTarget);
     setDayLocation(locationLocked ? assignedCluster : (plan?.location ?? ''));
-  }, [startDate, missionPlans, locationLocked, assignedCluster, targetLocked, config?.dailyTarget]);
+  }, [startDate, missionPlans, locationLocked, assignedCluster, targetLocked, config?.dailyTarget, minDailyTarget]);
 
   const handleStartDateChange = useCallback((val: string) => {
     const d = new Date(val + 'T00:00:00');
@@ -80,9 +94,12 @@ export default function PlanMission({ onAddVisits, initialPlan }: PlanMissionPro
   const saveDayOnly = (e: React.FormEvent) => {
     e.preventDefault();
     if (!effectiveDayLocation) { showToast('Set a location for your target day', 'error'); return; }
-    if (effectiveDayTarget < 1) { showToast('Set at least 1 business target', 'error'); return; }
+    if (effectiveDayTarget < minDailyTarget) {
+      showToast(`Daily target cannot be lower than the minimum requirement of ${minDailyTarget} businesses/day`, 'error');
+      return;
+    }
     const dayKey = toDateInputValue(startDate);
-    const existing = missionPlans.find(p => p.horizon === 'DAY' && (p.startDate || '').slice(0, 10) === dayKey);
+    const existing = missionPlans.find(p => p.horizon === 'DAY' && planDateKey(p.startDate || p.createdAt) === dayKey);
     setPendingPlan({
       horizon: 'DAY',
       location: effectiveDayLocation,
@@ -105,7 +122,7 @@ export default function PlanMission({ onAddVisits, initialPlan }: PlanMissionPro
   };
 
   const jumpToPlan = useCallback((plan: MissionPlan) => {
-    const key = (plan.startDate || plan.createdAt || '').slice(0, 10);
+    const key = planDateKey(plan.startDate || plan.createdAt);
     if (!key) return;
     handleStartDateChange(key);
   }, [handleStartDateChange]);
@@ -119,9 +136,18 @@ export default function PlanMission({ onAddVisits, initialPlan }: PlanMissionPro
   };
 
   const savedMissions = useMemo(() => {
-    return [...missionPlans].sort((a, b) => {
-      const ka = (a.startDate || a.createdAt || '').slice(0, 10);
-      const kb = (b.startDate || b.createdAt || '').slice(0, 10);
+    const map = new Map<string, MissionPlan>();
+    missionPlans.forEach(plan => {
+      if (plan.horizon === 'DAY') {
+        const key = planDateKey(plan.startDate || plan.createdAt);
+        if (key && !map.has(key)) {
+          map.set(key, plan);
+        }
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => {
+      const ka = planDateKey(a.startDate || a.createdAt);
+      const kb = planDateKey(b.startDate || b.createdAt);
       return kb.localeCompare(ka);
     });
   }, [missionPlans]);
@@ -221,39 +247,50 @@ export default function PlanMission({ onAddVisits, initialPlan }: PlanMissionPro
                 <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 mb-3">
                   <Target className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                   <p className="text-[11px] font-semibold text-blue-700">
-                    Assigned to {assignedCluster}. Admin recommended: <strong>{config?.dailyTarget} businesses/day</strong> (You can adjust).
+                    Assigned to {assignedCluster}. Minimum target set by Admin: <strong>{minDailyTarget} businesses/day</strong> (You can set higher, but not lower).
                   </p>
                 </div>
-              ) : null}
+              ) : (
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 mb-3">
+                  <Target className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                  <p className="text-[11px] font-semibold text-slate-700">
+                    Global minimum target: <strong>{minDailyTarget} businesses/day</strong> (You can set higher, but not lower).
+                  </p>
+                </div>
+              )}
 
               <div className="flex items-center justify-center gap-3">
                 <button 
                   type="button" 
-                  disabled={targetLocked}
-                  onClick={() => setDayTarget(t => Math.max(1, t - 1))} 
-                  className={cn("w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors", targetLocked && "opacity-30 cursor-not-allowed hover:bg-slate-100")}
+                  disabled={targetLocked || effectiveDayTarget <= minDailyTarget}
+                  onClick={() => setDayTarget(t => Math.max(minDailyTarget, (t || minDailyTarget) - 1))} 
+                  className={cn(
+                    "w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors",
+                    (targetLocked || effectiveDayTarget <= minDailyTarget) && "opacity-30 cursor-not-allowed hover:bg-slate-100"
+                  )}
+                  title={effectiveDayTarget <= minDailyTarget ? `Cannot set below minimum target of ${minDailyTarget}` : undefined}
                 >
                   <Minus className="w-4 h-4" />
                 </button>
                 <input 
                   type="number" 
-                  min={1} 
+                  min={minDailyTarget} 
                   value={effectiveDayTarget} 
                   readOnly={targetLocked}
-                  onChange={e => setDayTarget(Math.max(1, parseInt(e.target.value) || 1))} 
+                  onChange={e => setDayTarget(Math.max(minDailyTarget, parseInt(e.target.value) || minDailyTarget))} 
                   className={cn("w-20 text-center text-2xl font-bold text-slate-800 bg-transparent focus:outline-none appearance-none", targetLocked && "cursor-not-allowed opacity-90")} 
                 />
                 <button 
                   type="button" 
                   disabled={targetLocked}
-                  onClick={() => setDayTarget(t => t + 1)} 
+                  onClick={() => setDayTarget(t => Math.max(minDailyTarget, (t || minDailyTarget) + 1))} 
                   className={cn("w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors", targetLocked && "opacity-30 cursor-not-allowed hover:bg-slate-100")}
                 >
                   <Plus className="w-4 h-4" />
                 </button>
               </div>
               <p className="text-[10px] text-slate-400 text-center mt-1">
-                {targetLocked ? 'Target quota is managed by Admin.' : 'Set your daily visit target for this day'}
+                {targetLocked ? 'Target quota is managed by Admin.' : `Minimum allowed target: ${minDailyTarget} businesses/day`}
               </p>
             </div>
 

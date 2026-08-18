@@ -35,7 +35,12 @@ export default function MarketMappingHubPage() {
 
   const today = new Date();
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  const dayPlan = missionPlans.find(p => p.horizon === 'DAY' && (p.startDate || '').slice(0, 10) === todayKey);
+  const dayPlan = missionPlans.find(p => {
+    if (p.horizon !== 'DAY') return false;
+    const d = new Date(p.startDate || p.createdAt);
+    const key = isNaN(d.getTime()) ? String(p.startDate || p.createdAt).slice(0, 10) : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return key === todayKey;
+  });
   const weekPlan = missionPlans.find(p => {
     if (p.horizon !== 'WEEK' || !p.startDate) return false;
     const start = new Date(p.startDate);

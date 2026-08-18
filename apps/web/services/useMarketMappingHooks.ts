@@ -21,6 +21,9 @@ export interface MarketMappingConfigResponse {
   userId?: string;
   targetCluster?: string;
   dailyVisitsTarget?: number;
+  dailyTarget?: number;
+  minDailyTarget?: number;
+  globalDailyTarget?: number;
   weeklyConversionGoal?: number;
   pipelineStatuses?: unknown[];
   categories?: string[];
@@ -94,6 +97,7 @@ export interface MarketMappingHistoryResponse {
 }
 
 export interface MarketMappingReportSummary {
+  score?: number;
   totalLeads: number;
   totalConversions: number;
   totalVisits: number;
@@ -105,6 +109,9 @@ export interface MarketMappingReportSummary {
   target: number;
   visitsTarget: number;
   conversionTarget: number;
+  infoPct?: number;
+  gpsPct?: number;
+  infoComposite?: number;
 }
 
 export interface MarketMappingReportWeights {

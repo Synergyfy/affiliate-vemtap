@@ -39,7 +39,32 @@ import {
   SlidersHorizontal,
   RefreshCw,
   Zap,
-  Info
+  Info,
+  Navigation,
+  Compass,
+  CalendarDays,
+  CheckSquare,
+  Globe,
+  Share2,
+  MessageCircle,
+  Activity,
+  Flag,
+  Store,
+  Clock4,
+  UserCheck,
+  Crosshair,
+  Target,
+  ShieldCheck,
+  Eye,
+  HelpCircle,
+  FileText,
+  CalendarClock,
+  Map,
+  UserX,
+  PhoneCall,
+  Flame,
+  Award,
+  Hash
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { 
@@ -105,6 +130,46 @@ const statusFilterOptions = [
   { label: 'Not Interested', value: 'NOT_INTERESTED' },
 ];
 
+const DAYS_OF_WEEK = [
+  { key: 'MON', label: 'Mon', full: 'Monday' },
+  { key: 'TUE', label: 'Tue', full: 'Tuesday' },
+  { key: 'WED', label: 'Wed', full: 'Wednesday' },
+  { key: 'THU', label: 'Thu', full: 'Thursday' },
+  { key: 'FRI', label: 'Fri', full: 'Friday' },
+  { key: 'SAT', label: 'Sat', full: 'Saturday' },
+  { key: 'SUN', label: 'Sun', full: 'Sunday' },
+];
+
+const parseOpeningDays = (days: any): string[] => {
+  if (!days) return [];
+  if (Array.isArray(days)) return days.map(d => String(d).toUpperCase());
+  if (typeof days === 'string') {
+    try {
+      const parsed = JSON.parse(days);
+      if (Array.isArray(parsed)) return parsed.map(d => String(d).toUpperCase());
+    } catch {
+      return days.split(/[,;\s]+/).map(d => d.trim().toUpperCase()).filter(Boolean);
+    }
+  }
+  return [];
+};
+
+const getGoogleMapsUrl = (lead: Lead) => {
+  if (lead.gpsLat && lead.gpsLng) {
+    return `https://www.google.com/maps/search/?api=1&query=${lead.gpsLat},${lead.gpsLng}`;
+  }
+  const query = lead.businessAddress || lead.location || lead.gpsAddress || lead.businessName;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+};
+
+const formatWhatsAppUrl = (phone?: string | null) => {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, '');
+  if (!digits) return null;
+  const cleanPhone = digits.startsWith('0') ? '234' + digits.slice(1) : digits;
+  return `https://wa.me/${cleanPhone}`;
+};
+
 export default function HarvestContactsPage() {
   const { showToast } = useToast();
 
@@ -141,8 +206,22 @@ export default function HarvestContactsPage() {
     email: '',
     location: '',
     businessAddress: '',
+    gpsAddress: '',
+    gpsLat: '',
+    gpsLng: '',
     status: 'NOT_YET',
     priority: 'MEDIUM',
+    dailyCustomers: '',
+    businessSize: '',
+    openingHours: '',
+    openingDays: [] as string[],
+    horizon: 'DAY',
+    nextVisitDate: '',
+    nextVisitTime: '',
+    decisionMakerMet: false,
+    interested: '',
+    demoDone: false,
+    isAnchor: false,
     comments: '',
   });
 
@@ -188,6 +267,7 @@ export default function HarvestContactsPage() {
   // Populate Edit Modal when opening
   useEffect(() => {
     if (editingLead) {
+      const days = parseOpeningDays(editingLead.openingDays);
       setEditFormData({
         businessName: editingLead.businessName || '',
         industry: editingLead.industry || '',
@@ -197,8 +277,22 @@ export default function HarvestContactsPage() {
         email: editingLead.email || '',
         location: editingLead.location || '',
         businessAddress: editingLead.businessAddress || '',
+        gpsAddress: editingLead.gpsAddress || '',
+        gpsLat: editingLead.gpsLat || '',
+        gpsLng: editingLead.gpsLng || '',
         status: editingLead.status || 'NOT_YET',
         priority: editingLead.priority || 'MEDIUM',
+        dailyCustomers: editingLead.dailyCustomers || '',
+        businessSize: editingLead.businessSize || '',
+        openingHours: editingLead.openingHours || '',
+        openingDays: days,
+        horizon: editingLead.horizon || 'DAY',
+        nextVisitDate: editingLead.nextVisitDate || '',
+        nextVisitTime: editingLead.nextVisitTime || '',
+        decisionMakerMet: Boolean(editingLead.decisionMakerMet),
+        interested: editingLead.interested || '',
+        demoDone: Boolean(editingLead.demoDone),
+        isAnchor: Boolean(editingLead.isAnchor),
         comments: editingLead.comments || '',
       });
     }
@@ -1238,7 +1332,7 @@ export default function HarvestContactsPage() {
         )}
       </div>
 
-      {/* Slide-over Detailed Drawer for Contact */}
+      {/* Slide-over Detailed Drawer for Contact - Full Business Intelligence Inspector */}
       <AnimatePresence>
         {selectedLead && (
           <>
@@ -1247,131 +1341,591 @@ export default function HarvestContactsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedLead(null)}
-              className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50"
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50"
             />
             <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 26, stiffness: 220 }}
-              className="fixed top-0 right-0 h-full w-full max-w-xl bg-white shadow-2xl z-50 overflow-y-auto"
+              transition={{ type: 'spring', damping: 28, stiffness: 240 }}
+              className="fixed top-0 right-0 h-full w-full max-w-2xl bg-white shadow-2xl z-50 overflow-y-auto border-l border-slate-200"
             >
-              <div className="p-8 space-y-6">
-                {/* Header */}
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg shadow-blue-500/20">
+              {/* Drawer Header Banner */}
+              <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-md border-b border-slate-200 p-6 flex items-start justify-between gap-4">
+                <div className="flex items-start gap-4 min-w-0">
+                  <div className="relative shrink-0">
+                    <div className="w-14 h-14 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg shadow-blue-500/20 uppercase">
                       {selectedLead.businessName.charAt(0)}
                     </div>
-                    <div>
-                      <h3 className="text-xl font-black text-slate-900">{selectedLead.businessName}</h3>
-                      <p className="text-xs text-slate-500 font-medium mt-0.5">
-                        {selectedLead.industry || 'General Business'} • Lead ID: {selectedLead.id.split('-')[0]}
-                      </p>
-                    </div>
+                    {selectedLead.isAnchor && (
+                      <span 
+                        className="absolute -bottom-1 -right-1 p-1 bg-amber-500 text-white rounded-full shadow-md border-2 border-white"
+                        title="Anchor Account / Milestone Business"
+                      >
+                        <Award className="w-3.5 h-3.5" />
+                      </span>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        const target = selectedLead;
-                        setSelectedLead(null);
-                        setEditingLead(target);
-                      }}
-                      className="p-2 hover:bg-blue-50 rounded-2xl text-slate-400 hover:text-blue-600 transition-colors"
-                      title="Edit Lead"
-                    >
-                      <Edit3 className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => setSelectedLead(null)}
-                      className="p-2 hover:bg-slate-100 rounded-2xl text-slate-400 hover:text-slate-700 transition-colors"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
+
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-xl font-black text-slate-900 truncate">
+                        {selectedLead.businessName}
+                      </h3>
+                      <button
+                        onClick={() => copyToClipboard(selectedLead.businessName, 'Business Name')}
+                        className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-700 transition-colors"
+                        title="Copy business name"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-2 mt-1 flex-wrap text-xs text-slate-500">
+                      {selectedLead.industry && (
+                        <span className="font-semibold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-lg border border-slate-200">
+                          {selectedLead.industry}
+                        </span>
+                      )}
+                      {selectedLead.source && (
+                        <span className="font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-200">
+                          Source: {selectedLead.source}
+                        </span>
+                      )}
+                      <span className="font-mono text-slate-400 text-[11px] flex items-center gap-1">
+                        <Hash className="w-3 h-3" />
+                        {selectedLead.id}
+                        <button
+                          onClick={() => copyToClipboard(selectedLead.id, 'Lead UUID')}
+                          className="hover:text-slate-700 p-0.5"
+                          title="Copy Lead UUID"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </button>
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Status & Priority Row */}
-                <div className="flex items-center gap-3">
-                  <span className={cn("text-xs font-bold px-3 py-1.5 rounded-full border uppercase tracking-wider", statusBadgeColor[selectedLead.status] || '')}>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => {
+                      const target = selectedLead;
+                      setSelectedLead(null);
+                      setEditingLead(target);
+                    }}
+                    className="p-2.5 hover:bg-blue-50 text-slate-400 hover:text-blue-600 rounded-2xl border border-slate-200 hover:border-blue-200 transition-all shadow-sm"
+                    title="Edit Business Details"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setSelectedLead(null)}
+                    className="p-2.5 hover:bg-slate-100 text-slate-400 hover:text-slate-700 rounded-2xl border border-slate-200 transition-colors shadow-sm"
+                    title="Close Inspector"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Drawer Content */}
+              <div className="p-6 sm:p-8 space-y-6">
+                {/* Status, Priority & Quick Tags */}
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className={cn("text-xs font-black px-3.5 py-1.5 rounded-full border uppercase tracking-wider inline-flex items-center gap-1.5 shadow-sm", statusBadgeColor[selectedLead.status] || 'bg-slate-100 text-slate-700 border-slate-200')}>
+                    {selectedLead.status === 'CUSTOMER' || selectedLead.status === 'CONVERTED' ? (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    ) : selectedLead.status === 'NOT_INTERESTED' || selectedLead.status === 'LOST' ? (
+                      <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                    ) : (
+                      <Clock className="w-3.5 h-3.5 text-blue-600" />
+                    )}
                     {selectedLead.status}
                   </span>
+
                   {selectedLead.priority && (
-                    <span className="text-xs font-bold px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 border border-slate-200 uppercase">
+                    <span className={cn(
+                      "text-xs font-bold px-3 py-1.5 rounded-xl border uppercase tracking-wider flex items-center gap-1.5",
+                      selectedLead.priority === 'HIGH' ? "bg-rose-50 text-rose-700 border-rose-200" :
+                      selectedLead.priority === 'LOW' ? "bg-slate-100 text-slate-600 border-slate-200" :
+                      "bg-amber-50 text-amber-700 border-amber-200"
+                    )}>
+                      <Flag className="w-3.5 h-3.5" />
                       {selectedLead.priority} Priority
                     </span>
                   )}
-                  {selectedLead.visitedAt && (
-                    <span className="text-xs font-bold px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Visited
+
+                  {selectedLead.visitedAt ? (
+                    <span className="text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      Visited ({new Date(selectedLead.visitedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })})
+                    </span>
+                  ) : (
+                    <span className="text-xs font-bold px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1.5">
+                      <Clock4 className="w-3.5 h-3.5 text-slate-400" />
+                      Not Yet Visited
+                    </span>
+                  )}
+
+                  {selectedLead.isAnchor && (
+                    <span className="text-xs font-black px-3 py-1.5 rounded-xl bg-amber-50 text-amber-800 border border-amber-300 flex items-center gap-1.5">
+                      <Award className="w-3.5 h-3.5 text-amber-600" />
+                      Anchor Account
+                    </span>
+                  )}
+
+                  {selectedLead.horizon && (
+                    <span className="text-xs font-bold px-3 py-1.5 rounded-xl bg-purple-50 text-purple-700 border border-purple-200 flex items-center gap-1.5">
+                      <Target className="w-3.5 h-3.5 text-purple-600" />
+                      {selectedLead.horizon} Plan
                     </span>
                   )}
                 </div>
 
-                {/* Contact Card */}
-                <div className="bg-slate-50 rounded-3xl p-5 border border-slate-200 space-y-4">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                    <UserIcon className="w-4 h-4 text-blue-600" />
-                    Business Contact Person
-                  </h4>
-                  <div className="space-y-2.5">
-                    <div className="flex justify-between items-center bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm">
-                      <span className="text-xs font-bold text-slate-400">Contact Name</span>
-                      <span className="text-sm font-bold text-slate-900">{selectedLead.contactName || 'Not recorded'}</span>
+                {/* Quick Action Ribbon */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  {selectedLead.phone ? (
+                    <a
+                      href={`tel:${selectedLead.phone}`}
+                      className="flex items-center justify-center gap-2 p-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-2xl border border-emerald-200 text-xs font-bold transition-all shadow-sm active:scale-95"
+                    >
+                      <PhoneCall className="w-4 h-4 text-emerald-600" />
+                      <span>Call Direct</span>
+                    </a>
+                  ) : (
+                    <button
+                      disabled
+                      className="flex items-center justify-center gap-2 p-3 bg-slate-50 text-slate-400 rounded-2xl border border-slate-200 text-xs font-bold opacity-60 cursor-not-allowed"
+                    >
+                      <Phone className="w-4 h-4" />
+                      <span>No Phone</span>
+                    </button>
+                  )}
+
+                  {selectedLead.phone ? (
+                    <a
+                      href={formatWhatsAppUrl(selectedLead.phone) || '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 p-3 bg-green-50 hover:bg-green-100 text-green-700 rounded-2xl border border-green-200 text-xs font-bold transition-all shadow-sm active:scale-95"
+                    >
+                      <MessageCircle className="w-4 h-4 text-green-600" />
+                      <span>WhatsApp</span>
+                    </a>
+                  ) : (
+                    <button
+                      disabled
+                      className="flex items-center justify-center gap-2 p-3 bg-slate-50 text-slate-400 rounded-2xl border border-slate-200 text-xs font-bold opacity-60 cursor-not-allowed"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      <span>WhatsApp</span>
+                    </button>
+                  )}
+
+                  {selectedLead.email ? (
+                    <a
+                      href={`mailto:${selectedLead.email}`}
+                      className="flex items-center justify-center gap-2 p-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-2xl border border-blue-200 text-xs font-bold transition-all shadow-sm active:scale-95"
+                    >
+                      <Mail className="w-4 h-4 text-blue-600" />
+                      <span>Send Email</span>
+                    </a>
+                  ) : (
+                    <button
+                      disabled
+                      className="flex items-center justify-center gap-2 p-3 bg-slate-50 text-slate-400 rounded-2xl border border-slate-200 text-xs font-bold opacity-60 cursor-not-allowed"
+                    >
+                      <Mail className="w-4 h-4" />
+                      <span>No Email</span>
+                    </button>
+                  )}
+
+                  <a
+                    href={getGoogleMapsUrl(selectedLead)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 p-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-2xl border border-indigo-200 text-xs font-bold transition-all shadow-sm active:scale-95"
+                  >
+                    <Navigation className="w-4 h-4 text-indigo-600" />
+                    <span>View Map</span>
+                  </a>
+                </div>
+
+                {/* Key Vitals Summary Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Decision Maker</span>
+                    <div className="flex items-center gap-1.5">
+                      {selectedLead.decisionMakerMet ? (
+                        <>
+                          <UserCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span className="text-xs font-black text-emerald-700">Met In Person</span>
+                        </>
+                      ) : (
+                        <>
+                          <UserX className="w-4 h-4 text-slate-400 shrink-0" />
+                          <span className="text-xs font-bold text-slate-600">Not Yet Reached</span>
+                        </>
+                      )}
                     </div>
-                    {selectedLead.contactRole && (
-                      <div className="flex justify-between items-center bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm">
-                        <span className="text-xs font-bold text-slate-400">Role / Position</span>
-                        <span className="text-sm font-bold text-slate-900">{selectedLead.contactRole}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between items-center bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm">
-                      <span className="text-xs font-bold text-slate-400">Phone Number</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-mono font-bold text-emerald-700">{selectedLead.phone || 'No phone'}</span>
+                  </div>
+
+                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Demo Status</span>
+                    <div className="flex items-center gap-1.5">
+                      {selectedLead.demoDone ? (
+                        <>
+                          <CheckCircle2 className="w-4 h-4 text-cyan-600 shrink-0" />
+                          <span className="text-xs font-black text-cyan-700">Demo Done</span>
+                        </>
+                      ) : (
+                        <>
+                          <Clock4 className="w-4 h-4 text-slate-400 shrink-0" />
+                          <span className="text-xs font-bold text-slate-600">No Demo Yet</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Daily Traffic</span>
+                    <div className="flex items-center gap-1.5">
+                      <Store className="w-4 h-4 text-blue-600 shrink-0" />
+                      <span className="text-xs font-black text-slate-900 truncate">
+                        {selectedLead.dailyCustomers || 'Not Specified'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Business Scale</span>
+                    <div className="flex items-center gap-1.5">
+                      <Layers className="w-4 h-4 text-purple-600 shrink-0" />
+                      <span className="text-xs font-black text-slate-900 truncate">
+                        {selectedLead.businessSize || 'Standard'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 1. PRIMARY CONTACT PERSON & STAKEHOLDER */}
+                <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                      <UserIcon className="w-4 h-4 text-blue-600" />
+                      Contact Person & Key Stakeholder
+                    </h4>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Primary Rep</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col justify-between gap-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Contact Name</span>
+                      <span className="text-sm font-black text-slate-900">
+                        {selectedLead.contactName || 'No contact name recorded'}
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col justify-between gap-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Designation / Role</span>
+                      <span className="text-sm font-bold text-slate-800">
+                        {selectedLead.contactRole || 'Not specified (e.g. Owner / Manager)'}
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col justify-between gap-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Direct Phone Number</span>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-mono font-bold text-emerald-700">
+                          {selectedLead.phone || 'No phone recorded'}
+                        </span>
                         {selectedLead.phone && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => copyToClipboard(selectedLead.phone!, 'Phone')}
+                              className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700 transition-colors"
+                              title="Copy Phone"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                            <a
+                              href={`tel:${selectedLead.phone}`}
+                              className="p-1 hover:bg-emerald-100 rounded text-emerald-600 transition-colors"
+                              title="Call"
+                            >
+                              <Phone className="w-3.5 h-3.5" />
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col justify-between gap-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Email Address</span>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium text-slate-800 truncate" title={selectedLead.email || ''}>
+                          {selectedLead.email || 'No email recorded'}
+                        </span>
+                        {selectedLead.email && (
                           <button
-                            onClick={() => copyToClipboard(selectedLead.phone!, 'Phone')}
-                            className="p-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors"
-                            title="Copy Phone"
+                            onClick={() => copyToClipboard(selectedLead.email!, 'Email')}
+                            className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700 transition-colors shrink-0"
+                            title="Copy Email"
                           >
                             <Copy className="w-3.5 h-3.5" />
                           </button>
                         )}
                       </div>
                     </div>
-                    {selectedLead.email && (
-                      <div className="flex justify-between items-center bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm">
-                        <span className="text-xs font-bold text-slate-400">Email</span>
-                        <span className="text-sm font-medium text-slate-900">{selectedLead.email}</span>
-                      </div>
-                    )}
                   </div>
                 </div>
 
-                {/* Creator Profile Box */}
-                <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-3xl p-6 shadow-xl space-y-4">
+                {/* 2. PHYSICAL LOCATION & GEOLOCATION */}
+                <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                      <Users className="w-4 h-4 text-blue-400" />
-                      Captured By User
+                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-rose-600" />
+                      Physical Location & Geolocation Verification
+                    </h4>
+                    <a
+                      href={getGoogleMapsUrl(selectedLead)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                    >
+                      <span>Open in Maps</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+
+                  <div className="space-y-3 text-xs">
+                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Full Street Address</span>
+                      <p className="font-bold text-slate-900 leading-relaxed">
+                        {selectedLead.businessAddress || selectedLead.location || 'No physical street address recorded'}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Area / City / Region</span>
+                        <p className="font-bold text-slate-800">
+                          {selectedLead.location || 'Not specified'}
+                        </p>
+                      </div>
+
+                      <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">GPS Landmark / Address</span>
+                        <p className="font-bold text-slate-800 truncate" title={selectedLead.gpsAddress || ''}>
+                          {selectedLead.gpsAddress || 'No landmark specified'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 bg-blue-50/60 rounded-2xl border border-blue-100 flex items-center justify-between gap-4">
+                      <div>
+                        <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider block">
+                          GPS Coordinates (Lat / Lng)
+                        </span>
+                        <p className="text-xs font-mono font-bold text-slate-800 mt-0.5">
+                          {selectedLead.gpsLat && selectedLead.gpsLng ? (
+                            `${selectedLead.gpsLat}, ${selectedLead.gpsLng}`
+                          ) : (
+                            <span className="text-slate-400 italic">Coordinates not pinned</span>
+                          )}
+                        </p>
+                      </div>
+
+                      {selectedLead.gpsLat && selectedLead.gpsLng && (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => copyToClipboard(`${selectedLead.gpsLat}, ${selectedLead.gpsLng}`, 'Coordinates')}
+                            className="px-2.5 py-1.5 bg-white text-slate-700 hover:bg-slate-50 rounded-xl text-xs font-bold border border-slate-200 transition-colors flex items-center gap-1"
+                          >
+                            <Copy className="w-3 h-3" />
+                            <span>Copy</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. OPERATING SCHEDULE & BUSINESS PROFILE */}
+                <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                      <Store className="w-4 h-4 text-amber-600" />
+                      Operating Profile & Working Schedule
+                    </h4>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Field Params</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Operating Hours</span>
+                      <p className="font-bold text-slate-900 flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-blue-600" />
+                        {selectedLead.openingHours || 'Not specified (e.g. 08:00 - 18:00)'}
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Estimated Daily Customers</span>
+                      <p className="font-bold text-slate-900 flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-indigo-600" />
+                        {selectedLead.dailyCustomers || 'Not specified'}
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Business Scale / Size</span>
+                      <p className="font-bold text-slate-900 flex items-center gap-1.5">
+                        <Layers className="w-3.5 h-3.5 text-purple-600" />
+                        {selectedLead.businessSize || 'Not specified'}
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Account Category</span>
+                      <p className="font-bold text-slate-900 flex items-center gap-1.5">
+                        {selectedLead.isAnchor ? (
+                          <>
+                            <Award className="w-3.5 h-3.5 text-amber-600" />
+                            <span className="text-amber-700 font-black">Anchor Business Account</span>
+                          </>
+                        ) : (
+                          <>
+                            <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                            <span>Standard Lead / Prospect</span>
+                          </>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Working Days Pill Strip */}
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Operating Days of the Week
                     </span>
-                    <span className={cn("text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border uppercase tracking-wider", roleBadgeColor[selectedLead.user?.role || 'AFFILIATE'])}>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {DAYS_OF_WEEK.map((day) => {
+                        const openDays = parseOpeningDays(selectedLead.openingDays);
+                        const isOpen = openDays.some(d => d.includes(day.key) || d.includes(day.full.toUpperCase()));
+                        return (
+                          <span
+                            key={day.key}
+                            className={cn(
+                              "px-3 py-1 rounded-xl text-xs font-bold transition-all border",
+                              isOpen
+                                ? "bg-emerald-50 text-emerald-800 border-emerald-300 shadow-sm"
+                                : "bg-white text-slate-400 border-slate-200 opacity-60"
+                            )}
+                          >
+                            {day.label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. PIPELINE SCHEDULING & FIELD PROGRESSION */}
+                <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                      <CalendarClock className="w-4 h-4 text-indigo-600" />
+                      Pipeline Progression & Scheduling
+                    </h4>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Timeline</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Lead Origin / Source</span>
+                      <p className="font-bold text-slate-900">{selectedLead.source || 'Market Mapping'}</p>
+                    </div>
+
+                    <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Planning Horizon</span>
+                      <p className="font-bold text-slate-900">{selectedLead.horizon || 'Day'}</p>
+                    </div>
+
+                    <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">First Visited On</span>
+                      <p className="font-bold text-slate-900">
+                        {selectedLead.visitedAt ? (
+                          new Date(selectedLead.visitedAt).toLocaleString(undefined, {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                        ) : (
+                          'Not visited yet'
+                        )}
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Follow-up Due Date</span>
+                      <p className="font-bold text-slate-900">
+                        {selectedLead.followUpDate ? (
+                          new Date(selectedLead.followUpDate).toLocaleDateString(undefined, {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                          })
+                        ) : (
+                          'No follow-up date set'
+                        )}
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Next Visit Schedule</span>
+                      <p className="font-bold text-slate-900">
+                        {selectedLead.nextVisitDate ? (
+                          `${selectedLead.nextVisitDate} ${selectedLead.nextVisitTime ? `@ ${selectedLead.nextVisitTime}` : ''}`
+                        ) : (
+                          'No upcoming visit scheduled'
+                        )}
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Interest Level Assessment</span>
+                      <p className="font-bold text-slate-900">{selectedLead.interested || 'Not assessed'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. CAPTURED PERSONNEL & REPORTING HIERARCHY */}
+                <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-6 shadow-xl space-y-5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                      <Users className="w-4 h-4 text-blue-400" />
+                      Captured Personnel & Team Hierarchy
+                    </span>
+                    <span className={cn("text-[10px] font-extrabold px-3 py-1 rounded-full border uppercase tracking-wider shadow-sm", roleBadgeColor[selectedLead.user?.role || 'AFFILIATE'])}>
                       {formatRoleLabel(selectedLead.user?.role || 'AFFILIATE')}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-4 pt-1">
-                    <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center font-bold text-lg text-white">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center font-bold text-xl text-white shadow-inner uppercase">
                       {selectedLead.user?.fullName?.charAt(0) || 'U'}
                     </div>
                     <div>
-                      <h4 className="text-base font-bold text-white">{selectedLead.user?.fullName || 'Unknown User'}</h4>
+                      <h4 className="text-base font-black text-white">{selectedLead.user?.fullName || 'Unknown User'}</h4>
                       <p className="text-xs text-slate-300 font-mono mt-0.5">{selectedLead.user?.email}</p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 pt-3 border-t border-white/10 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-white/10 text-xs">
                     <div>
                       <span className="text-slate-400 block text-[10px] uppercase font-bold">User Phone</span>
                       <span className="text-slate-100 font-mono font-bold">{selectedLead.user?.phone || 'N/A'}</span>
@@ -1380,42 +1934,109 @@ export default function HarvestContactsPage() {
                       <span className="text-slate-400 block text-[10px] uppercase font-bold">Referral Code</span>
                       <span className="text-blue-300 font-mono font-bold">{selectedLead.user?.referralCode || 'N/A'}</span>
                     </div>
-                  </div>
-                </div>
-
-                {/* Additional Business Details */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Location & Business Parameters</h4>
-                  <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                      <span className="text-slate-400 block font-bold text-[10px] uppercase mb-1">Address / Location</span>
-                      <span className="font-bold text-slate-800">{selectedLead.location || selectedLead.businessAddress || 'Not specified'}</span>
-                    </div>
-                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                      <span className="text-slate-400 block font-bold text-[10px] uppercase mb-1">Daily Customers</span>
-                      <span className="font-bold text-slate-800">{selectedLead.dailyCustomers || 'N/A'}</span>
-                    </div>
-                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                      <span className="text-slate-400 block font-bold text-[10px] uppercase mb-1">Business Size</span>
-                      <span className="font-bold text-slate-800">{selectedLead.businessSize || 'N/A'}</span>
-                    </div>
-                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                      <span className="text-slate-400 block font-bold text-[10px] uppercase mb-1">Decision Maker Met</span>
-                      <span className="font-bold text-slate-800">{selectedLead.decisionMakerMet ? 'Yes' : 'No'}</span>
+                    <div>
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Account Status</span>
+                      <span className="text-emerald-400 font-bold uppercase">{selectedLead.user?.status || 'ACTIVE'}</span>
                     </div>
                   </div>
+
+                  {/* Supervisor / Line Manager */}
+                  {(selectedLead.user?.supervisor || selectedLead.user?.manager) && (
+                    <div className="pt-3 border-t border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      {selectedLead.user?.supervisor && (
+                        <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                          <span className="text-[10px] font-bold text-purple-300 uppercase block mb-1">Line Manager / Supervisor</span>
+                          <p className="font-bold text-white">{selectedLead.user.supervisor.fullName}</p>
+                          <p className="text-[11px] text-slate-300 font-mono mt-0.5">{selectedLead.user.supervisor.phone || selectedLead.user.supervisor.email}</p>
+                        </div>
+                      )}
+
+                      {selectedLead.user?.manager && (
+                        <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                          <span className="text-[10px] font-bold text-indigo-300 uppercase block mb-1">Branch / Area Manager</span>
+                          <p className="font-bold text-white">{selectedLead.user.manager.fullName}</p>
+                          <p className="text-[11px] text-slate-300 font-mono mt-0.5">{selectedLead.user.manager.phone || selectedLead.user.manager.email}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                {/* Comments / Field Notes */}
-                {selectedLead.comments && (
-                  <div className="p-5 bg-amber-50/50 rounded-3xl border border-amber-200/60 space-y-2">
-                    <span className="text-[10px] font-bold text-amber-700 uppercase tracking-widest flex items-center gap-1.5">
-                      <MessageSquareQuote className="w-4 h-4 text-amber-600" />
-                      Field Notes & Comments
-                    </span>
-                    <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">{selectedLead.comments}</p>
+                {/* 6. MARKET MAPPING PLAN (IF ATTACHED) */}
+                {selectedLead.plan && (
+                  <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-3">
+                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                      <Target className="w-4 h-4 text-blue-600" />
+                      Associated Market Mapping Plan
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase block">Cluster</span>
+                        <span className="font-bold text-slate-800">{selectedLead.plan.locationCluster || 'N/A'}</span>
+                      </div>
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase block">Target Visits</span>
+                        <span className="font-bold text-slate-800">{selectedLead.plan.targetVisits ?? 'N/A'}</span>
+                      </div>
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase block">Target Leads</span>
+                        <span className="font-bold text-slate-800">{selectedLead.plan.targetLeads ?? 'N/A'}</span>
+                      </div>
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase block">Plan Status</span>
+                        <span className="font-bold text-emerald-700 uppercase">{selectedLead.plan.status || 'ACTIVE'}</span>
+                      </div>
+                    </div>
                   </div>
                 )}
+
+                {/* 7. FIELD NOTES & COMMENTS */}
+                {selectedLead.comments && (
+                  <div className="p-5 bg-amber-50/60 rounded-3xl border border-amber-200/80 space-y-2">
+                    <span className="text-[10px] font-bold text-amber-800 uppercase tracking-widest flex items-center gap-1.5">
+                      <MessageSquareQuote className="w-4 h-4 text-amber-600" />
+                      Field Notes & Observations
+                    </span>
+                    <p className="text-xs text-slate-800 leading-relaxed whitespace-pre-wrap font-medium">
+                      {selectedLead.comments}
+                    </p>
+                  </div>
+                )}
+
+                {/* 8. AUDIT TRAIL & SYSTEM METADATA */}
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-500 space-y-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    System Audit Metadata
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                    <div>
+                      <span className="text-slate-400 font-medium">Record Created: </span>
+                      <span className="font-bold text-slate-700">
+                        {new Date(selectedLead.createdAt).toLocaleString(undefined, {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-medium">Last Modified: </span>
+                      <span className="font-bold text-slate-700">
+                        {new Date(selectedLead.updatedAt).toLocaleString(undefined, {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </motion.div>
           </>
@@ -1437,7 +2058,7 @@ export default function HarvestContactsPage() {
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200 max-h-[90vh] flex flex-col"
+              className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200 max-h-[92vh] flex flex-col"
             >
               {/* Header */}
               <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
@@ -1446,8 +2067,8 @@ export default function HarvestContactsPage() {
                     <Edit3 className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-black text-slate-900">Edit Lead Information</h3>
-                    <p className="text-xs text-slate-500 font-medium">Update business, contact, or pipeline details</p>
+                    <h3 className="text-lg font-black text-slate-900">Edit Business & Contact Details</h3>
+                    <p className="text-xs text-slate-500 font-medium">Update all parameters, scheduling, and field attributes</p>
                   </div>
                 </div>
                 <button
@@ -1459,137 +2080,316 @@ export default function HarvestContactsPage() {
               </div>
 
               {/* Form Body */}
-              <form onSubmit={handleSaveEdit} className="p-6 space-y-4 overflow-y-auto">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Business Name <span className="text-rose-500">*</span>
+              <form onSubmit={handleSaveEdit} className="p-6 sm:p-8 space-y-6 overflow-y-auto">
+                {/* 1. Business Identity */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Business Identity</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Business Name <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={editFormData.businessName}
+                        onChange={(e) => setEditFormData({ ...editFormData, businessName: e.target.value })}
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Industry / Category</label>
+                      <input
+                        type="text"
+                        value={editFormData.industry}
+                        onChange={(e) => setEditFormData({ ...editFormData, industry: e.target.value })}
+                        placeholder="e.g. Retail, Restaurant, Pharmacy"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Contact Person */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Contact Person & Direct Line</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Contact Person Name</label>
+                      <input
+                        type="text"
+                        value={editFormData.contactName}
+                        onChange={(e) => setEditFormData({ ...editFormData, contactName: e.target.value })}
+                        placeholder="e.g. John Doe"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Contact Role / Position</label>
+                      <input
+                        type="text"
+                        value={editFormData.contactRole}
+                        onChange={(e) => setEditFormData({ ...editFormData, contactRole: e.target.value })}
+                        placeholder="e.g. Owner, Store Manager, Cashier"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Phone Number</label>
+                      <input
+                        type="text"
+                        value={editFormData.phone}
+                        onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                        placeholder="e.g. 08012345678"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium font-mono text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
+                      <input
+                        type="email"
+                        value={editFormData.email}
+                        onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                        placeholder="e.g. contact@business.com"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Location & GPS */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Location & Geolocation</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Business Street Address</label>
+                      <input
+                        type="text"
+                        value={editFormData.businessAddress}
+                        onChange={(e) => setEditFormData({ ...editFormData, businessAddress: e.target.value, location: editFormData.location || e.target.value })}
+                        placeholder="e.g. 15 Allen Avenue, Ikeja, Lagos"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Area / City / Region</label>
+                      <input
+                        type="text"
+                        value={editFormData.location}
+                        onChange={(e) => setEditFormData({ ...editFormData, location: e.target.value })}
+                        placeholder="e.g. Ikeja, Lagos"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">GPS Landmark / Address</label>
+                      <input
+                        type="text"
+                        value={editFormData.gpsAddress}
+                        onChange={(e) => setEditFormData({ ...editFormData, gpsAddress: e.target.value })}
+                        placeholder="e.g. Near Allen Junction"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">GPS Latitude</label>
+                        <input
+                          type="text"
+                          value={editFormData.gpsLat}
+                          onChange={(e) => setEditFormData({ ...editFormData, gpsLat: e.target.value })}
+                          placeholder="e.g. 6.5244"
+                          className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-medium text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">GPS Longitude</label>
+                        <input
+                          type="text"
+                          value={editFormData.gpsLng}
+                          onChange={(e) => setEditFormData({ ...editFormData, gpsLng: e.target.value })}
+                          placeholder="e.g. 3.3792"
+                          className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-medium text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Operations, Schedule & Scale */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Operations & Scale</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Pipeline Status</label>
+                      <select
+                        value={editFormData.status}
+                        onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
+                      >
+                        <option value="NOT_YET">New Lead (Not Yet)</option>
+                        <option value="VISITED">Visited</option>
+                        <option value="CONTACTED">Contacted</option>
+                        <option value="INTERESTED">Interested</option>
+                        <option value="DEMO_SCHEDULED">Demo Scheduled</option>
+                        <option value="DEMO_DONE">Demo Done</option>
+                        <option value="CONVERTED">Converted</option>
+                        <option value="CUSTOMER">Customer (Active)</option>
+                        <option value="NOT_INTERESTED">Not Interested</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Priority</label>
+                      <select
+                        value={editFormData.priority}
+                        onChange={(e) => setEditFormData({ ...editFormData, priority: e.target.value })}
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
+                      >
+                        <option value="LOW">Low</option>
+                        <option value="MEDIUM">Medium</option>
+                        <option value="HIGH">High</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Planning Horizon</label>
+                      <select
+                        value={editFormData.horizon}
+                        onChange={(e) => setEditFormData({ ...editFormData, horizon: e.target.value })}
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
+                      >
+                        <option value="DAY">Day</option>
+                        <option value="WEEK">Week</option>
+                        <option value="MONTH">Month</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Daily Customers</label>
+                      <input
+                        type="text"
+                        value={editFormData.dailyCustomers}
+                        onChange={(e) => setEditFormData({ ...editFormData, dailyCustomers: e.target.value })}
+                        placeholder="e.g. 50-100/day"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Business Scale</label>
+                      <input
+                        type="text"
+                        value={editFormData.businessSize}
+                        onChange={(e) => setEditFormData({ ...editFormData, businessSize: e.target.value })}
+                        placeholder="e.g. Medium, Micro"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Opening Hours</label>
+                      <input
+                        type="text"
+                        value={editFormData.openingHours}
+                        onChange={(e) => setEditFormData({ ...editFormData, openingHours: e.target.value })}
+                        placeholder="e.g. 08:00 - 18:00"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Working Days Checkbox Pills */}
+                  <div className="space-y-1.5 pt-2">
+                    <label className="block text-xs font-bold text-slate-700">Opening Days</label>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {DAYS_OF_WEEK.map((day) => {
+                        const isSelected = editFormData.openingDays.includes(day.key);
+                        return (
+                          <button
+                            key={day.key}
+                            type="button"
+                            onClick={() => {
+                              if (isSelected) {
+                                setEditFormData({
+                                  ...editFormData,
+                                  openingDays: editFormData.openingDays.filter(d => d !== day.key),
+                                });
+                              } else {
+                                setEditFormData({
+                                  ...editFormData,
+                                  openingDays: [...editFormData.openingDays, day.key],
+                                });
+                              }
+                            }}
+                            className={cn(
+                              "px-3 py-1.5 rounded-xl text-xs font-bold transition-all border select-none",
+                              isSelected
+                                ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                                : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                            )}
+                          >
+                            {day.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Checkbox Toggles */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3">
+                    <label className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer select-none hover:bg-slate-100 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={editFormData.decisionMakerMet}
+                        onChange={(e) => setEditFormData({ ...editFormData, decisionMakerMet: e.target.checked })}
+                        className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
+                      />
+                      <span className="text-xs font-bold text-slate-700">Decision Maker Met</span>
                     </label>
-                    <input
-                      type="text"
-                      required
-                      value={editFormData.businessName}
-                      onChange={(e) => setEditFormData({ ...editFormData, businessName: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
-                    />
-                  </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Industry / Category</label>
-                    <input
-                      type="text"
-                      value={editFormData.industry}
-                      onChange={(e) => setEditFormData({ ...editFormData, industry: e.target.value })}
-                      placeholder="e.g. Retail, Restaurant, Pharmacy"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
-                    />
-                  </div>
-                </div>
+                    <label className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer select-none hover:bg-slate-100 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={editFormData.demoDone}
+                        onChange={(e) => setEditFormData({ ...editFormData, demoDone: e.target.checked })}
+                        className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
+                      />
+                      <span className="text-xs font-bold text-slate-700">Demo Completed</span>
+                    </label>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Contact Person Name</label>
-                    <input
-                      type="text"
-                      value={editFormData.contactName}
-                      onChange={(e) => setEditFormData({ ...editFormData, contactName: e.target.value })}
-                      placeholder="e.g. John Doe"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Contact Role / Title</label>
-                    <input
-                      type="text"
-                      value={editFormData.contactRole}
-                      onChange={(e) => setEditFormData({ ...editFormData, contactRole: e.target.value })}
-                      placeholder="e.g. Owner, Manager, Cashier"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
-                    />
+                    <label className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer select-none hover:bg-slate-100 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={editFormData.isAnchor}
+                        onChange={(e) => setEditFormData({ ...editFormData, isAnchor: e.target.checked })}
+                        className="rounded text-amber-600 focus:ring-amber-500 w-4 h-4"
+                      />
+                      <span className="text-xs font-bold text-slate-700">Anchor Location</span>
+                    </label>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Phone Number</label>
-                    <input
-                      type="text"
-                      value={editFormData.phone}
-                      onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
-                      placeholder="e.g. 08012345678"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium font-mono text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
-                    <input
-                      type="email"
-                      value={editFormData.email}
-                      onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
-                      placeholder="e.g. contact@business.com"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Pipeline Status</label>
-                    <select
-                      value={editFormData.status}
-                      onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
-                    >
-                      <option value="NOT_YET">New Lead (Not Yet)</option>
-                      <option value="VISITED">Visited</option>
-                      <option value="CONTACTED">Contacted</option>
-                      <option value="INTERESTED">Interested</option>
-                      <option value="DEMO_SCHEDULED">Demo Scheduled</option>
-                      <option value="DEMO_DONE">Demo Done</option>
-                      <option value="CONVERTED">Converted</option>
-                      <option value="CUSTOMER">Customer (Active)</option>
-                      <option value="NOT_INTERESTED">Not Interested</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Priority</label>
-                    <select
-                      value={editFormData.priority}
-                      onChange={(e) => setEditFormData({ ...editFormData, priority: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
-                    >
-                      <option value="LOW">Low</option>
-                      <option value="MEDIUM">Medium</option>
-                      <option value="HIGH">High</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Location / Address</label>
-                  <input
-                    type="text"
-                    value={editFormData.location}
-                    onChange={(e) => setEditFormData({ ...editFormData, location: e.target.value, businessAddress: e.target.value })}
-                    placeholder="e.g. 15 Allen Avenue, Ikeja, Lagos"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Field Notes & Comments</label>
+                {/* 5. Field Notes & Comments */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-slate-700">Field Notes & Observations</label>
                   <textarea
-                    rows={3}
+                    rows={4}
                     value={editFormData.comments}
                     onChange={(e) => setEditFormData({ ...editFormData, comments: e.target.value })}
-                    placeholder="Add observations or instructions..."
+                    placeholder="Add observations, feedback, or instructions..."
                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 transition-all resize-none"
                   />
                 </div>
 
+                {/* Modal Footer Actions */}
                 <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
                   <button
                     type="button"
@@ -1605,7 +2405,7 @@ export default function HarvestContactsPage() {
                     className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/20 disabled:opacity-50"
                   >
                     {updateLeadMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-                    <span>Save Changes</span>
+                    <span>Save Business Details</span>
                   </button>
                 </div>
               </form>
