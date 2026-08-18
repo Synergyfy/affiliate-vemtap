@@ -3,14 +3,12 @@
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { useMarketMapping } from '@/components/dashboard/market-mapping/MarketMappingContext';
 import PipelineView from '@/components/dashboard/market-mapping/PipelineView';
-import BusinessCaptureDrawer from '@/components/dashboard/market-mapping/BusinessCaptureDrawer';
 import { ArrowLeft, Navigation, LayoutGrid, Table, MapPin, Clock, CheckCircle2, Plus, Target, TrendingUp, UserCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useMemo, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { PlannedVisit } from '@/types/affiliate-market-mapping';
-import { useToast } from '@/hooks/use-toast';
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
   NOT_YET: { label: 'To Visit', color: 'text-slate-600', bg: 'bg-slate-100' },
@@ -32,11 +30,9 @@ const SUMMARY_STYLE = [
 
 export default function PipelinePage() {
   const router = useRouter();
-  const { visits, setSelectedVisit, selectedVisit, saveCapture, addVisits, missionPlans } = useMarketMapping();
-  const { showToast } = useToast();
+  const { visits } = useMarketMapping();
   const [horizonFilter, setHorizonFilter] = useState<'ALL' | 'DAY' | 'WEEK'>('ALL');
   const [viewMode, setViewMode] = useState<'pipeline' | 'table'>('pipeline');
-  const [autoOpenCreate, setAutoOpenCreate] = useState(false);
 
   const handleBack = () => {
     if (typeof window !== 'undefined' && window.history.length > 1) {
@@ -46,14 +42,11 @@ export default function PipelinePage() {
     }
   };
 
-  const activePlan = missionPlans[missionPlans.length - 1];
-
   useEffect(() => {
     if (window.location.search.includes('create=1')) {
-      setAutoOpenCreate(true);
-      window.history.replaceState({}, '', window.location.pathname);
+      router.push('/dashboard/market-mapping/capture?new=1&from=pipeline');
     }
-  }, []);
+  }, [router]);
 
   const filteredVisits = useMemo(() => {
     if (horizonFilter === 'ALL') return visits;
@@ -101,40 +94,12 @@ export default function PipelinePage() {
     };
   }, [filteredVisits]);
 
-  useEffect(() => {
-    if (autoOpenCreate) {
-      const created = createNewBusiness();
-      if (created) setSelectedVisit(created);
-      setAutoOpenCreate(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoOpenCreate]);
-
-  const createNewBusiness = (): PlannedVisit | null => {
-    const target = summary.total + 1;
-    const newVisit: PlannedVisit = {
-      id: `biz-${Date.now()}`,
-      name: `Business ${target}`,
-      category: '',
-      status: 'NOT_YET',
-      isPlaceholder: true,
-      address: activePlan?.location || '',
-      horizon: horizonFilter === 'ALL' ? 'DAY' : horizonFilter,
-    };
-    addVisits([newVisit]);
-    showToast('New business added — fill in what you know now, or save and complete after your meeting.', 'success');
-    return newVisit;
-  };
-
   const handleAddBusiness = () => {
-    const created = createNewBusiness();
-    setSelectedVisit(created);
+    router.push('/dashboard/market-mapping/capture?new=1&from=pipeline');
   };
 
-  const handleSave = (updatedVisit: any) => {
-    saveCapture(updatedVisit);
-    setSelectedVisit(null);
-    showToast('Business data saved.', 'success');
+  const handleSelectVisit = (visit: PlannedVisit) => {
+    router.push(`/dashboard/market-mapping/capture?id=${encodeURIComponent(visit.id)}&from=pipeline`);
   };
 
   return (
@@ -257,7 +222,7 @@ export default function PipelinePage() {
         {viewMode === 'pipeline' ? (
           <PipelineView
             visits={filteredVisits}
-            onSelectVisit={(visit) => setSelectedVisit(visit)}
+            onSelectVisit={handleSelectVisit}
           />
         ) : (
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
@@ -280,7 +245,7 @@ export default function PipelinePage() {
                         return (
                           <tr
                             key={visit.id}
-                            onClick={() => setSelectedVisit(visit)}
+                            onClick={() => handleSelectVisit(visit)}
                             className="hover:bg-slate-50 cursor-pointer transition-colors"
                           >
                             <td className="px-4 py-3">
@@ -321,7 +286,7 @@ export default function PipelinePage() {
                     return (
                       <button
                         key={visit.id}
-                        onClick={() => setSelectedVisit(visit)}
+                        onClick={() => handleSelectVisit(visit)}
                         className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors"
                       >
                         <div className="flex items-center gap-3 min-w-0">
@@ -344,18 +309,11 @@ export default function PipelinePage() {
             ) : (
               <div className="p-12 text-center">
                 <p className="text-sm font-semibold text-slate-600">No businesses yet</p>
-                <p className="text-xs text-slate-400 mt-1">Add businesses in Execute Visits or tap "Add New Business" above.</p>
+                <p className="text-xs text-slate-400 mt-1">Add businesses in Execute Visits or tap &quot;Add New Business&quot; above.</p>
               </div>
             )}
           </div>
         )}
-
-        {/* Drawer */}
-        <BusinessCaptureDrawer
-          visit={selectedVisit}
-          onClose={() => setSelectedVisit(null)}
-          onSave={handleSave}
-        />
       </div>
     </DashboardLayout>
   );

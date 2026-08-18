@@ -131,6 +131,9 @@ export class MarketMappingService {
       targetSource = "GLOBAL_DEFAULT";
     }
 
+    const globalDailyTarget = adminConfig.dailyTarget || 5;
+    const minDailyTarget = dailyTarget;
+
     return {
       businessCategories: adminConfig.businessCategories,
       openingDays: adminConfig.openingDays,
@@ -145,6 +148,8 @@ export class MarketMappingService {
       businessStatuses: adminConfig.businessStatuses,
       paymentStatuses: adminConfig.paymentStatuses,
       dailyTarget,
+      minDailyTarget,
+      globalDailyTarget,
       weeklyTarget,
       monthlyTarget,
       isTargetLocked,
@@ -322,10 +327,23 @@ export class MarketMappingService {
   }
 
   async getPlans(userId: string) {
-    return this.prisma.marketMappingPlan.findMany({
+    const plans = await this.prisma.marketMappingPlan.findMany({
       where: { userId },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ startDate: "desc" }, { createdAt: "desc" }],
     });
+
+    // Ensure at most one plan per day is returned (latest first)
+    const seenDates = new Set<string>();
+    const uniquePlans: typeof plans = [];
+    for (const plan of plans) {
+      const d = plan.startDate || plan.createdAt;
+      const dateKey = this.normalizeDatePart(new Date(d));
+      if (!seenDates.has(dateKey)) {
+        seenDates.add(dateKey);
+        uniquePlans.push(plan);
+      }
+    }
+    return uniquePlans;
   }
 
   async createPlan(userId: string, dto: CreateMissionPlanDto) {
@@ -342,9 +360,37 @@ export class MarketMappingService {
     if (configData.isTargetLocked) {
       targetVisits = configData.dailyTarget;
       targetLeads = configData.dailyTarget;
+    } else {
+      const minDailyTarget = configData.minDailyTarget ?? configData.dailyTarget;
+      if (typeof targetVisits === "number" && targetVisits < minDailyTarget) {
+        throw new BadRequestException(
+          `Daily target cannot be lower than the required minimum of ${minDailyTarget} businesses/day`,
+        );
+      }
+      if (typeof targetLeads === "number" && targetLeads < minDailyTarget) {
+        throw new BadRequestException(
+          `Daily lead target cannot be lower than the required minimum of ${minDailyTarget} businesses/day`,
+        );
+      }
     }
     if (configData.assignment?.clusterName) {
       locationCluster = configData.assignment.clusterName;
+    }
+
+    const startOfDay = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 0, 0, 0, 0);
+    const endOfDay = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 23, 59, 59, 999);
+
+    const existing = await this.prisma.marketMappingPlan.findFirst({
+      where: {
+        userId,
+        startDate: { gte: startOfDay, lte: endOfDay },
+      },
+    });
+
+    if (existing) {
+      throw new BadRequestException(
+        "A mission plan for this date already exists. You can only set one target per day. Edit your existing mission to update targets.",
+      );
     }
 
     return this.prisma.marketMappingPlan.create({
@@ -373,13 +419,39 @@ export class MarketMappingService {
     if (configData.isTargetLocked) {
       data.targetVisits = configData.dailyTarget;
       data.targetLeads = configData.dailyTarget;
+    } else {
+      const minDailyTarget = configData.minDailyTarget ?? configData.dailyTarget;
+      if (typeof dto.targetVisits === "number" && dto.targetVisits < minDailyTarget) {
+        throw new BadRequestException(
+          `Daily target cannot be lower than the required minimum of ${minDailyTarget} businesses/day`,
+        );
+      }
+      if (typeof dto.targetLeads === "number" && dto.targetLeads < minDailyTarget) {
+        throw new BadRequestException(
+          `Daily lead target cannot be lower than the required minimum of ${minDailyTarget} businesses/day`,
+        );
+      }
     }
     if (configData.assignment?.clusterName) {
       data.locationCluster = configData.assignment.clusterName;
     }
 
     if (dto.startDate) {
-      data.startDate = new Date(dto.startDate);
+      const s = new Date(dto.startDate);
+      const startOfDay = new Date(s.getFullYear(), s.getMonth(), s.getDate(), 0, 0, 0, 0);
+      const endOfDay = new Date(s.getFullYear(), s.getMonth(), s.getDate(), 23, 59, 59, 999);
+
+      const conflict = await this.prisma.marketMappingPlan.findFirst({
+        where: {
+          userId,
+          id: { not: id },
+          startDate: { gte: startOfDay, lte: endOfDay },
+        },
+      });
+      if (conflict && conflict.id !== id) {
+        throw new BadRequestException("Another mission plan for that date already exists.");
+      }
+      data.startDate = s;
     }
     if (dto.endDate) {
       data.endDate = new Date(dto.endDate);
@@ -577,7 +649,7 @@ export class MarketMappingService {
       this.prisma.marketMappingNote.findMany({ where: { userId, createdAt: { gte: ledgerStart } }, orderBy: { createdAt: "desc" } }),
       this.prisma.lead.findMany({ where: { userId, deletedAt: null, isPlaceholder: false, visitedAt: { gte: ledgerStart } }, orderBy: { visitedAt: "desc" } }),
       this.prisma.user.findUnique({ where: { id: userId }, select: { dailyLeadTarget: true, monthlyConversionTarget: true } }),
-      this.prisma.marketMappingAdminConfig.findFirst(),
+      this.getAdminConfig(),
       this.prisma.marketMappingPlan.findMany({
         where: { userId, OR: [{ startDate: { gte: ledgerStart } }, { endDate: { gte: ledgerStart } }] },
       }),
@@ -594,7 +666,10 @@ export class MarketMappingService {
       }),
     ]);
 
-    const dailyFallback = user?.dailyLeadTarget || adminConfig?.dailyTarget || 0;
+    const globalDailyTarget = adminConfig?.dailyTarget ?? 5;
+    const globalWeeklyTarget = adminConfig?.weeklyTarget ?? (globalDailyTarget * 5);
+    const globalMonthlyTarget = adminConfig?.monthlyTarget ?? (globalDailyTarget * 20);
+    const globalConversionDailyTarget = globalMonthlyTarget > 0 ? Math.max(1, Math.round(globalMonthlyTarget / 20)) : 0;
     const conversionReference = 0.4;
     const riskThreshold = 90;
     const WEIGHTS = {
@@ -610,22 +685,7 @@ export class MarketMappingService {
       return Math.min(100, Math.round((value / target) * 100));
     };
 
-    const countWorkingDays = (s: Date, e: Date) => {
-      let count = 0;
-      const cursor = startOfDay(s);
-      const end = endOfDay(e);
-      while (cursor.getTime() <= end.getTime()) {
-        if (isWeekday(cursor)) count++;
-        cursor.setDate(cursor.getDate() + 1);
-      }
-      return count;
-    };
-
-    // Resolve the planned targets for a given day.
-    // 1. Active Cluster Assignment for that day (if any and has targets) -> STRICT / LOCKED for that cluster
-    // 2. User's single-day mission plan
-    // 3. User's multi-day / weekly mission plan
-    // 4. Default weekday fallback (user.dailyLeadTarget or platform default)
+    // Reports are strictly based on the Global Target Config, regardless of cluster or personal targets
     const targetForDay = (d: Date) => {
       const dayStart = startOfDay(d).getTime();
       const dayEnd = endOfDay(d).getTime();
@@ -637,79 +697,16 @@ export class MarketMappingService {
         return s <= dayEnd && e >= dayStart;
       });
 
-      const covering = plans.filter((p) => {
-        if (!p.startDate) return false;
-        const s = new Date(p.startDate).getTime();
-        const e = p.endDate ? new Date(p.endDate).getTime() : s;
-        return s <= dayEnd && e >= dayStart;
-      });
-
-      const dayPlan = covering.find((p) => {
-        const s = new Date(p.startDate!).getTime();
-        const e = p.endDate ? new Date(p.endDate).getTime() : s;
-        return e - s <= 86400000;
-      });
+      const clusterName = coveringAssignment?.cluster?.name;
 
       let leadsTarget = 0;
       let visitsTarget = 0;
       let conversionsTarget = 0;
-      const clusterName = coveringAssignment?.cluster?.name;
 
-      if (coveringAssignment && (coveringAssignment.dailyLeadTarget > 0 || coveringAssignment.weeklyLeadTarget > 0 || coveringAssignment.monthlyConversionTarget > 0)) {
-        if (coveringAssignment.allowUserEdit === false) {
-          // Locked by admin: strictly enforce cluster targets
-          if (isWeekday(d) || dayPlan) {
-            leadsTarget = coveringAssignment.dailyLeadTarget > 0 ? coveringAssignment.dailyLeadTarget : dailyFallback;
-            visitsTarget = coveringAssignment.dailyLeadTarget > 0 ? coveringAssignment.dailyLeadTarget : dailyFallback;
-            conversionsTarget = coveringAssignment.monthlyConversionTarget > 0 ? Math.max(1, Math.round(coveringAssignment.monthlyConversionTarget / 20)) : 0;
-          }
-        } else {
-          // Editable: custom mission plan takes precedence if planned, otherwise defaults to cluster target
-          if (dayPlan) {
-            leadsTarget = dayPlan.targetLeads || dayPlan.targetVisits || 0;
-            visitsTarget = dayPlan.targetVisits || dayPlan.targetLeads || 0;
-            conversionsTarget = dayPlan.targetConversions || 0;
-          } else {
-            const weekPlan = covering.find((p) => {
-              const s = new Date(p.startDate!).getTime();
-              const e = p.endDate ? new Date(p.endDate).getTime() : s;
-              return e - s > 86400000;
-            });
-            if (weekPlan) {
-              const s = new Date(weekPlan.startDate!);
-              const e = weekPlan.endDate ? new Date(weekPlan.endDate) : s;
-              const denom = Math.max(1, countWorkingDays(s, e));
-              leadsTarget = Math.round((weekPlan.targetLeads || weekPlan.targetVisits || 0) / denom);
-              visitsTarget = Math.round((weekPlan.targetVisits || weekPlan.targetLeads || 0) / denom);
-              conversionsTarget = Math.round((weekPlan.targetConversions || 0) / denom);
-            } else if (isWeekday(d)) {
-              leadsTarget = coveringAssignment.dailyLeadTarget > 0 ? coveringAssignment.dailyLeadTarget : dailyFallback;
-              visitsTarget = coveringAssignment.dailyLeadTarget > 0 ? coveringAssignment.dailyLeadTarget : dailyFallback;
-              conversionsTarget = coveringAssignment.monthlyConversionTarget > 0 ? Math.max(1, Math.round(coveringAssignment.monthlyConversionTarget / 20)) : 0;
-            }
-          }
-        }
-      } else if (dayPlan) {
-        leadsTarget = dayPlan.targetLeads || dayPlan.targetVisits || 0;
-        visitsTarget = dayPlan.targetVisits || dayPlan.targetLeads || 0;
-        conversionsTarget = dayPlan.targetConversions || 0;
-      } else {
-        const weekPlan = covering.find((p) => {
-          const s = new Date(p.startDate!).getTime();
-          const e = p.endDate ? new Date(p.endDate).getTime() : s;
-          return e - s > 86400000;
-        });
-        if (weekPlan) {
-          const s = new Date(weekPlan.startDate!);
-          const e = weekPlan.endDate ? new Date(weekPlan.endDate) : s;
-          const denom = Math.max(1, countWorkingDays(s, e));
-          leadsTarget = Math.round((weekPlan.targetLeads || weekPlan.targetVisits || 0) / denom);
-          visitsTarget = Math.round((weekPlan.targetVisits || weekPlan.targetLeads || 0) / denom);
-          conversionsTarget = Math.round((weekPlan.targetConversions || 0) / denom);
-        } else if (isWeekday(d)) {
-          leadsTarget = dailyFallback;
-          visitsTarget = dailyFallback;
-        }
+      if (isWeekday(d)) {
+        leadsTarget = globalDailyTarget;
+        visitsTarget = globalDailyTarget;
+        conversionsTarget = globalConversionDailyTarget;
       }
 
       return { leads: leadsTarget, visits: visitsTarget, conversions: conversionsTarget, clusterName };
@@ -729,16 +726,21 @@ export class MarketMappingService {
     const avgLeadsPerDay = Math.round((periodLeads.length / Math.max(1, periodDays.length)) * 10) / 10;
     const avgConversionRate = periodLeads.length > 0 ? Math.round((periodBusinesses.length / periodLeads.length) * 100) : 0;
 
-    let leadsTargetSum = 0;
-    let visitsTargetSum = 0;
-    let conversionsTargetSum = 0;
-    for (const d of periodDays) {
-      const t = targetForDay(d);
-      leadsTargetSum += t.leads;
-      visitsTargetSum += t.visits;
-      conversionsTargetSum += t.conversions;
+    let periodLeadTarget = globalDailyTarget;
+    let periodVisitTarget = globalDailyTarget;
+    let periodConversionTarget = globalConversionDailyTarget;
+
+    if (period === "weekly") {
+      periodLeadTarget = globalWeeklyTarget;
+      periodVisitTarget = globalWeeklyTarget;
+      periodConversionTarget = Math.max(1, Math.round(globalMonthlyTarget / 4));
+    } else if (period === "monthly") {
+      periodLeadTarget = globalMonthlyTarget;
+      periodVisitTarget = globalMonthlyTarget;
+      periodConversionTarget = globalMonthlyTarget;
     }
-    const completionRate = pctOfTarget(periodVisits.length, visitsTargetSum);
+
+    const completionRate = pctOfTarget(periodVisits.length, periodVisitTarget);
 
     // Calculate 30-day daily score ledger
     const ledger = [];
@@ -800,9 +802,27 @@ export class MarketMappingService {
       });
     }
 
+    const periodInfoPct = periodVisits.length > 0
+      ? Math.round(periodVisits.reduce((sum, v) => sum + INFO_FIELDS(v).filter((f) => f != null && String(f).trim() !== "").length, 0) / (periodVisits.length * INFO_FIELDS(periodVisits[0]).length) * 100)
+      : 0;
+    const periodGpsPct = periodVisits.length > 0 ? Math.round((periodVisits.filter(gpsPoints).length / periodVisits.length) * 100) : 0;
+    const periodInfoComposite = 0.6 * periodInfoPct + 0.4 * periodGpsPct;
+    const periodLeadPct = pctOfTarget(periodLeads.length, periodLeadTarget);
+    const periodConvPct = Math.min(100, (periodBusinesses.length / Math.max(1, periodLeads.length) / conversionReference) * 100);
+    const periodVisitPct = pctOfTarget(periodVisits.length, periodVisitTarget);
+
+    const periodScore = Math.round(
+      WEIGHTS.leads * periodLeadPct +
+      WEIGHTS.conversion * periodConvPct +
+      WEIGHTS.businessInfo * periodInfoComposite +
+      WEIGHTS.visits * periodVisitPct +
+      WEIGHTS.completion * completionRate,
+    );
+
     return {
       period,
       summary: {
+        score: periodScore,
         totalLeads: periodLeads.length,
         totalConversions: periodBusinesses.length,
         totalVisits: periodVisits.length,
@@ -811,9 +831,12 @@ export class MarketMappingService {
         businessesReferred: periodBusinesses.length,
         avgLeadsPerDay,
         avgConversionRate,
-        target: leadsTargetSum,
-        visitsTarget: visitsTargetSum,
-        conversionTarget: conversionsTargetSum,
+        target: periodLeadTarget,
+        visitsTarget: periodVisitTarget,
+        conversionTarget: periodConversionTarget,
+        infoPct: periodInfoPct,
+        gpsPct: periodGpsPct,
+        infoComposite: Math.round(periodInfoComposite),
       },
       weights: {
         leads: WEIGHTS.leads,
@@ -823,7 +846,7 @@ export class MarketMappingService {
         completion: WEIGHTS.completion,
         riskThreshold,
         conversionReference,
-        leadTarget: dailyFallback,
+        leadTarget: period === "weekly" ? globalWeeklyTarget : period === "monthly" ? globalMonthlyTarget : globalDailyTarget,
       },
       ledger,
       leads: periodLeads.map((l) => ({

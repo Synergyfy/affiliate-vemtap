@@ -26,14 +26,6 @@ import ReportComments from '@/components/dashboard/ReportComments';
 import { useMarketMappingReportData } from '@/services/useMarketMappingHooks';
 import type { MarketMappingReport, MarketMappingReportDay, MarketMappingReportWeights } from '@/services/useMarketMappingHooks';
 
-const METRIC_ROWS: Array<{ icon: LucideIcon; label: string; weightKey: keyof MarketMappingReportWeights; tip: string }> = [
-  { icon: Users, label: 'Daily Lead Submission', weightKey: 'leads', tip: 'Submit at least 20 new leads every day. This is the single biggest driver of your score — if you submit fewer than 20 leads on a day, this part of your score drops.' },
-  { icon: TrendingUp, label: 'Lead Conversion', weightKey: 'conversion', tip: 'How well your leads move forward — becoming Interested or Customers. The system references a 40% conversion rate; scoring above that pushes you to 100% here.' },
-  { icon: BookOpenCheck, label: 'Business Information', weightKey: 'businessInfo', tip: 'Completing each business profile — category, contact, size, opening hours and, importantly, the accurate GPS location of the business.' },
-  { icon: MapPin, label: 'Field Activity / Visits', weightKey: 'visits', tip: 'Actually going out and visiting the businesses you planned. Field visits confirm the business physically exists at the recorded location.' },
-  { icon: Clock, label: 'Daily Completion', weightKey: 'completion', tip: 'Finishing and submitting your daily work for the day. Know you may be busy on the field — you can submit when you get home. Daily completion only counts a small 5% towards your score.' },
-];
-
 type Scope = 'daily' | 'weekly' | 'monthly';
 
 const visitStatusInfo = (status: string) => {
@@ -105,6 +97,14 @@ export default function WorkMetricReports({
   const leadTarget = weights.leadTarget ?? 0;
   const conversionReference = weights.conversionReference ?? 0;
 
+  const metricRows: Array<{ icon: LucideIcon; label: string; weightKey: keyof MarketMappingReportWeights; tip: string }> = [
+    { icon: Users, label: 'Daily Lead Submission', weightKey: 'leads', tip: `Submit at least ${leadTarget || 20} new leads every day. This is the single biggest driver of your score — if you submit fewer than ${leadTarget || 20} leads on a day, this part of your score drops.` },
+    { icon: TrendingUp, label: 'Lead Conversion', weightKey: 'conversion', tip: 'How well your leads move forward — becoming Interested or Customers. The system references a 40% conversion rate; scoring above that pushes you to 100% here.' },
+    { icon: BookOpenCheck, label: 'Business Information', weightKey: 'businessInfo', tip: 'Completing each business profile — category, contact, size, opening hours and, importantly, the accurate GPS location of the business.' },
+    { icon: MapPin, label: 'Field Activity / Visits', weightKey: 'visits', tip: 'Actually going out and visiting the businesses you planned. Field visits confirm the business physically exists at the recorded location.' },
+    { icon: Clock, label: 'Daily Completion', weightKey: 'completion', tip: 'Finishing and submitting your daily work for the day. Know you may be busy on the field — you can submit when you get home. Daily completion only counts a small 5% towards your score.' },
+  ];
+
   const ledger: MarketMappingReportDay[] = monthly.data?.ledger ?? [];
   const avg = (arr: MarketMappingReportDay[]) => {
     const active = arr.filter((d) => !d.optional);
@@ -119,8 +119,9 @@ export default function WorkMetricReports({
   const statsOf = (r: MarketMappingReport | undefined) => {
     const summary = r?.summary;
     return {
+      score: summary?.score ?? 0,
       leads: summary?.totalLeads ?? 0,
-      target: summary?.target ?? leadTarget,
+      target: summary?.target ?? 0,
       conversions: summary?.totalConversions ?? 0,
       visits: summary?.totalVisits ?? 0,
       completionRate: summary?.completionRate ?? 0,
@@ -128,20 +129,16 @@ export default function WorkMetricReports({
       earnings: summary?.totalEarnings ?? 0,
       avgLeadsPerDay: summary?.avgLeadsPerDay ?? 0,
       avgConversionRate: summary?.avgConversionRate ?? 0,
-      visitsTarget: summary?.visitsTarget ?? leadTarget,
+      visitsTarget: summary?.visitsTarget ?? 0,
+      infoComposite: summary?.infoComposite ?? 0,
+      infoPct: summary?.infoPct ?? 0,
+      gpsPct: summary?.gpsPct ?? 0,
     };
   };
 
   const dailyStats = statsOf(daily.data);
   const weeklyStats = statsOf(weekly.data);
   const monthlyStats = statsOf(monthly.data);
-
-  const infoScore = (key: Scope) => {
-    const days = key === 'daily' ? ledger.slice(0, 1) : key === 'weekly' ? ledger.slice(0, 7) : ledger;
-    const active = days.filter((d) => !d.optional);
-    if (!active.length) return 0;
-    return Math.round(active.reduce((sum, d) => sum + (d.infoComposite ?? 0), 0) / active.length);
-  };
 
   const displayName = userName || user?.fullName || 'Affiliate';
   const rawRole = userRole || user?.role || 'AGENT';
@@ -155,18 +152,30 @@ export default function WorkMetricReports({
       : `You scored ${score}% — ${gap}% below the ${riskThreshold}% threshold. This is at risk of penalties. Focus on the Work Metrics below to recover.`;
     const targetPct = s.target > 0 ? Math.round((s.leads / s.target) * 100) : 0;
     if (key === 'daily') {
-      return `${s.target > 0 && s.leads >= s.target ? 'You met your daily lead target.' : `You collected ${s.leads} leads today against a ${s.target}-lead target (${targetPct}%).`} You captured ${s.conversions} conversions from ${s.visits} visits at a ${s.completionRate}% completion rate. ${suffix}`;
+      if (s.target <= 0) {
+        return `Today is an optional work day (weekend). You collected ${s.leads} leads and ${s.visits} visits with ${s.conversions} conversions. ${suffix}`;
+      }
+      return `${s.leads >= s.target ? 'You met your daily lead target.' : `You collected ${s.leads} leads today against a ${s.target}-lead target (${targetPct}%).`} You captured ${s.conversions} conversions from ${s.visits} visits at a ${s.completionRate}% completion rate. Work score: ${score}%. ${suffix}`;
     }
     if (key === 'weekly') {
-      return `You generated ${s.leads} of ${s.target} leads this week (${targetPct}%), with ${s.conversions} conversions. Average weekly work score: ${score}%. ${suffix}`;
+      return `You generated ${s.leads} of ${s.target} leads this week (${targetPct}%), with ${s.conversions} conversions and ${s.visits} visits. Work score: ${score}%. ${suffix}`;
     }
-    return `Across the month to date, you collected ${s.leads} leads against a ${s.target} target (${targetPct}%), with ${s.conversions} conversions and ${s.visits} visits. Average monthly work score: ${score}%. ${suffix}`;
+    return `Across the month to date, you collected ${s.leads} leads against a ${s.target} global target (${targetPct}%), with ${s.conversions} conversions and ${s.visits} visits. Work score: ${score}%. ${suffix}`;
   };
 
-  const scopeOfKey = (key: Scope) => ({
-    stats: key === 'daily' ? dailyStats : key === 'weekly' ? weeklyStats : monthlyStats,
-    score: key === 'daily' ? todayScore : key === 'weekly' ? weekScore : monthScore,
-  });
+  const scopeOfKey = (key: Scope) => {
+    const stats = key === 'daily' ? dailyStats : key === 'weekly' ? weeklyStats : monthlyStats;
+    return {
+      stats,
+      score: stats.score,
+    };
+  };
+
+  const miniScores = [
+    { label: 'Daily', value: dailyStats.score },
+    { label: 'Weekly', value: weeklyStats.score },
+    { label: 'Monthly', value: monthlyStats.score },
+  ];
 
   const buildExportData = (key: Scope, s: ReturnType<typeof statsOf>, score: number): ReportExportData => {
     const report = reports[key];
@@ -215,7 +224,7 @@ export default function WorkMetricReports({
             score >= riskThreshold ? 'Status: ON TRACK' : `Status: AT RISK OF PENALTIES (${riskThreshold - score}% below threshold)`,
             `Lead Submission (${fmtWeight(weights.leads)}%): ${s.leads}/${s.target}`,
             `Lead Conversion (${fmtWeight(weights.conversion)}%): ${Math.round((s.conversions / Math.max(1, s.leads)) * 100)}% (ref ${Math.round(conversionReference * 100)}%)`,
-            `Business Info + GPS (${fmtWeight(weights.businessInfo)}%): ${infoScore(key)}%`,
+            `Business Info + GPS (${fmtWeight(weights.businessInfo)}%): ${s.infoComposite}%`,
             `Field Visits (${fmtWeight(weights.visits)}%) + Daily Completion (${fmtWeight(weights.completion)}%)`,
           ],
         },
@@ -262,12 +271,6 @@ export default function WorkMetricReports({
     { key: 'daily' as const, icon: BarChart3, color: 'blue', title: 'Daily Report — Today', label: 'Daily' },
     { key: 'weekly' as const, icon: Activity, color: 'indigo', title: 'Weekly Report — This Week', label: 'Weekly' },
     { key: 'monthly' as const, icon: TrendingUp, color: 'emerald', title: 'Monthly Report — This Month', label: 'Monthly' },
-  ];
-
-  const miniScores = [
-    { label: 'Daily', value: todayScore },
-    { label: 'Weekly', value: weekScore },
-    { label: 'Monthly', value: monthScore },
   ];
 
   return (
@@ -379,16 +382,20 @@ export default function WorkMetricReports({
                       {/* Summary cards */}
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <div className={`p-3 rounded-xl bg-${section.color}-50 border border-${section.color}-100 text-center`}>
-                          <p className={`text-lg font-black text-${section.color}-600`}>{s.leads}</p>
-                          <p className="text-[10px] font-bold text-slate-500">Leads</p>
+                          <p className={`text-lg font-black text-${section.color}-600`}>
+                            {s.leads} {s.target > 0 && <span className="text-xs font-semibold text-slate-400">/ {s.target}</span>}
+                          </p>
+                          <p className="text-[10px] font-bold text-slate-500">Leads Submitted</p>
                         </div>
                         <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-center">
                           <p className="text-lg font-black text-emerald-600">{s.conversions}</p>
-                          <p className="text-[10px] font-bold text-slate-500">Convs</p>
+                          <p className="text-[10px] font-bold text-slate-500">Conversions</p>
                         </div>
                         <div className="p-3 rounded-xl bg-purple-50 border border-purple-100 text-center">
-                          <p className="text-lg font-black text-purple-600">{s.visits}</p>
-                          <p className="text-[10px] font-bold text-slate-500">Visits</p>
+                          <p className="text-lg font-black text-purple-600">
+                            {s.visits} {s.visitsTarget > 0 && <span className="text-xs font-semibold text-slate-400">/ {s.visitsTarget}</span>}
+                          </p>
+                          <p className="text-[10px] font-bold text-slate-500">Field Visits</p>
                         </div>
                         <div className="p-3 rounded-xl bg-amber-50 border border-amber-100 text-center">
                           <p className="text-lg font-black text-amber-600">{score}%</p>
@@ -427,9 +434,9 @@ export default function WorkMetricReports({
                             </div>
                           </div>
                           <div>
-                            <div className="flex justify-between text-xs mb-1"><span className="text-slate-600">Business Info + GPS ({fmtWeight(weights.businessInfo)}%)</span><span className="font-bold text-slate-900">{infoScore(section.key)}%</span></div>
+                            <div className="flex justify-between text-xs mb-1"><span className="text-slate-600">Business Info + GPS ({fmtWeight(weights.businessInfo)}%)</span><span className="font-bold text-slate-900">{s.infoComposite}%</span></div>
                             <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-purple-500 rounded-full" style={{ width: `${infoScore(section.key)}%` }} />
+                              <div className="h-full bg-purple-500 rounded-full" style={{ width: `${s.infoComposite}%` }} />
                             </div>
                           </div>
                           <div>
@@ -571,7 +578,7 @@ export default function WorkMetricReports({
                   Tap the <Info className="inline w-3 h-3 text-slate-400" /> icon on any metric to learn what it means.
                 </p>
                 <div className="space-y-1.5">
-                  {METRIC_ROWS.map(row => (
+                  {metricRows.map(row => (
                     <div key={row.label}>
                       <div className="flex items-center gap-2.5 text-xs">
                         <div className="w-7 h-7 rounded-lg bg-slate-50 flex items-center justify-center shrink-0">

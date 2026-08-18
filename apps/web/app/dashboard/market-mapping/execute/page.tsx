@@ -5,7 +5,6 @@ import {
   Navigation, MapPin, CheckCircle2, Plus, Crown, Star, Target,
   Clock, Phone, ArrowLeft, Edit3, User, Handshake,
 } from 'lucide-react';
-import { AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
@@ -14,7 +13,6 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { PlannedVisit, MissionHorizon, getCompletenessScore } from '@/types/affiliate-market-mapping';
 import { useMarketMapping } from '@/components/dashboard/market-mapping/MarketMappingContext';
-import BusinessCaptureDrawer from '@/components/dashboard/market-mapping/BusinessCaptureDrawer';
 import { useActiveMission } from '@/services/useFieldActivity';
 import { useMarketMappingAnchors, usePriorityVisits, usePartnerships } from '@/services/useMarketMappingHooks';
 import { FieldBusiness } from '@/types/field-activity';
@@ -97,11 +95,7 @@ function SalesExecutiveExecutePage() {
   const marketMapping = useMarketMapping();
 
   const [rows, setRows] = useState<PlannedVisit[]>([]);
-  const [activeRow, setActiveRow] = useState<PlannedVisit | null>(null);
   const initRef = useRef(false);
-  const createdIdMapRef = useRef<Map<string, string>>(new Map());
-  const pendingCreateRef = useRef<Set<string>>(new Set());
-  const pendingDraftRef = useRef<Map<string, PlannedVisit>>(new Map());
 
   const today = new Date();
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -136,71 +130,11 @@ function SalesExecutiveExecutePage() {
   }, [marketMapping.visits, mission]);
 
   const openAddBusiness = () => {
-    const newVisit: PlannedVisit = {
-      id: `exec-${Date.now()}`,
-      name: `Business ${rows.length + 1}`,
-      category: 'Unknown',
-      status: 'NOT_YET',
-      isPlaceholder: true,
-      address: activeLocation !== 'Your daily plan' ? activeLocation : '',
-      horizon: 'DAY',
-    };
-    setActiveRow(newVisit);
+    router.push('/dashboard/market-mapping/capture?new=1&from=execute');
   };
 
-  const handleCloseWithoutSave = () => {
-    if (activeRow?.isPlaceholder) {
-      const realId = createdIdMapRef.current.get(activeRow.id);
-      const isSaved = marketMapping.visits.some(v => v.id === activeRow.id || (realId && v.id === realId));
-      if (isSaved) {
-        marketMapping.setVisits(prev => prev.filter(v => v.id !== activeRow.id && v.id !== realId));
-        marketMapping.setStats(prev => ({ ...prev, plannedToday: Math.max(0, prev.plannedToday - 1) }));
-      }
-    }
-    setActiveRow(null);
-  };
-
-  const handleRecordSaved = (updated: PlannedVisit, closeDrawer = true) => {
-    const realId = createdIdMapRef.current.get(updated.id);
-    const resolved: PlannedVisit = realId ? { ...updated, id: realId } : updated;
-    const isPendingCreate = pendingCreateRef.current.has(updated.id);
-    const exists = rows.some(p => p.id === resolved.id) || !!realId;
-    const hasInfo = getCompletenessScore(resolved) > 0;
-
-    if (!exists && !hasInfo) {
-      if (closeDrawer) setActiveRow(null);
-      showToast('Add at least one detail before saving.', 'error');
-      return;
-    }
-
-    if (isPendingCreate) {
-      pendingDraftRef.current.set(updated.id, resolved);
-    } else if (exists) {
-      marketMapping.saveCapture(resolved);
-    } else {
-      pendingCreateRef.current.add(updated.id);
-      marketMapping.addVisits([resolved], (tempId, created) => {
-        pendingCreateRef.current.delete(tempId);
-        createdIdMapRef.current.set(tempId, created.id);
-        const draft = pendingDraftRef.current.get(tempId);
-        if (draft) {
-          pendingDraftRef.current.delete(tempId);
-          marketMapping.saveCapture({ ...draft, id: created.id });
-        }
-      });
-    }
-
-    setRows(prev =>
-      prev.some(p => p.id === resolved.id)
-        ? prev.map(p => (p.id === resolved.id ? resolved : p))
-        : [...prev, resolved]
-    );
-    if (closeDrawer) {
-      setActiveRow(null);
-      showToast('Business information saved.', 'success');
-    } else {
-      setActiveRow(resolved);
-    }
+  const handleOpenCapture = (visit: PlannedVisit) => {
+    router.push(`/dashboard/market-mapping/capture?id=${encodeURIComponent(visit.id)}&from=execute`);
   };
 
   const statusBadge = (r: PlannedVisit) => {
@@ -248,7 +182,7 @@ function SalesExecutiveExecutePage() {
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between mb-2">
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-              Today's businesses
+              Today&apos;s businesses
             </p>
             <p className="text-xs font-bold text-slate-500">
               {rows.length} of {targetCount}
@@ -290,7 +224,7 @@ function SalesExecutiveExecutePage() {
         ) : (
           /* The day list — every planned business */
           <div className="space-y-2">
-            {rows.map((r, idx) => {
+            {rows.map((r) => {
               const badge = statusBadge(r);
               const filled = getCompletenessScore(r);
               const totalFields = 19;
@@ -380,7 +314,7 @@ function SalesExecutiveExecutePage() {
                   </div>
 
                   <button
-                    onClick={() => setActiveRow(r)}
+                    onClick={() => handleOpenCapture(r)}
                     className={cn(
                       'w-full py-3 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2',
                       r.isPlaceholder ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-600 hover:bg-emerald-700'
@@ -395,25 +329,14 @@ function SalesExecutiveExecutePage() {
           </div>
         )}
       </div>
-
-      <AnimatePresence>
-        {activeRow && (
-          <BusinessCaptureDrawer
-            visit={activeRow}
-            onClose={handleCloseWithoutSave}
-            onSave={handleRecordSaved}
-          />
-        )}
-      </AnimatePresence>
     </DashboardLayout>
   );
 }
 
-// Original Execute Page (for non-SALES_EXECUTIVE users) - preserved unchanged
+// Original Execute Page (for non-SALES_EXECUTIVE users)
 function ExecutePage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { user } = useAuth();
   const viewParam = (searchParams.get('view') || 'default') as ViewMode;
   const fromParam = searchParams.get('from');
   const activeView = VIEW_CONFIG[viewParam] ? viewParam : 'default';
@@ -427,11 +350,10 @@ function ExecutePage() {
     }
   };
 
-  const { stats, visits, selectedVisit, setSelectedVisit, saveCapture, missionPlans, performance, addVisits } = useMarketMapping();
+  const { stats, visits, missionPlans } = useMarketMapping();
   const { data: anchorRows } = useMarketMappingAnchors();
   const { data: priorityRows } = usePriorityVisits();
   const { data: partnershipRows } = usePartnerships();
-  const { showToast } = useToast();
   const [horizonFilter, setHorizonFilter] = useState<MissionHorizon>('DAY');
 
   const today = new Date();
@@ -467,24 +389,12 @@ function ExecutePage() {
   const targetCount = activeView === 'default' ? (activePlan?.targetCount || stats.plannedToday || 20) : contextVisits.length;
   const remaining = Math.max(0, targetCount - addedCount);
 
-  const handleSave = (updatedVisit: any, closeDrawer = true) => {
-    saveCapture(updatedVisit);
-    if (closeDrawer) setSelectedVisit(null);
-    showToast('Business data saved.', 'success');
+  const addBusiness = () => {
+    router.push(`/dashboard/market-mapping/capture?new=1&from=execute&horizon=${activeHorizon}`);
   };
 
-  const addBusiness = () => {
-    const newVisit: PlannedVisit = {
-      id: `v-${activeHorizon.toLowerCase()}-${Date.now()}`,
-      name: `Business ${addedCount + 1}`,
-      category: '',
-      status: 'NOT_YET',
-      isPlaceholder: true,
-      address: activePlan?.location || '',
-      horizon: activeHorizon,
-    };
-    addVisits([newVisit]);
-    showToast('Business added', 'success');
+  const handleSelectVisit = (visit: PlannedVisit) => {
+    router.push(`/dashboard/market-mapping/capture?id=${encodeURIComponent(visit.id)}&from=execute`);
   };
 
   const getVisitIcon = (visit: PlannedVisit) => {
@@ -610,7 +520,7 @@ function ExecutePage() {
             {contextVisits.map(visit => {
               const badge = getVisitBadge(visit);
               return (
-                <button key={visit.id} onClick={() => setSelectedVisit(visit)} className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 flex items-center justify-between hover:border-blue-300 transition-colors text-left">
+                <button key={visit.id} onClick={() => handleSelectVisit(visit)} className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 flex items-center justify-between hover:border-blue-300 transition-colors text-left">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className={cn('w-9 h-9 rounded-2xl flex items-center justify-center shrink-0', getVisitBg(visit))}>
                       {getVisitIcon(visit)}
@@ -663,8 +573,6 @@ function ExecutePage() {
             <Plus className="w-4 h-4" /> Add Partnership to Mission
           </Link>
         )}
-
-        <BusinessCaptureDrawer visit={selectedVisit} onClose={() => setSelectedVisit(null)} onSave={handleSave} />
       </div>
     </DashboardLayout>
   );
@@ -678,9 +586,6 @@ function ExecutePageWrapper() {
   );
 }
 
-// Routes users to the field-activity execution workflow when it is available to
-// their role. Special Market Mapping view modes (anchors/priority/partnership)
-// always keep the original list-based Execute page.
 function ExecuteRouter() {
   const { user } = useAuth();
   const searchParams = useSearchParams();

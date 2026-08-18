@@ -18,7 +18,22 @@ export type LeadStatus = 'NOT_YET' | 'VISITED' | 'CONTACTED' | 'INTERESTED' | 'N
 export interface Lead {
   id: string;
   userId: string;
-  user?: User;
+  user?: User & {
+    supervisor?: { id: string; fullName: string; email?: string; phone?: string } | null;
+    manager?: { id: string; fullName: string; email?: string; phone?: string } | null;
+  };
+  planId?: string | null;
+  plan?: {
+    id: string;
+    locationCluster?: string | null;
+    targetVisits?: number;
+    targetLeads?: number;
+    targetConversions?: number;
+    status?: string;
+    startDate?: string;
+    endDate?: string | null;
+    notes?: string | null;
+  } | null;
   businessName: string;
   industry: string;
   businessAddress?: string | null;
@@ -37,7 +52,7 @@ export interface Lead {
   gpsLng?: string | null;
   gpsAddress?: string | null;
   openingHours?: string | null;
-  openingDays?: string[] | null;
+  openingDays?: string[] | any;
   dailyCustomers?: string | null;
   businessSize?: string | null;
   horizon?: string | null;
@@ -53,6 +68,30 @@ export interface Lead {
   createdAt: string;
   updatedAt: string;
   visited?: boolean;
+  demos?: Array<{
+    id: string;
+    businessName: string;
+    date: string;
+    status: string;
+    agentId: string;
+    meetingUrl?: string | null;
+    notes?: string | null;
+  }>;
+  salesPipelines?: Array<{
+    id: string;
+    pipelineStage: string;
+    leadQuality: string;
+    priority: string;
+    notes?: string | null;
+    followUps?: Array<{ id: string; scheduledAt: string; status: string; notes?: string | null }>;
+    demos?: Array<{ id: string; scheduledAt: string; status: string; notes?: string | null }>;
+  }>;
+  marketMappingNotes?: Array<{
+    id: string;
+    content: string;
+    followUpDate?: string | null;
+    createdAt: string;
+  }>;
 }
 
 export interface HarvestStats {
@@ -374,6 +413,8 @@ export interface MarketMappingConfig {
   businessStatuses: { id: string; label: string; color: string; bg: string }[];
   paymentStatuses: { id: string; label: string; color: string; bg: string }[];
   dailyTarget: number;
+  minDailyTarget?: number;
+  globalDailyTarget?: number;
   weeklyTarget: number;
   monthlyTarget: number;
   isTargetLocked?: boolean;

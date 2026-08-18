@@ -15,6 +15,25 @@ import {
 import { useAdminEditorConfig, useUpdateAdminEditorConfig } from '@/services/useMarketMappingHooks';
 import { PlatformSettings, MarketMappingConfig } from '@/types/api';
 
+interface SectionProps {
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}
+
+function Section({ title, open, onToggle, children }: SectionProps) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+      <button type="button" onClick={onToggle} className="w-full flex items-center justify-between px-5 py-3.5 text-left">
+        <h3 className="text-sm font-bold text-slate-900">{title}</h3>
+        {open ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+      </button>
+      {open && <div className="px-5 pb-5 space-y-4">{children}</div>}
+    </div>
+  );
+}
+
 export default function MarketMappingConfigEditor() {
   const { showToast } = useToast();
   const { data: editorConfig, isLoading, isError, refetch } = useAdminEditorConfig();
@@ -143,15 +162,6 @@ export default function MarketMappingConfigEditor() {
     }));
   };
 
-  const Section = ({ title, open, onToggle, children }: { title: string; open: boolean; onToggle: () => void; children: React.ReactNode }) => (
-    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-      <button onClick={onToggle} className="w-full flex items-center justify-between px-5 py-3.5 text-left">
-        <h3 className="text-sm font-bold text-slate-900">{title}</h3>
-        {open ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
-      </button>
-      {open && <div className="px-5 pb-5 space-y-4">{children}</div>}
-    </div>
-  );
 
   if (isLoading) {
     return (
@@ -309,15 +319,42 @@ export default function MarketMappingConfigEditor() {
         <div className="grid grid-cols-3 gap-4">
           <div>
             <label className="text-xs font-bold text-slate-600 block mb-1">Daily</label>
-            <input type="number" value={mmConfig.dailyTarget} onChange={e => setMmConfig(prev => ({ ...prev, dailyTarget: Number(e.target.value) }))} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+            <input
+              type="number"
+              min={1}
+              value={mmConfig.dailyTarget ?? ''}
+              onChange={e => {
+                const val = e.target.value === '' ? 0 : Number(e.target.value);
+                setMmConfig(prev => ({ ...prev, dailyTarget: val }));
+              }}
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            />
           </div>
           <div>
             <label className="text-xs font-bold text-slate-600 block mb-1">Weekly</label>
-            <input type="number" value={mmConfig.weeklyTarget} onChange={e => setMmConfig(prev => ({ ...prev, weeklyTarget: Number(e.target.value) }))} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+            <input
+              type="number"
+              min={1}
+              value={mmConfig.weeklyTarget ?? ''}
+              onChange={e => {
+                const val = e.target.value === '' ? 0 : Number(e.target.value);
+                setMmConfig(prev => ({ ...prev, weeklyTarget: val }));
+              }}
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            />
           </div>
           <div>
             <label className="text-xs font-bold text-slate-600 block mb-1">Monthly</label>
-            <input type="number" value={mmConfig.monthlyTarget} onChange={e => setMmConfig(prev => ({ ...prev, monthlyTarget: Number(e.target.value) }))} className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+            <input
+              type="number"
+              min={1}
+              value={mmConfig.monthlyTarget ?? ''}
+              onChange={e => {
+                const val = e.target.value === '' ? 0 : Number(e.target.value);
+                setMmConfig(prev => ({ ...prev, monthlyTarget: val }));
+              }}
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            />
           </div>
         </div>
       </Section>
