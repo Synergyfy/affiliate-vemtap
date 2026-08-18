@@ -228,6 +228,8 @@ export default function BusinessCaptureForm({
     };
   });
 
+  type FormTab = 'identity' | 'operations' | 'pipeline';
+  const [activeTab, setActiveTab] = useState<FormTab>('identity');
   const [categorySearch, setCategorySearch] = useState('');
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [showDaysDropdown, setShowDaysDropdown] = useState(false);
@@ -367,6 +369,7 @@ export default function BusinessCaptureForm({
     if (isSaving) return;
 
     if (!formData.name?.trim()) {
+      setActiveTab('identity');
       showToast('Please enter a business name.', 'error');
       return;
     }
@@ -378,6 +381,7 @@ export default function BusinessCaptureForm({
       initialVisit?.nextVisitTime,
     );
     if (nextVisitError) {
+      setActiveTab('pipeline');
       showToast(nextVisitError, 'error');
       return;
     }
@@ -443,7 +447,7 @@ export default function BusinessCaptureForm({
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-48 lg:pb-24">
+    <div className="max-w-4xl mx-auto space-y-6 pb-12 md:pb-16">
 
       {/* Top Bar / Navigation */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -475,6 +479,15 @@ export default function BusinessCaptureForm({
 
         {/* Action button header (mobile & desktop) */}
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => handleSave(true)}
+            disabled={isSaving}
+            className="hidden xs:inline-flex px-3 py-2 bg-slate-100 hover:bg-slate-200 active:scale-95 transition-all text-slate-700 text-xs font-bold rounded-xl items-center gap-1.5 shrink-0 border border-slate-200/80"
+          >
+            <Save className="w-3.5 h-3.5" />
+            <span>Draft</span>
+          </button>
           <button
             type="button"
             onClick={() => handleSave(false)}
@@ -524,805 +537,846 @@ export default function BusinessCaptureForm({
 
           <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
             {formData.gpsLat && formData.gpsLng ? (
-              <div className="bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 px-3.5 py-2 rounded-2xl flex items-center gap-2 text-xs font-bold">
-                <Navigation className="w-4 h-4 text-emerald-400 fill-emerald-400" />
-                <span>GPS Location Locked</span>
+              <div className="bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 px-3 py-1.5 rounded-xl flex items-center gap-1.5 text-xs font-bold">
+                <Navigation className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400" />
+                <span>GPS Locked</span>
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={handleCaptureGps}
-                disabled={isAcquiringGps}
-                className="bg-blue-600 hover:bg-blue-500 active:scale-95 text-white px-4 py-2 rounded-2xl flex items-center gap-2 text-xs font-black transition-all shadow-lg shadow-blue-900/50"
-              >
-                <Navigation className={cn("w-4 h-4", isAcquiringGps && "animate-spin")} />
-                {isAcquiringGps ? 'Locating...' : 'Lock GPS Now'}
-              </button>
+              <div className="bg-white/10 border border-white/15 text-white/70 px-3 py-1.5 rounded-xl text-xs font-semibold">
+                3 Steps
+              </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* 1. PROMINENT GPS STATION & LOCATION (HERO PLACEMENT) */}
-      {/* ========================================================================= */}
-      <div className="bg-white rounded-3xl p-5 md:p-6 border-2 border-blue-200/80 shadow-md shadow-blue-500/5 space-y-4 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/70 rounded-bl-full pointer-events-none" />
+      {/* 3-Tab Navigator (Mobile & Desktop) */}
+      <div className="bg-slate-200/80 p-1.5 rounded-2xl flex items-center gap-1.5 border border-slate-200 shadow-2xs">
+        {[
+          {
+            id: 'identity' as FormTab,
+            label: '1. Info & Location',
+            shortLabel: '1. Info & Map',
+            icon: Building2,
+            isComplete: Boolean(formData.name?.trim() && formData.category)
+          },
+          {
+            id: 'operations' as FormTab,
+            label: '2. Contact & Store',
+            shortLabel: '2. Contact',
+            icon: Users,
+            isComplete: Boolean(formData.phone || formData.ownerName || formData.openingHours)
+          },
+          {
+            id: 'pipeline' as FormTab,
+            label: '3. Sales Pipeline',
+            shortLabel: '3. Sales',
+            icon: Flame,
+            isComplete: Boolean(formData.status || formData.interested || formData.visitNotes)
+          },
+        ].map(tab => {
+          const isActive = activeTab === tab.id;
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "flex-1 py-2.5 px-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 relative",
+                isActive
+                  ? "bg-white text-blue-600 shadow-sm border border-slate-200/80 font-black"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+              )}
+            >
+              <Icon className={cn("w-3.5 h-3.5 shrink-0", isActive ? "text-blue-600" : "text-slate-400")} />
+              <span className="hidden sm:inline">{tab.label}</span>
+              <span className="sm:hidden">{tab.shortLabel}</span>
+              {tab.isComplete && (
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+              )}
+            </button>
+          );
+        })}
+      </div>
 
-        <FormSectionHeader
-          title="GPS Geolocation & Mapping"
-          subtitle="Real-time satellite coordinates & store footprint"
-          icon={Navigation}
-          gradient="from-blue-600 to-cyan-600"
-          badge={
-            formData.gpsLat && formData.gpsLng ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> GPS Pinned
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-amber-50 text-amber-700 border border-amber-200">
-                <AlertCircle className="w-3.5 h-3.5 text-amber-600" /> Location Pending
-              </span>
-            )
-          }
-        />
+      {/* ========================================================================= */}
+      {/* TAB 1: IDENTITY & LOCATION */}
+      {/* ========================================================================= */}
+      {activeTab === 'identity' && (
+        <div className="bg-white rounded-3xl p-5 md:p-6 border border-slate-200 shadow-sm space-y-4">
+          <FormSectionHeader
+            title="Business Identity & Location"
+            subtitle="Signage name, category, GPS mapping, and address details"
+            icon={Building2}
+            gradient="from-blue-600 to-indigo-600"
+          />
 
-        {formData.gpsLat && formData.gpsLng ? (
-          /* Locked GPS Display Card */
-          <div className="bg-gradient-to-br from-emerald-50/90 via-white to-teal-50/40 border border-emerald-200 rounded-2xl p-4 md:p-5 space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-200 shrink-0">
-                  <Navigation className="w-6 h-6 fill-white" />
+          {/* Compact Streamlined GPS Box */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2.5">
+                <div className={cn(
+                  "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-2xs",
+                  formData.gpsLat && formData.gpsLng ? "bg-emerald-600 text-white" : "bg-blue-600 text-white"
+                )}>
+                  <Navigation className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
-                      Verified Coordinates
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-slate-900">
+                      {formData.gpsLat && formData.gpsLng ? 'GPS Coordinates Locked' : 'Satellite GPS Coordinates'}
                     </span>
                     {gpsAccuracy && (
-                      <span className="text-[10px] font-bold text-slate-500">
-                        Accuracy: ±{gpsAccuracy}m
+                      <span className="text-[10px] text-slate-500 font-mono">
+                        (±{gpsAccuracy}m)
                       </span>
                     )}
                   </div>
-                  <p className="text-sm md:text-base font-black text-slate-900 font-mono mt-1">
-                    {formData.gpsLat}, {formData.gpsLng}
+                  <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                    {formData.gpsLat && formData.gpsLng
+                      ? `${formData.gpsLat}, ${formData.gpsLng}`
+                      : 'Stand at shop entrance for satellite lock'}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap">
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${formData.gpsLat},${formData.gpsLng}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs"
-                >
-                  <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
-                  View Map
-                </a>
-                <button
-                  type="button"
-                  onClick={handleCaptureGps}
-                  disabled={isAcquiringGps}
-                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
-                >
-                  <RotateCcw className={cn("w-3.5 h-3.5", isAcquiringGps && "animate-spin")} />
-                  Recapture
-                </button>
+              <div className="flex items-center gap-1.5 ml-auto">
+                {formData.gpsLat && formData.gpsLng ? (
+                  <>
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${formData.gpsLat},${formData.gpsLng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1 transition-all shadow-2xs"
+                    >
+                      <ExternalLink className="w-3 h-3 text-blue-600" /> Map
+                    </a>
+                    <button
+                      type="button"
+                      onClick={handleCaptureGps}
+                      disabled={isAcquiringGps}
+                      className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 transition-all active:scale-95 shadow-xs"
+                    >
+                      <RotateCcw className={cn("w-3 h-3", isAcquiringGps && "animate-spin")} />
+                      {isAcquiringGps ? 'Locating...' : 'Recapture'}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleCaptureGps}
+                    disabled={isAcquiringGps}
+                    className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-xl text-xs font-black flex items-center gap-1.5 transition-all shadow-sm"
+                  >
+                    <Compass className={cn("w-3.5 h-3.5", isAcquiringGps && "animate-spin")} />
+                    {isAcquiringGps ? 'Locking Satellite...' : 'Lock GPS Now'}
+                  </button>
+                )}
               </div>
             </div>
 
             {formData.gpsAddress && (
-              <div className="pt-2.5 border-t border-emerald-100 flex items-start gap-2">
-                <MapPin className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                  {formData.gpsAddress}
-                </p>
+              <div className="pt-2 border-t border-slate-200/70 flex items-start gap-1.5 text-[11px] text-slate-600">
+                <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                <span className="line-clamp-1">{formData.gpsAddress}</span>
               </div>
             )}
           </div>
-        ) : (
-          /* Action Trigger for GPS Acquisition */
-          <div className="bg-gradient-to-br from-slate-50 to-blue-50/50 border border-dashed border-blue-300 rounded-2xl p-6 text-center space-y-3">
-            <div className="relative w-16 h-16 mx-auto flex items-center justify-center">
-              <div className="absolute inset-0 rounded-full bg-blue-500/20 animate-ping" />
-              <div className="relative w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-200">
-                <Navigation className="w-7 h-7" />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+            {/* Business Name */}
+            <div className="md:col-span-2">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700">Business Name *</label>
+                <TooltipHelper text={TOOLTIPS.name} />
               </div>
+              <input
+                type="text"
+                required
+                value={formData.name || ''}
+                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g. Divine Grace Supermarket & Pharmacy"
+                className="w-full px-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all placeholder:text-slate-400"
+              />
             </div>
-            <div>
-              <h4 className="text-sm font-black text-slate-900">Pin Exact Shop Location</h4>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto mt-0.5">
-                Stand at the store entrance to capture accurate GPS coordinates and street address.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleCaptureGps}
-              disabled={isAcquiringGps}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 active:scale-95 transition-all text-white text-sm font-black rounded-2xl shadow-xl shadow-blue-200"
-            >
-              <Compass className={cn("w-5 h-5", isAcquiringGps && "animate-spin")} />
-              {isAcquiringGps ? 'Locking Satellite GPS...' : 'Capture GPS Location Now'}
-            </button>
-          </div>
-        )}
-      </div>
 
-      {/* ========================================================================= */}
-      {/* 2. GENERAL BUSINESS IDENTITY & CONTACT */}
-      {/* ========================================================================= */}
-      <div className="bg-white rounded-3xl p-5 md:p-6 border border-slate-200 shadow-sm space-y-4">
-        <FormSectionHeader
-          title="General Information"
-          subtitle="Business identification and primary contact person"
-          icon={Building2}
-          gradient="from-indigo-600 to-purple-600"
-        />
+            {/* Category Dropdown */}
+            <div className="relative" ref={categoryDropdownRef}>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700">Category *</label>
+                <TooltipHelper text={TOOLTIPS.category} />
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+                className="w-full px-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-semibold text-left flex items-center justify-between focus:outline-none focus:border-blue-500 transition-all"
+              >
+                <span className={formData.category ? "text-slate-900 font-bold" : "text-slate-400"}>
+                  {formData.category || 'Choose Category'}
+                </span>
+                <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", showCategoryDropdown && "rotate-180")} />
+              </button>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Business Name */}
-          <div className="md:col-span-2">
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <label className="block text-xs font-bold text-slate-700">Business Name *</label>
-              <TooltipHelper text={TOOLTIPS.name} />
-            </div>
-            <input
-              type="text"
-              required
-              value={formData.name || ''}
-              onChange={e => setFormData({ ...formData, name: e.target.value })}
-              placeholder="e.g. Divine Grace Supermarket & Pharmacy"
-              className="w-full px-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all placeholder:text-slate-400"
-            />
-          </div>
-
-          {/* Category Dropdown */}
-          <div className="relative" ref={categoryDropdownRef}>
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <label className="block text-xs font-bold text-slate-700">Category *</label>
-              <TooltipHelper text={TOOLTIPS.category} />
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
-              className="w-full px-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-semibold text-left flex items-center justify-between focus:outline-none focus:border-blue-500 transition-all"
-            >
-              <span className={formData.category ? "text-slate-900 font-bold" : "text-slate-400"}>
-                {formData.category || 'Choose Category'}
-              </span>
-              <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", showCategoryDropdown && "rotate-180")} />
-            </button>
-
-            {showCategoryDropdown && (
-              <div className="absolute z-30 top-full mt-1.5 w-full bg-white border border-slate-200 rounded-2xl shadow-2xl max-h-64 overflow-hidden">
-                <div className="p-2.5 border-b border-slate-100 bg-slate-50">
-                  <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-slate-200">
-                    <Search className="w-4 h-4 text-slate-400 shrink-0" />
-                    <input
-                      type="text"
-                      placeholder="Search categories..."
-                      value={categorySearch}
-                      onChange={e => setCategorySearch(e.target.value)}
-                      className="flex-1 bg-transparent text-xs font-semibold focus:outline-none"
-                      autoFocus
-                    />
+              {showCategoryDropdown && (
+                <div className="absolute z-30 top-full mt-1.5 w-full bg-white border border-slate-200 rounded-2xl shadow-2xl max-h-64 overflow-hidden">
+                  <div className="p-2.5 border-b border-slate-100 bg-slate-50">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-slate-200">
+                      <Search className="w-4 h-4 text-slate-400 shrink-0" />
+                      <input
+                        type="text"
+                        placeholder="Search categories..."
+                        value={categorySearch}
+                        onChange={e => setCategorySearch(e.target.value)}
+                        className="flex-1 bg-transparent text-xs font-semibold focus:outline-none"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+                  <div className="overflow-y-auto max-h-48 p-1">
+                    {filteredCategories.map(cat => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => {
+                          setFormData({ ...formData, category: cat });
+                          setShowCategoryDropdown(false);
+                          setCategorySearch('');
+                        }}
+                        className={cn(
+                          "w-full px-3 py-2.5 text-xs text-left rounded-xl font-medium transition-colors",
+                          formData.category === cat ? "bg-blue-50 text-blue-600 font-black" : "hover:bg-slate-50 text-slate-700"
+                        )}
+                      >
+                        {cat}
+                      </button>
+                    ))}
                   </div>
                 </div>
-                <div className="overflow-y-auto max-h-48 p-1">
-                  {filteredCategories.map(cat => (
+              )}
+            </div>
+
+            {/* Assigned Area / Cluster */}
+            <div>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700">Assigned Area / Cluster</label>
+                <TooltipHelper text={TOOLTIPS.address} />
+              </div>
+              <input
+                type="text"
+                readOnly
+                value={formData.address || planLocation || 'General Territory'}
+                className="w-full px-4 py-3 bg-slate-100/70 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-600 cursor-not-allowed"
+              />
+            </div>
+
+            {/* Exact Address / Landmark */}
+            <div className="md:col-span-2">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700">Exact Shop Number & Landmark</label>
+                <TooltipHelper text={TOOLTIPS.exactAddress} />
+              </div>
+              <div className="relative">
+                <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                <input
+                  type="text"
+                  placeholder="e.g. Shop 14, Plot 8 Commercial Avenue, Opp. Total Station"
+                  value={formData.exactAddress || ''}
+                  onChange={e => setFormData({ ...formData, exactAddress: e.target.value })}
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all placeholder:text-slate-400"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Tab 1 Footer Next Button */}
+          <div className="pt-3 border-t border-slate-100 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setActiveTab('operations')}
+              className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm active:scale-95"
+            >
+              <span>Next: Contact & Store</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 2: CONTACT & STORE PROFILE */}
+      {/* ========================================================================= */}
+      {activeTab === 'operations' && (
+        <div className="bg-white rounded-3xl p-5 md:p-6 border border-slate-200 shadow-sm space-y-4">
+          <FormSectionHeader
+            title="Contact & Store Profile"
+            subtitle="Owner details, staff size, foot traffic, and operating hours"
+            icon={Users}
+            gradient="from-amber-500 to-orange-600"
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Contact Person Name */}
+            <div>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700">Contact / Owner Name</label>
+                <TooltipHelper text={TOOLTIPS.ownerName} />
+              </div>
+              <div className="relative">
+                <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                <input
+                  type="text"
+                  placeholder="e.g. Mr. Emmanuel Okafor"
+                  value={formData.ownerName || ''}
+                  onChange={e => setFormData({ ...formData, ownerName: e.target.value })}
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-blue-500 transition-all placeholder:text-slate-400"
+                />
+              </div>
+            </div>
+
+            {/* Contact Position */}
+            <div>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700">Contact Position</label>
+                <TooltipHelper text={TOOLTIPS.contactPosition} />
+              </div>
+              <select
+                value={selectPositionValue}
+                onChange={e => {
+                  const val = e.target.value;
+                  if (val === 'Custom') {
+                    setFormData({ ...formData, contactPosition: customPositionText ? `Custom: ${customPositionText}` : 'Custom' });
+                  } else {
+                    setCustomPositionText('');
+                    setFormData({ ...formData, contactPosition: val });
+                  }
+                }}
+                className="w-full px-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-blue-500 transition-all"
+              >
+                <option value="">Select Role / Position...</option>
+                {contactPositions.map(p => <option key={p} value={p}>{p}</option>)}
+                {!contactPositions.includes('Custom') && <option value="Custom">Custom</option>}
+              </select>
+              {selectPositionValue === 'Custom' && (
+                <input
+                  type="text"
+                  placeholder="Specify custom role (e.g. Managing Director)..."
+                  value={customPositionText || (rawPosition.startsWith('Custom: ') ? rawPosition.replace('Custom: ', '') : (rawPosition !== 'Custom' ? rawPosition : ''))}
+                  onChange={e => {
+                    const txt = e.target.value;
+                    setCustomPositionText(txt);
+                    setFormData({ ...formData, contactPosition: txt ? `Custom: ${txt}` : 'Custom' });
+                  }}
+                  className="w-full mt-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 transition-all"
+                />
+              )}
+            </div>
+
+            {/* Phone Number */}
+            <div>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700">Phone Number</label>
+                <TooltipHelper text={TOOLTIPS.phone} />
+              </div>
+              <div className="relative">
+                <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="e.g. 08012345678"
+                  value={formData.phone || ''}
+                  onChange={e => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    setFormData({ ...formData, phone: val });
+                  }}
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-blue-500 transition-all placeholder:text-slate-400"
+                />
+              </div>
+            </div>
+
+            {/* Contact Email */}
+            <div>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700">Contact Email</label>
+                <TooltipHelper text={TOOLTIPS.contactEmail} />
+              </div>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                <input
+                  type="email"
+                  placeholder="e.g. store@business.com"
+                  value={formData.contactEmail || ''}
+                  onChange={e => setFormData({ ...formData, contactEmail: e.target.value })}
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-blue-500 transition-all placeholder:text-slate-400"
+                />
+              </div>
+            </div>
+
+            {/* Business Size */}
+            <div>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700">Business Size</label>
+                <TooltipHelper text={TOOLTIPS.businessSize} />
+              </div>
+              <select
+                value={matchedSize}
+                onChange={e => setFormData({ ...formData, businessSize: e.target.value })}
+                className="w-full px-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-blue-500 transition-all"
+              >
+                <option value="">Select size classification...</option>
+                {businessSizes.map(s => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Daily Customers */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <label className="block text-xs font-bold text-slate-700">Daily Foot Traffic</label>
+                  <TooltipHelper text={TOOLTIPS.dailyCustomers} />
+                </div>
+                {isAnchor && (
+                  <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 flex items-center gap-1">
+                    <Star className="w-3 h-3 fill-amber-500" /> ANCHOR
+                  </span>
+                )}
+              </div>
+              <select
+                value={matchedCustomers}
+                onChange={e => setFormData({ ...formData, dailyCustomers: e.target.value })}
+                className="w-full px-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-blue-500 transition-all"
+              >
+                <option value="">Select customer volume...</option>
+                {customerRanges.map(r => (
+                  <option key={r.value} value={r.value}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Operating Hours */}
+            <div className="md:col-span-2 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <label className="block text-xs font-bold text-slate-700">Opening Hours</label>
+                  <TooltipHelper text={TOOLTIPS.openingHours} />
+                </div>
+                {formData.openingHours && (
+                  <span className="px-2.5 py-0.5 rounded-lg text-xs font-black bg-blue-50 text-blue-700 border border-blue-200 font-mono">
+                    {formData.openingHours.replace('-', ' → ')}
+                  </span>
+                )}
+              </div>
+
+              <div className="bg-gradient-to-br from-slate-50 via-white to-blue-50/30 border border-slate-200 rounded-2xl p-4 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Open Time */}
+                  <div
+                    className="group relative bg-white border border-slate-200 hover:border-amber-400 focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-500/20 rounded-xl p-3 transition-all cursor-pointer shadow-2xs"
+                    onClick={() => {
+                      try { openTimeRef.current?.showPicker(); } catch (e) { openTimeRef.current?.focus(); }
+                    }}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 group-hover:text-amber-600 transition-colors flex items-center gap-1">
+                        <Sun className="w-3.5 h-3.5 text-amber-500" /> Opening Time
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 rounded-lg bg-amber-50 text-amber-600 border border-amber-100 shrink-0">
+                        <Clock className="w-4 h-4" />
+                      </div>
+                      <input
+                        ref={openTimeRef}
+                        type="time"
+                        value={formData.openingHours?.split('-')[0] || ''}
+                        onChange={e => {
+                          const close = formData.openingHours?.split('-')[1] || '';
+                          setFormData({ ...formData, openingHours: `${e.target.value}-${close}` });
+                        }}
+                        className="w-full bg-transparent text-sm font-bold text-slate-800 focus:outline-none cursor-pointer font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Close Time */}
+                  <div
+                    className="group relative bg-white border border-slate-200 hover:border-indigo-400 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 rounded-xl p-3 transition-all cursor-pointer shadow-2xs"
+                    onClick={() => {
+                      try { closeTimeRef.current?.showPicker(); } catch (e) { closeTimeRef.current?.focus(); }
+                    }}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 group-hover:text-indigo-600 transition-colors flex items-center gap-1">
+                        <Moon className="w-3.5 h-3.5 text-indigo-500" /> Closing Time
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0">
+                        <Clock className="w-4 h-4" />
+                      </div>
+                      <input
+                        ref={closeTimeRef}
+                        type="time"
+                        value={formData.openingHours?.split('-')[1] || ''}
+                        onChange={e => {
+                          const open = formData.openingHours?.split('-')[0] || '';
+                          setFormData({ ...formData, openingHours: `${open}-${e.target.value}` });
+                        }}
+                        className="w-full bg-transparent text-sm font-bold text-slate-800 focus:outline-none cursor-pointer font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Presets */}
+                <div className="pt-2 border-t border-slate-100 flex items-center gap-2 overflow-x-auto no-scrollbar">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 shrink-0 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-blue-500" /> Presets:
+                  </span>
+                  {[
+                    { label: '8 AM – 6 PM', value: '08:00-18:00' },
+                    { label: '9 AM – 5 PM', value: '09:00-17:00' },
+                    { label: '8 AM – 10 PM', value: '08:00-22:00' },
+                    { label: '24 Hours', value: '00:00-23:59' },
+                  ].map(preset => (
                     <button
-                      key={cat}
+                      key={preset.value}
                       type="button"
-                      onClick={() => {
-                        setFormData({ ...formData, category: cat });
-                        setShowCategoryDropdown(false);
-                        setCategorySearch('');
-                      }}
+                      onClick={() => setFormData({ ...formData, openingHours: preset.value })}
                       className={cn(
-                        "w-full px-3 py-2.5 text-xs text-left rounded-xl font-medium transition-colors",
-                        formData.category === cat ? "bg-blue-50 text-blue-600 font-black" : "hover:bg-slate-50 text-slate-700"
+                        "px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0 transition-all border",
+                        formData.openingHours === preset.value
+                          ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
+                          : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
                       )}
                     >
-                      {cat}
+                      {preset.label}
                     </button>
                   ))}
                 </div>
               </div>
-            )}
+            </div>
+
+            {/* Operating Days */}
+            <div className="md:col-span-2">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700">Operating Days</label>
+                <TooltipHelper text={TOOLTIPS.openingDays} />
+              </div>
+              <div className="relative" ref={daysDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowDaysDropdown(!showDaysDropdown)}
+                  className="w-full px-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-semibold text-left flex items-center justify-between focus:outline-none focus:border-blue-500 transition-all"
+                >
+                  <span className={formData.openingDays?.length ? "text-slate-900 font-bold" : "text-slate-400"}>
+                    {formData.openingDays?.length === openingDays.length
+                      ? 'Everyday (Mon – Sun)'
+                      : formData.openingDays?.length
+                      ? formData.openingDays.join(', ')
+                      : 'Select operating days...'}
+                  </span>
+                  <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", showDaysDropdown && "rotate-180")} />
+                </button>
+
+                {showDaysDropdown && (
+                  <div className="absolute z-30 top-full mt-1.5 w-full bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden p-2">
+                    <div className="p-1 border-b border-slate-100 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, openingDays: [...openingDays] })}
+                        className="flex-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                      >
+                        Select All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, openingDays: [] })}
+                        className="flex-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-2">
+                      {openingDays.map(day => {
+                        const isSel = formData.openingDays?.includes(day) || false;
+                        return (
+                          <button
+                            key={day}
+                            type="button"
+                            onClick={() => {
+                              const cur = formData.openingDays || [];
+                              const next = isSel ? cur.filter(d => d !== day) : [...cur, day];
+                              setFormData({ ...formData, openingDays: next });
+                            }}
+                            className={cn(
+                              "px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition-all",
+                              isSel
+                                ? "bg-blue-600 text-white shadow-xs"
+                                : "bg-slate-50 text-slate-700 hover:bg-slate-100"
+                            )}
+                          >
+                            {day}
+                            {isSel && <Check className="w-3.5 h-3.5" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* Assigned Area / Cluster */}
-          <div>
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <label className="block text-xs font-bold text-slate-700">Assigned Area / Cluster</label>
-              <TooltipHelper text={TOOLTIPS.address} />
-            </div>
-            <input
-              type="text"
-              readOnly
-              value={formData.address || planLocation || 'General Territory'}
-              className="w-full px-4 py-3 bg-slate-100/70 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-600 cursor-not-allowed"
-            />
-          </div>
-
-          {/* Exact Address / Landmark */}
-          <div className="md:col-span-2">
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <label className="block text-xs font-bold text-slate-700">Exact Shop Number & Landmark</label>
-              <TooltipHelper text={TOOLTIPS.exactAddress} />
-            </div>
-            <div className="relative">
-              <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-              <input
-                type="text"
-                placeholder="e.g. Shop 14, Plot 8 Commercial Avenue, Opp. Total Station"
-                value={formData.exactAddress || ''}
-                onChange={e => setFormData({ ...formData, exactAddress: e.target.value })}
-                className="w-full pl-10 pr-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all placeholder:text-slate-400"
-              />
-            </div>
-          </div>
-
-          {/* Contact Person Name */}
-          <div>
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <label className="block text-xs font-bold text-slate-700">Contact / Owner Name</label>
-              <TooltipHelper text={TOOLTIPS.ownerName} />
-            </div>
-            <div className="relative">
-              <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-              <input
-                type="text"
-                placeholder="e.g. Mr. Emmanuel Okafor"
-                value={formData.ownerName || ''}
-                onChange={e => setFormData({ ...formData, ownerName: e.target.value })}
-                className="w-full pl-10 pr-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-blue-500 transition-all placeholder:text-slate-400"
-              />
-            </div>
-          </div>
-
-          {/* Contact Position */}
-          <div>
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <label className="block text-xs font-bold text-slate-700">Contact Position</label>
-              <TooltipHelper text={TOOLTIPS.contactPosition} />
-            </div>
-            <select
-              value={selectPositionValue}
-              onChange={e => {
-                const val = e.target.value;
-                if (val === 'Custom') {
-                  setFormData({ ...formData, contactPosition: customPositionText ? `Custom: ${customPositionText}` : 'Custom' });
-                } else {
-                  setCustomPositionText('');
-                  setFormData({ ...formData, contactPosition: val });
-                }
-              }}
-              className="w-full px-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-blue-500 transition-all"
+          {/* Tab 2 Footer Buttons */}
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setActiveTab('identity')}
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95"
             >
-              <option value="">Select Role / Position...</option>
-              {contactPositions.map(p => <option key={p} value={p}>{p}</option>)}
-              {!contactPositions.includes('Custom') && <option value="Custom">Custom</option>}
-            </select>
-            {selectPositionValue === 'Custom' && (
-              <input
-                type="text"
-                placeholder="Specify custom role (e.g. Managing Director)..."
-                value={customPositionText || (rawPosition.startsWith('Custom: ') ? rawPosition.replace('Custom: ', '') : (rawPosition !== 'Custom' ? rawPosition : ''))}
-                onChange={e => {
-                  const txt = e.target.value;
-                  setCustomPositionText(txt);
-                  setFormData({ ...formData, contactPosition: txt ? `Custom: ${txt}` : 'Custom' });
-                }}
-                className="w-full mt-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 transition-all"
-              />
-            )}
-          </div>
-
-          {/* Phone Number */}
-          <div>
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <label className="block text-xs font-bold text-slate-700">Phone Number</label>
-              <TooltipHelper text={TOOLTIPS.phone} />
-            </div>
-            <div className="relative">
-              <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-              <input
-                type="tel"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                placeholder="e.g. 08012345678"
-                value={formData.phone || ''}
-                onChange={e => {
-                  const val = e.target.value.replace(/[^0-9]/g, '');
-                  setFormData({ ...formData, phone: val });
-                }}
-                className="w-full pl-10 pr-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-blue-500 transition-all placeholder:text-slate-400"
-              />
-            </div>
-          </div>
-
-          {/* Contact Email */}
-          <div>
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <label className="block text-xs font-bold text-slate-700">Contact Email</label>
-              <TooltipHelper text={TOOLTIPS.contactEmail} />
-            </div>
-            <div className="relative">
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-              <input
-                type="email"
-                placeholder="e.g. store@business.com"
-                value={formData.contactEmail || ''}
-                onChange={e => setFormData({ ...formData, contactEmail: e.target.value })}
-                className="w-full pl-10 pr-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-blue-500 transition-all placeholder:text-slate-400"
-              />
-            </div>
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back: Info</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('pipeline')}
+              className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm active:scale-95"
+            >
+              <span>Next: Sales Pipeline</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ========================================================================= */}
-      {/* 3. BUSINESS PROFILE & OPERATIONS */}
+      {/* TAB 3: SALES PIPELINE & ENGAGEMENT */}
       {/* ========================================================================= */}
-      <div className="bg-white rounded-3xl p-5 md:p-6 border border-slate-200 shadow-sm space-y-4">
-        <FormSectionHeader
-          title="Store Profile & Operations"
-          subtitle="Staff size, customer foot traffic, and operating hours"
-          icon={Users}
-          gradient="from-amber-500 to-orange-600"
-        />
+      {activeTab === 'pipeline' && (
+        <div className="bg-white rounded-3xl p-5 md:p-6 border border-slate-200 shadow-sm space-y-4">
+          <FormSectionHeader
+            title="Sales Pipeline & Action Plan"
+            subtitle="Funnel stage, interest level, and next visit schedule"
+            icon={Flame}
+            gradient="from-emerald-600 to-teal-600"
+          />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Business Size */}
-          <div>
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <label className="block text-xs font-bold text-slate-700">Business Size</label>
-              <TooltipHelper text={TOOLTIPS.businessSize} />
-            </div>
-            <select
-              value={matchedSize}
-              onChange={e => setFormData({ ...formData, businessSize: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-blue-500 transition-all"
-            >
-              <option value="">Select size classification...</option>
-              {businessSizes.map(s => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Daily Customers */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <div className="flex items-center gap-1.5">
-                <label className="block text-xs font-bold text-slate-700">Daily Foot Traffic / Customers</label>
-                <TooltipHelper text={TOOLTIPS.dailyCustomers} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Pipeline Status Selector */}
+            <div>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700">Pipeline Stage</label>
+                <TooltipHelper text={TOOLTIPS.pipelineStatus} />
               </div>
-              {isAnchor && (
-                <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 flex items-center gap-1">
-                  <Star className="w-3 h-3 fill-amber-500" /> ANCHOR POTENTIAL
-                </span>
-              )}
-            </div>
-            <select
-              value={matchedCustomers}
-              onChange={e => setFormData({ ...formData, dailyCustomers: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-blue-500 transition-all"
-            >
-              <option value="">Select customer volume...</option>
-              {customerRanges.map(r => (
-                <option key={r.value} value={r.value}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Operating Hours */}
-          <div className="md:col-span-2 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <label className="block text-xs font-bold text-slate-700">Opening Hours</label>
-                <TooltipHelper text={TOOLTIPS.openingHours} />
-              </div>
-              {formData.openingHours && (
-                <span className="px-2.5 py-0.5 rounded-lg text-xs font-black bg-blue-50 text-blue-700 border border-blue-200 font-mono">
-                  {formData.openingHours.replace('-', ' → ')}
-                </span>
-              )}
-            </div>
-
-            <div className="bg-gradient-to-br from-slate-50 via-white to-blue-50/30 border border-slate-200 rounded-2xl p-4 space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Open Time */}
-                <div
-                  className="group relative bg-white border border-slate-200 hover:border-amber-400 focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-500/20 rounded-xl p-3 transition-all cursor-pointer shadow-2xs"
-                  onClick={() => {
-                    try { openTimeRef.current?.showPicker(); } catch (e) { openTimeRef.current?.focus(); }
-                  }}
-                >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 group-hover:text-amber-600 transition-colors flex items-center gap-1">
-                      <Sun className="w-3.5 h-3.5 text-amber-500" /> Opening Time
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-amber-50 text-amber-600 border border-amber-100 shrink-0">
-                      <Clock className="w-4 h-4" />
-                    </div>
-                    <input
-                      ref={openTimeRef}
-                      type="time"
-                      value={formData.openingHours?.split('-')[0] || ''}
-                      onChange={e => {
-                        const close = formData.openingHours?.split('-')[1] || '';
-                        setFormData({ ...formData, openingHours: `${e.target.value}-${close}` });
-                      }}
-                      className="w-full bg-transparent text-sm font-bold text-slate-800 focus:outline-none cursor-pointer font-mono"
-                    />
-                  </div>
-                </div>
-
-                {/* Close Time */}
-                <div
-                  className="group relative bg-white border border-slate-200 hover:border-indigo-400 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 rounded-xl p-3 transition-all cursor-pointer shadow-2xs"
-                  onClick={() => {
-                    try { closeTimeRef.current?.showPicker(); } catch (e) { closeTimeRef.current?.focus(); }
-                  }}
-                >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 group-hover:text-indigo-600 transition-colors flex items-center gap-1">
-                      <Moon className="w-3.5 h-3.5 text-indigo-500" /> Closing Time
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0">
-                      <Clock className="w-4 h-4" />
-                    </div>
-                    <input
-                      ref={closeTimeRef}
-                      type="time"
-                      value={formData.openingHours?.split('-')[1] || ''}
-                      onChange={e => {
-                        const open = formData.openingHours?.split('-')[0] || '';
-                        setFormData({ ...formData, openingHours: `${open}-${e.target.value}` });
-                      }}
-                      className="w-full bg-transparent text-sm font-bold text-slate-800 focus:outline-none cursor-pointer font-mono"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Quick Presets */}
-              <div className="pt-2 border-t border-slate-100 flex items-center gap-2 overflow-x-auto no-scrollbar">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 shrink-0 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-blue-500" /> Presets:
-                </span>
-                {[
-                  { label: '8 AM – 6 PM', value: '08:00-18:00' },
-                  { label: '9 AM – 5 PM', value: '09:00-17:00' },
-                  { label: '8 AM – 10 PM', value: '08:00-22:00' },
-                  { label: '24 Hours', value: '00:00-23:59' },
-                ].map(preset => (
-                  <button
-                    key={preset.value}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, openingHours: preset.value })}
-                    className={cn(
-                      "px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0 transition-all border",
-                      formData.openingHours === preset.value
-                        ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
-                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                    )}
-                  >
-                    {preset.label}
-                  </button>
+              <select
+                value={matchedStatus}
+                onChange={e => setFormData({ ...formData, status: e.target.value as any })}
+                className="w-full px-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 transition-all"
+              >
+                {pipelineStatusOptions.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
                 ))}
+              </select>
+            </div>
+
+            {/* Level of Interest */}
+            <div>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700">Proprietor Interest Level</label>
+                <TooltipHelper text={TOOLTIPS.interested} />
+              </div>
+              <select
+                value={matchedInterest}
+                onChange={e => setFormData({ ...formData, interested: e.target.value as any })}
+                className="w-full px-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-blue-500 transition-all"
+              >
+                <option value="">Select interest...</option>
+                {interestOptions.map(o => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Decision Maker Met */}
+            <div>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700">Met Key Decision Maker?</label>
+                <TooltipHelper text={TOOLTIPS.decisionMakerMet} />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, decisionMakerMet: true })}
+                  className={cn(
+                    "py-3 rounded-2xl text-xs font-black border transition-all flex items-center justify-center gap-1.5",
+                    formData.decisionMakerMet === true
+                      ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                      : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                  )}
+                >
+                  <Check className="w-3.5 h-3.5" /> Yes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, decisionMakerMet: false })}
+                  className={cn(
+                    "py-3 rounded-2xl text-xs font-black border transition-all flex items-center justify-center gap-1.5",
+                    formData.decisionMakerMet === false
+                      ? "bg-slate-800 text-white border-slate-800 shadow-sm"
+                      : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                  )}
+                >
+                  No
+                </button>
               </div>
             </div>
-          </div>
 
-          {/* Opening Days */}
-          <div className="md:col-span-2">
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <label className="block text-xs font-bold text-slate-700">Operating Days</label>
-              <TooltipHelper text={TOOLTIPS.openingDays} />
+            {/* App Demo Done */}
+            <div className="flex items-center">
+              <label className="w-full flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all mt-5">
+                <input
+                  type="checkbox"
+                  checked={formData.demoDone || false}
+                  onChange={e => setFormData({ ...formData, demoDone: e.target.checked })}
+                  className="w-5 h-5 accent-blue-600 rounded-lg"
+                />
+                <div>
+                  <span className="text-xs font-black text-slate-900 block">VemTap App Demo Completed</span>
+                  <span className="text-[10px] text-slate-500 font-medium">Demonstrated loyalty &amp; QR payment tools</span>
+                </div>
+              </label>
             </div>
-            <div className="relative" ref={daysDropdownRef}>
-              <button
-                type="button"
-                onClick={() => setShowDaysDropdown(!showDaysDropdown)}
-                className="w-full px-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-semibold text-left flex items-center justify-between focus:outline-none focus:border-blue-500 transition-all"
-              >
-                <span className={formData.openingDays?.length ? "text-slate-900 font-bold" : "text-slate-400"}>
-                  {formData.openingDays?.length === openingDays.length
-                    ? 'Everyday (Mon – Sun)'
-                    : formData.openingDays?.length
-                    ? formData.openingDays.join(', ')
-                    : 'Select operating days...'}
-                </span>
-                <ChevronDown className={cn("w-4 h-4 text-slate-400 transition-transform", showDaysDropdown && "rotate-180")} />
-              </button>
 
-              {showDaysDropdown && (
-                <div className="absolute z-30 top-full mt-1.5 w-full bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden p-2">
-                  <div className="p-1 border-b border-slate-100 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setFormData({ ...formData, openingDays: [...openingDays] })}
-                      className="flex-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-                    >
-                      Select All
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFormData({ ...formData, openingDays: [] })}
-                      className="flex-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
-                    >
-                      Clear
-                    </button>
+            {/* Next Visit Schedule */}
+            <div className="md:col-span-2 space-y-2.5 pt-2 border-t border-slate-100">
+              <div className="flex items-center gap-1.5">
+                <label className="block text-xs font-bold text-slate-700">Next Follow-Up Visit Schedule</label>
+                <TooltipHelper text={TOOLTIPS.nextVisit} />
+              </div>
+
+              <div className="bg-gradient-to-br from-slate-50 via-white to-purple-50/30 border border-slate-200 rounded-2xl p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Date */}
+                  <div
+                    className="group relative bg-white border border-slate-200 hover:border-blue-400 focus-within:border-blue-500 rounded-xl p-3 transition-all cursor-pointer shadow-2xs"
+                    onClick={() => {
+                      try { visitDateRef.current?.showPicker(); } catch (e) { visitDateRef.current?.focus(); }
+                    }}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 group-hover:text-blue-600 transition-colors">
+                        Follow-up Date
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-100 shrink-0">
+                        <Calendar className="w-4 h-4" />
+                      </div>
+                      <input
+                        ref={visitDateRef}
+                        type="date"
+                        min={nextVisitMinDate}
+                        value={formData.nextVisitDate || ''}
+                        onChange={e => setFormData({ ...formData, nextVisitDate: e.target.value })}
+                        className="w-full bg-transparent text-sm font-bold text-slate-800 focus:outline-none cursor-pointer font-mono"
+                      />
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-2">
-                    {openingDays.map(day => {
-                      const isSel = formData.openingDays?.includes(day) || false;
-                      return (
-                        <button
-                          key={day}
-                          type="button"
-                          onClick={() => {
-                            const cur = formData.openingDays || [];
-                            const next = isSel ? cur.filter(d => d !== day) : [...cur, day];
-                            setFormData({ ...formData, openingDays: next });
-                          }}
-                          className={cn(
-                            "px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition-all",
-                            isSel
-                              ? "bg-blue-600 text-white shadow-xs"
-                              : "bg-slate-50 text-slate-700 hover:bg-slate-100"
-                          )}
-                        >
-                          {day}
-                          {isSel && <Check className="w-3.5 h-3.5" />}
-                        </button>
-                      );
-                    })}
+
+                  {/* Time */}
+                  <div
+                    className="group relative bg-white border border-slate-200 hover:border-purple-400 focus-within:border-purple-500 rounded-xl p-3 transition-all cursor-pointer shadow-2xs"
+                    onClick={() => {
+                      try { visitTimeRef.current?.showPicker(); } catch (e) { visitTimeRef.current?.focus(); }
+                    }}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 group-hover:text-purple-600 transition-colors">
+                        Follow-up Time
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 rounded-lg bg-purple-50 text-purple-600 border border-purple-100 shrink-0">
+                        <Clock className="w-4 h-4" />
+                      </div>
+                      <input
+                        ref={visitTimeRef}
+                        type="time"
+                        min={nextVisitMinTime}
+                        value={formData.nextVisitTime || ''}
+                        onChange={e => setFormData({ ...formData, nextVisitTime: e.target.value })}
+                        className="w-full bg-transparent text-sm font-bold text-slate-800 focus:outline-none cursor-pointer font-mono"
+                      />
+                    </div>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* ========================================================================= */}
-      {/* 4. SALES PIPELINE & ENGAGEMENT */}
-      {/* ========================================================================= */}
-      <div className="bg-white rounded-3xl p-5 md:p-6 border border-slate-200 shadow-sm space-y-4">
-        <FormSectionHeader
-          title="Sales Pipeline & Action Plan"
-          subtitle="Funnel stage, interest level, and next visit schedule"
-          icon={Flame}
-          gradient="from-emerald-600 to-teal-600"
-        />
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Pipeline Status Selector */}
-          <div>
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <label className="block text-xs font-bold text-slate-700">Pipeline Stage</label>
-              <TooltipHelper text={TOOLTIPS.pipelineStatus} />
-            </div>
-            <select
-              value={matchedStatus}
-              onChange={e => setFormData({ ...formData, status: e.target.value as any })}
-              className="w-full px-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 transition-all"
-            >
-              {pipelineStatusOptions.map(s => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Level of Interest */}
-          <div>
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <label className="block text-xs font-bold text-slate-700">Proprietor Interest Level</label>
-              <TooltipHelper text={TOOLTIPS.interested} />
-            </div>
-            <select
-              value={matchedInterest}
-              onChange={e => setFormData({ ...formData, interested: e.target.value as any })}
-              className="w-full px-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-blue-500 transition-all"
-            >
-              <option value="">Select interest...</option>
-              {interestOptions.map(o => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Decision Maker Met */}
-          <div>
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <label className="block text-xs font-bold text-slate-700">Met Key Decision Maker?</label>
-              <TooltipHelper text={TOOLTIPS.decisionMakerMet} />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, decisionMakerMet: true })}
-                className={cn(
-                  "py-3 rounded-2xl text-xs font-black border transition-all flex items-center justify-center gap-1.5",
-                  formData.decisionMakerMet === true
-                    ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-                    : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
-                )}
-              >
-                <Check className="w-3.5 h-3.5" /> Yes
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, decisionMakerMet: false })}
-                className={cn(
-                  "py-3 rounded-2xl text-xs font-black border transition-all flex items-center justify-center gap-1.5",
-                  formData.decisionMakerMet === false
-                    ? "bg-slate-800 text-white border-slate-800 shadow-sm"
-                    : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
-                )}
-              >
-                No
-              </button>
-            </div>
-          </div>
-
-          {/* App Demo Done */}
-          <div className="flex items-center">
-            <label className="w-full flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-100 transition-all mt-5">
-              <input
-                type="checkbox"
-                checked={formData.demoDone || false}
-                onChange={e => setFormData({ ...formData, demoDone: e.target.checked })}
-                className="w-5 h-5 accent-blue-600 rounded-lg"
+            {/* Discussion Notes */}
+            <div className="md:col-span-2">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <label className="block text-xs font-bold text-slate-700">Visit Notes &amp; Actionable Intelligence</label>
+                <TooltipHelper text={TOOLTIPS.visitNotes} />
+              </div>
+              <textarea
+                rows={4}
+                value={formData.visitNotes || ''}
+                onChange={e => setFormData({ ...formData, visitNotes: e.target.value })}
+                placeholder="Record key conversation points, proprietor feedback, requested features, or agreed pricing..."
+                className="w-full p-4 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all placeholder:text-slate-400 resize-none"
               />
-              <div>
-                <span className="text-xs font-black text-slate-900 block">VemTap App Demo Completed</span>
-                <span className="text-[10px] text-slate-500 font-medium">Demonstrated loyalty &amp; QR payment tools</span>
-              </div>
-            </label>
-          </div>
-
-          {/* Next Visit Schedule */}
-          <div className="md:col-span-2 space-y-2.5 pt-2 border-t border-slate-100">
-            <div className="flex items-center gap-1.5">
-              <label className="block text-xs font-bold text-slate-700">Next Follow-Up Visit Schedule</label>
-              <TooltipHelper text={TOOLTIPS.nextVisit} />
-            </div>
-
-            <div className="bg-gradient-to-br from-slate-50 via-white to-purple-50/30 border border-slate-200 rounded-2xl p-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Date */}
-                <div
-                  className="group relative bg-white border border-slate-200 hover:border-blue-400 focus-within:border-blue-500 rounded-xl p-3 transition-all cursor-pointer shadow-2xs"
-                  onClick={() => {
-                    try { visitDateRef.current?.showPicker(); } catch (e) { visitDateRef.current?.focus(); }
-                  }}
-                >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 group-hover:text-blue-600 transition-colors">
-                      Follow-up Date
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-100 shrink-0">
-                      <Calendar className="w-4 h-4" />
-                    </div>
-                    <input
-                      ref={visitDateRef}
-                      type="date"
-                      min={nextVisitMinDate}
-                      value={formData.nextVisitDate || ''}
-                      onChange={e => setFormData({ ...formData, nextVisitDate: e.target.value })}
-                      className="w-full bg-transparent text-sm font-bold text-slate-800 focus:outline-none cursor-pointer font-mono"
-                    />
-                  </div>
-                </div>
-
-                {/* Time */}
-                <div
-                  className="group relative bg-white border border-slate-200 hover:border-purple-400 focus-within:border-purple-500 rounded-xl p-3 transition-all cursor-pointer shadow-2xs"
-                  onClick={() => {
-                    try { visitTimeRef.current?.showPicker(); } catch (e) { visitTimeRef.current?.focus(); }
-                  }}
-                >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 group-hover:text-purple-600 transition-colors">
-                      Follow-up Time
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-purple-50 text-purple-600 border border-purple-100 shrink-0">
-                      <Clock className="w-4 h-4" />
-                    </div>
-                    <input
-                      ref={visitTimeRef}
-                      type="time"
-                      min={nextVisitMinTime}
-                      value={formData.nextVisitTime || ''}
-                      onChange={e => setFormData({ ...formData, nextVisitTime: e.target.value })}
-                      className="w-full bg-transparent text-sm font-bold text-slate-800 focus:outline-none cursor-pointer font-mono"
-                    />
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
 
-          {/* Discussion Notes */}
-          <div className="md:col-span-2">
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <label className="block text-xs font-bold text-slate-700">Visit Notes &amp; Actionable Intelligence</label>
-              <TooltipHelper text={TOOLTIPS.visitNotes} />
-            </div>
-            <textarea
-              rows={4}
-              value={formData.visitNotes || ''}
-              onChange={e => setFormData({ ...formData, visitNotes: e.target.value })}
-              placeholder="Record key conversation points, proprietor feedback, requested features, or agreed pricing..."
-              className="w-full p-4 bg-slate-50/50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all placeholder:text-slate-400 resize-none"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* STICKY BOTTOM ACTION DOCK (POSITIONED ABOVE MOBILE BOTTOM NAV) */}
-      {/* ========================================================================= */}
-      <div className="fixed bottom-20 lg:bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 sm:p-4 shadow-[0_-8px_30px_rgba(0,0,0,0.12)]">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-2 sm:gap-3">
-          <button
-            type="button"
-            onClick={handleBack}
-            className="px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-95 shrink-0"
-          >
-            Cancel
-          </button>
-
-          <div className="flex items-center gap-2 flex-1 justify-end">
+          {/* Tab 3 Footer Buttons */}
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
             <button
               type="button"
-              disabled={isSaving}
-              onClick={() => handleSave(true)}
-              className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-100 hover:bg-slate-200 active:scale-95 transition-all text-slate-700 text-xs font-black rounded-xl sm:rounded-2xl shrink-0"
+              onClick={() => setActiveTab('operations')}
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95"
             >
-              <Save className="w-3.5 h-3.5" />
-              <span className="hidden xs:inline">Save </span>Draft
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back: Store</span>
             </button>
-
-            <button
-              type="button"
-              disabled={isSaving}
-              onClick={() => handleSave(false)}
-              className={cn(
-                "flex-1 sm:flex-initial sm:px-8 py-2.5 sm:py-3 bg-blue-600 hover:bg-blue-700 active:scale-95 transition-all text-white text-xs sm:text-sm font-black rounded-xl sm:rounded-2xl shadow-lg shadow-blue-200/50 flex items-center justify-center gap-1.5 sm:gap-2",
-                isSaving && "opacity-80 cursor-wait"
-              )}
-            >
-              <Save className={cn("w-3.5 sm:w-4 h-3.5 sm:h-4", isSaving && "animate-spin")} />
-              {isSaving ? 'Saving Profile...' : 'Save & Done'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleSave(true)}
+                disabled={isSaving}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 border border-slate-200"
+              >
+                <Save className="w-4 h-4" />
+                <span>Save Draft</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSave(false)}
+                disabled={isSaving}
+                className={cn(
+                  "px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black flex items-center gap-1.5 transition-all shadow-sm active:scale-95",
+                  isSaving && "opacity-80 cursor-wait"
+                )}
+              >
+                <Save className={cn("w-4 h-4", isSaving && "animate-spin")} />
+                <span>{isSaving ? 'Saving Profile...' : 'Save & Done'}</span>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
     </div>
   );
