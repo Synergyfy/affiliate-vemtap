@@ -77,13 +77,20 @@ const mobileNavItems = [
 
 const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+interface DashboardLayoutProps {
+  children: React.ReactNode;
+  hideMobileNav?: boolean;
+}
+
+export default function DashboardLayout({ children, hideMobileNav }: DashboardLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, logout, isLoading } = useAuth();
   const { showToast } = useToast();
   const pathname = usePathname();
   const router = useRouter();
+
+  const shouldShowMobileNav = !hideMobileNav;
 
   const [isTourOpen, setIsTourOpen] = useState(false);
   const [hasCompletedTour, setHasCompletedTour] = useState(false);
@@ -282,7 +289,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-grow flex flex-col min-w-0 pb-28 lg:pb-0 pt-16 lg:pt-0">
+        <main className={cn(
+          "flex-grow flex flex-col min-w-0 pt-16 lg:pt-0",
+          shouldShowMobileNav ? "pb-28 lg:pb-0" : "pb-0"
+        )}>
           {/* Desktop Header */}
           <header className="hidden lg:flex h-20 bg-white border-b border-slate-200 px-12 items-center justify-between sticky top-0 z-30">
             <div>
@@ -384,38 +394,40 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
 
         {/* Mobile Bottom Navigation Bar */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-3 sm:px-6 h-20 flex items-center justify-between gap-1 z-50 pb-safe">
-          {mobileNavItems
-            .filter((item) => {
-              if (item.name === 'Map') {
-                return user?.role !== 'AFFILIATE' && user?.role !== 'AGENT';
-              }
-              return !item.showTo || item.showTo.includes(user?.role ?? '');
-            })
-            .map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <Link 
-                  key={item.name} 
-                  href={item.href} 
-                  className="flex flex-col items-center justify-center gap-1 min-w-0 flex-1 px-1 transition-all"
-                >
-                  <div className={cn(
-                    "p-2 rounded-2xl transition-all",
-                    isActive ? "bg-emerald-100 text-emerald-600" : "text-slate-400"
-                  )}>
-                    <item.icon className="w-6 h-6" />
-                  </div>
-                  <span className={cn(
-                    "text-[10px] font-black uppercase tracking-widest whitespace-nowrap",
-                    isActive ? "text-emerald-600" : "text-slate-400"
-                  )}>
-                    {item.name}
-                  </span>
-                </Link>
-              );
-            })}
-        </nav>
+        {shouldShowMobileNav && (
+          <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-3 sm:px-6 h-20 flex items-center justify-between gap-1 z-50 pb-safe">
+            {mobileNavItems
+              .filter((item) => {
+                if (item.name === 'Map') {
+                  return user?.role !== 'AFFILIATE' && user?.role !== 'AGENT';
+                }
+                return !item.showTo || item.showTo.includes(user?.role ?? '');
+              })
+              .map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <Link 
+                    key={item.name} 
+                    href={item.href} 
+                    className="flex flex-col items-center justify-center gap-1 min-w-0 flex-1 px-1 transition-all"
+                  >
+                    <div className={cn(
+                      "p-2 rounded-2xl transition-all",
+                      isActive ? "bg-emerald-100 text-emerald-600" : "text-slate-400"
+                    )}>
+                      <item.icon className="w-6 h-6" />
+                    </div>
+                    <span className={cn(
+                      "text-[10px] font-black uppercase tracking-widest whitespace-nowrap",
+                      isActive ? "text-emerald-600" : "text-slate-400"
+                    )}>
+                      {item.name}
+                    </span>
+                  </Link>
+                );
+              })}
+          </nav>
+        )}
 
         <DashboardTour isOpen={isTourOpen} onClose={() => setIsTourOpen(false)} />
       </div>
