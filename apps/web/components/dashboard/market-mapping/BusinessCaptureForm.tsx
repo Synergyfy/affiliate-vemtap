@@ -443,7 +443,7 @@ export default function BusinessCaptureForm({
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-28 md:pb-20">
+    <div className="max-w-4xl mx-auto space-y-6 pb-48 lg:pb-24">
 
       {/* Top Bar / Navigation */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -473,19 +473,19 @@ export default function BusinessCaptureForm({
           </div>
         </div>
 
-        {/* Action button header (desktop) */}
-        <div className="hidden sm:flex items-center gap-2">
+        {/* Action button header (mobile & desktop) */}
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => handleSave(false)}
             disabled={isSaving}
             className={cn(
-              "px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 transition-all text-white text-xs font-black rounded-xl shadow-lg shadow-blue-200/50 flex items-center gap-2",
+              "px-3.5 sm:px-5 py-2 sm:py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 transition-all text-white text-xs font-black rounded-xl shadow-lg shadow-blue-200/50 flex items-center gap-1.5 sm:gap-2 shrink-0",
               isSaving && "opacity-80 cursor-wait"
             )}
           >
-            <Save className={cn("w-4 h-4", isSaving && "animate-spin")} />
-            {isSaving ? 'Saving...' : 'Save & Done'}
+            <Save className={cn("w-3.5 sm:w-4 h-3.5 sm:h-4", isSaving && "animate-spin")} />
+            <span>{isSaving ? 'Saving...' : 'Save & Done'}</span>
           </button>
         </div>
       </div>
@@ -1285,14 +1285,14 @@ export default function BusinessCaptureForm({
       </div>
 
       {/* ========================================================================= */}
-      {/* STICKY BOTTOM ACTION DOCK (SUPER MOBILE RESPONSIVE) */}
+      {/* STICKY BOTTOM ACTION DOCK (POSITIONED ABOVE MOBILE BOTTOM NAV) */}
       {/* ========================================================================= */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3.5 shadow-2xl">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
+      <div className="fixed bottom-20 lg:bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 sm:p-4 shadow-[0_-8px_30px_rgba(0,0,0,0.12)]">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-2 sm:gap-3">
           <button
             type="button"
             onClick={handleBack}
-            className="px-4 py-3 rounded-2xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-95 shrink-0"
+            className="px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-95 shrink-0"
           >
             Cancel
           </button>
@@ -1302,10 +1302,10 @@ export default function BusinessCaptureForm({
               type="button"
               disabled={isSaving}
               onClick={() => handleSave(true)}
-              className="hidden sm:inline-flex items-center gap-2 px-4 py-3 bg-slate-100 hover:bg-slate-200 active:scale-95 transition-all text-slate-700 text-xs font-black rounded-2xl"
+              className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-100 hover:bg-slate-200 active:scale-95 transition-all text-slate-700 text-xs font-black rounded-xl sm:rounded-2xl shrink-0"
             >
-              <Save className="w-4 h-4" />
-              Save Draft
+              <Save className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline">Save </span>Draft
             </button>
 
             <button
@@ -1313,11 +1313,11 @@ export default function BusinessCaptureForm({
               disabled={isSaving}
               onClick={() => handleSave(false)}
               className={cn(
-                "flex-1 sm:flex-initial sm:px-8 py-3 bg-blue-600 hover:bg-blue-700 active:scale-95 transition-all text-white text-sm font-black rounded-2xl shadow-lg shadow-blue-200/50 flex items-center justify-center gap-2",
+                "flex-1 sm:flex-initial sm:px-8 py-2.5 sm:py-3 bg-blue-600 hover:bg-blue-700 active:scale-95 transition-all text-white text-xs sm:text-sm font-black rounded-xl sm:rounded-2xl shadow-lg shadow-blue-200/50 flex items-center justify-center gap-1.5 sm:gap-2",
                 isSaving && "opacity-80 cursor-wait"
               )}
             >
-              <Save className={cn("w-4 h-4", isSaving && "animate-spin")} />
+              <Save className={cn("w-3.5 sm:w-4 h-3.5 sm:h-4", isSaving && "animate-spin")} />
               {isSaving ? 'Saving Profile...' : 'Save & Done'}
             </button>
           </div>
