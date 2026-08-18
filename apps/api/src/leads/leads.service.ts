@@ -90,7 +90,48 @@ export class LeadsService {
               referralCode: true,
               avatar: true,
               status: true,
+              supervisor: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true,
+                  phone: true,
+                },
+              },
+              manager: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true,
+                  phone: true,
+                },
+              },
             },
+          },
+          plan: {
+            select: {
+              id: true,
+              locationCluster: true,
+              targetVisits: true,
+              targetLeads: true,
+              targetConversions: true,
+              status: true,
+              startDate: true,
+              endDate: true,
+              notes: true,
+            },
+          },
+          demos: {
+            orderBy: { createdAt: 'desc' },
+          },
+          salesPipelines: {
+            include: {
+              followUps: { orderBy: { createdAt: 'desc' } },
+              demos: { orderBy: { createdAt: 'desc' } },
+            },
+          },
+          marketMappingNotes: {
+            orderBy: { createdAt: 'desc' },
           },
         },
       }),
@@ -291,6 +332,61 @@ export class LeadsService {
   async findOne(id: string, user: any) {
     const lead = await this.prisma.lead.findUnique({
       where: { id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            phone: true,
+            role: true,
+            referralCode: true,
+            avatar: true,
+            status: true,
+            supervisor: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                phone: true,
+              },
+            },
+            manager: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
+        },
+        plan: {
+          select: {
+            id: true,
+            locationCluster: true,
+            targetVisits: true,
+            targetLeads: true,
+            targetConversions: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+            notes: true,
+          },
+        },
+        demos: {
+          orderBy: { createdAt: 'desc' },
+        },
+        salesPipelines: {
+          include: {
+            followUps: { orderBy: { createdAt: 'desc' } },
+            demos: { orderBy: { createdAt: 'desc' } },
+          },
+        },
+        marketMappingNotes: {
+          orderBy: { createdAt: 'desc' },
+        },
+      },
     });
 
     if (!lead || lead.deletedAt || lead.isPlaceholder) {
@@ -328,6 +424,18 @@ export class LeadsService {
         gpsLat: dto.gpsLat || null,
         gpsLng: dto.gpsLng || null,
         gpsAddress: dto.gpsAddress || null,
+        dailyCustomers: dto.dailyCustomers || null,
+        businessSize: dto.businessSize || null,
+        openingHours: dto.openingHours || null,
+        openingDays: dto.openingDays || null,
+        horizon: dto.horizon || null,
+        nextVisitDate: dto.nextVisitDate || null,
+        nextVisitTime: dto.nextVisitTime || null,
+        decisionMakerMet: dto.decisionMakerMet !== undefined ? dto.decisionMakerMet : null,
+        interested: dto.interested || null,
+        demoDone: dto.demoDone !== undefined ? dto.demoDone : null,
+        isAnchor: dto.isAnchor || false,
+        planId: dto.planId || null,
         userId,
         visitedAt: isVisitedLeadStatus(status) ? now : null,
       },
@@ -359,6 +467,18 @@ export class LeadsService {
         ...(dto.gpsLng !== undefined ? { gpsLng: dto.gpsLng } : {}),
         ...(dto.gpsAddress !== undefined ? { gpsAddress: dto.gpsAddress } : {}),
         ...(dto.assignedAgentId !== undefined ? { assignedAgentId: dto.assignedAgentId } : {}),
+        ...(dto.dailyCustomers !== undefined ? { dailyCustomers: dto.dailyCustomers } : {}),
+        ...(dto.businessSize !== undefined ? { businessSize: dto.businessSize } : {}),
+        ...(dto.openingHours !== undefined ? { openingHours: dto.openingHours } : {}),
+        ...(dto.openingDays !== undefined ? { openingDays: dto.openingDays } : {}),
+        ...(dto.horizon !== undefined ? { horizon: dto.horizon } : {}),
+        ...(dto.nextVisitDate !== undefined ? { nextVisitDate: dto.nextVisitDate } : {}),
+        ...(dto.nextVisitTime !== undefined ? { nextVisitTime: dto.nextVisitTime } : {}),
+        ...(dto.decisionMakerMet !== undefined ? { decisionMakerMet: dto.decisionMakerMet } : {}),
+        ...(dto.interested !== undefined ? { interested: dto.interested } : {}),
+        ...(dto.demoDone !== undefined ? { demoDone: dto.demoDone } : {}),
+        ...(dto.isAnchor !== undefined ? { isAnchor: dto.isAnchor } : {}),
+        ...(dto.planId !== undefined ? { planId: dto.planId } : {}),
         status,
         visitedAt: isVisitedLeadStatus(status) && !lead.visitedAt
           ? new Date()
@@ -436,7 +556,42 @@ export class LeadsService {
             referralCode: true,
             avatar: true,
             status: true,
+            supervisor: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                phone: true,
+              },
+            },
+            manager: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                phone: true,
+              },
+            },
           },
+        },
+        plan: {
+          select: {
+            id: true,
+            locationCluster: true,
+            targetVisits: true,
+            targetLeads: true,
+            targetConversions: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+            notes: true,
+          },
+        },
+        demos: {
+          orderBy: { createdAt: 'desc' },
+        },
+        marketMappingNotes: {
+          orderBy: { createdAt: 'desc' },
         },
       },
     });

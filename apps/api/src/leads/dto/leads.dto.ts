@@ -87,6 +87,65 @@ export class CreateLeadDto {
   @IsOptional()
   @IsString()
   gpsLng?: string;
+
+  @ApiPropertyOptional({ example: '50-100/day' })
+  @IsOptional()
+  @IsString()
+  dailyCustomers?: string;
+
+  @ApiPropertyOptional({ example: 'MEDIUM' })
+  @IsOptional()
+  @IsString()
+  businessSize?: string;
+
+  @ApiPropertyOptional({ example: '08:00 - 18:00' })
+  @IsOptional()
+  @IsString()
+  openingHours?: string;
+
+  @ApiPropertyOptional({ example: ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'] })
+  @IsOptional()
+  openingDays?: any;
+
+  @ApiPropertyOptional({ example: 'DAY' })
+  @IsOptional()
+  @IsString()
+  horizon?: string;
+
+  @ApiPropertyOptional({ example: '2026-08-20' })
+  @IsOptional()
+  @IsString()
+  nextVisitDate?: string;
+
+  @ApiPropertyOptional({ example: '14:00' })
+  @IsOptional()
+  @IsString()
+  nextVisitTime?: string;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  decisionMakerMet?: boolean;
+
+  @ApiPropertyOptional({ example: 'HIGH' })
+  @IsOptional()
+  @IsString()
+  interested?: string;
+
+  @ApiPropertyOptional({ example: false })
+  @IsOptional()
+  @IsBoolean()
+  demoDone?: boolean;
+
+  @ApiPropertyOptional({ example: false })
+  @IsOptional()
+  @IsBoolean()
+  isAnchor?: boolean;
+
+  @ApiPropertyOptional({ example: 'uuid' })
+  @IsOptional()
+  @IsString()
+  planId?: string;
 }
 
 import { PartialType } from '@nestjs/swagger';

@@ -136,10 +136,26 @@ export function MarketMappingProvider({ children }: { children: React.ReactNode 
         startDate: p.startDate ? String(p.startDate) : undefined,
         endDate: p.endDate ? String(p.endDate) : undefined,
       }));
-      setMissionPlans(formatted);
+
+      // Deduplicate so there is at most one plan per day (keeping latest)
+      const dayPlanMap = new Map<string, MissionPlan>();
+      const nonDayPlans: MissionPlan[] = [];
+      formatted.forEach((plan) => {
+        if (plan.horizon === 'DAY') {
+          const key = planDateKey(plan.startDate || plan.createdAt);
+          if (key && !dayPlanMap.has(key)) {
+            dayPlanMap.set(key, plan);
+          }
+        } else {
+          nonDayPlans.push(plan);
+        }
+      });
+      const uniquePlans = [...Array.from(dayPlanMap.values()), ...nonDayPlans];
+      setMissionPlans(uniquePlans);
+
       const today = new Date();
       const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-      const dayPlan = formatted.find(
+      const dayPlan = uniquePlans.find(
         p => p.horizon === 'DAY' && planDateKey(p.startDate || p.createdAt) === todayKey
       );
       if (dayPlan) {
