@@ -29,17 +29,18 @@ export default function SequencesTab() {
     }
   }, [journeyStages]);
 
-  const leadRules = rules?.filter((r) => r.target === 'LEAD') || [];
+  const leadRules = rules || [];
 
   const getTemplateName = (id: string) => templates?.find((t) => t.id === id)?.name;
 
-  const handleSave = async (data: Omit<AutomationRule, 'id'>) => {
+  const handleSave = async (data: Omit<AutomationRule, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
+      const now = new Date().toISOString();
       if (editing) {
-        await mutations.update.mutateAsync({ id: editing.id, ...data });
+        await mutations.update.mutateAsync({ id: editing.id, ...data, createdAt: editing.createdAt, updatedAt: now });
         showToast('Rule updated.', 'success');
       } else {
-        await mutations.create.mutateAsync(data);
+        await mutations.create.mutateAsync({ ...data, createdAt: now, updatedAt: now });
         showToast('Rule created.', 'success');
       }
       setModalOpen(false);
@@ -120,7 +121,7 @@ export default function SequencesTab() {
                   <RuleCard
                     key={r.id}
                     rule={r}
-                    templateName={getTemplateName(r.templateId)}
+                    templateName={r.templateId ? getTemplateName(r.templateId) : undefined}
                     onToggle={handleToggle}
                     onEdit={(r) => { setEditing(r); setModalOpen(true); }}
                     onDelete={handleDelete}

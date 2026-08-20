@@ -18,14 +18,14 @@ export default function ContactCommunicationSummary({ data }: ContactCommunicati
           <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">WhatsApp</p>
         </div>
         <p className="text-lg font-black text-slate-900">
-          {data.whatsapp.sentCount} <span className="text-xs font-bold text-slate-500">sent</span>
+          {data.communication.whatsapp.sent} <span className="text-xs font-bold text-slate-500">sent</span>
         </p>
-        {data.whatsapp.pendingCount > 0 && (
+        {data.communication.whatsapp.pending > 0 && (
           <p className="text-[11px] font-bold text-amber-600 mt-1">
-            {data.whatsapp.pendingCount} follow-up pending
+            {data.communication.whatsapp.pending} follow-up pending
           </p>
         )}
-        <p className="text-[11px] font-medium text-slate-500 mt-1">Last: {formatMessageDate(data.whatsapp.lastSent)}</p>
+        <p className="text-[11px] font-medium text-slate-500 mt-1">Last: {formatMessageDate(data.communication.whatsapp.lastSent)}</p>
       </div>
 
       {/* SMS */}
@@ -35,14 +35,14 @@ export default function ContactCommunicationSummary({ data }: ContactCommunicati
           <p className="text-[10px] font-black text-sky-700 uppercase tracking-widest">SMS</p>
         </div>
         <p className="text-lg font-black text-slate-900">
-          {data.sms.sentCount} <span className="text-xs font-bold text-slate-500">sent</span>
+          {data.communication.sms.sent} <span className="text-xs font-bold text-slate-500">sent</span>
         </p>
-        {data.sms.nextScheduled && (
+        {data.communication.sms.nextScheduled && (
           <p className="text-[11px] font-bold text-blue-600 mt-1">
-            Next: {formatMessageDate(data.sms.nextScheduled)}
+            Next: {formatMessageDate(data.communication.sms.nextScheduled)}
           </p>
         )}
-        <p className="text-[11px] font-medium text-slate-500 mt-1">Last: {formatMessageDate(data.sms.lastSent)}</p>
+        <p className="text-[11px] font-medium text-slate-500 mt-1">Last: {formatMessageDate(data.communication.sms.lastSent)}</p>
       </div>
     </div>
   );

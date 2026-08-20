@@ -60,7 +60,7 @@ export default function MessageHistoryTimeline({ history, expandable = true }: M
                     kind={message.channel === 'WHATSAPP' ? 'whatsapp' : 'sms'}
                   />
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">
-                    {message.sentBy || 'System'} · {formatMessageDateTime(message.sentAt || message.createdAt)}
+                    {message.sentById || 'System'} · {formatMessageDateTime(message.sentAt || message.createdAt)}
                   </span>
                 </div>
                 {expandable && (

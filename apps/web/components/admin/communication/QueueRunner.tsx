@@ -41,7 +41,6 @@ export default function QueueRunner({ queueId, hideNav }: QueueRunnerProps) {
   const currentItem = useMemo<CommunicationQueueItem | null>(() => {
     if (!queue) return null;
     const resumed =
-      queue.items.find((i) => i.status === 'OPENED') ||
       queue.items.find((i) => i.status === 'PENDING');
     return resumed || null;
   }, [queue]);
@@ -51,9 +50,6 @@ export default function QueueRunner({ queueId, hideNav }: QueueRunnerProps) {
   const handleOpen = async (item: CommunicationQueueItem) => {
     openWhatsApp(item.lead.phone, item.message);
     showToast('WhatsApp opened — send the message there.', 'info');
-    if (item.status === 'PENDING') {
-      await itemAction.mutateAsync({ queueId, itemId: item.id, action: 'open' });
-    }
   };
 
   const handleSent = async (item: CommunicationQueueItem) => {
@@ -100,8 +96,8 @@ export default function QueueRunner({ queueId, hideNav }: QueueRunnerProps) {
     );
   }
 
-  const remainingItems = queue.items.filter((i) => i.status === 'PENDING' || i.status === 'OPENED');
-  const completedItems = queue.items.filter((i) => i.status === 'SENT' || i.status === 'SKIPPED');
+  const remainingItems = queue.items.filter((i) => i.status === 'PENDING');
+  const completedItems = queue.items.filter((i) => i.status === 'SENT' || i.status === 'CANCELLED');
   const progress = queue.totalItems ? Math.round((queue.completedItems / queue.totalItems) * 100) : 0;
 
   return (
@@ -242,10 +238,10 @@ export default function QueueRunner({ queueId, hideNav }: QueueRunnerProps) {
                 </button>
                 <button
                   onClick={() => handleSent(currentItem)}
-                  disabled={currentItem.status !== 'OPENED'}
+                  disabled={currentItem.status !== 'PENDING'}
                   className={cn(
                     'flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all',
-                    currentItem.status === 'OPENED'
+                    currentItem.status === 'PENDING'
                       ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-100'
                       : 'bg-slate-100 text-slate-400 cursor-not-allowed',
                   )}
@@ -262,7 +258,7 @@ export default function QueueRunner({ queueId, hideNav }: QueueRunnerProps) {
                 </button>
               </div>
 
-              {currentItem.status !== 'OPENED' && (
+              {currentItem.status !== 'PENDING' && (
                 <div className="px-6 lg:px-8 py-3 bg-amber-50/60 border-t border-amber-100 flex items-center gap-2">
                   <ExternalLink className="w-3.5 h-3.5 text-amber-500" />
                   <p className="text-[11px] font-bold text-amber-700">
@@ -341,7 +337,7 @@ function QueueList({
       <div className="max-h-[520px] lg:max-h-none overflow-y-auto">
         {items.map((item) => {
           const isCurrent = item.id === currentId;
-          const finished = item.status === 'SENT' || item.status === 'SKIPPED';
+          const finished = item.status === 'SENT' || item.status === 'CANCELLED';
           return (
             <div
               key={item.id}

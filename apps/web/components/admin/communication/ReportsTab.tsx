@@ -46,19 +46,18 @@ export default function ReportsTab() {
     return {
       whatsapp: {
         queued: totalQueued,
-        sent: overview?.whatsappSent || whatsappMessages.filter((m) => m.status === 'SENT').length,
-        pending: overview?.whatsappPending || 0,
+        sent: overview?.overview.whatsappMessagesSent || whatsappMessages.filter((m) => m.status === 'SENT').length,
+        pending: overview?.overview.whatsappFollowUpsPending || 0,
         completedQueued,
       },
       sms: {
-        sent: overview?.smsSent || smsMessages.filter((m) => m.status === 'SENT' || m.status === 'DELIVERED').length,
-        delivered: smsMessages.filter((m) => m.status === 'DELIVERED').length,
-        failed: overview?.smsFailed || smsMessages.filter((m) => m.status === 'FAILED').length,
-        scheduled: overview?.scheduledMessages || smsMessages.filter((m) => m.status === 'SCHEDULED').length,
+        sent: overview?.overview.smsSent || smsMessages.filter((m) => m.status === 'SENT').length,
+        failed: overview?.overview.smsFailed || smsMessages.filter((m) => m.status === 'FAILED').length,
+        scheduled: overview?.overview.scheduledMessages || smsMessages.filter((m) => m.status === 'SCHEDULED').length,
       },
       conversion: {
-        totalContacts: overview?.totalContacts || 0,
-        whatsappEligible: overview?.whatsappEligible || 0,
+        totalContacts: overview?.overview.totalContacts || 0,
+        whatsappEligible: overview?.overview.contactsEligibleForWhatsApp || 0,
       },
     };
   }, [overview, queues, messages]);
@@ -84,7 +83,7 @@ export default function ReportsTab() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard index={0} label="Total Contacts" value={stats.conversion.totalContacts} icon={Users} color="text-blue-600" bg="bg-blue-50" />
         <StatCard index={1} label="WhatsApp Eligible" value={stats.conversion.whatsappEligible} icon={MessageCircle} color="text-emerald-600" bg="bg-emerald-50" />
-        <StatCard index={2} label="Active Campaigns" value={overview?.activeCampaigns || 0} icon={TrendingUp} color="text-purple-600" bg="bg-purple-50" />
+        <StatCard index={2} label="Active Campaigns" value={overview?.overview.activeCampaigns || 0} icon={TrendingUp} color="text-purple-600" bg="bg-purple-50" />
         <StatCard index={3} label="Scheduled" value={stats.sms.scheduled} icon={Clock} color="text-indigo-600" bg="bg-indigo-50" />
       </div>
 
@@ -131,7 +130,7 @@ export default function ReportsTab() {
           </div>
           <div className="space-y-4">
             <MiniBar label="Sent" value={stats.sms.sent} max={Math.max(stats.sms.sent, 1)} color="bg-sky-500" />
-            <MiniBar label="Delivered" value={stats.sms.delivered} max={Math.max(stats.sms.sent, 1)} color="bg-emerald-500" />
+            <MiniBar label="Delivered" value={stats.sms.sent} max={Math.max(stats.sms.sent, 1)} color="bg-emerald-500" />
             <MiniBar label="Failed" value={stats.sms.failed} max={Math.max(stats.sms.sent + stats.sms.failed, 1)} color="bg-red-500" />
             <MiniBar label="Scheduled" value={stats.sms.scheduled} max={Math.max(stats.sms.scheduled, 1)} color="bg-indigo-400" />
           </div>

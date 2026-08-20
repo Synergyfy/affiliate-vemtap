@@ -62,8 +62,8 @@ export function useTemplates(params?: { channel?: CommunicationChannel; status?:
         if (params?.status) templates = templates.filter((t) => t.status === params.status);
         return templates;
       }
-      const response = await api.get<MessageTemplate[]>('/communication/templates', { params });
-      return response.data;
+      const response = await api.get<{ data: MessageTemplate[]; total: number; smsMaxLength: number; supportedVariables: string[]; smsBlacklistedWords: string[] }>('/communication/templates', { params });
+      return response.data.data;
     },
   });
 }
@@ -73,10 +73,15 @@ export function useAudienceEstimate(filters: AudienceFilter | null) {
     queryKey: ['communication', 'audience', filters],
     enabled: !!filters,
     queryFn: async (): Promise<AudienceEstimate> => {
-      if (!filters) return { count: 0, overMessagingCount: 0, warnings: [] };
+      if (!filters) return { totalMatches: 0, eligibleCount: 0, skippedFrequency: 0, missingPhone: 0 };
       if (IS_MOCK) return mockAudienceEstimate(filters);
-      const response = await api.post<AudienceEstimate>('/communication/audience/estimate', filters);
-      return response.data;
+      const response = await api.get<{ total: number; withPhone: number; eligible: number; filters: AudienceFilter }>('/communication/audience/preview', { params: filters });
+      return {
+        totalMatches: response.data.total,
+        eligibleCount: response.data.eligible,
+        skippedFrequency: 0,
+        missingPhone: response.data.total - response.data.withPhone,
+      };
     },
   });
 }
@@ -90,8 +95,34 @@ export function useQueues(params?: { status?: QueueStatus }) {
         if (params?.status) queues = queues.filter((q) => q.status === params.status);
         return queues;
       }
-      const response = await api.get<CommunicationQueue[]>('/communication/queues', { params });
-      return response.data;
+      // Backend returns flat WhatsAppQueueItem[] from GET /whatsapp/queue
+      // For now, wrap into CommunicationQueue shape for frontend compatibility
+      const response = await api.get('/communication/whatsapp/queue');
+      const items = response.data as any[];
+      if (!items || items.length === 0) return [];
+      // Group by type/date to create virtual queues
+      const queue: CommunicationQueue = {
+        id: 'whatsapp-queue',
+        name: 'WhatsApp Follow-ups',
+        channel: 'WHATSAPP',
+        message: '',
+        totalItems: items.length,
+        completedItems: 0,
+        status: 'ACTIVE',
+        items: items.map((item: any, idx: number) => ({
+          id: item.id,
+          queueId: 'whatsapp-queue',
+          lead: { id: item.leadId, businessName: item.businessName, contactName: item.contactName, phone: item.phone, location: item.location },
+          order: idx + 1,
+          status: 'PENDING' as const,
+          waLink: item.deepLink || '',
+          message: item.body,
+        })),
+        createdBy: 'System',
+        createdAt: items[0]?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      return [queue];
     },
   });
 }
@@ -102,8 +133,29 @@ export function useQueue(id: string | undefined) {
     enabled: !!id,
     queryFn: async () => {
       if (IS_MOCK) return mockQueuesState.find((q) => q.id === id) || null;
-      const response = await api.get<CommunicationQueue>(`/communication/queues/${id}`);
-      return response.data;
+      // Backend has no single-queue endpoint; fall back to finding in the list
+      const queues = await api.get<CommunicationQueue[]>('/communication/whatsapp/queue');
+      return (queues.data as any[]).length > 0 ? {
+        id: id || 'whatsapp-queue',
+        name: 'WhatsApp Follow-ups',
+        channel: 'WHATSAPP' as const,
+        message: '',
+        totalItems: (queues.data as any[]).length,
+        completedItems: 0,
+        status: 'ACTIVE' as const,
+        items: (queues.data as any[]).map((item: any, idx: number) => ({
+          id: item.id,
+          queueId: id || 'whatsapp-queue',
+          lead: { id: item.leadId, businessName: item.businessName, contactName: item.contactName, phone: item.phone, location: item.location },
+          order: idx + 1,
+          status: 'PENDING' as const,
+          waLink: item.deepLink || '',
+          message: item.body,
+        })),
+        createdBy: 'System',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } : null;
     },
   });
 }
@@ -139,7 +191,7 @@ export function useLeadCommunication(leadId: string | undefined) {
     enabled: !!leadId,
     queryFn: async () => {
       if (IS_MOCK) return mockLeadCommunication(leadId!);
-      const response = await api.get<LeadCommunication>(`/leads/${leadId}/communication`);
+      const response = await api.get<LeadCommunication>(`/communication/messages/contacts/${leadId}`);
       return response.data;
     },
   });
@@ -180,14 +232,15 @@ export function useMyCommunicationFollowUps() {
         const whatsappDue = mockQueuesState
           .filter((q) => q.status === 'ACTIVE')
           .flatMap((q) => q.items)
-          .filter((i) => i.status === 'PENDING' || i.status === 'OPENED');
+          .filter((i) => i.status === 'PENDING');
         const smsScheduled = mockMessagesState.filter(
           (m) => m.channel === 'SMS' && m.status === 'SCHEDULED',
         );
         return { whatsappDue, smsScheduled } as MyCommunicationFollowUps;
       }
-      const response = await api.get<MyCommunicationFollowUps>('/communication/follow-ups/me');
-      return response.data;
+      const response = await api.get('/communication/sales/today');
+      const data = response.data as { whatsappFollowUps: CommunicationQueueItem[]; smsScheduled: OutboundMessage[]; total: number };
+      return { whatsappDue: data.whatsappFollowUps || [], smsScheduled: data.smsScheduled || [] } as MyCommunicationFollowUps;
     },
   });
 }
@@ -198,13 +251,21 @@ export function useCommunicationSettings() {
     queryFn: async () => {
       if (IS_MOCK)
         return {
+          id: 'set-001',
           smsEnabled: true,
-          smsProviderConfigured: true,
-          marketingPaused: false,
-          frequencyMaxPerWindow: 2,
-          frequencyWindowDays: 7,
-          notInterestedPolicy: 'QUIET',
-          autoSmsOnStatus: null,
+          smsProvider: 'twilio',
+          smsSenderId: 'VEMTAP',
+          smsDailyCap: 500,
+          whatsappEnabled: true,
+          minIntervalHours: 4,
+          maxMessagesPerContactPerDay: 3,
+          maxMessagesPerContactPerWeek: 10,
+          notInterestedPolicy: 'NO_MESSAGES',
+          reEngagementDelayDays: 30,
+          welcomeChannel: 'WHATSAPP',
+          welcomeBody: null,
+          smsBlacklistedWords: [],
+          updatedAt: new Date().toISOString(),
         } as CommunicationSettings;
       const response = await api.get<CommunicationSettings>('/communication/settings');
       return response.data;
@@ -274,7 +335,8 @@ export function useDeleteTemplate() {
         if (idx >= 0) mockTemplatesState.splice(idx, 1);
         return { id };
       }
-      const response = await api.delete(`/communication/templates/${id}`);
+      // Backend has no DELETE; archive via PATCH status
+      const response = await api.patch(`/communication/templates/${id}/status`, { status: 'ARCHIVED' });
       return response.data;
     },
     onSuccess: () => {
@@ -346,22 +408,22 @@ export function useQueueItemAction() {
         if (!queue || !item) throw new Error('Queue item not found');
         const now = new Date().toISOString();
         if (action === 'open') {
-          item.status = 'OPENED';
-          item.openedAt = now;
+          item.status = 'SENT';
+          item.sentAt = now;
         } else if (action === 'sent') {
           item.status = 'SENT';
           item.sentAt = now;
         } else if (action === 'skip') {
-          item.status = 'SKIPPED';
+          item.status = 'CANCELLED';
         }
-        const completed = queue.items.filter((i) => i.status === 'SENT' || i.status === 'SKIPPED').length;
+        const completed = queue.items.filter((i) => i.status === 'SENT' || i.status === 'CANCELLED').length;
         queue.completedItems = completed;
         queue.updatedAt = now;
         if (completed >= queue.totalItems) queue.status = 'COMPLETED';
         return { queueId, itemId, action };
       }
       const response = await api.post(
-        `/communication/queues/${queueId}/items/${itemId}/${action}`,
+        `/communication/whatsapp/${itemId}/mark-sent`,
       );
       return response.data;
     },
@@ -382,8 +444,8 @@ export function useQueueLifecycle() {
           action === 'pause' ? 'PAUSED' : action === 'resume' ? 'ACTIVE' : 'CANCELLED';
         return queue;
       }
-      const response = await api.post(`/communication/queues/${queueId}/${action}`);
-      return response.data;
+      // No backend endpoint for queue lifecycle; WhatsApp queue is flat message list
+      throw new Error('Queue lifecycle management is not available via API');
     },
     onSuccess: () => {
       invalidateAll(qc);
@@ -407,12 +469,13 @@ export function useSendSms() {
           id: `msg-${Date.now()}-${idx}`,
           leadId,
           channel,
-          templateId: data.templateId,
+          type: 'MANUAL',
+          templateId: data.templateId || null,
           body: data.message,
           status: data.scheduledAt ? 'SCHEDULED' : 'SENT',
-          scheduledAt: data.scheduledAt,
+          scheduledForAt: data.scheduledAt || null,
           sentAt: data.scheduledAt ? undefined : now,
-          sentBy: 'Admin',
+          sentById: 'usr-mock',
           createdAt: now,
           updatedAt: now,
         }));
@@ -459,7 +522,7 @@ export function useCancelScheduledSms() {
         if (msg) msg.status = 'CANCELLED';
         return { id };
       }
-      const response = await api.patch(`/communication/messages/${id}`, { status: 'CANCELLED' });
+      const response = await api.patch(`/communication/messages/${id}/cancel`);
       return response.data;
     },
     onSuccess: () => {
@@ -475,12 +538,12 @@ export function useRetryFailedSms() {
       if (IS_MOCK) {
         const msg = mockMessagesState.find((m) => m.id === id);
         if (msg) {
-          msg.status = 'SENDING';
+          msg.status = 'PENDING';
           setTimeout(() => { msg.status = 'SENT'; msg.sentAt = new Date().toISOString(); }, 1000);
         }
         return { id };
       }
-      const response = await api.post(`/communication/messages/${id}/retry`);
+      const response = await api.post(`/communication/sms/${id}/retry`);
       return response.data;
     },
     onSuccess: () => {
@@ -532,7 +595,7 @@ export function useCampaignMutations() {
           if (c) { c.status = status; c.updatedAt = new Date().toISOString(); }
           return c;
         }
-        const response = await api.patch<Campaign>(`/communication/campaigns/${id}`, { status });
+        const response = await api.patch<Campaign>(`/communication/campaigns/${id}/status`, { action: status });
         return response.data;
       },
       onSuccess: () => invalidateAll(qc),
@@ -544,7 +607,8 @@ export function useCampaignMutations() {
           if (idx >= 0) mockCampaignsState.splice(idx, 1);
           return { id };
         }
-        const response = await api.delete(`/communication/campaigns/${id}`);
+        // Backend has no DELETE; cancel via PATCH status
+        const response = await api.patch(`/communication/campaigns/${id}/status`, { action: 'CANCELLED' });
         return response.data;
       },
       onSuccess: () => invalidateAll(qc),
@@ -562,7 +626,7 @@ export function useRuleMutations() {
     create: useMutation({
       mutationFn: async (data: Omit<AutomationRule, 'id'>) => {
         if (IS_MOCK) {
-          const rule: AutomationRule = { ...data, id: `rule-${Date.now()}` };
+          const rule: AutomationRule = { ...data, id: `rule-${Date.now()}`, isActive: data.isActive ?? true, sortOrder: data.sortOrder ?? 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
           mockRulesState.unshift(rule);
           return rule;
         }
@@ -587,10 +651,11 @@ export function useRuleMutations() {
       mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {
         if (IS_MOCK) {
           const r = mockRulesState.find((r) => r.id === id);
-          if (r) r.enabled = enabled;
+          if (r) r.isActive = enabled;
           return r;
         }
-        const response = await api.patch<AutomationRule>(`/communication/rules/${id}`, { enabled });
+        const endpoint = enabled ? 'activate' : 'deactivate';
+        const response = await api.patch<AutomationRule>(`/communication/rules/${id}/${endpoint}`);
         return response.data;
       },
       onSuccess: () => invalidateAll(qc),

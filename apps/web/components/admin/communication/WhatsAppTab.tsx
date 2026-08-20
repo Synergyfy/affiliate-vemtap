@@ -39,15 +39,14 @@ export default function WhatsAppTab() {
   // Preview lead for variable substitution (replaced by first audience contact via API later)
   const previewLead = mockLeadFixtures.find((l) => l.phone) || null;
 
-  const audienceCount = estimate?.count ?? 0;
+  const audienceCount = estimate?.eligibleCount ?? 0;
   const canStart = filtersActive() && message.trim().length > 0 && audienceCount > 0;
 
   function filtersActive() {
     return (
       (filters.statuses?.length ?? 0) > 0 ||
-      (filters.salespeople?.length ?? 0) > 0 ||
-      (filters.locations?.length ?? 0) > 0 ||
-      !!filters.dateAdded
+      (filters.salespersonIds?.length ?? 0) > 0 ||
+      !!filters.location
     );
   }
 
@@ -70,7 +69,7 @@ export default function WhatsAppTab() {
   const buildQueueName = () => {
     const statusFilters = (filters.statuses || []).map((s) => s.replace(/_/g, ' ').toLowerCase());
     const loc =
-      filters.locations && filters.locations.length > 0 ? ` — ${filters.locations.join(', ')}` : '';
+      filters.location ? ` — ${filters.location}` : '';
     return statusFilters.length > 0
       ? `Follow-up: ${statusFilters.map((s) => s[0].toUpperCase() + s.slice(1)).join(', ')}${loc}`
       : `Follow-up${loc}`;
@@ -128,10 +127,10 @@ export default function WhatsAppTab() {
                   </span>
                 )
               )}
-              {estimate && estimate.overMessagingCount > 0 && (
+              {estimate && estimate.skippedFrequency > 0 && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-600">
                   <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                  {estimate.overMessagingCount} excluded by frequency rules
+                  {estimate.skippedFrequency} excluded by frequency rules
                 </span>
               )}
               <p className="text-xs font-medium text-slate-400">

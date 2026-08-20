@@ -19,29 +19,26 @@ interface CampaignCardProps {
 export default function CampaignCard({ campaign, onEdit, onStatusChange, onDelete, index = 0 }: CampaignCardProps) {
   const { data: templates } = useTemplates();
   const now = new Date();
-  const start = new Date(campaign.startDate);
-  const end = new Date(campaign.endDate);
+  const start = campaign.startAt ? new Date(campaign.startAt) : null;
+  const end = campaign.endAt ? new Date(campaign.endAt) : null;
   const isActive = campaign.status === 'ACTIVE';
   const isDraft = campaign.status === 'DRAFT';
   const isPaused = campaign.status === 'PAUSED';
-  const isEnded = campaign.status === 'ENDED' || now > end;
+  const isEnded = campaign.status === 'COMPLETED' || campaign.status === 'CANCELLED' || (end ? now > end : false);
 
   const templatesForChannels = (templates || []).filter((t) => campaign.channels.includes(t.channel));
-  const selectedTemplateNames = campaign.templateIds
-    .map((id) => templates?.find((t) => t.id === id)?.name)
-    .filter(Boolean) as string[];
+  const selectedTemplateName = templates?.find((t) => t.id === campaign.templateId)?.name;
 
   const audienceCount =
-    (campaign.audience.statuses?.length || 0) +
-    (campaign.audience.salespeople?.length || 0) +
-    (campaign.audience.locations?.length || 0) +
-    (campaign.audience.dateAdded ? 1 : 0);
+    (campaign.audienceFilters.statuses?.length || 0) +
+    (campaign.audienceFilters.salespersonIds?.length || 0) +
+    (campaign.audienceFilters.location ? 1 : 0);
 
   const setupIncomplete =
-    audienceCount === 0 || selectedTemplateNames.length === 0 || templatesForChannels.length === 0;
+    audienceCount === 0 || !selectedTemplateName || templatesForChannels.length === 0;
 
   const audienceLabels =
-    (campaign.audience.statuses || []).map((s) => s.replace(/_/g, ' ').toLowerCase());
+    (campaign.audienceFilters.statuses || []).map((s) => s.replace(/_/g, ' ').toLowerCase());
 
   return (
     <motion.div
@@ -61,7 +58,7 @@ export default function CampaignCard({ campaign, onEdit, onStatusChange, onDelet
           <div>
             <p className="text-sm font-black text-slate-800">{campaign.name}</p>
             <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-              {start.toLocaleDateString([], { day: 'numeric', month: 'short' })} – {end.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
+              {start ? start.toLocaleDateString([], { day: 'numeric', month: 'short' }) : 'No start'} – {end ? end.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) : 'No end'}
             </p>
           </div>
         </div>
@@ -79,13 +76,11 @@ export default function CampaignCard({ campaign, onEdit, onStatusChange, onDelet
         {campaign.channels.map((ch) => (
           <ChannelBadge key={ch} channel={ch} />
         ))}
-        {selectedTemplateNames.length > 0 ? (
-          selectedTemplateNames.map((name) => (
-            <span key={name} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border border-slate-200 bg-slate-50 text-slate-500">
-              <MessageSquareText className="w-3 h-3 text-slate-400" />
-              {name}
-            </span>
-          ))
+        {selectedTemplateName ? (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border border-slate-200 bg-slate-50 text-slate-500">
+            <MessageSquareText className="w-3 h-3 text-slate-400" />
+            {selectedTemplateName}
+          </span>
         ) : (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border border-dashed border-slate-300 bg-white text-slate-400">
             No templates selected
@@ -138,7 +133,7 @@ export default function CampaignCard({ campaign, onEdit, onStatusChange, onDelet
         )}
         {isActive && (
           <button
-            onClick={() => onStatusChange(campaign.id, 'ENDED')}
+            onClick={() => onStatusChange(campaign.id, 'COMPLETED')}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
           >
             End

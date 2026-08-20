@@ -52,7 +52,7 @@ export default function CampaignsTab() {
 
   const active = campaigns?.filter((c) => c.status === 'ACTIVE') || [];
   const drafts = campaigns?.filter((c) => c.status === 'DRAFT') || [];
-  const ended = campaigns?.filter((c) => c.status === 'ENDED' || c.status === 'PAUSED' || c.status === 'ARCHIVED') || [];
+  const ended = campaigns?.filter((c) => c.status === 'COMPLETED' || c.status === 'PAUSED' || c.status === 'CANCELLED') || [];
 
   return (
     <div className="space-y-8">

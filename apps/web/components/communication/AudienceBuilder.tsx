@@ -1,25 +1,24 @@
 'use client';
 
-import { memo, useEffect, useRef, useState } from 'react';
-import { Loader2, Users, AlertTriangle, ChevronDown, X, CalendarDays } from 'lucide-react';
+import { memo, useEffect, useState } from 'react';
+import { Loader2, Users, ChevronDown, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAudienceEstimate } from '@/services/useCommunicationHooks';
-import { AudienceFilter, AudienceDateAdded, EMPTY_AUDIENCE } from '@/types/communication';
+import { AudienceFilter, EMPTY_AUDIENCE } from '@/types/communication';
 import OverMessagingNotice from './OverMessagingNotice';
 import { useDebounce } from '@/hooks/use-debounce';
 import { EnhancedMultiSelect, SelectOption } from '@/components/ui/EnhancedSelect';
 
 export const STATUS_OPTIONS: SelectOption[] = [
-  { value: 'NOT_YET', label: 'New / Not Yet Contacted' },
+  { value: 'NEW', label: 'New / Not Yet Contacted' },
   { value: 'CONTACTED', label: 'Contacted' },
   { value: 'VISITED', label: 'Visited' },
   { value: 'INTERESTED', label: 'Interested' },
-  { value: 'DEMO_SCHEDULED', label: 'Demo Scheduled' },
-  { value: 'DEMO_DONE', label: 'Demo Done' },
+  { value: 'FOLLOW_UP_REQUIRED', label: 'Follow-up Required' },
   { value: 'NOT_INTERESTED', label: 'Not Interested' },
-  { value: 'CUSTOMER', label: 'Customer' },
-  { value: 'CONVERTED', label: 'Converted' },
-  { value: 'LOST', label: 'Lost / Closed' },
+  { value: 'SUBSCRIBED', label: 'Subscribed' },
+  { value: 'EXPIRED', label: 'Expired' },
+  { value: 'LOST_CLOSED', label: 'Lost / Closed' },
 ];
 
 export const LOCATION_OPTIONS: SelectOption[] = [
@@ -35,13 +34,6 @@ export const SALESPERSON_OPTIONS: SelectOption[] = [
   { value: 'Agent A', label: 'Agent A' },
   { value: 'Agent B', label: 'Agent B' },
   { value: 'Agent C', label: 'Agent C' },
-];
-
-const DATE_PRESETS: { value: AudienceDateAdded['range']; label: string }[] = [
-  { value: 'today', label: 'Today' },
-  { value: 'week', label: 'This week' },
-  { value: 'month', label: 'This month' },
-  { value: 'custom', label: 'Custom' },
 ];
 
 interface AudienceBuilderProps {
@@ -83,41 +75,6 @@ function ToggleRow({
   );
 }
 
-function ClickableDateInput({
-  value,
-  onChange,
-  icon,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  icon: React.ReactNode;
-}) {
-  const ref = useRef<HTMLInputElement>(null);
-  return (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.preventDefault();
-        try {
-          ref.current?.showPicker();
-        } catch {
-          ref.current?.focus();
-        }
-      }}
-      className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-sm font-medium text-slate-700 hover:border-slate-300 focus-within:ring-2 focus-within:ring-blue-500/20 text-left transition-all"
-    >
-      {icon}
-      <input
-        ref={ref}
-        type="date"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-transparent focus:outline-none text-slate-700"
-      />
-    </button>
-  );
-}
-
 function AudienceBuilder({ filters, onChange, compact }: AudienceBuilderProps) {
   const [expanded, setExpanded] = useState(!compact);
   const debouncedFilters = useDebounce(filters, 400);
@@ -129,29 +86,24 @@ function AudienceBuilder({ filters, onChange, compact }: AudienceBuilderProps) {
 
   const { data: estimate, isLoading } = useAudienceEstimate(estimateFilters);
 
-  const toggle = (key: 'statuses' | 'salespeople' | 'locations') => (value: string) => {
-    const current = filters[key] || [];
-    const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
-    onChange({ ...filters, [key]: next });
+  const toggleStatus = (value: string) => {
+    const current = filters.statuses || [];
+    const next = current.includes(value as any) ? current.filter((v) => v !== value) : [...current, value as any];
+    onChange({ ...filters, statuses: next });
   };
 
-  const setAll = (key: 'statuses' | 'salespeople' | 'locations') => () => {
-    const allOptions = key === 'statuses' ? STATUS_OPTIONS : key === 'salespeople' ? SALESPERSON_OPTIONS : LOCATION_OPTIONS;
-    onChange({ ...filters, [key]: allOptions.map((o) => o.value) });
+  const setAllStatuses = () => {
+    onChange({ ...filters, statuses: STATUS_OPTIONS.map((o) => o.value as any) });
   };
 
-  const clear = (key: 'statuses' | 'salespeople' | 'locations') => () => {
-    onChange({ ...filters, [key]: [] });
-  };
-
-  const setDateRange = (range: AudienceDateAdded['range']) => {
-    onChange({ ...filters, dateAdded: { range } });
+  const clearStatuses = () => {
+    onChange({ ...filters, statuses: [] });
   };
 
   const reset = () => onChange({ ...EMPTY_AUDIENCE });
 
   const activeFilterCount =
-    (filters.statuses?.length || 0) + (filters.salespeople?.length || 0) + (filters.locations?.length || 0) + (filters.dateAdded ? 1 : 0);
+    (filters.statuses?.length || 0) + (filters.salespersonIds?.length || 0) + (filters.location ? 1 : 0);
 
   return (
     <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
@@ -181,81 +133,38 @@ function AudienceBuilder({ filters, onChange, compact }: AudienceBuilderProps) {
               label="By Status"
               placeholder="All statuses"
               options={STATUS_OPTIONS}
-              selected={filters.statuses || []}
-              onToggle={toggle('statuses')}
-              onClear={clear('statuses')}
-              onSelectAll={setAll('statuses')}
+              selected={(filters.statuses || []) as string[]}
+              onToggle={toggleStatus}
+              onClear={clearStatuses}
+              onSelectAll={setAllStatuses}
               selectAllLabel="All statuses"
             />
             <EnhancedMultiSelect
               label="By Salesperson"
               placeholder="All salespeople"
               options={SALESPERSON_OPTIONS}
-              selected={filters.salespeople || []}
-              onToggle={toggle('salespeople')}
-              onClear={clear('salespeople')}
-              onSelectAll={setAll('salespeople')}
+              selected={filters.salespersonIds || []}
+              onToggle={(value) => {
+                const current = filters.salespersonIds || [];
+                const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
+                onChange({ ...filters, salespersonIds: next });
+              }}
+              onClear={() => onChange({ ...filters, salespersonIds: [] })}
+              onSelectAll={() => onChange({ ...filters, salespersonIds: SALESPERSON_OPTIONS.map((o) => o.value) })}
               selectAllLabel="All salespeople"
             />
             <EnhancedMultiSelect
               label="By Location / Area"
               placeholder="All areas"
               options={LOCATION_OPTIONS}
-              selected={filters.locations || []}
-              onToggle={toggle('locations')}
-              onClear={clear('locations')}
-              onSelectAll={setAll('locations')}
-              selectAllLabel="All areas"
+              selected={filters.location ? [filters.location] : []}
+              onToggle={(value) => {
+                onChange({ ...filters, location: filters.location === value ? undefined : value });
+              }}
+              onClear={() => onChange({ ...filters, location: undefined })}
+              onSelectAll={() => {}}
+              selectAllLabel=""
             />
-          </div>
-
-          {/* Date added */}
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-              <CalendarDays className="w-3.5 h-3.5" />
-              By Date Added
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {DATE_PRESETS.map((preset) => (
-                <button
-                  key={preset.value}
-                  type="button"
-                  onClick={() => setDateRange(preset.value)}
-                  className={cn(
-                    'px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all',
-                    filters.dateAdded?.range === preset.value
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20'
-                      : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-600',
-                  )}
-                >
-                  {preset.label}
-                </button>
-              ))}
-            </div>
-            {filters.dateAdded?.range === 'custom' && (
-              <div className="flex gap-3 mt-3">
-                <ClickableDateInput
-                  value={filters.dateAdded?.from || ''}
-                  icon={<CalendarDays className="w-4 h-4 text-slate-400 shrink-0" />}
-                  onChange={(v) =>
-                    onChange({
-                      ...filters,
-                      dateAdded: { range: 'custom', from: v, to: filters.dateAdded?.to },
-                    })
-                  }
-                />
-                <ClickableDateInput
-                  value={filters.dateAdded?.to || ''}
-                  icon={<CalendarDays className="w-4 h-4 text-slate-400 shrink-0" />}
-                  onChange={(v) =>
-                    onChange({
-                      ...filters,
-                      dateAdded: { range: 'custom', from: filters.dateAdded?.from, to: v },
-                    })
-                  }
-                />
-              </div>
-            )}
           </div>
 
           <div className="space-y-1 pt-2 border-t border-slate-100">
@@ -263,16 +172,6 @@ function AudienceBuilder({ filters, onChange, compact }: AudienceBuilderProps) {
               label="Only contacts with a phone number"
               checked={filters.hasPhone ?? true}
               onChange={(v) => onChange({ ...filters, hasPhone: v })}
-            />
-            <ToggleRow
-              label="Exclude subscribed / customers"
-              checked={filters.excludeSubscribed ?? true}
-              onChange={(v) => onChange({ ...filters, excludeSubscribed: v })}
-            />
-            <ToggleRow
-              label="Exclude not-interested"
-              checked={filters.excludeNotInterested ?? true}
-              onChange={(v) => onChange({ ...filters, excludeNotInterested: v })}
             />
           </div>
 
@@ -297,19 +196,18 @@ function AudienceBuilder({ filters, onChange, compact }: AudienceBuilderProps) {
             </div>
           ) : (
             <p className="text-2xl font-black text-slate-900">
-              {estimate?.count ?? 0} <span className="text-sm font-bold text-slate-500">contact{(estimate?.count ?? 0) !== 1 ? 's' : ''} selected</span>
+              {estimate?.eligibleCount ?? 0} <span className="text-sm font-bold text-slate-500">contact{(estimate?.eligibleCount ?? 0) !== 1 ? 's' : ''} selected</span>
             </p>
           )}
         </div>
-        {isLoading ? null : (estimate && estimate.count > 0 && (
+        {isLoading ? null : (estimate && estimate.eligibleCount > 0 && (
           <p className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-            {estimate.overMessagingCount > 0
-              ? `${estimate.overMessagingCount} excluded by frequency rules`
+            {estimate.skippedFrequency > 0
+              ? `${estimate.skippedFrequency} excluded by frequency rules`
               : 'All eligible for messaging'}
           </p>
         ))}
-        <OverMessagingNotice count={estimate?.overMessagingCount ?? 0} warnings={estimate?.warnings || []} />
+        <OverMessagingNotice count={estimate?.skippedFrequency ?? 0} warnings={[]} />
       </div>
     </div>
   );

@@ -67,7 +67,6 @@ export let mockTemplatesState: MessageTemplate[] = [
     name: 'Interested Lead – First Follow-up',
     channel: 'WHATSAPP',
     body: 'Hi, thanks again for your interest in VEMTAP. We\'d love to have you onboard. Let us know if you have any questions.',
-    variables: [],
     status: 'ACTIVE',
     createdAt: '2026-08-01T09:00:00Z',
     updatedAt: '2026-08-01T09:00:00Z',
@@ -77,7 +76,6 @@ export let mockTemplatesState: MessageTemplate[] = [
     name: 'Interested – Demo Invite',
     channel: 'WHATSAPP',
     body: 'Hi [Business Name], would you like a quick 10-minute demo of VEMTAP? [Agent Name] would be happy to walk you through it.',
-    variables: [],
     status: 'ACTIVE',
     createdAt: '2026-08-02T09:00:00Z',
     updatedAt: '2026-08-02T09:00:00Z',
@@ -87,7 +85,6 @@ export let mockTemplatesState: MessageTemplate[] = [
     name: 'August New Business Offer',
     channel: 'SMS',
     body: 'Special offer: Get 20% off your first VEMTAP subscription when you register today.',
-    variables: [],
     status: 'ACTIVE',
     createdAt: '2026-08-03T09:00:00Z',
     updatedAt: '2026-08-03T09:00:00Z',
@@ -139,39 +136,42 @@ export let mockMessagesState: OutboundMessage[] = [
   {
     id: 'msg-001',
     leadId: 'ld-001',
-    lead: { id: 'ld-001', businessName: 'ABC Restaurant', phone: '08011111111', contactName: 'Mr. Musa', location: 'Apo' },
+    lead: { id: 'ld-001', businessName: 'ABC Restaurant', phone: '08011111111', contactName: 'Mr. Musa' },
     channel: 'WHATSAPP',
+    type: 'MANUAL',
     templateId: 'tpl-001',
     body: 'Hi, thanks again for your interest in VEMTAP...',
     status: 'SENT',
     sentAt: '2026-08-18T10:17:00Z',
-    sentBy: 'Admin',
+    sentById: 'usr-mock',
     createdAt: '2026-08-18T10:15:00Z',
     updatedAt: '2026-08-18T10:17:00Z',
   },
   {
     id: 'msg-002',
     leadId: 'ld-001',
-    lead: { id: 'ld-001', businessName: 'ABC Restaurant', phone: '08011111111', contactName: 'Mr. Musa', location: 'Apo' },
+    lead: { id: 'ld-001', businessName: 'ABC Restaurant', phone: '08011111111', contactName: 'Mr. Musa' },
     channel: 'SMS',
+    type: 'AUTOMATION',
     templateId: 'tpl-003',
     body: 'Special offer: Get 20% off...',
     status: 'SENT',
     sentAt: '2026-08-18T12:00:00Z',
-    sentBy: 'System',
+    sentById: null,
     createdAt: '2026-08-18T12:00:00Z',
     updatedAt: '2026-08-18T12:00:00Z',
   },
   {
     id: 'msg-003',
     leadId: 'ld-002',
-    lead: { id: 'ld-002', businessName: 'XYZ Fashion', phone: '08022222222', contactName: 'Mrs. Bola', location: 'Apo' },
+    lead: { id: 'ld-002', businessName: 'XYZ Fashion', phone: '08022222222', contactName: 'Mrs. Bola' },
     channel: 'SMS',
+    type: 'AUTOMATION',
     templateId: 'tpl-003',
     body: 'Special offer: Get 20% off...',
     status: 'SCHEDULED',
-    scheduledAt: '2026-08-21T09:00:00Z',
-    sentBy: 'System',
+    scheduledForAt: '2026-08-21T09:00:00Z',
+    sentById: null,
     createdAt: '2026-08-18T12:05:00Z',
     updatedAt: '2026-08-18T12:05:00Z',
   },
@@ -182,15 +182,21 @@ export let mockMessagesState: OutboundMessage[] = [
 // ---------------------------------------------------------------------------
 
 export const mockOverviewState: CommunicationOverview = {
-  totalContacts: mockLeadFixtures.length,
-  whatsappEligible: mockLeadFixtures.filter((l) => l.phone).length,
-  whatsappPending: 47,
-  whatsappSent: 128,
-  smsSent: 340,
-  smsPending: 12,
-  smsFailed: 3,
-  scheduledMessages: 6,
-  activeCampaigns: 1,
+  overview: {
+    totalContacts: mockLeadFixtures.length,
+    contactsEligibleForWhatsApp: mockLeadFixtures.filter((l) => l.phone).length,
+    whatsappFollowUpsPending: 47,
+    whatsappMessagesSent: 128,
+    smsSent: 340,
+    smsPending: 12,
+    smsFailed: 3,
+    scheduledMessages: 6,
+    activeCampaigns: 1,
+  },
+  config: {
+    totalTemplates: mockTemplatesState.length,
+    activeRules: 2,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -198,27 +204,23 @@ export const mockOverviewState: CommunicationOverview = {
 // ---------------------------------------------------------------------------
 
 export function mockAudienceEstimate(filters: AudienceFilter | null): AudienceEstimate {
-  if (!filters) return { count: 0, overMessagingCount: 0, warnings: [] };
+  if (!filters) return { totalMatches: 0, eligibleCount: 0, skippedFrequency: 0, missingPhone: 0 };
   let pool = [...mockLeadFixtures];
   if (filters.statuses && filters.statuses.length > 0) {
-    pool = pool.filter((l) => filters.statuses!.includes(l.status));
+    pool = pool.filter((l) => filters.statuses!.includes(l.status as any));
   }
-  if (filters.locations && filters.locations.length > 0) {
-    pool = pool.filter((l) => filters.locations!.includes(l.location || ''));
+  if (filters.location) {
+    pool = pool.filter((l) => l.location === filters.location);
   }
   if (filters.hasPhone) {
     pool = pool.filter((l) => !!l.phone);
   }
-  if (filters.excludeSubscribed) {
-    pool = pool.filter((l) => !['CUSTOMER', 'CONVERTED'].includes(l.status));
-  }
-  if (filters.excludeNotInterested) {
-    pool = pool.filter((l) => l.status !== 'NOT_INTERESTED');
-  }
+  const missingPhone = [...mockLeadFixtures].filter((l) => !l.phone).length;
   return {
-    count: pool.length * 3,
-    overMessagingCount: filters.statuses?.includes('INTERESTED') ? Math.max(0, pool.length - 4) : 0,
-    warnings: ['Some contacts were contacted in the last 7 days and will not be re-messaged.'],
+    totalMatches: pool.length * 3,
+    eligibleCount: pool.length,
+    skippedFrequency: filters.statuses?.includes('INTERESTED' as any) ? Math.max(0, pool.length - 4) : 0,
+    missingPhone,
   };
 }
 
@@ -230,20 +232,51 @@ export function mockLeadCommunication(leadId: string): LeadCommunication {
   const whatsapp = history.filter((m) => m.channel === 'WHATSAPP');
   const sms = history.filter((m) => m.channel === 'SMS');
   return {
-    leadId,
-    salesStatus: lead.status,
-    whatsapp: {
-      sentCount: whatsapp.filter((m) => m.status === 'SENT').length,
-      pendingCount: whatsapp.filter((m) => ['PENDING', 'OPENED'].includes(m.status)).length,
-      lastSent: whatsapp.find((m) => m.status === 'SENT')?.sentAt,
+    lead: {
+      id: lead.id,
+      businessName: lead.businessName ?? null,
+      contactName: lead.contactName ?? null,
+      phone: lead.phone ?? null,
+      location: lead.location ?? null,
+      status: lead.status,
+      agentName: null,
+      lastContactedAt: whatsapp.find((m) => m.status === 'SENT')?.sentAt || null,
+      nextFollowUpAt: null,
     },
-    sms: {
-      sentCount: sms.filter((m) => m.status === 'SENT' || m.status === 'DELIVERED').length,
-      pendingCount: sms.filter((m) => m.status === 'SCHEDULED' || m.status === 'SENDING').length,
-      lastSent: sms.find((m) => m.status === 'SENT' || m.status === 'DELIVERED')?.sentAt,
-      nextScheduled: sms.find((m) => m.status === 'SCHEDULED')?.scheduledAt,
+    communication: {
+      whatsapp: {
+        sent: whatsapp.filter((m) => m.status === 'SENT').length,
+        pending: whatsapp.filter((m) => m.status === 'PENDING').length,
+        scheduled: whatsapp.filter((m) => m.status === 'SCHEDULED').length,
+        failed: whatsapp.filter((m) => m.status === 'FAILED').length,
+        lastSent: whatsapp.find((m) => m.status === 'SENT')?.sentAt || null,
+        nextScheduled: null,
+      },
+      sms: {
+        sent: sms.filter((m) => m.status === 'SENT').length,
+        pending: sms.filter((m) => m.status === 'PENDING').length,
+        scheduled: sms.filter((m) => m.status === 'SCHEDULED').length,
+        failed: sms.filter((m) => m.status === 'FAILED').length,
+        lastSent: sms.find((m) => m.status === 'SENT')?.sentAt || null,
+        nextScheduled: sms.find((m) => m.status === 'SCHEDULED')?.scheduledForAt || null,
+      },
     },
-    history,
+    history: history.map((m) => ({
+      id: m.id,
+      leadId: m.leadId,
+      channel: m.channel,
+      status: m.status,
+      type: m.type,
+      body: m.body,
+      scheduledForAt: m.scheduledForAt,
+      sentAt: m.sentAt,
+      preparedAt: null,
+      markedSentAt: null,
+      failureReason: null,
+      providerMessageId: null,
+      createdAt: m.createdAt,
+      updatedAt: m.updatedAt,
+    })),
   };
 }
 
@@ -264,24 +297,30 @@ export let mockCampaignsState: Campaign[] = [
   {
     id: 'cmp-001',
     name: 'August New Business Push',
-    audience: { statuses: ['INTERESTED'], locations: ['Apo'], hasPhone: true, excludeSubscribed: true },
+    description: 'New business push for August',
     channels: ['WHATSAPP', 'SMS'],
-    templateIds: ['tpl-001', 'tpl-003'],
-    startDate: '2026-08-01T00:00:00Z',
-    endDate: '2026-08-31T23:59:59Z',
+    templateId: 'tpl-001',
+    body: null,
+    audienceFilters: { statuses: ['INTERESTED'], location: 'Apo', hasPhone: true },
     status: 'ACTIVE',
+    startAt: '2026-08-01T00:00:00Z',
+    endAt: '2026-08-31T23:59:59Z',
+    createdById: 'usr-mock',
     createdAt: '2026-08-01T09:00:00Z',
     updatedAt: '2026-08-01T09:00:00Z',
   },
   {
     id: 'cmp-002',
     name: 'September Re-engagement',
-    audience: { statuses: ['VISITED', 'CONTACTED'], hasPhone: true, excludeSubscribed: true },
+    description: 'Re-engagement campaign',
     channels: ['SMS'],
-    templateIds: ['tpl-003'],
-    startDate: '2026-09-01T00:00:00Z',
-    endDate: '2026-09-30T23:59:59Z',
+    templateId: 'tpl-003',
+    body: null,
+    audienceFilters: { statuses: ['VISITED', 'CONTACTED'], hasPhone: true },
     status: 'DRAFT',
+    startAt: '2026-09-01T00:00:00Z',
+    endAt: '2026-09-30T23:59:59Z',
+    createdById: 'usr-mock',
     createdAt: '2026-08-15T14:00:00Z',
     updatedAt: '2026-08-15T14:00:00Z',
   },
@@ -295,29 +334,44 @@ export let mockRulesState: AutomationRule[] = [
   {
     id: 'rule-001',
     name: 'Welcome Interested Leads',
-    target: 'LEAD',
-    trigger: { type: 'STATUS_CHANGED', toStatus: 'INTERESTED' },
+    trigger: 'STATUS_CHANGED_TO_INTERESTED',
+    condition: null,
+    waitDays: 0,
+    action: 'SEND_SMS',
     channel: 'WHATSAPP',
     templateId: 'tpl-001',
-    enabled: true,
+    isActive: true,
+    sortOrder: 0,
+    createdAt: '2026-08-01T09:00:00Z',
+    updatedAt: '2026-08-01T09:00:00Z',
   },
   {
     id: 'rule-002',
     name: 'Follow-up after 3 days',
-    target: 'LEAD',
-    trigger: { type: 'STATUS_STILL_AFTER_DAYS', status: 'INTERESTED', waitDays: 3, andNotSubscribed: true },
+    trigger: 'STILL_INTERESTED_NOT_SUBSCRIBED',
+    condition: null,
+    waitDays: 3,
+    action: 'SEND_SMS',
     channel: 'SMS',
     templateId: 'tpl-003',
-    enabled: true,
+    isActive: true,
+    sortOrder: 1,
+    createdAt: '2026-08-02T09:00:00Z',
+    updatedAt: '2026-08-02T09:00:00Z',
   },
   {
     id: 'rule-003',
     name: 'Customer Welcome',
-    target: 'CUSTOMER',
-    trigger: { type: 'SUBSCRIBED' },
+    trigger: 'BECAME_SUBSCRIBED',
+    condition: null,
+    waitDays: 0,
+    action: 'START_CUSTOMER_JOURNEY',
     channel: 'WHATSAPP',
     templateId: 'tpl-001',
-    enabled: false,
+    isActive: false,
+    sortOrder: 2,
+    createdAt: '2026-08-03T09:00:00Z',
+    updatedAt: '2026-08-03T09:00:00Z',
   },
 ];
 

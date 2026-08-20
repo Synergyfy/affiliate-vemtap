@@ -105,7 +105,7 @@ export default function CampaignWizardModal({ isOpen, onClose, onSave, campaign,
   const [name, setName] = useState('');
   const [filters, setFilters] = useState<AudienceFilter>(EMPTY_AUDIENCE);
   const [channels, setChannels] = useState<CommunicationChannel[]>(['WHATSAPP']);
-  const [templateIds, setTemplateIds] = useState<string[]>([]);
+  const [templateId, setTemplateId] = useState<string>('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -115,16 +115,16 @@ export default function CampaignWizardModal({ isOpen, onClose, onSave, campaign,
       setMaxStep(0);
       if (campaign) {
         setName(campaign.name);
-        setFilters(campaign.audience);
+        setFilters(campaign.audienceFilters);
         setChannels(campaign.channels);
-        setTemplateIds(campaign.templateIds);
-        setStartDate(campaign.startDate.split('T')[0]);
-        setEndDate(campaign.endDate.split('T')[0]);
+        setTemplateId(campaign.templateId || '');
+        setStartDate((campaign.startAt || '').split('T')[0]);
+        setEndDate((campaign.endAt || '').split('T')[0]);
       } else {
         setName('');
         setFilters(EMPTY_AUDIENCE);
         setChannels(['WHATSAPP']);
-        setTemplateIds([]);
+        setTemplateId('');
         setStartDate('');
         setEndDate('');
       }
@@ -143,18 +143,17 @@ export default function CampaignWizardModal({ isOpen, onClose, onSave, campaign,
 
   const hasAudience =
     (filters.statuses?.length || 0) > 0 ||
-    (filters.salespeople?.length || 0) > 0 ||
-    (filters.locations?.length || 0) > 0 ||
-    !!filters.dateAdded;
+    (filters.salespersonIds?.length || 0) > 0 ||
+    (filters.location ? 1 : 0) > 0;
 
   const canNext = [
     name.trim().length > 0,
     hasAudience,
-    channels.length > 0 && templateIds.length > 0,
+    channels.length > 0 && templateId,
     !!startDate && !!endDate && new Date(endDate) >= new Date(startDate),
   ][step];
 
-  const canSave = name.trim() && hasAudience && channels.length > 0 && templateIds.length > 0 && startDate && endDate && new Date(endDate) >= new Date(startDate);
+  const canSave = name.trim() && hasAudience && channels.length > 0 && templateId && startDate && endDate && new Date(endDate) >= new Date(startDate);
 
   const goTo = (target: number) => {
     if (target <= maxStep && target >= 0 && target <= 3) setStep(target);
@@ -171,14 +170,14 @@ export default function CampaignWizardModal({ isOpen, onClose, onSave, campaign,
     const next = channels.includes(ch) ? channels.filter((c) => c !== ch) : [...channels, ch];
     setChannels(next);
     if (!next.includes(ch)) {
-      setTemplateIds((ids) => ids.filter((id) => {
-        const tpl = templates?.find((t) => t.id === id);
-        return tpl && next.includes(tpl.channel);
-      }));
+      const tpl = templates?.find((t) => t.id === templateId);
+      if (tpl && !next.includes(tpl.channel)) {
+        setTemplateId('');
+      }
     }
   };
 
-  const selectedTemplates = filteredTemplates.filter((t) => templateIds.includes(t.id));
+  const selectedTemplate = filteredTemplates.find((t) => t.id === templateId);
 
   return (
     <ModalShell
@@ -238,12 +237,14 @@ export default function CampaignWizardModal({ isOpen, onClose, onSave, campaign,
                 if (!canSave) return;
                 onSave({
                   name: name.trim(),
-                  audience: filters,
+                  description: null,
                   channels,
-                  templateIds,
-                  startDate: new Date(startDate).toISOString(),
-                  endDate: new Date(`${endDate}T23:59:59`).toISOString(),
+                  templateId: templateId || null,
+                  body: null,
+                  audienceFilters: filters,
                   status: campaign?.status || 'DRAFT',
+                  startAt: startDate ? new Date(startDate).toISOString() : null,
+                  endAt: endDate ? new Date(`${endDate}T23:59:59`).toISOString() : null,
                 });
               }}
               disabled={!canSave || isLoading}
@@ -325,30 +326,28 @@ export default function CampaignWizardModal({ isOpen, onClose, onSave, campaign,
                 {/* Templates */}
                 <div className="space-y-3">
                   <EnhancedMultiSelect
-                    label="Message templates"
-                    placeholder={`Select templates for ${channels.join(' + ') || '…'}`}
+                    label="Message template"
+                    placeholder={`Select a template for ${channels.join(' + ') || '…'}`}
                     options={templateOptions.filter((o) => channels.some((ch) => (templates || []).find((t) => t.id === o.value)?.channel === ch))}
-                    selected={templateIds}
+                    selected={templateId ? [templateId] : []}
                     onToggle={(value) => {
-                      setTemplateIds((ids) => (ids.includes(value) ? ids.filter((i) => i !== value) : [...ids, value]));
+                      setTemplateId((prev) => (prev === value ? '' : value));
                     }}
-                    onClear={() => setTemplateIds([])}
+                    onClear={() => setTemplateId('')}
                   />
-                  {selectedTemplates.length > 0 && (
+                  {selectedTemplate && (
                     <div className="space-y-2">
-                      {selectedTemplates.map((tpl) => (
-                        <div key={tpl.id} className="flex items-start gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                          <ChannelBadge channel={tpl.channel} />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-bold text-slate-700">{tpl.name}</p>
-                            <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5">{tpl.body}</p>
-                          </div>
-                          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                      <div className="flex items-start gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                        <ChannelBadge channel={selectedTemplate.channel} />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-slate-700">{selectedTemplate.name}</p>
+                          <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5">{selectedTemplate.body}</p>
                         </div>
-                      ))}
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                      </div>
                     </div>
                   )}
-                  {channels.length > 0 && templateIds.length === 0 && (
+                  {channels.length > 0 && !templateId && (
                     <p className="text-xs font-bold text-amber-600">Select at least one template to send.</p>
                   )}
                 </div>
@@ -381,9 +380,8 @@ export default function CampaignWizardModal({ isOpen, onClose, onSave, campaign,
                     value={
                       [
                         (filters.statuses || []).join(', '),
-                        (filters.salespeople || []).join(', '),
-                        (filters.locations || []).join(', '),
-                        filters.dateAdded ? `Added ${filters.dateAdded.range}` : '',
+                        (filters.salespersonIds || []).join(', '),
+                        filters.location || '',
                       ].filter(Boolean).join(' · ') || 'Not set'
                     }
                   />
@@ -394,8 +392,8 @@ export default function CampaignWizardModal({ isOpen, onClose, onSave, campaign,
                   />
                   <SummaryRow
                     icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />}
-                    label="Templates"
-                    value={selectedTemplates.map((t) => t.name).join(', ') || 'None'}
+                    label="Template"
+                    value={selectedTemplate?.name || 'None'}
                   />
                   <SummaryRow
                     icon={<CalendarDays className="w-4 h-4 text-amber-500" />}

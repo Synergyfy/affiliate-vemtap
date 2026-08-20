@@ -98,7 +98,7 @@ export default function CommunicationFollowUpsPage() {
                           )}
                         </div>
                         <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100 uppercase tracking-wider">
-                          {item.status === 'OPENED' ? 'Opened' : 'Due'}
+                          {item.status === 'PENDING' ? 'Due' : item.status}
                         </span>
                       </div>
                       <button
@@ -144,7 +144,7 @@ export default function CommunicationFollowUpsPage() {
                           <p className="text-xs text-slate-400 font-medium truncate">{msg.body}</p>
                         </div>
                         <span className={cn('ml-auto text-[10px] font-black px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100 uppercase tracking-wider shrink-0')}>
-                          {formatMessageDate(msg.scheduledAt)}
+                          {formatMessageDate(msg.scheduledForAt)}
                         </span>
                       </div>
                     </motion.div>

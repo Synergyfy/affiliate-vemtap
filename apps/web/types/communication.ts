@@ -1,27 +1,85 @@
 import { Lead, LeadStatus } from './api';
 export type { Lead, LeadStatus };
 
+// ---------------------------------------------------------------------------
+// Channel
+// ---------------------------------------------------------------------------
 export type CommunicationChannel = 'WHATSAPP' | 'SMS';
 
-// WhatsApp assisted-send lifecycle
-export type WhatsAppItemStatus = 'PENDING' | 'OPENED' | 'SENT' | 'SKIPPED' | 'FAILED';
-
-// SMS lifecycle
-export type SmsMessageStatus =
-  | 'DRAFT'
+// ---------------------------------------------------------------------------
+// Unified message status (used for both WhatsApp and SMS)
+// Matches Prisma enum: CommunicationMessageStatus
+// ---------------------------------------------------------------------------
+export type CommunicationMessageStatus =
+  | 'PENDING'
   | 'SCHEDULED'
-  | 'SENDING'
   | 'SENT'
-  | 'DELIVERED'
   | 'FAILED'
   | 'CANCELLED';
 
-export type QueueStatus = 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'CANCELLED';
-export type TemplateStatus = 'ACTIVE' | 'INACTIVE' | 'ARCHIVED';
-export type CampaignStatus = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'ENDED' | 'ARCHIVED';
-export type RuleTarget = 'LEAD' | 'CUSTOMER';
-export type NotInterestedPolicy = 'QUIET' | 'RE_ENGAGEMENT';
+// Legacy aliases kept for backward-compat in components that reference them
+export type WhatsAppItemStatus = CommunicationMessageStatus;
+export type SmsMessageStatus = CommunicationMessageStatus;
 
+// ---------------------------------------------------------------------------
+// Template status — matches Prisma: CommunicationTemplateStatus
+// ---------------------------------------------------------------------------
+export type TemplateStatus = 'ACTIVE' | 'INACTIVE' | 'ARCHIVED';
+
+// ---------------------------------------------------------------------------
+// Campaign status — matches Prisma: CampaignStatus
+// ---------------------------------------------------------------------------
+export type CampaignStatus = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'CANCELLED';
+
+// ---------------------------------------------------------------------------
+// Automation triggers — matches Prisma: AutomationTrigger
+// ---------------------------------------------------------------------------
+export type AutomationTrigger =
+  | 'LEAD_CREATED'
+  | 'STATUS_CHANGED_TO_INTERESTED'
+  | 'STILL_INTERESTED_NOT_SUBSCRIBED'
+  | 'BECAME_SUBSCRIBED'
+  | 'BECAME_NOT_INTERESTED'
+  | 'BEFORE_EXPIRY'
+  | 'AFTER_EXPIRY';
+
+// ---------------------------------------------------------------------------
+// Automation actions — matches Prisma: AutomationAction
+// ---------------------------------------------------------------------------
+export type AutomationAction =
+  | 'SEND_SMS'
+  | 'CREATE_WHATSAPP_TASK'
+  | 'STOP_LEAD_MESSAGES'
+  | 'START_CUSTOMER_JOURNEY';
+
+// ---------------------------------------------------------------------------
+// Journey states (used for audience filtering)
+// ---------------------------------------------------------------------------
+export type JourneyState =
+  | 'NEW'
+  | 'CONTACTED'
+  | 'VISITED'
+  | 'INTERESTED'
+  | 'FOLLOW_UP_REQUIRED'
+  | 'NOT_INTERESTED'
+  | 'SUBSCRIBED'
+  | 'EXPIRED'
+  | 'LOST_CLOSED';
+
+// ---------------------------------------------------------------------------
+// Not-interested policy — matches Prisma: NotInterestedPolicy
+// ---------------------------------------------------------------------------
+export type NotInterestedPolicy = 'NO_MESSAGES' | 'RE_ENGAGEMENT';
+
+// ---------------------------------------------------------------------------
+// Legacy types kept for backward-compat in components
+// ---------------------------------------------------------------------------
+export type QueueStatus = 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'CANCELLED';
+export type RuleTarget = 'LEAD' | 'CUSTOMER';
+
+// ---------------------------------------------------------------------------
+// Variables
+// ---------------------------------------------------------------------------
 export type VariableField = 'businessName' | 'contactName' | 'location' | 'agentName';
 
 export interface TemplateVariable {
@@ -29,54 +87,135 @@ export interface TemplateVariable {
   field: VariableField;
 }
 
+export const TEMPLATE_VARIABLES: TemplateVariable[] = [
+  { token: '[Business Name]', field: 'businessName' },
+  { token: '[Contact Name]', field: 'contactName' },
+  { token: '[Area]', field: 'location' },
+  { token: '[Agent Name]', field: 'agentName' },
+];
+
+// ---------------------------------------------------------------------------
+// Template — matches Prisma: CommunicationTemplate
+// ---------------------------------------------------------------------------
 export interface MessageTemplate {
   id: string;
   name: string;
   channel: CommunicationChannel;
   body: string;
-  description?: string;
-  variables: TemplateVariable[];
+  description?: string | null;
   status: TemplateStatus;
+  createdById?: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface AudienceDateAdded {
-  range: 'today' | 'week' | 'month' | 'custom';
-  from?: string;
-  to?: string;
+// Backend wraps templates in: { data, total, smsMaxLength, supportedVariables, smsBlacklistedWords }
+export interface TemplateListResponse {
+  data: MessageTemplate[];
+  total: number;
+  smsMaxLength: number;
+  supportedVariables: string[];
+  smsBlacklistedWords: string[];
 }
 
+// ---------------------------------------------------------------------------
+// Audience filter — matches backend AudienceFilterDto
+// ---------------------------------------------------------------------------
 export interface AudienceFilter {
-  statuses?: LeadStatus[];
-  salespeople?: string[];
-  locations?: string[];
-  dateAdded?: AudienceDateAdded;
+  statuses?: JourneyState[];
+  salespersonIds?: string[];
+  location?: string;
+  dateFilter?: 'TODAY' | 'THIS_WEEK' | 'THIS_MONTH';
+  startDate?: string;
+  endDate?: string;
   hasPhone?: boolean;
-  excludeSubscribed?: boolean;
-  excludeNotInterested?: boolean;
 }
 
 export const EMPTY_AUDIENCE: AudienceFilter = {
   statuses: [],
-  salespeople: [],
-  locations: [],
-  dateAdded: undefined,
+  salespersonIds: [],
   hasPhone: true,
-  excludeSubscribed: true,
-  excludeNotInterested: true,
 };
 
+// ---------------------------------------------------------------------------
+// Audience estimate — matches backend GET /audience/preview response
+// ---------------------------------------------------------------------------
 export interface AudienceEstimate {
-  count: number;
-  overMessagingCount: number;
-  warnings: string[];
+  totalMatches: number;
+  eligibleCount: number;
+  skippedFrequency: number;
+  missingPhone: number;
 }
 
+// ---------------------------------------------------------------------------
+// Outbound message — matches Prisma: CommunicationMessage + included lead
+// ---------------------------------------------------------------------------
+export interface OutboundMessage {
+  id: string;
+  leadId: string;
+  lead?: {
+    id: string;
+    businessName: string | null;
+    contactName: string | null;
+    phone: string | null;
+  } | null;
+  phone?: string | null;
+  channel: CommunicationChannel;
+  type: string;
+  status: CommunicationMessageStatus;
+  body: string;
+  variables?: Record<string, string | null> | null;
+  templateId?: string | null;
+  campaignId?: string | null;
+  ruleId?: string | null;
+  scheduledForAt?: string | null;
+  preparedAt?: string | null;
+  sentAt?: string | null;
+  markedSentAt?: string | null;
+  sentById?: string | null;
+  createdById?: string | null;
+  failureReason?: string | null;
+  providerMessageId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Backend wraps messages in: { data, meta: { total, page, limit, totalPages } }
+export interface MessageListResponse {
+  data: OutboundMessage[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+// Legacy alias
+export type PaginatedMessages = MessageListResponse;
+
+// ---------------------------------------------------------------------------
+// WhatsApp queue item — flat message object from GET /whatsapp/queue
+// ---------------------------------------------------------------------------
+export interface WhatsAppQueueItem {
+  id: string;
+  leadId: string;
+  businessName: string | null;
+  contactName: string | null;
+  phone: string | null;
+  location: string | null;
+  body: string;
+  deepLink: string | null;
+  preparedAt: string | null;
+  createdAt: string;
+  type: string;
+}
+
+// Legacy queue types kept for backward-compat in components
 export interface CommunicationQueueItem {
   id: string;
   queueId: string;
-  lead: Lead;
+  lead: Partial<Lead> & { id: string; businessName: string | null };
   order: number;
   status: WhatsAppItemStatus;
   waLink: string;
@@ -100,60 +239,167 @@ export interface CommunicationQueue {
   updatedAt: string;
 }
 
-export interface OutboundMessage {
-  id: string;
-  leadId: string;
-  lead?: Pick<Lead, 'id' | 'businessName' | 'phone' | 'contactName' | 'location'>;
-  channel: CommunicationChannel;
-  templateId?: string;
-  body: string;
-  status: SmsMessageStatus | WhatsAppItemStatus;
-  scheduledAt?: string;
-  sentAt?: string;
-  externalId?: string;
-  sentBy?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
+// ---------------------------------------------------------------------------
+// Campaign — matches Prisma: CommunicationCampaign
+// ---------------------------------------------------------------------------
 export interface Campaign {
   id: string;
   name: string;
-  audience: AudienceFilter;
+  description?: string | null;
   channels: CommunicationChannel[];
-  templateIds: string[];
-  startDate: string;
-  endDate: string;
+  templateId?: string | null;
+  body?: string | null;
+  audienceFilters: AudienceFilter;
   status: CampaignStatus;
+  startAt?: string | null;
+  endAt?: string | null;
+  createdById?: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
+// ---------------------------------------------------------------------------
+// Automation rule — matches Prisma: AutomationRule
+// ---------------------------------------------------------------------------
 export interface AutomationRule {
   id: string;
   name: string;
-  target: RuleTarget;
-  trigger:
-    | { type: 'STATUS_CHANGED'; toStatus: LeadStatus }
-    | { type: 'STATUS_STILL_AFTER_DAYS'; status: LeadStatus; waitDays: number; andNotSubscribed: boolean }
-    | { type: 'SUBSCRIBED' };
-  channel: CommunicationChannel;
-  templateId: string;
+  trigger: AutomationTrigger;
+  condition?: Record<string, unknown> | null;
+  waitDays: number;
+  action: AutomationAction;
+  channel?: CommunicationChannel | null;
+  templateId?: string | null;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Legacy alias for components that reference `enabled`
+// (rule.enabled === rule.isActive in backend)
+export interface AutomationRuleLegacy extends Omit<AutomationRule, 'isActive'> {
   enabled: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// Communication settings — matches Prisma: CommunicationSettings
+// ---------------------------------------------------------------------------
 export interface CommunicationSettings {
+  id: string;
   smsEnabled: boolean;
-  smsProviderConfigured: boolean;
-  marketingPaused: boolean;
-  frequencyMaxPerWindow: number;
-  frequencyWindowDays: number;
+  smsProvider: string;
+  smsSenderId?: string | null;
+  smsDailyCap: number;
+  whatsappEnabled: boolean;
+  minIntervalHours: number;
+  maxMessagesPerContactPerDay: number;
+  maxMessagesPerContactPerWeek: number;
   notInterestedPolicy: NotInterestedPolicy;
-  autoSmsOnStatus: LeadStatus | null;
-  defaultSenderLabel?: string;
+  reEngagementDelayDays: number;
+  welcomeChannel: CommunicationChannel;
+  welcomeBody?: string | null;
+  smsBlacklistedWords: string[];
+  updatedAt: string;
 }
 
+// ---------------------------------------------------------------------------
+// Communication overview — matches backend GET /communication/overview
+// ---------------------------------------------------------------------------
+export interface CommunicationOverview {
+  overview: {
+    totalContacts: number;
+    contactsEligibleForWhatsApp: number;
+    whatsappFollowUpsPending: number;
+    whatsappMessagesSent: number;
+    smsSent: number;
+    smsPending: number;
+    smsFailed: number;
+    scheduledMessages: number;
+    activeCampaigns: number;
+  };
+  config: {
+    totalTemplates: number;
+    activeRules: number;
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Sales today — matches backend GET /communication/sales/today
+// ---------------------------------------------------------------------------
+export interface SalesTodayItem {
+  id: string;
+  leadId: string;
+  businessName: string | null;
+  status: string | null;
+  phone: string | null;
+  channel: string;
+  label: string;
+  deepLink?: string | null;
+  body: string;
+  scheduledForAt?: string | null;
+  createdAt: string;
+}
+
+export interface SalesTodayResponse {
+  whatsappFollowUps: SalesTodayItem[];
+  smsScheduled: SalesTodayItem[];
+  total: number;
+}
+
+// ---------------------------------------------------------------------------
+// Lead communication profile — matches backend GET /messages/contacts/:leadId
+// ---------------------------------------------------------------------------
 export interface LeadCommunication {
+  lead: {
+    id: string;
+    businessName: string | null;
+    contactName: string | null;
+    phone: string | null;
+    location: string | null;
+    status: string;
+    agentName: string | null;
+    lastContactedAt: string | null;
+    nextFollowUpAt: string | null;
+  };
+  communication: {
+    whatsapp: {
+      sent: number;
+      pending: number;
+      scheduled: number;
+      failed: number;
+      lastSent: string | null;
+      nextScheduled: string | null;
+    };
+    sms: {
+      sent: number;
+      pending: number;
+      scheduled: number;
+      failed: number;
+      lastSent: string | null;
+      nextScheduled: string | null;
+    };
+  };
+  history: {
+    id: string;
+    leadId: string;
+    channel: CommunicationChannel;
+    status: CommunicationMessageStatus;
+    type: string;
+    body: string;
+    scheduledForAt?: string | null;
+    sentAt?: string | null;
+    preparedAt?: string | null;
+    markedSentAt?: string | null;
+    failureReason?: string | null;
+    providerMessageId?: string | null;
+    createdAt: string;
+    updatedAt: string;
+  }[];
+}
+
+// Legacy alias used by useLeadCommunication
+export interface LeadCommunicationLegacy {
   leadId: string;
   salesStatus: LeadStatus;
   whatsapp: { sentCount: number; pendingCount: number; lastSent?: string };
@@ -161,17 +407,27 @@ export interface LeadCommunication {
   history: OutboundMessage[];
 }
 
-export interface CommunicationOverview {
-  totalContacts: number;
-  whatsappEligible: number;
-  whatsappPending: number;
-  whatsappSent: number;
-  smsSent: number;
-  smsPending: number;
-  smsFailed: number;
-  scheduledMessages: number;
-  activeCampaigns: number;
+// ---------------------------------------------------------------------------
+// Customer Journey stages (frontend-only, no backend endpoint yet)
+// ---------------------------------------------------------------------------
+export interface CustomerJourneyStage {
+  id: string;
+  name: string;
+  waitDays: number;
+  channel: CommunicationChannel;
+  templateId: string;
+  enabled: boolean;
 }
+
+export const DEFAULT_JOURNEY_STAGES: Omit<CustomerJourneyStage, 'id'>[] = [
+  { name: 'Welcome', waitDays: 0, channel: 'WHATSAPP', templateId: '', enabled: true },
+  { name: 'Activation', waitDays: 3, channel: 'SMS', templateId: '', enabled: true },
+  { name: 'Tips & Tricks', waitDays: 7, channel: 'WHATSAPP', templateId: '', enabled: true },
+  { name: 'Feature Education', waitDays: 14, channel: 'SMS', templateId: '', enabled: true },
+  { name: 'Referral', waitDays: 21, channel: 'WHATSAPP', templateId: '', enabled: true },
+  { name: 'Renewal Reminder', waitDays: 28, channel: 'SMS', templateId: '', enabled: true },
+  { name: 'Win-back', waitDays: 45, channel: 'WHATSAPP', templateId: '', enabled: true },
+];
 
 // ---------------------------------------------------------------------------
 // Labels & colors
@@ -187,41 +443,27 @@ export const CHANNEL_COLORS: Record<CommunicationChannel, { bg: string; text: st
   SMS: { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200' },
 };
 
-export const WHATSAPP_STATUS_LABELS: Record<WhatsAppItemStatus, string> = {
+export const MESSAGE_STATUS_LABELS: Record<CommunicationMessageStatus, string> = {
   PENDING: 'Pending',
-  OPENED: 'Opened',
-  SENT: 'Sent',
-  SKIPPED: 'Skipped',
-  FAILED: 'Failed',
-};
-
-export const WHATSAPP_STATUS_COLORS: Record<WhatsAppItemStatus, { bg: string; text: string; border: string }> = {
-  PENDING: { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200' },
-  OPENED: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
-  SENT: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
-  SKIPPED: { bg: 'bg-slate-50', text: 'text-slate-500', border: 'border-slate-200' },
-  FAILED: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
-};
-
-export const SMS_STATUS_LABELS: Record<SmsMessageStatus, string> = {
-  DRAFT: 'Draft',
   SCHEDULED: 'Scheduled',
-  SENDING: 'Sending',
   SENT: 'Sent',
-  DELIVERED: 'Delivered',
   FAILED: 'Failed',
   CANCELLED: 'Cancelled',
 };
 
-export const SMS_STATUS_COLORS: Record<SmsMessageStatus, { bg: string; text: string; border: string }> = {
-  DRAFT: { bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' },
+export const MESSAGE_STATUS_COLORS: Record<CommunicationMessageStatus, { bg: string; text: string; border: string }> = {
+  PENDING: { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200' },
   SCHEDULED: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
-  SENDING: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
-  SENT: { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200' },
-  DELIVERED: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+  SENT: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
   FAILED: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
   CANCELLED: { bg: 'bg-slate-50', text: 'text-slate-500', border: 'border-slate-200' },
 };
+
+// Legacy aliases
+export const WHATSAPP_STATUS_LABELS = MESSAGE_STATUS_LABELS;
+export const WHATSAPP_STATUS_COLORS = MESSAGE_STATUS_COLORS;
+export const SMS_STATUS_LABELS = MESSAGE_STATUS_LABELS;
+export const SMS_STATUS_COLORS = MESSAGE_STATUS_COLORS;
 
 export const QUEUE_STATUS_LABELS: Record<QueueStatus, string> = {
   ACTIVE: 'Active',
@@ -253,41 +495,31 @@ export const CAMPAIGN_STATUS_LABELS: Record<CampaignStatus, string> = {
   DRAFT: 'Draft',
   ACTIVE: 'Active',
   PAUSED: 'Paused',
-  ENDED: 'Ended',
-  ARCHIVED: 'Archived',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled',
 };
 
 export const CAMPAIGN_STATUS_COLORS: Record<CampaignStatus, { bg: string; text: string; border: string }> = {
   DRAFT: { bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' },
   ACTIVE: { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
   PAUSED: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
-  ENDED: { bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' },
-  ARCHIVED: { bg: 'bg-slate-50', text: 'text-slate-400', border: 'border-slate-200' },
+  COMPLETED: { bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' },
+  CANCELLED: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
 };
 
-export const TEMPLATE_VARIABLES: TemplateVariable[] = [
-  { token: '[Business Name]', field: 'businessName' },
-  { token: '[Contact Name]', field: 'contactName' },
-  { token: '[Area]', field: 'location' },
-  { token: '[Agent Name]', field: 'agentName' },
-];
+export const AUTOMATION_TRIGGER_LABELS: Record<AutomationTrigger, string> = {
+  LEAD_CREATED: 'Lead Created',
+  STATUS_CHANGED_TO_INTERESTED: 'Status Changed to Interested',
+  STILL_INTERESTED_NOT_SUBSCRIBED: 'Still Interested, Not Subscribed',
+  BECAME_SUBSCRIBED: 'Became Subscribed',
+  BECAME_NOT_INTERESTED: 'Became Not Interested',
+  BEFORE_EXPIRY: 'Before Expiry',
+  AFTER_EXPIRY: 'After Expiry',
+};
 
-// Customer Journey stages
-export interface CustomerJourneyStage {
-  id: string;
-  name: string;
-  waitDays: number;
-  channel: CommunicationChannel;
-  templateId: string;
-  enabled: boolean;
-}
-
-export const DEFAULT_JOURNEY_STAGES: Omit<CustomerJourneyStage, 'id'>[] = [
-  { name: 'Welcome', waitDays: 0, channel: 'WHATSAPP', templateId: '', enabled: true },
-  { name: 'Activation', waitDays: 3, channel: 'SMS', templateId: '', enabled: true },
-  { name: 'Tips & Tricks', waitDays: 7, channel: 'WHATSAPP', templateId: '', enabled: true },
-  { name: 'Feature Education', waitDays: 14, channel: 'SMS', templateId: '', enabled: true },
-  { name: 'Referral', waitDays: 21, channel: 'WHATSAPP', templateId: '', enabled: true },
-  { name: 'Renewal Reminder', waitDays: 28, channel: 'SMS', templateId: '', enabled: true },
-  { name: 'Win-back', waitDays: 45, channel: 'WHATSAPP', templateId: '', enabled: true },
-];
+export const AUTOMATION_ACTION_LABELS: Record<AutomationAction, string> = {
+  SEND_SMS: 'Send SMS',
+  CREATE_WHATSAPP_TASK: 'Create WhatsApp Task',
+  STOP_LEAD_MESSAGES: 'Stop Lead Messages',
+  START_CUSTOMER_JOURNEY: 'Start Customer Journey',
+};

@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Loader2, Save, AlertTriangle, Wifi, WifiOff, Info } from 'lucide-react';
+import { Loader2, Save, Info } from 'lucide-react';
 import { useToast } from '@/hooks/toast';
 import { useCommunicationSettings, useUpdateCommunicationSettings } from '@/services/useCommunicationHooks';
 import { CommunicationSettings, NotInterestedPolicy } from '@/types/communication';
 import { cn } from '@/lib/utils';
 
 const POLICY_OPTIONS: { value: NotInterestedPolicy; label: string; description: string }[] = [
-  { value: 'QUIET', label: 'Quiet', description: 'Stop all marketing messages immediately.' },
+  { value: 'NO_MESSAGES', label: 'No Messages', description: 'Stop all messages immediately.' },
   { value: 'RE_ENGAGEMENT', label: 'Re-engagement', description: 'Low-frequency re-engagement attempts later.' },
 ];
 
@@ -24,12 +24,14 @@ export default function SmsSettingsPanel() {
     if (settings) {
       setForm({
         smsEnabled: settings.smsEnabled,
-        marketingPaused: settings.marketingPaused,
-        frequencyMaxPerWindow: settings.frequencyMaxPerWindow,
-        frequencyWindowDays: settings.frequencyWindowDays,
+        smsDailyCap: settings.smsDailyCap,
+        whatsappEnabled: settings.whatsappEnabled,
+        minIntervalHours: settings.minIntervalHours,
+        maxMessagesPerContactPerDay: settings.maxMessagesPerContactPerDay,
+        maxMessagesPerContactPerWeek: settings.maxMessagesPerContactPerWeek,
         notInterestedPolicy: settings.notInterestedPolicy,
-        autoSmsOnStatus: settings.autoSmsOnStatus,
-        defaultSenderLabel: settings.defaultSenderLabel,
+        reEngagementDelayDays: settings.reEngagementDelayDays,
+        welcomeChannel: settings.welcomeChannel,
       });
     }
   }, [settings]);
@@ -59,18 +61,6 @@ export default function SmsSettingsPanel() {
 
   return (
     <div className="space-y-6">
-      {form.marketingPaused && (
-        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl p-4">
-          <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-sm font-bold text-amber-800">Marketing is paused</p>
-            <p className="text-xs text-amber-700 mt-0.5">
-              All scheduled and automated messages are on hold. Toggle off to resume.
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* Master switches */}
       <section className="bg-white border border-slate-200 rounded-3xl p-6 space-y-6">
         <h3 className="text-lg font-bold text-slate-900">Global controls</h3>
@@ -80,25 +70,23 @@ export default function SmsSettingsPanel() {
           description="Master switch — when off, no SMS can be sent or scheduled."
           checked={form.smsEnabled ?? true}
           onChange={(v) => update('smsEnabled', v)}
-          icon={form.smsEnabled ? <Wifi className="w-4 h-4 text-emerald-600" /> : <WifiOff className="w-4 h-4 text-slate-400" />}
         />
 
         <ToggleRow
-          label="Marketing paused"
-          description="Kill-switch — stops all scheduled and automated messages across both channels."
-          checked={form.marketingPaused ?? false}
-          onChange={(v) => update('marketingPaused', v)}
-          icon={<AlertTriangle className={cn('w-4 h-4', form.marketingPaused ? 'text-amber-600' : 'text-slate-400')} />}
+          label="WhatsApp enabled"
+          description="Enable or disable WhatsApp messaging across the platform."
+          checked={form.whatsappEnabled ?? true}
+          onChange={(v) => update('whatsappEnabled', v)}
         />
 
         <div className="flex items-center gap-3 pt-2">
           <div className={cn(
             'px-3 py-1.5 rounded-full text-xs font-bold border',
-            settings?.smsProviderConfigured
+            settings?.smsProvider
               ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
               : 'bg-slate-100 text-slate-500 border-slate-200',
           )}>
-            {settings?.smsProviderConfigured ? 'Provider connected' : 'Provider not configured'}
+            {settings?.smsProvider ? `Provider: ${settings.smsProvider}` : 'Provider not configured'}
           </div>
         </div>
       </section>
@@ -112,24 +100,46 @@ export default function SmsSettingsPanel() {
 
         <div className="flex flex-wrap items-end gap-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-600">Max messages</label>
+            <label className="text-xs font-bold text-slate-600">Max per day</label>
             <input
               type="number"
               min={1}
               max={20}
-              value={form.frequencyMaxPerWindow ?? 2}
-              onChange={(e) => update('frequencyMaxPerWindow', parseInt(e.target.value) || 2)}
+              value={form.maxMessagesPerContactPerDay ?? 3}
+              onChange={(e) => update('maxMessagesPerContactPerDay', parseInt(e.target.value) || 3)}
               className="w-24 px-3 py-2 rounded-xl text-sm font-medium border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-600">Per window (days)</label>
+            <label className="text-xs font-bold text-slate-600">Max per week</label>
             <input
               type="number"
               min={1}
-              max={90}
-              value={form.frequencyWindowDays ?? 7}
-              onChange={(e) => update('frequencyWindowDays', parseInt(e.target.value) || 7)}
+              max={50}
+              value={form.maxMessagesPerContactPerWeek ?? 10}
+              onChange={(e) => update('maxMessagesPerContactPerWeek', parseInt(e.target.value) || 10)}
+              className="w-24 px-3 py-2 rounded-xl text-sm font-medium border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-600">Min interval (hours)</label>
+            <input
+              type="number"
+              min={1}
+              max={72}
+              value={form.minIntervalHours ?? 4}
+              onChange={(e) => update('minIntervalHours', parseInt(e.target.value) || 4)}
+              className="w-24 px-3 py-2 rounded-xl text-sm font-medium border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-600">SMS daily cap</label>
+            <input
+              type="number"
+              min={10}
+              max={5000}
+              value={form.smsDailyCap ?? 500}
+              onChange={(e) => update('smsDailyCap', parseInt(e.target.value) || 500)}
               className="w-24 px-3 py-2 rounded-xl text-sm font-medium border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -137,7 +147,7 @@ export default function SmsSettingsPanel() {
         <div className="flex items-start gap-2 bg-slate-50 rounded-xl p-3">
           <Info className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
           <p className="text-[11px] text-slate-500 leading-relaxed">
-            Each contact will receive at most <strong>{form.frequencyMaxPerWindow ?? 2} messages</strong> in any <strong>{form.frequencyWindowDays ?? 7}-day</strong> window across both WhatsApp and SMS.
+            Each contact will receive at most <strong>{form.maxMessagesPerContactPerDay ?? 3} messages/day</strong> and <strong>{form.maxMessagesPerContactPerWeek ?? 10} messages/week</strong> across both WhatsApp and SMS.
           </p>
         </div>
       </section>
@@ -174,6 +184,20 @@ export default function SmsSettingsPanel() {
             </label>
           ))}
         </div>
+
+        {form.notInterestedPolicy === 'RE_ENGAGEMENT' && (
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-600">Re-engagement delay (days)</label>
+            <input
+              type="number"
+              min={7}
+              max={90}
+              value={form.reEngagementDelayDays ?? 30}
+              onChange={(e) => update('reEngagementDelayDays', parseInt(e.target.value) || 30)}
+              className="w-32 px-3 py-2 rounded-xl text-sm font-medium border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        )}
       </section>
 
       {/* Save */}
@@ -201,18 +225,15 @@ function ToggleRow({
   description,
   checked,
   onChange,
-  icon,
 }: {
   label: string;
   description: string;
   checked: boolean;
   onChange: (v: boolean) => void;
-  icon?: React.ReactNode;
 }) {
   return (
     <div className="flex items-start justify-between gap-4">
       <div className="flex items-start gap-3">
-        {icon}
         <div>
           <p className="text-sm font-bold text-slate-800">{label}</p>
           <p className="text-xs text-slate-500 mt-0.5">{description}</p>

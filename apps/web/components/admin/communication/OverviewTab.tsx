@@ -35,15 +35,15 @@ export default function OverviewTab() {
   const [quickSmsOpen, setQuickSmsOpen] = useState(false);
 
   const stats = [
-    { label: 'Total Contacts', value: overview?.totalContacts ?? 0, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', hint: 'All leads in the system' },
-    { label: 'WhatsApp Eligible', value: overview?.whatsappEligible ?? 0, icon: MessageCircle, color: 'text-emerald-600', bg: 'bg-emerald-50', hint: 'Contacts with a phone number' },
-    { label: 'WhatsApp Follow-ups Pending', value: overview?.whatsappPending ?? 0, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', hint: 'Waiting to be sent' },
-    { label: 'WhatsApp Sent', value: overview?.whatsappSent ?? 0, icon: CheckCheck, color: 'text-emerald-600', bg: 'bg-emerald-50', hint: 'Marked as sent' },
-    { label: 'SMS Sent', value: overview?.smsSent ?? 0, icon: Send, color: 'text-sky-600', bg: 'bg-sky-50', hint: 'Delivered or sent' },
-    { label: 'SMS Pending', value: overview?.smsPending ?? 0, icon: MessageSquare, color: 'text-blue-600', bg: 'bg-blue-50', hint: 'Scheduled or queued' },
-    { label: 'Failed SMS', value: overview?.smsFailed ?? 0, icon: XCircle, color: 'text-red-600', bg: 'bg-red-50', hint: 'Needs attention' },
-    { label: 'Scheduled Messages', value: overview?.scheduledMessages ?? 0, icon: CalendarClock, color: 'text-indigo-600', bg: 'bg-indigo-50', hint: 'Across all channels' },
-    { label: 'Active Campaigns', value: overview?.activeCampaigns ?? 0, icon: Megaphone, color: 'text-purple-600', bg: 'bg-purple-50', hint: 'Running promotions' },
+    { label: 'Total Contacts', value: overview?.overview.totalContacts ?? 0, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', hint: 'All leads in the system' },
+    { label: 'WhatsApp Eligible', value: overview?.overview.contactsEligibleForWhatsApp ?? 0, icon: MessageCircle, color: 'text-emerald-600', bg: 'bg-emerald-50', hint: 'Contacts with a phone number' },
+    { label: 'WhatsApp Follow-ups Pending', value: overview?.overview.whatsappFollowUpsPending ?? 0, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', hint: 'Waiting to be sent' },
+    { label: 'WhatsApp Sent', value: overview?.overview.whatsappMessagesSent ?? 0, icon: CheckCheck, color: 'text-emerald-600', bg: 'bg-emerald-50', hint: 'Marked as sent' },
+    { label: 'SMS Sent', value: overview?.overview.smsSent ?? 0, icon: Send, color: 'text-sky-600', bg: 'bg-sky-50', hint: 'Delivered or sent' },
+    { label: 'SMS Pending', value: overview?.overview.smsPending ?? 0, icon: MessageSquare, color: 'text-blue-600', bg: 'bg-blue-50', hint: 'Scheduled or queued' },
+    { label: 'Failed SMS', value: overview?.overview.smsFailed ?? 0, icon: XCircle, color: 'text-red-600', bg: 'bg-red-50', hint: 'Needs attention' },
+    { label: 'Scheduled Messages', value: overview?.overview.scheduledMessages ?? 0, icon: CalendarClock, color: 'text-indigo-600', bg: 'bg-indigo-50', hint: 'Across all channels' },
+    { label: 'Active Campaigns', value: overview?.overview.activeCampaigns ?? 0, icon: Megaphone, color: 'text-purple-600', bg: 'bg-purple-50', hint: 'Running promotions' },
   ];
 
   return (

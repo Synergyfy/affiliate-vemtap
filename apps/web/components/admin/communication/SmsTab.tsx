@@ -47,7 +47,7 @@ export default function SmsTab() {
   const messages = useMemo(() => rawMessages, [rawMessages]);
 
   const scheduled = useMemo(() => messages.filter((m) => m.status === 'SCHEDULED'), [messages]);
-  const sent = useMemo(() => messages.filter((m) => m.status === 'SENT' || m.status === 'DELIVERED'), [messages]);
+  const sent = useMemo(() => messages.filter((m) => m.status === 'SENT'), [messages]);
   const failed = useMemo(() => messages.filter((m) => m.status === 'FAILED'), [messages]);
 
   const previewLead = mockLeadFixtures.find((l) => l.phone) || null;
@@ -62,16 +62,15 @@ export default function SmsTab() {
 
   const debouncedFilters = useDebounce(filters, 400);
   const { data: estimate } = useAudienceEstimate(filtersActive() ? debouncedFilters : null);
-  const audienceCount = estimate?.count ?? 0;
+  const audienceCount = estimate?.eligibleCount ?? 0;
 
   const canSend = filtersActive() && message.trim().length > 0 && !hasOverLimit && audienceCount > 0 && (settings?.smsEnabled ?? true);
 
   function filtersActive() {
     return (
       (filters.statuses?.length ?? 0) > 0 ||
-      (filters.salespeople?.length ?? 0) > 0 ||
-      (filters.locations?.length ?? 0) > 0 ||
-      !!filters.dateAdded
+      (filters.salespersonIds?.length ?? 0) > 0 ||
+      !!filters.location
     );
   }
 
@@ -315,7 +314,7 @@ function MessageListSection({
                   </p>
                   <p className="text-xs text-slate-600 mt-1.5 line-clamp-2">{msg.body}</p>
                   <p className="text-[11px] text-slate-400 mt-1">
-                    {msg.sentAt ? `Sent ${formatMessageDateTime(msg.sentAt)}` : msg.scheduledAt ? `Scheduled ${formatMessageDateTime(msg.scheduledAt)}` : formatMessageDateTime(msg.createdAt)}
+                    {msg.sentAt ? `Sent ${formatMessageDateTime(msg.sentAt)}` : msg.scheduledForAt ? `Scheduled ${formatMessageDateTime(msg.scheduledForAt)}` : formatMessageDateTime(msg.createdAt)}
                   </p>
                 </div>
                 {onAction && actionLabel && (

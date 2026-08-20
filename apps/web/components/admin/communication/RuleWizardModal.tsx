@@ -9,12 +9,12 @@ import {
 import { cn } from '@/lib/utils';
 import ModalShell from '@/components/ui/ModalShell';
 import { EnhancedSingleSelect, SelectOption } from '@/components/ui/EnhancedSelect';
-import { AutomationRule, CommunicationChannel, LeadStatus, MessageTemplate } from '@/types/communication';
+import { AutomationRule, AutomationTrigger, AutomationAction, CommunicationChannel, MessageTemplate, AUTOMATION_TRIGGER_LABELS } from '@/types/communication';
 
 interface RuleWizardModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: Omit<AutomationRule, 'id'>) => void;
+  onSave: (data: Omit<AutomationRule, 'id' | 'createdAt' | 'updatedAt'>) => void;
   rule?: AutomationRule | null;
   templates?: MessageTemplate[];
   isLoading?: boolean;
@@ -27,25 +27,15 @@ const STEPS = [
   { id: 3, label: 'Review', icon: CheckCircle2 },
 ] as const;
 
-const TRIGGER_TYPES = [
-  { value: 'STATUS_CHANGED', label: 'Status changes to…', desc: 'Fires when a lead moves to a specific status.' },
-  { value: 'STATUS_STILL_AFTER_DAYS', label: 'Still in status after N days…', desc: 'Fires if a lead hasn\'t progressed after a set time.' },
-  { value: 'SUBSCRIBED', label: 'Lead subscribes / becomes customer', desc: 'Fires when a lead is marked as a customer.' },
-] as const;
-
-const STATUSES: SelectOption[] = [
-  { value: 'INTERESTED', label: 'Interested' },
-  { value: 'VISITED', label: 'Visited' },
-  { value: 'CONTACTED', label: 'Contacted' },
-  { value: 'NOT_INTERESTED', label: 'Not Interested' },
-  { value: 'CUSTOMER', label: 'Customer' },
+const TRIGGER_TYPES: { value: AutomationTrigger; label: string; desc: string }[] = [
+  { value: 'LEAD_CREATED', label: 'Lead Created', desc: 'Fires when a new lead is created.' },
+  { value: 'STATUS_CHANGED_TO_INTERESTED', label: 'Status changes to Interested', desc: 'Fires when a lead moves to Interested status.' },
+  { value: 'STILL_INTERESTED_NOT_SUBSCRIBED', label: 'Still Interested, Not Subscribed', desc: 'Fires if a lead hasn\'t progressed after a set time.' },
+  { value: 'BECAME_SUBSCRIBED', label: 'Became Subscribed', desc: 'Fires when a lead becomes a customer.' },
+  { value: 'BECAME_NOT_INTERESTED', label: 'Became Not Interested', desc: 'Fires when a lead is marked not interested.' },
+  { value: 'BEFORE_EXPIRY', label: 'Before Expiry', desc: 'Fires before a lead expires.' },
+  { value: 'AFTER_EXPIRY', label: 'After Expiry', desc: 'Fires after a lead expires.' },
 ];
-
-const TRIGGER_LABELS: Record<string, string> = {
-  STATUS_CHANGED: 'Status change',
-  STATUS_STILL_AFTER_DAYS: 'Time delay',
-  SUBSCRIBED: 'Subscription',
-};
 
 function StepDot({ step, current, done, onClick }: { step: (typeof STEPS)[number]; current: number; done: boolean; onClick: () => void }) {
   return (
@@ -95,12 +85,9 @@ export default function RuleWizardModal({ isOpen, onClose, onSave, rule, templat
   const [maxStep, setMaxStep] = useState(0);
 
   const [name, setName] = useState('');
-  const [target, setTarget] = useState<'LEAD' | 'CUSTOMER'>('LEAD');
-  const [triggerType, setTriggerType] = useState<string>('STATUS_CHANGED');
-  const [toStatus, setToStatus] = useState<LeadStatus>('INTERESTED');
-  const [stillStatus, setStillStatus] = useState<LeadStatus>('INTERESTED');
-  const [waitDays, setWaitDays] = useState(3);
-  const [andNotSubscribed, setAndNotSubscribed] = useState(true);
+  const [trigger, setTrigger] = useState<AutomationTrigger>('STATUS_CHANGED_TO_INTERESTED');
+  const [waitDays, setWaitDays] = useState(0);
+  const [action, setAction] = useState<AutomationAction>('SEND_SMS');
   const [channel, setChannel] = useState<CommunicationChannel>('SMS');
   const [templateId, setTemplateId] = useState('');
 
@@ -110,25 +97,17 @@ export default function RuleWizardModal({ isOpen, onClose, onSave, rule, templat
       setMaxStep(0);
       if (rule) {
         setName(rule.name);
-        setTarget(rule.target);
-        setChannel(rule.channel);
-        setTemplateId(rule.templateId);
-        setTriggerType(rule.trigger.type);
-        if (rule.trigger.type === 'STATUS_CHANGED') setToStatus(rule.trigger.toStatus);
-        if (rule.trigger.type === 'STATUS_STILL_AFTER_DAYS') {
-          setStillStatus(rule.trigger.status);
-          setWaitDays(rule.trigger.waitDays);
-          setAndNotSubscribed(rule.trigger.andNotSubscribed);
-        }
+        setTrigger(rule.trigger);
+        setWaitDays(rule.waitDays);
+        setAction(rule.action);
+        setChannel(rule.channel || 'SMS');
+        setTemplateId(rule.templateId || '');
         setMaxStep(3);
       } else {
         setName('');
-        setTarget('LEAD');
-        setTriggerType('STATUS_CHANGED');
-        setToStatus('INTERESTED');
-        setStillStatus('INTERESTED');
-        setWaitDays(3);
-        setAndNotSubscribed(true);
+        setTrigger('STATUS_CHANGED_TO_INTERESTED');
+        setWaitDays(0);
+        setAction('SEND_SMS');
         setChannel('SMS');
         setTemplateId('');
       }
@@ -144,12 +123,12 @@ export default function RuleWizardModal({ isOpen, onClose, onSave, rule, templat
 
   const canNext = [
     name.trim().length > 0,
-    triggerType === 'SUBSCRIBED' || (triggerType === 'STATUS_CHANGED' ? true : true),
-    channel && (triggerType === 'SUBSCRIBED' || templateId),
+    !!trigger,
+    channel,
     true,
   ][step];
 
-  const canSave = name.trim() && channel && (triggerType === 'SUBSCRIBED' || templateId);
+  const canSave = name.trim() && trigger && channel;
 
   const goTo = (target: number) => {
     if (target <= maxStep && target >= 0 && target <= 3) setStep(target);
@@ -162,23 +141,9 @@ export default function RuleWizardModal({ isOpen, onClose, onSave, rule, templat
     setStep(next);
   };
 
-  const buildTrigger = (): AutomationRule['trigger'] => {
-    if (triggerType === 'STATUS_CHANGED') return { type: 'STATUS_CHANGED', toStatus };
-    if (triggerType === 'STATUS_STILL_AFTER_DAYS') return { type: 'STATUS_STILL_AFTER_DAYS', status: stillStatus, waitDays, andNotSubscribed };
-    return { type: 'SUBSCRIBED' };
-  };
+  const buildTrigger = (): AutomationTrigger => trigger;
 
-  const triggerDescription = (() => {
-    if (triggerType === 'STATUS_CHANGED') {
-      const label = STATUSES.find((s) => s.value === toStatus)?.label || toStatus;
-      return `When status changes to "${label}"`;
-    }
-    if (triggerType === 'STATUS_STILL_AFTER_DAYS') {
-      const label = STATUSES.find((s) => s.value === stillStatus)?.label || stillStatus;
-      return `If stuck in "${label}" for ${waitDays} day${waitDays !== 1 ? 's' : ''}${andNotSubscribed ? ' (excluding customers)' : ''}`;
-    }
-    return 'When lead becomes a customer';
-  })();
+  const triggerDescription = AUTOMATION_TRIGGER_LABELS[trigger] || trigger;
 
   return (
     <ModalShell
@@ -238,11 +203,14 @@ export default function RuleWizardModal({ isOpen, onClose, onSave, rule, templat
                 if (!canSave) return;
                 onSave({
                   name: name.trim(),
-                  target,
                   trigger: buildTrigger(),
+                  condition: null,
+                  waitDays: trigger === 'STILL_INTERESTED_NOT_SUBSCRIBED' ? waitDays : 0,
+                  action,
                   channel,
-                  templateId,
-                  enabled: rule?.enabled ?? true,
+                  templateId: templateId || null,
+                  isActive: rule?.isActive ?? true,
+                  sortOrder: rule?.sortOrder ?? 0,
                 });
               }}
               disabled={!canSave || isLoading}
@@ -283,41 +251,6 @@ export default function RuleWizardModal({ isOpen, onClose, onSave, rule, templat
                           className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                         />
                       </div>
-
-                      {/* Target */}
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Who is this for?</label>
-                        <div className="grid grid-cols-2 gap-3">
-                          {(['LEAD', 'CUSTOMER'] as const).map((t) => (
-                            <button
-                              key={t}
-                              type="button"
-                              onClick={() => setTarget(t)}
-                              className={cn(
-                                'flex flex-col items-center gap-2 p-5 rounded-2xl border-2 transition-all text-center',
-                                target === t
-                                  ? 'border-indigo-500 bg-indigo-50 shadow-md shadow-indigo-100'
-                                  : 'border-slate-200 bg-white hover:border-slate-300',
-                              )}
-                            >
-                              <div className={cn(
-                                'w-10 h-10 rounded-xl flex items-center justify-center',
-                                target === t ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500',
-                              )}>
-                                {t === 'LEAD' ? <Target className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
-                              </div>
-                              <div>
-                                <p className={cn('text-sm font-bold', target === t ? 'text-indigo-700' : 'text-slate-700')}>
-                                  {t === 'LEAD' ? 'Lead Nurture' : 'Customer Journey'}
-                                </p>
-                                <p className="text-[11px] text-slate-400 mt-0.5">
-                                  {t === 'LEAD' ? 'Prospect follow-up' : 'Post-sale engagement'}
-                                </p>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
                     </div>
                   )}
 
@@ -331,16 +264,16 @@ export default function RuleWizardModal({ isOpen, onClose, onSave, rule, templat
                             key={tt.value}
                             className={cn(
                               'flex items-start gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all',
-                              triggerType === tt.value
+                              trigger === tt.value
                                 ? 'border-indigo-500 bg-indigo-50'
                                 : 'border-slate-200 hover:border-slate-300 bg-white',
                             )}
                           >
                             <input
                               type="radio"
-                              name="triggerType"
-                              checked={triggerType === tt.value}
-                              onChange={() => setTriggerType(tt.value)}
+                              name="trigger"
+                              checked={trigger === tt.value}
+                              onChange={() => setTrigger(tt.value)}
                               className="accent-indigo-600 mt-0.5"
                             />
                             <div className="min-w-0">
@@ -351,48 +284,18 @@ export default function RuleWizardModal({ isOpen, onClose, onSave, rule, templat
                         ))}
                       </div>
 
-                      {triggerType === 'STATUS_CHANGED' && (
-                        <EnhancedSingleSelect
-                          label="Target status"
-                          placeholder="Pick a status…"
-                          options={STATUSES}
-                          value={toStatus}
-                          onChange={(v) => setToStatus(v as LeadStatus)}
-                        />
-                      )}
-
-                      {triggerType === 'STATUS_STILL_AFTER_DAYS' && (
+                      {trigger === 'STILL_INTERESTED_NOT_SUBSCRIBED' && (
                         <div className="space-y-4">
-                          <EnhancedSingleSelect
-                            label="Stuck in status"
-                            placeholder="Pick a status…"
-                            options={STATUSES}
-                            value={stillStatus}
-                            onChange={(v) => setStillStatus(v as LeadStatus)}
-                          />
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Wait days</label>
-                              <input
-                                type="number"
-                                min={1}
-                                max={90}
-                                value={waitDays}
-                                onChange={(e) => setWaitDays(parseInt(e.target.value) || 1)}
-                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                              />
-                            </div>
-                            <div className="flex items-end pb-1">
-                              <label className="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={andNotSubscribed}
-                                  onChange={(e) => setAndNotSubscribed(e.target.checked)}
-                                  className="accent-indigo-600 w-4 h-4"
-                                />
-                                Only non-customers
-                              </label>
-                            </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Wait days</label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={90}
+                              value={waitDays}
+                              onChange={(e) => setWaitDays(parseInt(e.target.value) || 1)}
+                              className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                            />
                           </div>
                         </div>
                       )}
@@ -401,39 +304,65 @@ export default function RuleWizardModal({ isOpen, onClose, onSave, rule, templat
 
                   {step === 2 && (
                     <div className="space-y-6">
-                      {/* Channel chips */}
+                      {/* Action */}
                       <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Channel</label>
-                        <div className="flex gap-2">
-                          {(['WHATSAPP', 'SMS'] as const).map((ch) => (
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Action</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {(['SEND_SMS', 'CREATE_WHATSAPP_TASK', 'STOP_LEAD_MESSAGES', 'START_CUSTOMER_JOURNEY'] as const).map((a) => (
                             <button
-                              key={ch}
+                              key={a}
                               type="button"
-                              onClick={() => { setChannel(ch); setTemplateId(''); }}
+                              onClick={() => setAction(a)}
                               className={cn(
-                                'flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border-2 transition-all',
-                                channel === ch
+                                'px-3 py-2.5 rounded-xl text-xs font-bold border-2 transition-all text-left',
+                                action === a
                                   ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
                                   : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300',
                               )}
                             >
-                              {ch === 'WHATSAPP' ? 'WhatsApp' : 'SMS'}
+                              {a === 'SEND_SMS' ? 'Send SMS' : a === 'CREATE_WHATSAPP_TASK' ? 'WhatsApp Task' : a === 'STOP_LEAD_MESSAGES' ? 'Stop Messages' : 'Start Journey'}
                             </button>
                           ))}
                         </div>
                       </div>
 
-                      {/* Template picker */}
-                      <EnhancedSingleSelect
-                        label="Message template"
-                        placeholder={channelTemplates.length > 0 ? 'Select a template…' : `No ${channel === 'WHATSAPP' ? 'WhatsApp' : 'SMS'} templates yet`}
-                        options={templateOptions}
-                        value={templateId || null}
-                        onChange={setTemplateId}
-                        onClear={() => setTemplateId('')}
-                      />
+                      {/* Channel chips (only for SMS/WhatsApp actions) */}
+                      {(action === 'SEND_SMS' || action === 'CREATE_WHATSAPP_TASK') && (
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Channel</label>
+                          <div className="flex gap-2">
+                            {(['WHATSAPP', 'SMS'] as const).map((ch) => (
+                              <button
+                                key={ch}
+                                type="button"
+                                onClick={() => { setChannel(ch); setTemplateId(''); }}
+                                className={cn(
+                                  'flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border-2 transition-all',
+                                  channel === ch
+                                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                                    : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300',
+                                )}
+                              >
+                                {ch === 'WHATSAPP' ? 'WhatsApp' : 'SMS'}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
-                      {channelTemplates.length === 0 && (
+                      {/* Template picker */}
+                      {(action === 'SEND_SMS' || action === 'CREATE_WHATSAPP_TASK') && (
+                        <EnhancedSingleSelect
+                          label="Message template"
+                          placeholder={channelTemplates.length > 0 ? 'Select a template…' : `No ${channel === 'WHATSAPP' ? 'WhatsApp' : 'SMS'} templates yet`}
+                          options={templateOptions}
+                          value={templateId || null}
+                          onChange={setTemplateId}
+                          onClear={() => setTemplateId('')}
+                        />
+                      )}
+
+                      {channelTemplates.length === 0 && (action === 'SEND_SMS' || action === 'CREATE_WHATSAPP_TASK') && (
                         <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200">
                           <p className="text-xs font-bold text-amber-700">
                             No {channel === 'WHATSAPP' ? 'WhatsApp' : 'SMS'} templates yet. Create one in <strong>Manage Templates</strong> first.
@@ -455,11 +384,6 @@ export default function RuleWizardModal({ isOpen, onClose, onSave, rule, templat
                             </span>
                           </div>
                           <p className="text-sm font-medium text-slate-700 leading-relaxed whitespace-pre-wrap">{selectedTemplate.body}</p>
-                          {selectedTemplate.variables.length > 0 && (
-                            <p className="text-[11px] text-slate-400 mt-2">
-                              Variables: {selectedTemplate.variables.map((v) => `{{${v.token}}}`).join(', ')}
-                            </p>
-                          )}
                         </motion.div>
                       )}
                     </div>
@@ -471,11 +395,11 @@ export default function RuleWizardModal({ isOpen, onClose, onSave, rule, templat
                       <div className="flex items-center gap-3 p-4 rounded-2xl bg-indigo-50 border border-indigo-100">
                         <div className="flex items-center gap-2">
                           <span className="px-2.5 py-1 rounded-lg bg-white border border-indigo-200 text-[10px] font-bold text-indigo-600 uppercase">
-                            {TRIGGER_LABELS[triggerType]}
+                            {AUTOMATION_TRIGGER_LABELS[trigger]}
                           </span>
                           <span className="text-xs font-bold text-slate-500">→</span>
                           <span className="px-2.5 py-1 rounded-lg bg-white border border-indigo-200 text-[10px] font-bold text-indigo-600 uppercase">
-                            Send {channel === 'WHATSAPP' ? 'WhatsApp' : 'SMS'}
+                            {action === 'SEND_SMS' ? 'Send SMS' : action === 'CREATE_WHATSAPP_TASK' ? 'WhatsApp Task' : action === 'STOP_LEAD_MESSAGES' ? 'Stop Messages' : 'Start Journey'}
                           </span>
                         </div>
                       </div>
@@ -487,11 +411,6 @@ export default function RuleWizardModal({ isOpen, onClose, onSave, rule, templat
                           icon={<Zap className="w-4 h-4 text-indigo-500" />}
                           label="Name"
                           value={name}
-                        />
-                        <SummaryRow
-                          icon={<Target className="w-4 h-4 text-blue-500" />}
-                          label="Target"
-                          value={target === 'LEAD' ? 'Lead Nurture' : 'Customer Journey'}
                         />
                         <SummaryRow
                           icon={<Zap className="w-4 h-4 text-amber-500" />}
