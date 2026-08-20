@@ -24,6 +24,7 @@ import {
   Sparkles,
   ArrowUpDown,
   Smartphone,
+  MessageSquare,
   Calendar,
   Layers,
   FileSpreadsheet,
@@ -716,6 +717,9 @@ export default function HarvestContactsPage() {
                       <th className="p-4 font-bold text-slate-600 text-xs uppercase tracking-wider">Contact Person</th>
                       <th className="p-4 font-bold text-slate-600 text-xs uppercase tracking-wider">Added By (User)</th>
                       <th className="p-4 font-bold text-slate-600 text-xs uppercase tracking-wider">Status</th>
+                      <th className="p-4 font-bold text-slate-600 text-xs uppercase tracking-wider">WhatsApp</th>
+                      <th className="p-4 font-bold text-slate-600 text-xs uppercase tracking-wider">SMS</th>
+                      <th className="p-4 font-bold text-slate-600 text-xs uppercase tracking-wider">Last Contact</th>
                       <th className="p-4 font-bold text-slate-600 text-xs uppercase tracking-wider">Date Added</th>
                       <th className="p-4 pr-6 font-bold text-slate-600 text-xs uppercase tracking-wider text-right">Actions</th>
                     </tr>
@@ -838,6 +842,44 @@ export default function HarvestContactsPage() {
                               )}
                               {lead.status}
                             </span>
+                          </td>
+
+                          {/* WhatsApp */}
+                          <td className="p-4">
+                            {lead.phone && formatWhatsAppUrl(lead.phone) ? (
+                              <a
+                                href={formatWhatsAppUrl(lead.phone)!}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors"
+                              >
+                                <MessageSquare className="w-3 h-3" />
+                                Open WA
+                              </a>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 font-medium">—</span>
+                            )}
+                          </td>
+
+                          {/* SMS */}
+                          <td className="p-4">
+                            {lead.phone ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
+                                <Smartphone className="w-3 h-3" />
+                                {lead.phone}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 font-medium">—</span>
+                            )}
+                          </td>
+
+                          {/* Last Contact */}
+                          <td className="p-4 text-xs text-slate-500 font-medium whitespace-nowrap">
+                            {(lead as any).lastContactedAt
+                              ? new Date((lead as any).lastContactedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                              : <span className="text-slate-400 italic">Never</span>
+                            }
                           </td>
 
                           {/* Date */}

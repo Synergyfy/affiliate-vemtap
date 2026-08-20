@@ -20,6 +20,11 @@ import {
 import { cn } from '@/lib/utils';
 import LeadQualityBadge from '@/components/sales/LeadQualityBadge';
 import SalesPipelineProgress from '@/components/sales/SalesPipelineProgress';
+import ContactCommunicationSummary from '@/components/communication/ContactCommunicationSummary';
+import MessageHistoryTimeline from '@/components/communication/MessageHistoryTimeline';
+import SubscriptionOverrideBanner from '@/components/communication/SubscriptionOverrideBanner';
+import { useLeadCommunication } from '@/services/useCommunicationHooks';
+import { Loader2 } from 'lucide-react';
 import { 
   SalesPipelineEntry, 
   PIPELINE_STAGES, 
@@ -34,6 +39,7 @@ interface LeadDetailsDrawerProps {
 }
 
 export default function LeadDetailsDrawer({ isOpen, onClose, lead, onEdit }: LeadDetailsDrawerProps) {
+  const { data: leadCommunication } = useLeadCommunication(lead?.id);
   if (!lead) return null;
 
   const getNextAction = (stage: SalesPipelineStage) => {
@@ -188,6 +194,26 @@ export default function LeadDetailsDrawer({ isOpen, onClose, lead, onEdit }: Lea
                         </p>
                       </div>
                     </div>
+                  </div>
+                </section>
+
+                <section>
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 px-2">Communication & Follow-up</h3>
+                  <div className="space-y-4">
+                    <SubscriptionOverrideBanner status={lead.pipelineStage || lead.status} />
+                    {leadCommunication ? (
+                      <>
+                        <ContactCommunicationSummary data={leadCommunication} />
+                        <div className="bg-white border border-slate-100 rounded-[32px] p-5 shadow-sm">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">History</p>
+                          <MessageHistoryTimeline history={leadCommunication.history} />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="w-5 h-5 animate-spin text-slate-300" />
+                      </div>
+                    )}
                   </div>
                 </section>
 
