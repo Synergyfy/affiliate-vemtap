@@ -5,12 +5,15 @@ import { UpdateBusinessDto } from './dto/update-business.dto';
 import { BusinessFilterDto } from './dto/business-filter.dto';
 import { Prisma, BusinessStatus } from '@prisma/client';
 import { ResendService } from '../otp/resend.service';
+import { EngineService } from '../communication/engine/engine.service';
+import { phoneSearchTail } from '../communication/common/communication.constants';
 
 @Injectable()
 export class BusinessesService {
   constructor(
     private prisma: PrismaService,
     private readonly resendService: ResendService,
+    private readonly engineService: EngineService,
   ) {}
 
   async findAll(userId: string, filters: BusinessFilterDto) {
@@ -168,7 +171,36 @@ export class BusinessesService {
       await this.generateCommissions(business);
     }
 
+    // Notify the Communication Engine so journey state is updated and the
+    // subscription override (stop lead messages + welcome) runs immediately.
+    await this.notifyCommunicationEngine(updatedBusiness);
+
     return updatedBusiness;
+  }
+
+  private async notifyCommunicationEngine(business: {
+    id: string;
+    phone: string;
+    status: BusinessStatus;
+  }) {
+    try {
+      const tail = phoneSearchTail(business.phone);
+      if (!tail) return;
+      const lead = await this.prisma.lead.findFirst({
+        where: { deletedAt: null, isPlaceholder: false, phone: { contains: tail } },
+        select: { id: true },
+      });
+      if (!lead) return;
+
+      if (business.status === 'ACTIVE') {
+        await this.engineService.onSubscribed(lead.id);
+      } else {
+        await this.engineService.onLeadStatusChanged(lead.id);
+      }
+    } catch (error) {
+      // Communication engine must never break the business status update.
+      // Errors are swallowed and logged via the engine's own logger.
+    }
   }
 
   async sendReminder(id: string, userId: string) {

@@ -143,3 +143,79 @@ This file tracks what is built, what is in progress, and what is planned. Update
 | Swagger docs | ✅ | `/docs` endpoint |
 | CORS configured | ✅ | Supports credentials |
 | Global validation pipe | ✅ | whitelist + transform |
+
+---
+
+## Communication & Follow-up System
+
+| Feature | Status | Notes |
+|---|---|---|
+| Prisma models (templates, campaigns, rules, messages, settings) | ✅ | Migration `20260819220219_add_communication_system` |
+| Lead journey state denormalized fields | ✅ | Migration `20260819221101_add_lead_journey_state` |
+| Message templates (CRUD, activate/deactivate/archive) | ✅ | `GET/POST /communication/templates` |
+| SMS 160-char enforcement (after variable substitution) | ✅ | Templates + send path |
+| Audience selection (status/salesperson/location/date) | ✅ | `GET /communication/audience/preview`, `/contacts` |
+| WhatsApp assisted-send queue (deep link + mark-as-sent) | ✅ | `GET /communication/whatsapp/queue`, `POST .../mark-sent` |
+| SMS provider abstraction + disabled no-op provider | ✅ | Pluggable `SmsProvider` interface |
+| SMS send / schedule / retry | ✅ | `POST /communication/messages`, `POST /communication/sms/:id/retry` |
+| Automation rules (trigger/wait/action) | ✅ | CRUD `/communication/rules` |
+| Automation engine cron | ✅ | `EngineProcessor` (due SMS, still-interested, expiry, reconcile) |
+| Subscription override (stop lead messages + welcome) | ✅ | `EngineService.onSubscribed` |
+| Customer journey (welcome / tips / expiry) | ✅ | Rules with BEFORE_EXPIRY / AFTER_EXPIRY |
+| Not-interested policy (NO_MESSAGES / RE_ENGAGEMENT) | ✅ | `CommunicationSettings.notInterestedPolicy` |
+| Campaigns (audience fan-out + activate/pause) | ✅ | `GET/POST /communication/campaigns` |
+| Communication settings (frequency limits, SMS toggle) | ✅ | `GET/PATCH /communication/settings` |
+| Contact communication history + summary | ✅ | `GET /communication/messages/contacts/:leadId` |
+| Sales team today's follow-ups | ✅ | `GET /communication/sales/today` |
+| Admin overview + performance reporting | ✅ | `GET /communication/overview`, `/reporting` |
+| Cross-module hooks (businesses/sales/leads → engine) | ✅ | Subscribed/status changes notify engine immediately |
+| Unit tests (communication) | ✅ | 7 spec files, all passing |
+| E2E tests (communication flow) | ✅ | `test/communication.e2e-spec.ts`, 5 tests passing (incl. IDOR) |
+
+### Code Review Hardening
+
+| Fix | Status | Notes |
+|---|---|---|
+| Centralized SMS dispatch (automation/welcome/campaign now actually send) | ✅ | `createMessages` dispatches immediate SMS synchronously; cron handles SCHEDULED |
+| Configurable welcome channel + body | ✅ | Migration `20260819230036_add_welcome_channel_to_comm_settings` (`welcomeChannel`/`welcomeBody` on settings) |
+| WhatsApp queue scoped to owner (salespeople own leads, admins global) | ✅ | `getQueue(user, ...)` |
+| IDOR protection on messages/contact-profile/audience reads | ✅ | Non-admins scoped to own leads; 403 on cross-user access |
+| Dedup interested-trigger (`ruleId + leadId`) | ✅ | Mirrors cron dedup |
+| Correct `EXPIRED`/`LOST_CLOSED` audience filters | ✅ | `LOST_CLOSED` via pipeline exit state; `EXPIRED` matches nothing (business-level) |
+| `BEFORE_EXPIRY` excludes EXPIRED/CANCELLED | ✅ | Only TRIAL businesses get renewal reminders |
+| Redis distributed lock on engine crons | ✅ | `withLock` guard prevents cross-replica double-dispatch |
+
+### Tech-Lead Review Remediation (2026-08-20)
+
+| Fix | Status | Notes |
+|---|---|---|
+| `LEAD_CREATED` trigger wired | ✅ | `onLeadStatusChanged` fires immediate `LEAD_CREATED` rules; delayed ones handled by new `evaluateLeadCreated` cron. Was dead code before. |
+| Multi-waitDays rule dispatch bug | ✅ | Crons now call `evaluateRule(rule, lead)` instead of re-running every rule of the trigger — prevents premature dispatch of longer-wait rules. |
+| Subscription override ordering | ✅ | Welcome created before `BECAME_SUBSCRIBED` rule eval; cancellation is type-aware (`WELCOME`/`CUSTOMER_JOURNEY` protected) so the welcome can't self-cancel. |
+| `markAsSent` IDOR | ✅ | Ownership enforced for non-admins (403 on other agents' messages); `createdById` column added and separated from `sentById` (migration `20260820000000_add_communication_created_by_and_lead_business_fk`). |
+| Per-lead SMS length handling | ✅ | Bulk audience dispatch skips over-length renders instead of aborting the batch; explicit single sends still return 400. |
+| Lead↔Business linkage | ✅ | `Lead.businessId` FK added; engine persists/uses the link and falls back to phone matching; nightly backfill cron reconciles unmapped leads. |
+| Sales roles can start WhatsApp follow-ups | ✅ | `POST /communication/messages` open to sales roles for WhatsApp; SMS remains admin-only; audience/explicit-lead targets scoped to own/team leads. |
+| Supervisor/Manager team scope | ✅ | Audience, WhatsApp queue, message history and sales-view resolve team member ids via `supervisedUsers`/`managedUsers`. |
+| Campaign window respect | ✅ | WhatsApp scheduled to campaign `startAt` (flipped to PENDING by cron); campaigns past `endAt` are not fanned out. |
+| Daily SMS cap handling | ✅ | Cron skips dispatch when the cap is reached instead of hot-retrying every minute; messages stay SCHEDULED for next day. |
+| Starter templates seeded | ✅ | Idempotent seeding on module init; automation rules intentionally not auto-created (admin-driven, avoids surprise SMS cost). |
+
+### Tech-Lead Review Remediation Round 2 (2026-08-20)
+
+| Fix | Status | Notes |
+|---|---|---|
+| Audience status filter uses full per-status clause | ✅ | `buildWhereClause` ORs the full journey clause (status + OR + pipeline guards) — FOLLOW_UP_REQUIRED / LOST_CLOSED / EXPIRED now filter correctly instead of collapsing to a bare/empty `status` (was returning every lead). |
+| Win-back (AFTER_EXPIRY) sends to subscribed-then-expired leads | ✅ | `resolveJourneyState` now resolves EXPIRED/CANCELLED before SUBSCRIBED; `CUSTOMER_JOURNEY_TRIGGERS` (BECAME_SUBSCRIBED / BECAME_NOT_INTERESTED / BEFORE_EXPIRY / AFTER_EXPIRY) bypass the lead-nurture terminal-state block and produce CUSTOMER_JOURNEY messages. |
+| BEFORE_EXPIRY waitDays=0 semantics | ✅ | `waitDays=0` now means "expiring today" instead of matching the exact minute. |
+| Re-engagement delay wired | ✅ | New `evaluateNotInterestedReEngagement` cron dispatches delayed BECAME_NOT_INTERESTED rules; `reEngagementDelayDays` + per-rule `waitDays` now usable. |
+| SMS provider fault tolerance | ✅ | `provider.send` wrapped in try/catch → FAILED with the error; never aborts a batch or strands a message in PENDING. |
+| FOLLOW_UP_REQUIRED reachable via sales pipeline | ✅ | `scheduleFollowUp` mirrors `nextFollowUpAt` onto the linked Lead so the journey reflects scheduled follow-ups. |
+| Campaign double-activation guard + dedup | ✅ | Re-activating an ACTIVE campaign is a no-op; `campaignId+leadId+channel` dedup prevents duplicates. |
+| Expiry cron uses businessId link | ✅ | Lead looked up via `businessId` first (phone fallback) + ordered (`createdAt asc`) to avoid starving older businesses. |
+| Idempotent welcome | ✅ | Only one live WELCOME message per lead (PENDING/SCHEDULED/SENT) — concurrent hooks/cron can't double-send. |
+| LEAD_CREATED nurture-only | ✅ | Immediate LEAD_CREATED rules fire only for LEAD_NURTURE_STATES; expired/lost leads never get "new contact" messages. |
+| Empty message body rejected | ✅ | `SendMessageDto.body` now `@IsNotEmpty`. |
+| Campaign count accuracy | ✅ | `eligibleContacts` reflects actual created messages, not raw lead matches. |
+| Pre-existing lint blockers fixed | ✅ | Unused destructured vars in `market-mapping.service.ts` removed — `pnpm lint` now clean. |
+| New unit tests | ✅ | 13 new tests: audience filters, team scope, win-back exemption, nurture terminal-block, EXPIRED ordering, welcome idempotency. |
