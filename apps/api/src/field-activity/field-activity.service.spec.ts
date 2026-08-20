@@ -5,6 +5,7 @@ import {
   FieldActivityService,
 } from "./field-activity.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { EngineService } from "../communication/engine/engine.service";
 
 describe("mapVisitOutcomeToLeadStatus", () => {
   it("maps engaged outcomes to the matching Lead pipeline status", () => {
@@ -66,6 +67,7 @@ describe("FieldActivityService.completeVisit", () => {
       providers: [
         FieldActivityService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: EngineService, useValue: { onLeadStatusChanged: jest.fn().mockResolvedValue(undefined) } },
       ],
     }).compile();
 

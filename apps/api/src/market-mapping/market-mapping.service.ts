@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from "@nes
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { normalizeLeadStatus } from "../common/lead.constants";
+import { EngineService } from "../communication/engine/engine.service";
 import {
   CreateMissionPlanDto,
   UpdateMissionPlanDto,
@@ -23,7 +24,19 @@ type LeadWithUser = Prisma.LeadGetPayload<{
 export class MarketMappingService {
   private readonly logger = new Logger(MarketMappingService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly engineService: EngineService,
+  ) {}
+
+  private async notifyEngine(leadId: string) {
+    try {
+      await this.engineService.onLeadStatusChanged(leadId);
+    } catch (error) {
+      // Communication must never break market-mapping capture.
+      this.logger.error(`Communication engine notification failed for lead ${leadId}`, error);
+    }
+  }
 
   private async fetchVemtapPlanTypes(): Promise<{ value: string; label: string }[] | null> {
     const vemtapUrl = process.env.VEMTAP_API_URL || process.env.VEMTAP_BASE_URL;
@@ -244,6 +257,7 @@ export class MarketMappingService {
         visitedAt: status !== "NOT_YET" ? new Date() : undefined,
       },
     });
+    await this.notifyEngine(lead.id);
     return { ...lead, visited: lead.visitedAt != null };
   }
 
@@ -263,6 +277,7 @@ export class MarketMappingService {
         visitedAt: becameVisited ? new Date() : undefined,
       },
     });
+    await this.notifyEngine(id);
     return { ...updated, visited: updated.visitedAt != null };
   }
 
@@ -635,7 +650,7 @@ export class MarketMappingService {
       }
     }
 
-    const [leads, businesses, notes, visits, user, adminConfig, plans, assignments] = await Promise.all([
+    const [leads, businesses, notes, visits, adminConfig, assignments] = await Promise.all([
       this.prisma.lead.findMany({ where: { userId, deletedAt: null, isPlaceholder: false, createdAt: { gte: ledgerStart } }, orderBy: { createdAt: "desc" } }),
       this.prisma.business.findMany({
         where: {
@@ -648,11 +663,7 @@ export class MarketMappingService {
       }),
       this.prisma.marketMappingNote.findMany({ where: { userId, createdAt: { gte: ledgerStart } }, orderBy: { createdAt: "desc" } }),
       this.prisma.lead.findMany({ where: { userId, deletedAt: null, isPlaceholder: false, visitedAt: { gte: ledgerStart } }, orderBy: { visitedAt: "desc" } }),
-      this.prisma.user.findUnique({ where: { id: userId }, select: { dailyLeadTarget: true, monthlyConversionTarget: true } }),
       this.getAdminConfig(),
-      this.prisma.marketMappingPlan.findMany({
-        where: { userId, OR: [{ startDate: { gte: ledgerStart } }, { endDate: { gte: ledgerStart } }] },
-      }),
       this.prisma.marketMappingAssignment.findMany({
         where: {
           userId,

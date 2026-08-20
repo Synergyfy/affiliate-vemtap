@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StartVisitPayloadDto, CompleteVisitPayloadDto, TransitionExplanationDto } from './dto/field-activity.dto';
 import { FieldTimelineEventType, TransitionStatus, VisitTransition } from '@prisma/client';
 import { haversineDistance } from '../performance/lead-quality.util';
+import { EngineService } from '../communication/engine/engine.service';
 
 /**
  * Maps a field-work visit outcome to a valid Lead pipeline status. Field
@@ -54,7 +55,10 @@ export function shouldApplyFieldLeadStatus(
 export class FieldActivityService {
   private readonly logger = new Logger(FieldActivityService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly engineService: EngineService,
+  ) {}
 
   async getActiveMission(userId: string) {
     const today = new Date();
@@ -350,8 +354,9 @@ export class FieldActivityService {
       }
     }
 
-    const { transitionRecord } = await this.prisma.$transaction(async (tx) => {
+    const { transitionRecord, affectedLeadId } = await this.prisma.$transaction(async (tx) => {
       let transitionRecord: VisitTransition | null = null;
+      let affectedLeadId: string | null = null;
 
       if (targetBusiness) {
         await tx.fieldMissionBusiness.update({
@@ -367,6 +372,8 @@ export class FieldActivityService {
         )
           ? leadStatus
           : leadRecord.status;
+
+        affectedLeadId = leadRecord.id;
 
         await tx.lead.update({
           where: { id: leadRecord.id },
@@ -432,6 +439,8 @@ export class FieldActivityService {
                 comments: dto.visitNotes || null,
               },
             });
+
+        affectedLeadId = created.id;
 
         // Backfill the mission business -> lead link for the new capture
         if (targetBusiness) {
@@ -499,8 +508,22 @@ export class FieldActivityService {
         });
       }
 
-      return { transitionRecord };
+      return { transitionRecord, affectedLeadId };
     });
+
+    // Notify the Communication Engine so journey state + automation rules run
+    // for the captured/updated lead (e.g. a new interested lead gets an
+    // immediate follow-up task).
+    if (affectedLeadId) {
+      try {
+        await this.engineService.onLeadStatusChanged(affectedLeadId);
+      } catch (error) {
+        this.logger.error(
+          `Communication engine notification failed for lead ${affectedLeadId}`,
+          error,
+        );
+      }
+    }
 
     return {
       visitId: dto.visitId,

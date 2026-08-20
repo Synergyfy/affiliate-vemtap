@@ -45,6 +45,7 @@ import { AnomaliesModule } from './anomalies/anomalies.module';
 
 import { FieldActivityModule } from './field-activity/field-activity.module';
 import { SalesModule } from './sales/sales.module';
+import { CommunicationModule } from './communication/communication.module';
 
 @Module({
   imports: [
@@ -91,6 +92,7 @@ import { SalesModule } from './sales/sales.module';
     AnomaliesModule,
     FieldActivityModule,
     SalesModule,
+    CommunicationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
