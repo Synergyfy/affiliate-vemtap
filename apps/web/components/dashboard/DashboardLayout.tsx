@@ -22,7 +22,8 @@ import {
   Home,
   CheckSquare,
   FileText,
-  Map
+  Map,
+  MessageCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createContext, useContext } from 'react';
@@ -63,6 +64,7 @@ const sidebarItems = [
   { name: 'Wallet', icon: Wallet, href: '/dashboard/wallet' },
   { name: 'Sales Academy', icon: BookOpen, href: '/dashboard/training' },
   { name: 'Sales Work', icon: CheckSquare, href: '/dashboard/sales-work', showTo: ['AFFILIATE', 'AGENT'] },
+  { name: 'Follow-ups', icon: MessageCircle, href: '/dashboard/communication' },
   { name: 'Profile', icon: User, href: '/dashboard/profile' },
 ];
 

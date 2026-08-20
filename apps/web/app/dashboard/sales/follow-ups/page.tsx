@@ -3,7 +3,7 @@
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { useSalesFollowUps } from '@/services/useSalesPipeline';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Phone, MessageSquare, CheckCircle2, Clock, AlertCircle, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Phone, MessageSquare, CheckCircle2, Clock, AlertCircle, RefreshCw, MessageSquareText } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
@@ -39,7 +39,7 @@ export default function SalesFollowUpsPage() {
             >
               <ArrowLeft className="w-5 h-5" />
             </Link>
-            <div>
+            <div className="flex-1">
               <h1 className="text-xl font-black text-slate-900 flex items-center gap-2">
                 <Clock className="w-5 h-5 text-orange-600" />
                 Follow-ups
@@ -48,6 +48,13 @@ export default function SalesFollowUpsPage() {
                 {allFollowUps.length} follow-up{allFollowUps.length !== 1 ? 's' : ''} due today
               </p>
             </div>
+            <Link
+              href="/dashboard/communication"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-bold text-sky-600 bg-sky-50 border border-sky-200 hover:bg-sky-100 transition-colors"
+            >
+              <MessageSquareText className="w-3.5 h-3.5" />
+              Communication
+            </Link>
           </div>
         </div>
 

@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api } from '@/lib/api-client';
+import { isAdminMockEnabled } from '@/lib/admin-mock';
 
 interface User {
   id: string;
@@ -56,6 +57,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const checkAuth = async () => {
+      // Mock mode is fully self-contained: restore the session from storage
+      // instead of hitting /auth/me (there may be no backend to validate against).
+      if (isAdminMockEnabled()) {
+        const saved = localStorage.getItem('vemtap_user');
+        if (saved) {
+          try {
+            const cached = JSON.parse(saved);
+            setUser(cached);
+            setIsAuthenticated(true);
+          } catch {
+            /* corrupted cache — leave unauthenticated */
+          }
+        }
+        setIsLoading(false);
+        return;
+      }
       try {
         const response = await api.get<{ user: User }>('/auth/me');
         const currentUser = response.user;
@@ -74,6 +91,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     api.setUnauthorizedCallback(() => {
+      // Never destroy a mock session — there is no real backend to trust anyway.
+      if (isAdminMockEnabled()) return;
       setUser(null);
       setIsAuthenticated(false);
       localStorage.removeItem('vemtap_user');
@@ -87,7 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     setError(null);
     try {
-      if (process.env.NEXT_PUBLIC_ADMIN_MOCK === 'true') {
+      if (isAdminMockEnabled()) {
         const isAffiliate = email.toLowerCase().includes('affiliate') || email.toLowerCase().includes('dashboard') || email.toLowerCase() === 'test@vemtap.com';
         const isSupervisor = email.toLowerCase().includes('supervisor');
         const isManager = email.toLowerCase().includes('manager');
@@ -110,19 +129,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           totalEarnings: 1500000,
         };
         
-        // Try real login first if backend is running, otherwise use mock user
-        try {
-          const response = await api.post('/auth/login', { email, password });
-          if (response?.user) {
-            setUser(response.user);
-            setIsAuthenticated(true);
-            localStorage.setItem('vemtap_user', JSON.stringify(response.user));
-            return response.user;
-          }
-        } catch (apiErr) {
-          console.warn('Backend API unavailable. Falling back to mock admin login mode.', apiErr);
-        }
-
         const MOCK_TOKEN = isSalesExecutive
           ? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiU0FMRVNfRVhFQ1VUSVZFIiwiaWF0IjoxNjAwMDAwMDAwfQ.signature"
           : isAffiliate 
@@ -134,6 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           : "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiU1VQRVJfQURNSU4iLCJpYXQiOjE2MDAwMDAwMDB9.signature";
         setUser(mockAdminUser);
         setIsAuthenticated(true);
+        setIsLoading(false);
         localStorage.setItem('vemtap_user', JSON.stringify(mockAdminUser));
         if (typeof window !== 'undefined') {
           document.cookie = "vemtap_logged_out=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
@@ -191,7 +198,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await api.post('/auth/logout');
+      if (!isAdminMockEnabled()) {
+        await api.post('/auth/logout');
+      }
     } catch (err) {
       console.error('Logout error:', err);
     } finally {

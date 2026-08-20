@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { isAdminMockEnabled } from '@/lib/admin-mock';
 
 const API_BASE_URL = typeof window !== 'undefined' 
   ? '/api' 
@@ -33,9 +34,10 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Handle 401 Unauthorized - Attempt silent refresh
+    // Handle 401 Unauthorized - Attempt silent refresh (skip in mock mode)
     if (
-      error.response?.status === 401 && 
+      !isAdminMockEnabled() &&
+      error.response?.status === 401 &&
       !originalRequest.url?.includes('/auth/login') && 
       !originalRequest.url?.includes('/auth/refresh') &&
       !originalRequest._retry
