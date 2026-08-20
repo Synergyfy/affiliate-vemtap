@@ -2,6 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { MarketMappingService } from "./market-mapping.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { EngineService } from "../communication/engine/engine.service";
 
 describe("MarketMappingService", () => {
   let service: MarketMappingService;
@@ -63,6 +64,7 @@ describe("MarketMappingService", () => {
       providers: [
         MarketMappingService,
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: EngineService, useValue: { onLeadStatusChanged: jest.fn().mockResolvedValue(undefined) } },
       ],
     }).compile();
 

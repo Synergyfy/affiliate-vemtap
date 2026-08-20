@@ -19,10 +19,23 @@ import {
   SalesFollowUpStatus,
   SalesDemoStatus,
 } from '@prisma/client';
+import { EngineService } from '../communication/engine/engine.service';
 
 @Injectable()
 export class SalesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly engineService: EngineService,
+  ) {}
+
+  private async notifyEngine(leadId?: string | null) {
+    if (!leadId) return;
+    try {
+      await this.engineService.onLeadStatusChanged(leadId);
+    } catch (error) {
+      // Never let communication break the sales flow.
+    }
+  }
 
   async getPipeline(userId: string, filters?: SalesFilterDto) {
     const whereClause: any = { affiliateId: userId };
@@ -65,7 +78,7 @@ export class SalesService {
   }
 
   async createPipeline(userId: string, dto: CreateSalesPipelineDto) {
-    const entry = await this.prisma.$transaction(async (tx) => {
+    const { created, leadId } = await this.prisma.$transaction(async (tx) => {
       // Every captured business is a lead in the unified Lead table
       const lead = await tx.lead.create({
         data: {
@@ -101,10 +114,12 @@ export class SalesService {
         },
       });
 
-      return created;
+      return { created, leadId: lead.id };
     });
 
-    return this.formatPipelineEntry(entry);
+    await this.notifyEngine(leadId);
+
+    return this.formatPipelineEntry(created);
   }
 
   async getLeadDetail(userId: string, leadId: string) {
@@ -200,6 +215,8 @@ export class SalesService {
       },
     });
 
+    await this.notifyEngine(entry.leadId);
+
     return this.formatPipelineEntry(updated);
   }
 
@@ -222,6 +239,8 @@ export class SalesService {
         leadQuality: quality,
       },
     });
+
+    await this.notifyEngine(entry.leadId);
 
     return this.formatPipelineEntry(updated);
   }
@@ -252,6 +271,15 @@ export class SalesService {
         followUpDate,
       },
     });
+
+    // Mirror the follow-up date onto the linked Lead so the communication
+    // engine's journey state can resolve FOLLOW_UP_REQUIRED.
+    if (entry.leadId) {
+      await this.prisma.lead.update({
+        where: { id: entry.leadId },
+        data: { nextFollowUpAt: followUpDate },
+      });
+    }
 
     return this.formatPipelineEntry(updated);
   }
@@ -335,6 +363,8 @@ export class SalesService {
         leadQuality: SalesLeadQuality.CONVERTED,
       },
     });
+
+    await this.notifyEngine(updated.leadId);
 
     return this.formatPipelineEntry(updated);
   }

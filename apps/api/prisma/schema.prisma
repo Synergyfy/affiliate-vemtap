@@ -9,121 +9,120 @@ datasource db {
 }
 
 model User {
-  id              String    @id @default(uuid())
-  email           String    @unique
-  phone           String    @unique
-  password        String
-  fullName        String
-  avatar          String?
-  
-  referralCode    String    @unique
+  id       String  @id @default(uuid())
+  email    String  @unique
+  phone    String  @unique
+  password String
+  fullName String
+  avatar   String?
+
+  referralCode    String   @unique
   referredBy      String?
   referrerId      String?
-  referrer        User?     @relation("Referrals", fields: [referrerId], references: [id])
-  referrals       User[]    @relation("Referrals")
+  referrer        User?    @relation("Referrals", fields: [referrerId], references: [id])
+  referrals       User[]   @relation("Referrals")
   supervisorId    String?
-  supervisor      User?     @relation("SupervisorMembers", fields: [supervisorId], references: [id], onDelete: SetNull)
-  supervisedUsers User[]    @relation("SupervisorMembers")
+  supervisor      User?    @relation("SupervisorMembers", fields: [supervisorId], references: [id], onDelete: SetNull)
+  supervisedUsers User[]   @relation("SupervisorMembers")
   managerId       String?
-  manager         User?     @relation("ManagedMembers", fields: [managerId], references: [id], onDelete: SetNull)
-  managedUsers    User[]    @relation("ManagedMembers")
-  workingDays     String[]  @default([])
-  
-  nin             String?
-  bvn             String?
-  bankName        String?
-  accountNumber   String?
-  accountName     String?
-  kycStatus       KycStatus @default(PENDING)
-  kycDocuments    Json?
-  
-  totalEarnings   Decimal   @default(0)
-  pendingEarnings Decimal   @default(0)
-  referralCount   Int       @default(0)
-  
-  role            Role      @default(AFFILIATE)
-  status          UserStatus @default(ACTIVE)
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  lastLoginAt     DateTime?
-  
-  businesses      Business[]
-  commissions     Commission[]
-  withdrawals     Withdrawal[]
-  transactions    Transaction[]
-  notifications   Notification[]
+  manager         User?    @relation("ManagedMembers", fields: [managerId], references: [id], onDelete: SetNull)
+  managedUsers    User[]   @relation("ManagedMembers")
+  workingDays     String[] @default([])
+
+  nin           String?
+  bvn           String?
+  bankName      String?
+  accountNumber String?
+  accountName   String?
+  kycStatus     KycStatus @default(PENDING)
+  kycDocuments  Json?
+
+  totalEarnings   Decimal @default(0)
+  pendingEarnings Decimal @default(0)
+  referralCount   Int     @default(0)
+
+  role   Role       @default(AFFILIATE)
+  status UserStatus @default(ACTIVE)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime?
+
+  businesses        Business[]
+  commissions       Commission[]
+  withdrawals       Withdrawal[]
+  transactions      Transaction[]
+  notifications     Notification[]
   pushSubscriptions PushSubscription[]
-  trainingProgress TrainingProgress[]
-  shortLinks      ShortLink[]
-  linkClicks      LinkClick[]
-  fraudAlerts     FraudAlert[] @relation("UserAlerts")
-  resolvedAlerts  FraudAlert[] @relation("ResolvedAlerts")
-  
-  assignedTasks   Task[]       @relation("AssignedTasks")
-  agentDemos      Demo[]       @relation("AgentDemos")
-  activities      Activity[]
-  workSessions    SalesWorkSession[]
+  trainingProgress  TrainingProgress[]
+  shortLinks        ShortLink[]
+  linkClicks        LinkClick[]
+  fraudAlerts       FraudAlert[]       @relation("UserAlerts")
+  resolvedAlerts    FraudAlert[]       @relation("ResolvedAlerts")
+
+  assignedTasks         Task[]                  @relation("AssignedTasks")
+  agentDemos            Demo[]                  @relation("AgentDemos")
+  activities            Activity[]
+  workSessions          SalesWorkSession[]
   businessStatusChanges BusinessStatusHistory[]
-  
-  tokenVersion    Int       @default(0)
-  paystackSubaccountId String?
+
+  tokenVersion          Int     @default(0)
+  paystackSubaccountId  String?
   paystackRecipientCode String?
-  
+
   managerQualificationExpiry DateTime?
 
+  hasClaimedAgentBonus    Boolean @default(false)
+  hasClaimedBusinessBonus Boolean @default(false)
 
-  hasClaimedAgentBonus      Boolean   @default(false)
-  hasClaimedBusinessBonus   Boolean   @default(false)
-  
-  signedAgreementVersion    Int?
-  signedAt                 DateTime?
-  lastLoginIp              String?
-  
-  tier            Tier      @default(BRONZE)
-  newEmail        String?
-  emailVerificationCode String?
+  signedAgreementVersion Int?
+  signedAt               DateTime?
+  lastLoginIp            String?
+
+  tier                    Tier      @default(BRONZE)
+  newEmail                String?
+  emailVerificationCode   String?
   emailVerificationExpiry DateTime?
 
-  dailyLeadTarget          Int       @default(0)
-  monthlyConversionTarget  Int       @default(0)
-  reportingScore           Decimal   @default(100)
-  attendanceRate           Decimal   @default(100)
-  territoryId              String?
-  agreementSignatures      AgreementSignature[]
+  dailyLeadTarget         Int                  @default(0)
+  monthlyConversionTarget Int                  @default(0)
+  reportingScore          Decimal              @default(100)
+  attendanceRate          Decimal              @default(100)
+  territoryId             String?
+  agreementSignatures     AgreementSignature[]
 
-  isTourCompleted          Boolean   @default(false)
-  isOnboardingCompleted    Boolean   @default(false)
-  driversLicense           String?
-  internationalPassport    String?
-  idType                   String?
+  isTourCompleted       Boolean @default(false)
+  isOnboardingCompleted Boolean @default(false)
+  driversLicense        String?
+  internationalPassport String?
+  idType                String?
 
-  basicSalary              Decimal   @default(0)
-  employmentType           String?
-  hiredAt                  DateTime?
-  expectedWorkStart        String?   @default("09:00")
-  currentPerformanceScore  Decimal   @default(0)
+  basicSalary             Decimal   @default(0)
+  employmentType          String?
+  hiredAt                 DateTime?
+  expectedWorkStart       String?   @default("09:00")
+  currentPerformanceScore Decimal   @default(0)
 
-  marketMappingPlans       MarketMappingPlan[]
-  leads                    Lead[]
-  marketMappingNotes       MarketMappingNote[]
-  targetAdjustmentLogs     TargetAdjustmentHistory[] @relation("ManagerAdjustments")
-  targetAdjustmentsReceived TargetAdjustmentHistory[] @relation("MemberAdjustments")
-  marketMappingAssignments MarketMappingAssignment[]
-  createdNotificationDrafts NotificationDraft[]
-  supportTickets            SupportTicket[]
+  marketMappingPlans         MarketMappingPlan[]
+  leads                      Lead[]
+  marketMappingNotes         MarketMappingNote[]
+  targetAdjustmentLogs       TargetAdjustmentHistory[] @relation("ManagerAdjustments")
+  targetAdjustmentsReceived  TargetAdjustmentHistory[] @relation("MemberAdjustments")
+  marketMappingAssignments   MarketMappingAssignment[]
+  createdNotificationDrafts  NotificationDraft[]
+  supportTickets             SupportTicket[]
   accountabilityWorkSessions WorkSession[]
-  exceptionReports          ExceptionReport[]
-  reviewedExceptions        ExceptionReport[] @relation("ExceptionReviewer")
-  performanceScores         PerformanceScore[]
-  activityAnomalies         ActivityAnomaly[]
+  exceptionReports           ExceptionReport[]
+  reviewedExceptions         ExceptionReport[]         @relation("ExceptionReviewer")
+  performanceScores          PerformanceScore[]
+  activityAnomalies          ActivityAnomaly[]
 
-  fieldMissions             FieldMission[]
-  timelineEvents            FieldActivityTimelineEvent[]
-  visitTransitions          VisitTransition[]
-  salesPipelines            SalesPipeline[]
-  salesFollowUps            SalesFollowUp[]
-  salesDemos                SalesDemo[]
+  fieldMissions    FieldMission[]
+  timelineEvents   FieldActivityTimelineEvent[]
+  visitTransitions VisitTransition[]
+  salesPipelines   SalesPipeline[]
+  salesFollowUps   SalesFollowUp[]
+  salesDemos       SalesDemo[]
 
   @@index([referralCode])
   @@index([referredBy])
@@ -163,42 +162,43 @@ enum KycStatus {
 }
 
 model Business {
-  id              String    @id @default(uuid())
-  
-  businessName    String
-  ownerName       String
-  email           String
-  phone           String
-  address         String?
-  businessType    String?
-  planType        PlanType @default(BASIC)
-  planName        String?   // Opaque plan name from Vemtap (dynamic, admin-defined)
-  planId          String?   // Opaque plan id from Vemtap (commission tiers key off this)
-  externalReference String? // Payment reference from Vemtap (unique per payment event)
+  id String @id @default(uuid())
+
+  businessName       String
+  ownerName          String
+  email              String
+  phone              String
+  address            String?
+  businessType       String?
+  planType           PlanType @default(BASIC)
+  planName           String? // Opaque plan name from Vemtap (dynamic, admin-defined)
+  planId             String? // Opaque plan id from Vemtap (commission tiers key off this)
+  externalReference  String? // Payment reference from Vemtap (unique per payment event)
   externalBusinessId String? // Vemtap's business UUID (links recurring payments to the same business)
-  
-  referralCode    String
-  affiliateId     String
-  affiliate       User       @relation(fields: [affiliateId], references: [id])
-  
+
+  referralCode String
+  affiliateId  String
+  affiliate    User   @relation(fields: [affiliateId], references: [id])
+
   subscriptionAmount Decimal
-  commissionRate     Decimal  @default(0.15)
-  commissionAmount   Decimal  @default(0)
-  
-  status          BusinessStatus @default(TRIAL)
-  trialEndsAt     DateTime?
-  paidAt          DateTime?
-  lastReminderAt  DateTime?
-  healthScore     Int      @default(100)
-  churnRisk       String   @default("LOW")
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
-  commissions     Commission[]
-  onboarding      Onboarding?
-  statusHistory   BusinessStatusHistory[]
-  
+  commissionRate     Decimal @default(0.15)
+  commissionAmount   Decimal @default(0)
+
+  status         BusinessStatus @default(TRIAL)
+  trialEndsAt    DateTime?
+  paidAt         DateTime?
+  lastReminderAt DateTime?
+  healthScore    Int            @default(100)
+  churnRisk      String         @default("LOW")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  commissions   Commission[]
+  onboarding    Onboarding?
+  statusHistory BusinessStatusHistory[]
+  leads         Lead[]
+
   @@index([affiliateId])
   @@index([referralCode])
   @@index([status])
@@ -222,26 +222,26 @@ enum BusinessStatus {
 }
 
 model Commission {
-  id              String    @id @default(uuid())
-  
-  userId          String
-  user            User       @relation(fields: [userId], references: [id])
-  
-  businessId      String?
-  business        Business?  @relation(fields: [businessId], references: [id])
-  
-  subAffiliateId  String?
-  
-  type            CommissionType
-  amount          Decimal
-  
-  status          CommissionStatus @default(PENDING)
-  paidAt          DateTime?
-  
-  description     String?
-  
-  createdAt       DateTime  @default(now())
-  
+  id String @id @default(uuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  businessId String?
+  business   Business? @relation(fields: [businessId], references: [id])
+
+  subAffiliateId String?
+
+  type   CommissionType
+  amount Decimal
+
+  status CommissionStatus @default(PENDING)
+  paidAt DateTime?
+
+  description String?
+
+  createdAt DateTime @default(now())
+
   @@index([userId])
   @@index([businessId])
   @@index([status])
@@ -262,32 +262,32 @@ enum CommissionStatus {
 }
 
 model Withdrawal {
-  id              String    @id @default(uuid())
-  
-  userId          String
-  user            User       @relation(fields: [userId], references: [id])
-  
-  amount          Decimal
-  fee             Decimal    @default(0)
-  netAmount       Decimal
-  
-  bankName        String
-  accountNumber   String
-  accountName     String
-  
+  id String @id @default(uuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  amount    Decimal
+  fee       Decimal @default(0)
+  netAmount Decimal
+
+  bankName      String
+  accountNumber String
+  accountName   String
+
   externalReference String? // Unique per-withdrawal key from Vemtap for idempotency
-  
-  status          WithdrawalStatus @default(PENDING)
-  adminNotes      String?
-  processedAt     DateTime?
-  processedBy     String?
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
-  bulkRunId       String?
-  bulkRun         BulkWithdrawalRun? @relation(fields: [bulkRunId], references: [id])
-  
+
+  status      WithdrawalStatus @default(PENDING)
+  adminNotes  String?
+  processedAt DateTime?
+  processedBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bulkRunId String?
+  bulkRun   BulkWithdrawalRun? @relation(fields: [bulkRunId], references: [id])
+
   @@index([userId])
   @@index([status])
   @@index([bulkRunId])
@@ -295,14 +295,14 @@ model Withdrawal {
 }
 
 model BulkWithdrawalRun {
-  id            String       @id @default(uuid())
-  adminId       String
-  totalAmount   Decimal
-  userCount     Int
-  status        String       @default("COMPLETED")
-  
-  createdAt     DateTime     @default(now())
-  withdrawals   Withdrawal[]
+  id          String  @id @default(uuid())
+  adminId     String
+  totalAmount Decimal
+  userCount   Int
+  status      String  @default("COMPLETED")
+
+  createdAt   DateTime     @default(now())
+  withdrawals Withdrawal[]
 }
 
 enum WithdrawalStatus {
@@ -314,20 +314,20 @@ enum WithdrawalStatus {
 }
 
 model Transaction {
-  id              String    @id @default(uuid())
-  
-  userId          String
-  user            User       @relation(fields: [userId], references: [id])
-  
-  type            TransactionType
-  amount          Decimal
-  balanceAfter    Decimal
-  description     String?
-  
-  reference       String    @unique
-  
-  createdAt       DateTime  @default(now())
-  
+  id String @id @default(uuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  type         TransactionType
+  amount       Decimal
+  balanceAfter Decimal
+  description  String?
+
+  reference String @unique
+
+  createdAt DateTime @default(now())
+
   @@index([userId])
   @@index([type])
 }
@@ -340,38 +340,38 @@ enum TransactionType {
 }
 
 model Notification {
-  id              String    @id @default(uuid())
-  
-  userId          String?
-  user            User?      @relation(fields: [userId], references: [id])
-  
-  type            NotificationType
-  title           String
-  message         String
-  
-  isRead          Boolean   @default(false)
-  readAt          DateTime?
-  
-  data            Json?
-  
-  createdAt       DateTime  @default(now())
-  
+  id String @id @default(uuid())
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  type    NotificationType
+  title   String
+  message String
+
+  isRead Boolean   @default(false)
+  readAt DateTime?
+
+  data Json?
+
+  createdAt DateTime @default(now())
+
   @@index([userId])
   @@index([isRead])
 }
 
 model PushSubscription {
-  id         String   @id @default(uuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   endpoint  String
   p256dh    String
   auth      String
   userAgent String?
 
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([endpoint])
   @@index([userId])
@@ -387,80 +387,80 @@ enum NotificationType {
 }
 
 model TrainingModule {
-  id              String    @id @default(uuid())
-  
-  title           String
-  description     String
-  content         String
-  videoUrl        String?
-  
-  order           Int
-  category        String
-  
-  isPublished     Boolean   @default(false)
-  
-  quizzes         Quiz[]
-  scenarios       Scenario[]
-  progress        TrainingProgress[]
-  
-  pdfUrl          String?
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id String @id @default(uuid())
+
+  title       String
+  description String
+  content     String
+  videoUrl    String?
+
+  order    Int
+  category String
+
+  isPublished Boolean @default(false)
+
+  quizzes   Quiz[]
+  scenarios Scenario[]
+  progress  TrainingProgress[]
+
+  pdfUrl String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Quiz {
-  id              String    @id @default(uuid())
-  
-  moduleId        String
-  module          TrainingModule @relation(fields: [moduleId], references: [id])
-  
-  question        String
-  options         Json
-  correctAnswer   Int
-  explanation     String?
-  
-  order           Int
-  
+  id String @id @default(uuid())
+
+  moduleId String
+  module   TrainingModule @relation(fields: [moduleId], references: [id])
+
+  question      String
+  options       Json
+  correctAnswer Int
+  explanation   String?
+
+  order Int
+
   @@index([moduleId])
 }
 
 model Scenario {
-  id              String    @id @default(uuid())
-  
-  moduleId        String
-  module          TrainingModule @relation(fields: [moduleId], references: [id])
-  
-  title           String
-  situation       String
-  objection       String
-  idealResponse   String
-  
-  options         Json?
+  id String @id @default(uuid())
+
+  moduleId String
+  module   TrainingModule @relation(fields: [moduleId], references: [id])
+
+  title         String
+  situation     String
+  objection     String
+  idealResponse String
+
+  options            Json?
   correctAnswerIndex Int?
-  
-  order           Int
-  
+
+  order Int
+
   @@index([moduleId])
 }
 
 model TrainingProgress {
-  id              String    @id @default(uuid())
-  
-  userId          String
-  user            User       @relation(fields: [userId], references: [id])
-  
-  moduleId        String
-  module          TrainingModule @relation(fields: [moduleId], references: [id])
-  
+  id String @id @default(uuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  moduleId String
+  module   TrainingModule @relation(fields: [moduleId], references: [id])
+
   status          ProgressStatus @default(NOT_STARTED)
   quizScore       Int?
   practiceResults Json?
   completedAt     DateTime?
-  
-  startedAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+
+  startedAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([userId, moduleId])
   @@index([userId])
   @@index([moduleId])
@@ -473,88 +473,88 @@ enum ProgressStatus {
 }
 
 model PlatformSettings {
-  id              String    @id @default(uuid())
-  
+  id String @id @default(uuid())
+
   directCommissionRate   Decimal @default(0.15)
   indirectCommissionRate Decimal @default(0.05)
-  
-  minWithdrawal           Decimal @default(5000)
-  withdrawalFee           Decimal @default(100)
-  
-  subAffiliateUnlockCount Int    @default(5)
-  
-  fraudThresholdScore     Int    @default(80)
-  
-  referralUnlockCount     Int    @default(0)
-  
-  earningDurationMonths   Int    @default(12)
-  
-  agreementTemplate       String?   @db.Text
-  agreementVersion        Int       @default(1)
-  
-  linkExpiryDays          Int       @default(30)
-  managerRewardDurationMonths Int    @default(12)
-  
-  maxIpUsage              Int       @default(2)
 
-  onboardingBonusAmount   Decimal   @default(2500)
+  minWithdrawal Decimal @default(5000)
+  withdrawalFee Decimal @default(100)
+
+  subAffiliateUnlockCount Int @default(5)
+
+  fraudThresholdScore Int @default(80)
+
+  referralUnlockCount Int @default(0)
+
+  earningDurationMonths Int @default(12)
+
+  agreementTemplate String? @db.Text
+  agreementVersion  Int     @default(1)
+
+  linkExpiryDays              Int @default(30)
+  managerRewardDurationMonths Int @default(12)
+
+  maxIpUsage Int @default(2)
+
+  onboardingBonusAmount Decimal @default(2500)
 
   // Promotion requirements
-  reqAgentActiveDays             Int      @default(90)
-  reqAgentActiveBusinesses       Int      @default(40)
-  reqAgentMinReportingScore      Decimal  @default(85.0)
-  reqAgentMinAttendanceRate      Decimal  @default(90.0)
-  reqAffiliateActiveAgents       Int      @default(30)
-  reqAffiliateNetworkBusinesses  Int      @default(100)
-  reqSupervisorActiveAgents      Int      @default(10)
-  reqSupervisorActiveSupervisors Int      @default(5)
-  reqSupervisorNetworkBusinesses Int      @default(100)
+  reqAgentActiveDays             Int     @default(90)
+  reqAgentActiveBusinesses       Int     @default(40)
+  reqAgentMinReportingScore      Decimal @default(85.0)
+  reqAgentMinAttendanceRate      Decimal @default(90.0)
+  reqAffiliateActiveAgents       Int     @default(30)
+  reqAffiliateNetworkBusinesses  Int     @default(100)
+  reqSupervisorActiveAgents      Int     @default(10)
+  reqSupervisorActiveSupervisors Int     @default(5)
+  reqSupervisorNetworkBusinesses Int     @default(100)
 
   // Recurring subscription commission configuration
-  recurringAgentCommission       Decimal  @default(5.0)
-  recurringAffiliateCommission   Decimal  @default(10.0)
-  recurringLineManagerCommission Decimal  @default(3.0)
-  recurringDurationMonths        Int      @default(12)
-  recurringYear2Rate             Decimal  @default(50.0)
+  recurringAgentCommission       Decimal @default(5.0)
+  recurringAffiliateCommission   Decimal @default(10.0)
+  recurringLineManagerCommission Decimal @default(3.0)
+  recurringDurationMonths        Int     @default(12)
+  recurringYear2Rate             Decimal @default(50.0)
 
   // Commission override rates
-  managerOverrideRate     Decimal @default(0.10)
-  supervisorOverrideRate  Decimal @default(0.05)
+  managerOverrideRate    Decimal @default(0.10)
+  supervisorOverrideRate Decimal @default(0.05)
 
   // Network milestone bonuses
-  agentMilestoneBonusAmount     Decimal @default(5000)
-  businessMilestoneBonusAmount  Decimal @default(10000)
+  agentMilestoneBonusAmount    Decimal @default(5000)
+  businessMilestoneBonusAmount Decimal @default(10000)
 
   // Fraud guard toggle
-  fraudGuardActive        Boolean @default(false)
+  fraudGuardActive Boolean @default(false)
 
   // Dynamic plan pricing/commission map, keyed by Vemtap planId.
   // e.g. { "plan_01HXYZ": { "price": 9999, "commissionRate": 0.15 } }
-  planPricingJson         Json?
+  planPricingJson Json?
 
-  updatedAt               DateTime @updatedAt
+  updatedAt DateTime @updatedAt
 }
 
 model FraudAlert {
-  id              String    @id @default(uuid())
-  
-  userId          String
-  user            User      @relation("UserAlerts", fields: [userId], references: [id], onDelete: Cascade)
-  
-  type            FraudType
-  severity        Severity
-  
-  description     String
-  evidence        Json?
-  
-  status          FraudStatus @default(OPEN)
-  resolvedAt      DateTime?
-  resolvedBy      String?
-  resolver        User?     @relation("ResolvedAlerts", fields: [resolvedBy], references: [id])
-  resolution      String?
-  
-  createdAt       DateTime  @default(now())
-  
+  id String @id @default(uuid())
+
+  userId String
+  user   User   @relation("UserAlerts", fields: [userId], references: [id], onDelete: Cascade)
+
+  type     FraudType
+  severity Severity
+
+  description String
+  evidence    Json?
+
+  status     FraudStatus @default(OPEN)
+  resolvedAt DateTime?
+  resolvedBy String?
+  resolver   User?       @relation("ResolvedAlerts", fields: [resolvedBy], references: [id])
+  resolution String?
+
+  createdAt DateTime @default(now())
+
   @@index([userId])
   @@index([status])
   @@index([severity])
@@ -584,23 +584,23 @@ enum FraudStatus {
 }
 
 model AuditLog {
-  id              String    @id @default(uuid())
-  
-  userId          String?
-  adminId         String?
-  
-  action          String
-  entity          String
-  entityId        String?
-  
-  oldValue        Json?
-  newValue        Json?
-  
-  ipAddress       String?
-  userAgent       String?
-  
-  createdAt       DateTime  @default(now())
-  
+  id String @id @default(uuid())
+
+  userId  String?
+  adminId String?
+
+  action   String
+  entity   String
+  entityId String?
+
+  oldValue Json?
+  newValue Json?
+
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
   @@index([userId])
   @@index([adminId])
   @@index([entity])
@@ -610,20 +610,20 @@ model AuditLog {
 // replays of the same Idempotency-Key or externalReference return the original
 // success response instead of creating duplicate records.
 model ExternalSyncLog {
-  id                String            @id @default(uuid())
+  id String @id @default(uuid())
 
   scope             ExternalSyncScope
-  idempotencyKey    String?           // Idempotency-Key header from Vemtap
-  externalReference String?           // Unique reference supplied by Vemtap
+  idempotencyKey    String? // Idempotency-Key header from Vemtap
+  externalReference String? // Unique reference supplied by Vemtap
 
-  status            ExternalSyncStatus @default(SUCCESS)
-  responseJson      Json?             // Original success response (for replay)
-  errorJson         Json?             // Failure details for reconciliation
+  status       ExternalSyncStatus @default(SUCCESS)
+  responseJson Json? // Original success response (for replay)
+  errorJson    Json? // Failure details for reconciliation
 
-  businessId        String?
-  withdrawalId      String?
+  businessId   String?
+  withdrawalId String?
 
-  createdAt         DateTime          @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([scope, idempotencyKey])
   @@unique([scope, externalReference])
@@ -643,21 +643,21 @@ enum ExternalSyncStatus {
 }
 
 model MarketingTool {
-  id              String    @id @default(uuid())
-  
-  title           String
-  description     String?
-  type            ToolType
-  category        String?   // e.g. "Social Media", "Email", "Banners"
-  
-  content         String    // URL for assets, or text for copy templates
-  previewUrl      String?   // Optional thumbnail
-  
-  isPublished     Boolean   @default(true)
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+  id String @id @default(uuid())
+
+  title       String
+  description String?
+  type        ToolType
+  category    String? // e.g. "Social Media", "Email", "Banners"
+
+  content    String // URL for assets, or text for copy templates
+  previewUrl String? // Optional thumbnail
+
+  isPublished Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([type])
   @@index([category])
 }
@@ -672,19 +672,19 @@ enum ToolType {
 }
 
 model ApiKey {
-  id          String    @id @default(uuid())
+  id String @id @default(uuid())
 
-  name        String                        // Human-readable label e.g. "Vemtap Production"
-  keyHash     String    @unique             // Bcrypt hash of the raw key
-  prefix      String                        // First 8 chars of key for display e.g. "vem_k1a2"
+  name    String // Human-readable label e.g. "Vemtap Production"
+  keyHash String @unique // Bcrypt hash of the raw key
+  prefix  String // First 8 chars of key for display e.g. "vem_k1a2"
 
-  createdById String                        // Admin user who generated the key
+  createdById String // Admin user who generated the key
 
-  isActive    Boolean   @default(true)
-  lastUsedAt  DateTime?
+  isActive   Boolean   @default(true)
+  lastUsedAt DateTime?
 
-  createdAt   DateTime  @default(now())
-  revokedAt   DateTime?
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
 
   @@index([keyHash])
   @@index([prefix])
@@ -692,33 +692,33 @@ model ApiKey {
 }
 
 model ShortLink {
-  id          String   @id @default(uuid())
-  code        String   @unique // e.g., "lo"
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id     String @id @default(uuid())
+  code   String @unique // e.g., "lo"
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([code])
 }
 
 model LinkClick {
-  id            String    @id @default(uuid())
-  
-  referralCode  String?   
-  shortLinkCode String?   
-  
-  userId        String?   // Attributed affiliate
-  user          User?      @relation(fields: [userId], references: [id])
+  id String @id @default(uuid())
 
-  ip            String?
-  userAgent     String?
-  referer       String?
-  isQrScan      Boolean   @default(false)
-  
-  createdAt     DateTime  @default(now())
+  referralCode  String?
+  shortLinkCode String?
+
+  userId String? // Attributed affiliate
+  user   User?   @relation(fields: [userId], references: [id])
+
+  ip        String?
+  userAgent String?
+  referer   String?
+  isQrScan  Boolean @default(false)
+
+  createdAt DateTime @default(now())
 
   @@index([referralCode])
   @@index([shortLinkCode])
@@ -733,18 +733,18 @@ enum Priority {
 }
 
 model Task {
-  id          String   @id @default(uuid())
+  id          String     @id @default(uuid())
   title       String
   description String?
-  priority    Priority @default(MEDIUM)
+  priority    Priority   @default(MEDIUM)
   status      TaskStatus @default(PENDING)
   dueDate     DateTime?
-  
+
   assignedToId String
-  assignedTo   User     @relation("AssignedTasks", fields: [assignedToId], references: [id])
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  assignedTo   User   @relation("AssignedTasks", fields: [assignedToId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([assignedToId])
   @@index([status])
@@ -758,22 +758,22 @@ enum TaskStatus {
 }
 
 model Demo {
-  id           String   @id @default(uuid())
+  id           String  @id @default(uuid())
   businessName String
   leadId       String?
-  lead         Lead?    @relation(fields: [leadId], references: [id])
-  
-  date         DateTime
-  status       DemoStatus @default(SCHEDULED)
-  
-  agentId      String
-  agent        User     @relation("AgentDemos", fields: [agentId], references: [id])
-  
-  meetingUrl   String?
-  notes        String?
-  
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  lead         Lead?   @relation(fields: [leadId], references: [id])
+
+  date   DateTime
+  status DemoStatus @default(SCHEDULED)
+
+  agentId String
+  agent   User   @relation("AgentDemos", fields: [agentId], references: [id])
+
+  meetingUrl String?
+  notes      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([agentId])
   @@index([status])
@@ -787,17 +787,17 @@ enum DemoStatus {
 }
 
 model Onboarding {
-  id           String   @id @default(uuid())
-  businessId   String   @unique
-  business     Business @relation(fields: [businessId], references: [id])
-  
-  stage        OnboardingStage @default(QR_DESIGN)
-  status       OnboardingStatus @default(PENDING)
-  
-  notes        String?
-  
-  updatedAt    DateTime @updatedAt
-  createdAt    DateTime @default(now())
+  id         String   @id @default(uuid())
+  businessId String   @unique
+  business   Business @relation(fields: [businessId], references: [id])
+
+  stage  OnboardingStage  @default(QR_DESIGN)
+  status OnboardingStatus @default(PENDING)
+
+  notes String?
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
 
   @@index([businessId])
 }
@@ -817,16 +817,16 @@ enum OnboardingStatus {
 }
 
 model Activity {
-  id          String   @id @default(uuid())
-  type        String   // e.g. "demo", "lead", "onboarding", "call", "business"
-  title       String
-  description String?
+  id           String  @id @default(uuid())
+  type         String // e.g. "demo", "lead", "onboarding", "call", "business"
+  title        String
+  description  String?
   businessName String?
-  
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  
-  createdAt   DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([type])
@@ -837,13 +837,13 @@ model Agreement {
   title       String
   description String   @db.Text
   content     String   @db.Text
-  targetRoles Role[]   // PostgreSQL enum array of target roles
+  targetRoles Role[] // PostgreSQL enum array of target roles
   version     Int      @default(1)
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  signatures  AgreementSignature[]
+  signatures AgreementSignature[]
 
   @@index([isActive])
 }
@@ -854,7 +854,7 @@ model AgreementSignature {
   agreement   Agreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  version     Int       // The version of the agreement when signed
+  version     Int // The version of the agreement when signed
   signedAt    DateTime  @default(now())
 
   @@unique([userId, agreementId, version])
@@ -863,34 +863,34 @@ model AgreementSignature {
 }
 
 model SalesWorkSession {
-  id              String              @id @default(uuid())
-  
-  userId          String
-  user            User                @relation(fields: [userId], references: [id])
-  
-  startedAt       DateTime            @default(now())
-  endedAt         DateTime?
-  
-  startLatitude   Float?
-  startLongitude  Float?
-  startAccuracy   Float?
-  
-  endLatitude     Float?
-  endLongitude    Float?
-  endAccuracy     Float?
-  
-  startGpsStatus  GpsStatus           @default(UNKNOWN)
-  endGpsStatus    GpsStatus?
-  
-  status          WorkSessionStatus   @default(ACTIVE)
-  
-  notes           String?             @db.Text
-  
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  
-  gpsEvents       GpsEvent[]
-  
+  id String @id @default(uuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+
+  startLatitude  Float?
+  startLongitude Float?
+  startAccuracy  Float?
+
+  endLatitude  Float?
+  endLongitude Float?
+  endAccuracy  Float?
+
+  startGpsStatus GpsStatus  @default(UNKNOWN)
+  endGpsStatus   GpsStatus?
+
+  status WorkSessionStatus @default(ACTIVE)
+
+  notes String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  gpsEvents GpsEvent[]
+
   @@index([userId])
   @@index([status])
   @@index([userId, status])
@@ -898,20 +898,20 @@ model SalesWorkSession {
 }
 
 model GpsEvent {
-  id              String          @id @default(uuid())
-  
-  sessionId       String
-  session         SalesWorkSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  
-  latitude        Float
-  longitude       Float
-  accuracy        Float?
-  
-  eventType       GpsEventType
-  source          String?         // e.g. "browser", "fallback"
-  
-  createdAt       DateTime        @default(now())
-  
+  id String @id @default(uuid())
+
+  sessionId String
+  session   SalesWorkSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  latitude  Float
+  longitude Float
+  accuracy  Float?
+
+  eventType GpsEventType
+  source    String? // e.g. "browser", "fallback"
+
+  createdAt DateTime @default(now())
+
   @@index([sessionId])
   @@index([createdAt])
 }
@@ -938,35 +938,35 @@ enum GpsEventType {
 }
 
 model MarketMappingPlan {
-  id                String   @id @default(uuid())
+  id                String    @id @default(uuid())
   userId            String
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  targetVisits      Int      @default(0)
-  targetLeads       Int      @default(0)
-  targetConversions Int      @default(0)
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetVisits      Int       @default(0)
+  targetLeads       Int       @default(0)
+  targetConversions Int       @default(0)
   locationCluster   String?
-  status            String   @default("ACTIVE")
+  status            String    @default("ACTIVE")
   notes             String?
-  startDate         DateTime @default(now())
+  startDate         DateTime  @default(now())
   endDate           DateTime?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  leads             Lead[]
+  leads Lead[]
 
   @@index([userId])
   @@index([status])
 }
 
 model BusinessStatusHistory {
-  id          String         @id @default(uuid())
+  id          String          @id @default(uuid())
   businessId  String
-  business    Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business    Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
   fromStatus  BusinessStatus?
   toStatus    BusinessStatus
   changedById String
-  changedBy   User           @relation(fields: [changedById], references: [id])
-  createdAt   DateTime       @default(now())
+  changedBy   User            @relation(fields: [changedById], references: [id])
+  createdAt   DateTime        @default(now())
 
   @@index([businessId, createdAt])
   @@index([changedById])
@@ -1008,73 +1008,84 @@ model FAQ {
 }
 
 model Lead {
-  id                 String   @id @default(uuid())
-  userId             String
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  planId             String?
-  plan               MarketMappingPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+  id     String             @id @default(uuid())
+  userId String
+  user   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId String?
+  plan   MarketMappingPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+  businessId String?
+  business   Business?      @relation(fields: [businessId], references: [id], onDelete: SetNull)
 
-  businessName       String
-  industry           String   @default("")
-  businessAddress    String?
-  location           String?
-  gpsAddress         String?
-  phone              String?
-  email              String?
-  contactName        String?
-  contactRole        String?
-  horizon            String?
-  dailyCustomers     String?
-  businessSize       String?
-  openingHours       String?
-  openingDays        Json?
-  gpsLat             String?
-  gpsLng             String?
-  nextVisitDate      String?
-  nextVisitTime      String?
-  decisionMakerMet   Boolean?
-  interested         String?
-  demoDone           Boolean?
-  comments           String?
-  isAnchor           Boolean  @default(false)
-  isPlaceholder      Boolean  @default(false)
-  visitedAt          DateTime?
+  businessName     String
+  industry         String    @default("")
+  businessAddress  String?
+  location         String?
+  gpsAddress       String?
+  phone            String?
+  email            String?
+  contactName      String?
+  contactRole      String?
+  horizon          String?
+  dailyCustomers   String?
+  businessSize     String?
+  openingHours     String?
+  openingDays      Json?
+  gpsLat           String?
+  gpsLng           String?
+  nextVisitDate    String?
+  nextVisitTime    String?
+  decisionMakerMet Boolean?
+  interested       String?
+  demoDone         Boolean?
+  comments         String?
+  isAnchor         Boolean   @default(false)
+  isPlaceholder    Boolean   @default(false)
+  visitedAt        DateTime?
 
-  status             String   @default("NOT_YET")
-  source             String   @default("Market Mapping")
-  followUpDate       DateTime?
-  priority           String   @default("MEDIUM")
-  assignedAgentId    String?
-  deletedAt          DateTime?
+  status          String    @default("NOT_YET")
+  source          String    @default("Market Mapping")
+  followUpDate    DateTime?
+  priority        String    @default("MEDIUM")
+  assignedAgentId String?
+  deletedAt       DateTime?
 
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  lastContactedAt       DateTime?
+  nextFollowUpAt        DateTime?
+  journeyState          String?
+  journeyStateUpdatedAt DateTime?
 
-  demos              Demo[]
-  salesPipelines     SalesPipeline[]
-  marketMappingNotes MarketMappingNote[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  demos                 Demo[]
+  salesPipelines        SalesPipeline[]
+  marketMappingNotes    MarketMappingNote[]
+  communicationMessages CommunicationMessage[]
 
   @@index([userId])
   @@index([planId])
+  @@index([businessId])
   @@index([status])
   @@index([visitedAt])
   @@index([userId, createdAt])
   @@index([deletedAt])
+  @@index([lastContactedAt])
+  @@index([nextFollowUpAt])
 }
 
 model MarketMappingNote {
-  id            String    @id @default(uuid())
-  userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  businessId    String?
-  leadId        String?
-  lead          Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  businessName  String
-  reportKey     String?
-  content       String    @db.Text
-  followUpDate  DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessId   String?
+  leadId       String?
+  lead         Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  businessName String
+  reportKey    String?
+  content      String    @db.Text
+  followUpDate DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([userId])
   @@index([businessId])
@@ -1083,17 +1094,17 @@ model MarketMappingNote {
 }
 
 model MarketMappingTerritoryConfig {
-  id                 String   @id @default(uuid())
-  territoryCode      String   @unique
-  name               String
-  country            String   @default("Nigeria")
-  state              String
-  city               String
-  area               String
-  cluster            String
-  totalAssigned      Int      @default(0)
-  anchorCount        Int      @default(0)
-  prospectCount      Int      @default(0)
+  id            String @id @default(uuid())
+  territoryCode String @unique
+  name          String
+  country       String @default("Nigeria")
+  state         String
+  city          String
+  area          String
+  cluster       String
+  totalAssigned Int    @default(0)
+  anchorCount   Int    @default(0)
+  prospectCount Int    @default(0)
 
   anchorsJson        Json?
   priorityVisitsJson Json?
@@ -1107,17 +1118,17 @@ model MarketMappingTerritoryConfig {
 }
 
 model TargetAdjustmentHistory {
-  id                          String   @id @default(uuid())
-  managerId                   String
-  manager                     User     @relation("ManagerAdjustments", fields: [managerId], references: [id], onDelete: Cascade)
-  memberId                    String
-  member                      User     @relation("MemberAdjustments", fields: [memberId], references: [id], onDelete: Cascade)
-  oldDailyLeadTarget          Int
-  newDailyLeadTarget          Int
+  id                         String   @id @default(uuid())
+  managerId                  String
+  manager                    User     @relation("ManagerAdjustments", fields: [managerId], references: [id], onDelete: Cascade)
+  memberId                   String
+  member                     User     @relation("MemberAdjustments", fields: [memberId], references: [id], onDelete: Cascade)
+  oldDailyLeadTarget         Int
+  newDailyLeadTarget         Int
   oldMonthlyConversionTarget Int
   newMonthlyConversionTarget Int
-  reason                      String?
-  createdAt                   DateTime @default(now())
+  reason                     String?
+  createdAt                  DateTime @default(now())
 
   @@index([managerId])
   @@index([memberId])
@@ -1140,18 +1151,18 @@ enum HierarchyType {
 }
 
 model MarketMappingHierarchy {
-  id              String                 @id @default(uuid())
+  id              String                   @id @default(uuid())
   name            String
   type            HierarchyType
   parentId        String?
   parent          MarketMappingHierarchy?  @relation("HierarchyTree", fields: [parentId], references: [id], onDelete: Cascade)
   children        MarketMappingHierarchy[] @relation("HierarchyTree")
-  totalBusinesses Int                    @default(0)
-  penetration     Decimal                @default(0)
-  createdAt       DateTime               @default(now())
-  updatedAt       DateTime               @updatedAt
+  totalBusinesses Int                      @default(0)
+  penetration     Decimal                  @default(0)
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
 
-  assignments     MarketMappingAssignment[]
+  assignments MarketMappingAssignment[]
 
   @@index([parentId])
   @@index([type])
@@ -1226,26 +1237,26 @@ enum AccountabilitySessionStatus {
 }
 
 model WorkSession {
-  id            String                      @id @default(uuid())
-  userId        String
-  user          User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  date          DateTime                    @default(now())
-  startTime     DateTime
-  endTime       DateTime?
-  gpsStartLat   String?
-  gpsStartLng   String?
-  gpsEndLat     String?
-  gpsEndLng     String?
-  device        String?
-  territoryId   String?
-  status        AccountabilitySessionStatus @default(ACTIVE)
-  lateStart     Boolean           @default(false)
-  expectedStart String?           @default("09:00")
-  endComment    String?
+  id              String                      @id @default(uuid())
+  userId          String
+  user            User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date            DateTime                    @default(now())
+  startTime       DateTime
+  endTime         DateTime?
+  gpsStartLat     String?
+  gpsStartLng     String?
+  gpsEndLat       String?
+  gpsEndLng       String?
+  device          String?
+  territoryId     String?
+  status          AccountabilitySessionStatus @default(ACTIVE)
+  lateStart       Boolean                     @default(false)
+  expectedStart   String?                     @default("09:00")
+  endComment      String?
   createdByDevice String?
 
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId, date])
   @@index([userId, status])
@@ -1271,22 +1282,22 @@ enum ExceptionStatus {
 }
 
 model ExceptionReport {
-  id             String          @id @default(uuid())
-  userId         String
-  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  date           DateTime        @default(now())
-  type           ExceptionType
-  description    String?         @db.Text
-  workSessionId  String?
-  leadId         String?
-  evidence       Json?
-  status         ExceptionStatus @default(PENDING)
-  reviewedBy     String?
-  reviewer       User?           @relation("ExceptionReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
-  reviewComment  String?
-  reviewedAt     DateTime?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id            String          @id @default(uuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date          DateTime        @default(now())
+  type          ExceptionType
+  description   String?         @db.Text
+  workSessionId String?
+  leadId        String?
+  evidence      Json?
+  status        ExceptionStatus @default(PENDING)
+  reviewedBy    String?
+  reviewer      User?           @relation("ExceptionReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
+  reviewComment String?
+  reviewedAt    DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
   @@index([userId, date])
   @@index([status])
@@ -1309,17 +1320,17 @@ enum AnomalyStatus {
 }
 
 model ActivityAnomaly {
-  id            String         @id @default(uuid())
-  userId        String
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type          AnomalyType
-  description   String
-  evidence      Json?
-  status        AnomalyStatus  @default(OPEN)
-  resolvedBy    String?
-  resolution    String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id          String        @id @default(uuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        AnomalyType
+  description String
+  evidence    Json?
+  status      AnomalyStatus @default(OPEN)
+  resolvedBy  String?
+  resolution  String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   @@index([userId])
   @@index([type])
@@ -1339,16 +1350,16 @@ enum PerformanceStatus {
 }
 
 model PerformanceScore {
-  id            String               @id @default(uuid())
-  userId        String
-  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  periodType    PerformancePeriodType
-  periodStart   DateTime
-  periodEnd     DateTime
-  score         Decimal
-  status        PerformanceStatus
-  breakdown     Json
-  computedAt    DateTime             @default(now())
+  id          String                @id @default(uuid())
+  userId      String
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodType  PerformancePeriodType
+  periodStart DateTime
+  periodEnd   DateTime
+  score       Decimal
+  status      PerformanceStatus
+  breakdown   Json
+  computedAt  DateTime              @default(now())
 
   @@unique([userId, periodType, periodStart])
   @@index([userId, periodType, periodEnd])
@@ -1356,8 +1367,8 @@ model PerformanceScore {
 }
 
 model PerformanceConfig {
-  id               String    @id @default(uuid())
-  enabled          Boolean   @default(true)
+  id      String  @id @default(uuid())
+  enabled Boolean @default(true)
 
   // Target defaults
   dailyLeadTarget          Int     @default(20)
@@ -1371,27 +1382,27 @@ model PerformanceConfig {
   leadQualityPassThreshold Int     @default(60)
 
   // Schedule
-  expectedWorkStart String   @default("09:00")
-  expectedWorkEnd   String   @default("17:00")
-  lateStartGraceMinutes Int @default(15)
+  expectedWorkStart     String @default("09:00")
+  expectedWorkEnd       String @default("17:00")
+  lateStartGraceMinutes Int    @default(15)
 
   // Performance
   performanceThreshold Decimal @default(90.0)
   excellentThreshold   Decimal @default(100.0)
 
   // Metric weights (must total 100)
-  weightQualifiedLead  Decimal @default(20.0)
-  weightLeadQuality    Decimal @default(10.0)
-  weightFieldActivity  Decimal @default(15.0)
-  weightFollowUp       Decimal @default(10.0)
-  weightDemo           Decimal @default(10.0)
-  weightConversion     Decimal @default(20.0)
-  weightRevenue        Decimal @default(15.0)
+  weightQualifiedLead Decimal @default(20.0)
+  weightLeadQuality   Decimal @default(10.0)
+  weightFieldActivity Decimal @default(15.0)
+  weightFollowUp      Decimal @default(10.0)
+  weightDemo          Decimal @default(10.0)
+  weightConversion    Decimal @default(20.0)
+  weightRevenue       Decimal @default(15.0)
 
   // Lead quality requirements
-  requireContactInfo   Boolean @default(true)
-  requireDecisionMaker Boolean @default(false)
-  requireGps           Boolean @default(true)
+  requireContactInfo      Boolean @default(true)
+  requireDecisionMaker    Boolean @default(false)
+  requireGps              Boolean @default(true)
   requireBusinessCategory Boolean @default(true)
 
   // Anomaly thresholds
@@ -1400,7 +1411,7 @@ model PerformanceConfig {
   maxSameLocationRadiusMeters  Int @default(50)
   maxTransitionGapMinutes      Int @default(45)
 
-  updatedAt            DateTime @updatedAt
+  updatedAt DateTime @updatedAt
 }
 
 // ============================================================
@@ -1424,41 +1435,41 @@ enum FieldTimelineEventType {
 }
 
 model FieldMission {
-  id           String                 @id @default(uuid())
-  userId       String
-  user         User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name         String
-  location     String
-  targetCount  Int                    @default(20)
-  horizon      String                 @default("DAY")
-  startedAt    DateTime               @default(now())
-  completedAt  DateTime?
-  createdAt    DateTime               @default(now())
-  updatedAt    DateTime               @updatedAt
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  location    String
+  targetCount Int       @default(20)
+  horizon     String    @default("DAY")
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  businesses   FieldMissionBusiness[]
-  events       FieldActivityTimelineEvent[]
+  businesses FieldMissionBusiness[]
+  events     FieldActivityTimelineEvent[]
 
   @@index([userId])
   @@index([userId, startedAt])
 }
 
 model FieldMissionBusiness {
-  id             String        @id @default(uuid())
+  id             String       @id @default(uuid())
   missionId      String
-  mission        FieldMission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  mission        FieldMission @relation(fields: [missionId], references: [id], onDelete: Cascade)
   leadId         String?
   name           String
   category       String
   address        String?
   gpsAddress     String?
-  isAnchor       Boolean       @default(false)
-  isPlaceholder  Boolean       @default(false)
-  status         String        @default("NOT_YET")
+  isAnchor       Boolean      @default(false)
+  isPlaceholder  Boolean      @default(false)
+  status         String       @default("NOT_YET")
   dailyCustomers String?
   businessSize   String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   @@index([missionId])
   @@index([leadId])
@@ -1557,33 +1568,33 @@ enum SalesDemoStatus {
 }
 
 model SalesPipeline {
-  id                   String              @id @default(uuid())
+  id                   String             @id @default(uuid())
   affiliateId          String
-  affiliate            User                @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  affiliate            User               @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
   leadId               String?
-  lead                 Lead?               @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  lead                 Lead?              @relation(fields: [leadId], references: [id], onDelete: SetNull)
   businessName         String
   industry             String?
   location             String?
   contactName          String?
   phone                String?
   email                String?
-  source               String              @default("Direct Referral")
-  pipelineStage        SalesPipelineStage  @default(NEW_LEAD)
-  leadQuality          SalesLeadQuality    @default(NEW)
+  source               String             @default("Direct Referral")
+  pipelineStage        SalesPipelineStage @default(NEW_LEAD)
+  leadQuality          SalesLeadQuality   @default(NEW)
   exitState            SalesExitState?
-  priority             SalesPriority       @default(MEDIUM)
-  subscriptionInterest Boolean             @default(false)
+  priority             SalesPriority      @default(MEDIUM)
+  subscriptionInterest Boolean            @default(false)
   followUpDate         DateTime?
   demoScheduledDate    DateTime?
   demoType             SalesDemoType?
   demoMeetingUrl       String?
-  notes                String?             @db.Text
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
+  notes                String?            @db.Text
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
 
-  followUps            SalesFollowUp[]
-  demos                SalesDemo[]
+  followUps SalesFollowUp[]
+  demos     SalesDemo[]
 
   @@index([affiliateId])
   @@index([pipelineStage])
@@ -1634,3 +1645,194 @@ model SalesDemo {
   @@index([status])
 }
 
+// ============================================================
+// Communication & Follow-up System
+// ============================================================
+
+enum CommunicationChannel {
+  WHATSAPP
+  SMS
+}
+
+enum CommunicationMessageStatus {
+  PENDING
+  SCHEDULED
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum CommunicationMessageType {
+  MANUAL
+  CAMPAIGN
+  AUTOMATION
+  WELCOME
+  CUSTOMER_JOURNEY
+  RE_ENGAGEMENT
+}
+
+enum CommunicationTemplateStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum AutomationTrigger {
+  LEAD_CREATED
+  STATUS_CHANGED_TO_INTERESTED
+  STILL_INTERESTED_NOT_SUBSCRIBED
+  BECAME_SUBSCRIBED
+  BECAME_NOT_INTERESTED
+  BEFORE_EXPIRY
+  AFTER_EXPIRY
+}
+
+enum AutomationAction {
+  SEND_SMS
+  CREATE_WHATSAPP_TASK
+  STOP_LEAD_MESSAGES
+  START_CUSTOMER_JOURNEY
+}
+
+enum NotInterestedPolicy {
+  NO_MESSAGES
+  RE_ENGAGEMENT
+}
+
+model CommunicationTemplate {
+  id          String                      @id @default(uuid())
+  name        String
+  channel     CommunicationChannel
+  body        String                      @db.Text
+  status      CommunicationTemplateStatus @default(ACTIVE)
+  description String?
+
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  messages  CommunicationMessage[]
+  campaigns CommunicationCampaign[]
+  rules     AutomationRule[]
+
+  @@index([channel])
+  @@index([status])
+  @@index([createdById])
+}
+
+model CommunicationCampaign {
+  id              String                 @id @default(uuid())
+  name            String
+  description     String?
+  channels        CommunicationChannel[]
+  templateId      String?
+  template        CommunicationTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  body            String?                @db.Text
+  audienceFilters Json
+  status          CampaignStatus         @default(DRAFT)
+  startAt         DateTime?
+  endAt           DateTime?
+  createdById     String?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  messages CommunicationMessage[]
+
+  @@index([status])
+  @@index([createdById])
+}
+
+model AutomationRule {
+  id         String                 @id @default(uuid())
+  name       String
+  trigger    AutomationTrigger
+  condition  Json?
+  waitDays   Int                    @default(0)
+  action     AutomationAction
+  channel    CommunicationChannel?
+  templateId String?
+  template   CommunicationTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  isActive   Boolean                @default(true)
+  sortOrder  Int                    @default(0)
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+
+  messages CommunicationMessage[]
+
+  @@index([trigger])
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+model CommunicationMessage {
+  id         String                     @id @default(uuid())
+  leadId     String
+  lead       Lead                       @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  phone      String?
+  channel    CommunicationChannel
+  type       CommunicationMessageType   @default(MANUAL)
+  status     CommunicationMessageStatus @default(PENDING)
+  body       String                     @db.Text
+  variables  Json?
+  templateId String?
+  template   CommunicationTemplate?     @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  campaignId String?
+  campaign   CommunicationCampaign?     @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  ruleId     String?
+  rule       AutomationRule?            @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+
+  scheduledForAt    DateTime?
+  preparedAt        DateTime?
+  sentAt            DateTime?
+  markedSentAt      DateTime?
+  sentById          String?
+  createdById       String?
+  failureReason     String?
+  providerMessageId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([leadId])
+  @@index([leadId, channel, status])
+  @@index([status, scheduledForAt])
+  @@index([channel, status])
+  @@index([campaignId])
+  @@index([ruleId])
+  @@index([templateId])
+  @@index([createdById])
+  @@index([createdAt])
+}
+
+model CommunicationSettings {
+  id String @id @default(uuid())
+
+  smsEnabled  Boolean @default(false)
+  smsProvider String  @default("disabled")
+  smsSenderId String?
+  smsDailyCap Int     @default(1000)
+
+  whatsappEnabled Boolean @default(true)
+
+  minIntervalHours             Int @default(24)
+  maxMessagesPerContactPerDay  Int @default(3)
+  maxMessagesPerContactPerWeek Int @default(10)
+
+  notInterestedPolicy   NotInterestedPolicy @default(NO_MESSAGES)
+  reEngagementDelayDays Int                 @default(30)
+
+  welcomeChannel CommunicationChannel @default(SMS)
+  welcomeBody    String?              @db.Text
+
+  smsBlacklistedWords String[] @default([])
+
+  updatedAt DateTime @updatedAt
+}
