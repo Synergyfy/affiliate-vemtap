@@ -253,7 +253,7 @@ function AffiliatesManagement() {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <FilterBar 
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -279,7 +279,7 @@ function AffiliatesManagement() {
             <button 
               onClick={() => setActiveTab('All')}
               className={cn(
-                "px-4 sm:px-8 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap",
+                "px-3 sm:px-8 py-3 sm:py-4 text-xs sm:text-sm font-bold transition-all border-b-2 whitespace-nowrap",
                 activeTab === 'All' ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"
               )}
             >
@@ -288,7 +288,7 @@ function AffiliatesManagement() {
             <button 
               onClick={() => setActiveTab('Line Managers')}
               className={cn(
-                "px-4 sm:px-8 py-4 text-sm font-bold transition-all border-b-2 flex items-center gap-2 whitespace-nowrap",
+                "px-3 sm:px-8 py-3 sm:py-4 text-xs sm:text-sm font-bold transition-all border-b-2 flex items-center gap-2 whitespace-nowrap",
                  activeTab === 'Line Managers' ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"
               )}
             >
@@ -298,7 +298,7 @@ function AffiliatesManagement() {
             <button
               onClick={() => setActiveTab('Agents')}
               className={cn(
-                "px-4 sm:px-8 py-4 text-sm font-bold transition-all border-b-2 flex items-center gap-2 whitespace-nowrap",
+                "px-3 sm:px-8 py-3 sm:py-4 text-xs sm:text-sm font-bold transition-all border-b-2 flex items-center gap-2 whitespace-nowrap",
                  activeTab === 'Agents' ? "border-violet-600 text-violet-600" : "border-transparent text-slate-500 hover:text-slate-700"
               )}
             >
@@ -313,7 +313,7 @@ function AffiliatesManagement() {
             <button
               onClick={() => setActiveTab('Managers')}
               className={cn(
-                "px-4 sm:px-8 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap",
+                "px-3 sm:px-8 py-3 sm:py-4 text-xs sm:text-sm font-bold transition-all border-b-2 whitespace-nowrap",
                  activeTab === 'Managers' ? "border-emerald-600 text-emerald-600" : "border-transparent text-slate-500 hover:text-slate-700"
               )}
             >
@@ -323,16 +323,16 @@ function AffiliatesManagement() {
           {activeTab === 'Agents' && (
             <button
               onClick={() => setIsAddAgentOpen(true)}
-              className="mr-4 flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-violet-200 hover:shadow-violet-300 transition-all active:scale-95"
+              className="mr-4 flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl text-xs sm:text-sm font-bold shadow-lg shadow-violet-200 hover:shadow-violet-300 transition-all active:scale-95"
             >
               <UserPlus className="w-4 h-4" />
-              Add Agent
+              <span className="hidden sm:inline">Add Agent</span>
             </button>
           )}
         </div>
 
         {/* Header Actions */}
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto relative min-h-[400px]">
             {isLoading && (
               <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
@@ -342,16 +342,18 @@ function AffiliatesManagement() {
 
             {activeTab === 'Agents' ? (
               /* AGENTS TABLE */
+              <>
+              <div className="hidden sm:block">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-violet-50 border-b border-violet-100">
-                    <th className="p-4 font-bold text-slate-600 text-sm">Agent</th>
-                    <th className="p-4 font-bold text-slate-600 text-sm">Contact</th>
-                    <th className="p-4 font-bold text-slate-600 text-sm text-center">Daily Lead Target</th>
-                    <th className="p-4 font-bold text-slate-600 text-sm text-center">Monthly Conversion Target</th>
-                    <th className="p-4 font-bold text-slate-600 text-sm text-center">Leads</th>
-                    <th className="p-4 font-bold text-slate-600 text-sm">Status</th>
-                    <th className="p-4 font-bold text-slate-600 text-sm text-right">Actions</th>
+                    <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm">Agent</th>
+                    <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm hidden sm:table-cell">Contact</th>
+                    <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm text-center hidden sm:table-cell">Daily Lead Target</th>
+                    <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm text-center hidden sm:table-cell">Monthly Conversion Target</th>
+                    <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm text-center">Leads</th>
+                    <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm">Status</th>
+                    <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -382,7 +384,7 @@ function AffiliatesManagement() {
                       transition={{ delay: idx * 0.04 }}
                       className="hover:bg-violet-50/30 transition-all"
                     >
-                      <td className="p-4">
+                      <td className="p-3 sm:p-4">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-400 to-purple-600 flex items-center justify-center font-bold text-white text-sm">
                             {user.fullName?.charAt(0) || 'A'}
@@ -400,7 +402,7 @@ function AffiliatesManagement() {
                           </div>
                         </div>
                       </td>
-                      <td className="p-4">
+                      <td className="p-3 sm:p-4 hidden sm:table-cell">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2 text-xs text-slate-600">
                             <Mail className="w-3 h-3 text-slate-400" />
@@ -412,22 +414,22 @@ function AffiliatesManagement() {
                           </div>
                         </div>
                       </td>
-                      <td className="p-4 text-center">
+                      <td className="p-3 sm:p-4 text-center hidden sm:table-cell">
                         <div className="flex flex-col items-center gap-1">
                           <span className="text-lg font-black text-slate-900">{user.dailyLeadTarget ?? 0}</span>
                           <span className="text-[9px] font-bold text-slate-400 uppercase">leads/day</span>
                         </div>
                       </td>
-                      <td className="p-4 text-center">
+                      <td className="p-3 sm:p-4 text-center hidden sm:table-cell">
                         <div className="flex flex-col items-center gap-1">
                           <span className="text-lg font-black text-slate-900">{user.monthlyConversionTarget ?? 0}</span>
                           <span className="text-[9px] font-bold text-slate-400 uppercase">converts/mo</span>
                         </div>
                       </td>
-                      <td className="p-4 text-center">
+                      <td className="p-3 sm:p-4 text-center">
                         <span className="text-sm font-bold text-slate-700">{user._count?.leads ?? 0}</span>
                       </td>
-                      <td className="p-4">
+                      <td className="p-3 sm:p-4">
                         <span className={cn(
                           "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
                           user.status === 'ACTIVE' ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
@@ -435,7 +437,7 @@ function AffiliatesManagement() {
                           {user.status}
                         </span>
                       </td>
-                      <td className="p-4 text-right">
+                      <td className="p-3 sm:p-4 text-right">
                         <div className="relative" ref={activeDropdown === user.id ? dropdownRef : null}>
                           <button 
                             onClick={() => setActiveDropdown(activeDropdown === user.id ? null : user.id)}
@@ -490,19 +492,104 @@ function AffiliatesManagement() {
                   ))}
                 </tbody>
               </table>
+              </div>
+              {/* Mobile card layout for Agents */}
+              <div className="sm:hidden divide-y divide-violet-50">
+                {usersResponse?.data.map((user: UserType, idx: number) => (
+                  <motion.div
+                    key={user.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.04 }}
+                    onClick={() => handleViewProfile(user)}
+                    className="p-4 bg-white hover:bg-violet-50/30 transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-400 to-purple-600 flex items-center justify-center font-bold text-white text-sm shrink-0">
+                        {user.fullName?.charAt(0) || 'A'}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-slate-900 truncate">{user.fullName}</p>
+                        <p className="text-xs text-slate-400 truncate">{user.email}</p>
+                      </div>
+                      <span className={cn(
+                        "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider shrink-0",
+                        user.status === 'ACTIVE' ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
+                      )}>
+                        {user.status}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-slate-500 mb-3">
+                      <span className="flex items-center gap-1">
+                        <span className="font-black text-slate-900">{user.dailyLeadTarget ?? 0}</span> leads/day
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="font-black text-slate-900">{user.monthlyConversionTarget ?? 0}</span> converts/mo
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="font-black text-slate-900">{user._count?.leads ?? 0}</span> total
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleViewProfile(user); }}
+                        className="flex-1 px-3 py-1.5 bg-violet-50 text-violet-700 rounded-lg text-xs font-bold hover:bg-violet-100 transition-all text-center"
+                      >
+                        View
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setSelectedAffiliate(user); setIsEditModalOpen(true); }}
+                        className="flex-1 px-3 py-1.5 bg-slate-50 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-100 transition-all text-center"
+                      >
+                        Edit
+                      </button>
+                      <div className="relative" ref={activeDropdown === `agent-${user.id}` ? dropdownRef : null}>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setActiveDropdown(activeDropdown === `agent-${user.id}` ? null : `agent-${user.id}`); }}
+                          className="p-1.5 bg-slate-50 text-slate-500 rounded-lg hover:bg-slate-100 transition-all"
+                        >
+                          <MoreHorizontal className="w-4 h-4" />
+                        </button>
+                        <AnimatePresence>
+                          {activeDropdown === `agent-${user.id}` && (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                              className="absolute right-0 bottom-full mb-2 w-52 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 overflow-hidden"
+                            >
+                              <button onClick={(e) => { e.stopPropagation(); handleCopyReferralLink(user); setActiveDropdown(null); }}
+                                className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-sky-50 hover:text-sky-600 flex items-center gap-3 transition-colors">
+                                <Copy className="w-4 h-4" /> Copy Referral Link
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); setEmailTarget(user); setActiveDropdown(null); }}
+                                className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-3 transition-colors">
+                                <Mail className="w-4 h-4" /> Send Email
+                              </button>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+              </>
             ) : (
               /* AFFILIATES / SUPERVISORS TABLE */
+              <>
+              <div className="hidden sm:block">
               <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="p-4 font-bold text-slate-600 text-sm">Affiliate</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm">Role</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm">Contact</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm text-center">Locations</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm text-center">Referrals</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm text-center">Leads</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm">Status</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm text-right">Actions</th>
+                  <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm">Affiliate</th>
+                  <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm hidden md:table-cell">Role</th>
+                  <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm hidden md:table-cell">Contact</th>
+                  <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm text-center hidden lg:table-cell">Locations</th>
+                  <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm text-center">Referrals</th>
+                  <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm text-center">Leads</th>
+                  <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm">Status</th>
+                  <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -533,7 +620,7 @@ function AffiliatesManagement() {
                       "hover:bg-slate-50/50 transition-all group"
                     )}
                   >
-                    <td className="p-4">
+                    <td className="p-3 sm:p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-700">
                           {user.fullName?.charAt(0) || 'A'}
@@ -544,7 +631,7 @@ function AffiliatesManagement() {
                         </div>
                       </div>
                     </td>
-                    <td className="p-4">
+                    <td className="p-3 sm:p-4 hidden md:table-cell">
                       <span className={cn(
                         "text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest",
                         user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' ? "bg-purple-100 text-purple-600 border border-purple-200" :
@@ -554,7 +641,7 @@ function AffiliatesManagement() {
                         {user.role === 'MANAGER' ? 'MANAGER' : user.role === 'SUPERVISOR' ? 'LINE MANAGER' : user.role}
                       </span>
                     </td>
-                    <td className="p-4">
+                    <td className="p-3 sm:p-4 hidden md:table-cell">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 text-xs text-slate-600">
                           <Mail className="w-3 h-3 text-slate-400" />
@@ -566,7 +653,7 @@ function AffiliatesManagement() {
                         </div>
                         </div>
                       </td>
-                      <td className="p-4 text-center">
+                      <td className="p-3 sm:p-4 text-center hidden lg:table-cell">
                         <div className="flex flex-wrap gap-1 justify-center max-w-[160px]">
                           {(locationsByUser[user.id] || []).slice(0, 2).map(loc => (
                             <Link
@@ -585,9 +672,9 @@ function AffiliatesManagement() {
                           )}
                         </div>
                       </td>
-                      <td className="p-4 text-sm text-slate-600 text-center font-bold">{(user._count?.referrals ?? 0) + (user._count?.businesses ?? 0)}</td>
-                    <td className="p-4 text-sm text-slate-600 text-center font-bold">{user._count?.leads ?? 0}</td>
-                    <td className="p-4">
+                      <td className="p-3 sm:p-4 text-sm text-slate-600 text-center font-bold">{(user._count?.referrals ?? 0) + (user._count?.businesses ?? 0)}</td>
+                    <td className="p-3 sm:p-4 text-sm text-slate-600 text-center font-bold">{user._count?.leads ?? 0}</td>
+                    <td className="p-3 sm:p-4">
                       <span className={cn(
                         "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
                         user.status === 'ACTIVE' ? "bg-green-100 text-green-600" : 
@@ -596,7 +683,7 @@ function AffiliatesManagement() {
                         {user.status}
                       </span>
                     </td>
-                    <td className="p-4 text-right">
+                    <td className="p-3 sm:p-4 text-right">
                       <div className="relative" ref={activeDropdown === user.id ? dropdownRef : null}>
                         <button 
                           onClick={() => setActiveDropdown(activeDropdown === user.id ? null : user.id)}
@@ -662,12 +749,113 @@ function AffiliatesManagement() {
                 ))}
               </tbody>
             </table>
+            </div>
+            {/* Mobile card layout for Affiliates/Supervisors */}
+            <div className="sm:hidden divide-y divide-slate-100">
+              {usersResponse?.data.map((user: UserType, idx: number) => (
+                <motion.div
+                  key={user.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  onClick={() => handleViewProfile(user)}
+                  className="p-4 bg-white hover:bg-slate-50/50 transition-all cursor-pointer"
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-700 shrink-0">
+                      {user.fullName?.charAt(0) || 'A'}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-slate-900 truncate">{user.fullName}</p>
+                      <p className="text-xs text-slate-400 truncate">{user.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap mb-3">
+                    <span className={cn(
+                      "text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest",
+                      user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' ? "bg-purple-100 text-purple-600 border border-purple-200" :
+                      user.role === 'MANAGER' ? "bg-emerald-100 text-emerald-600 border border-emerald-200" :
+                      user.role === 'SUPERVISOR' ? "bg-blue-100 text-blue-600 border border-blue-200" : "bg-slate-100 text-slate-500"
+                    )}>
+                      {user.role === 'MANAGER' ? 'MANAGER' : user.role === 'SUPERVISOR' ? 'LINE MANAGER' : user.role}
+                    </span>
+                    <span className={cn(
+                      "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
+                      user.status === 'ACTIVE' ? "bg-green-100 text-green-600" :
+                      user.status === 'SUSPENDED' ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-400"
+                    )}>
+                      {user.status}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-slate-500 mb-3">
+                    <span className="flex items-center gap-1">
+                      <span className="font-black text-slate-900">{(user._count?.referrals ?? 0) + (user._count?.businesses ?? 0)}</span> referrals
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="font-black text-slate-900">{user._count?.leads ?? 0}</span> leads
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleViewProfile(user); }}
+                      className="flex-1 px-3 py-1.5 bg-slate-50 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-100 transition-all text-center"
+                    >
+                      View
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setSelectedAffiliate(user); setIsEditModalOpen(true); }}
+                      className="flex-1 px-3 py-1.5 bg-slate-50 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-100 transition-all text-center"
+                    >
+                      Edit
+                    </button>
+                    <div className="relative" ref={activeDropdown === `aff-${user.id}` ? dropdownRef : null}>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setActiveDropdown(activeDropdown === `aff-${user.id}` ? null : `aff-${user.id}`); }}
+                        className="p-1.5 bg-slate-50 text-slate-500 rounded-lg hover:bg-slate-100 transition-all"
+                      >
+                        <MoreHorizontal className="w-4 h-4" />
+                      </button>
+                      <AnimatePresence>
+                        {activeDropdown === `aff-${user.id}` && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            className="absolute right-0 bottom-full mb-2 w-52 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 overflow-hidden"
+                          >
+                            <button onClick={(e) => { e.stopPropagation(); handleCopyReferralLink(user); setActiveDropdown(null); }}
+                              className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-sky-50 hover:text-sky-600 flex items-center gap-3 transition-colors">
+                              <Copy className="w-4 h-4" /> Copy Referral Link
+                            </button>
+                            <Link href={`/admin/affiliates/${user.id}/history`}
+                              className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-700 hover:bg-amber-50 hover:text-amber-600 flex items-center gap-3 transition-colors">
+                              <History className="w-4 h-4" /> Activity History
+                            </Link>
+                            <div className="border-t border-slate-100 my-1" />
+                            <button onClick={(e) => { e.stopPropagation(); handleStatusChange(user.id, user.fullName, user.status); setActiveDropdown(null); }}
+                              className={`w-full px-4 py-2.5 text-left text-sm font-bold flex items-center gap-3 transition-colors ${user.status === 'ACTIVE' ? 'text-red-600 hover:bg-red-50' : 'text-emerald-600 hover:bg-emerald-50'}`}>
+                              {user.status === 'ACTIVE' ? <ShieldAlert className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+                              {user.status === 'ACTIVE' ? 'Suspend' : 'Reactivate'}
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); setEmailTarget(user); setActiveDropdown(null); }}
+                              className="w-full px-4 py-2.5 text-left text-sm font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-3 transition-colors">
+                              <Mail className="w-4 h-4" /> Send Email
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+            </>
             )}
           </div>
           
           {/* Pagination */}
-          <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-            <p className="text-xs text-slate-500 font-medium">
+          <div className="p-3 sm:p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+            <p className="text-xs text-slate-500 font-medium truncate max-w-[140px] sm:max-w-none">
               Showing {usersResponse?.data?.length ?? 0} of {usersResponse?.meta?.total ?? 0} {activeTab.toLowerCase()}
             </p>
             <div className="flex items-center gap-2">
@@ -767,9 +955,10 @@ function AffiliatesManagement() {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 h-full w-full max-w-lg bg-white shadow-2xl z-[260] overflow-y-auto"
+              className="fixed inset-x-0 bottom-0 sm:inset-auto sm:top-0 sm:right-0 h-[92dvh] sm:h-full w-full sm:max-w-lg bg-white shadow-2xl z-[260] overflow-y-auto rounded-t-[28px] sm:rounded-none pb-[env(safe-area-inset-bottom)]"
             >
-              <div className="p-8 space-y-8">
+              <div className="sm:hidden flex justify-center pt-3 pb-1"><div className="w-10 h-1.5 bg-slate-200 rounded-full" /></div>
+              <div className="p-4 sm:p-8 space-y-4 sm:space-y-8">
                 <div className="flex justify-between items-center">
                   <h3 className="text-2xl font-black text-slate-900">Affiliate Profile</h3>
                   <div className="flex items-center gap-2">
@@ -791,7 +980,7 @@ function AffiliatesManagement() {
 
                 {/* Profile Header */}
                 <div className="flex flex-col items-center text-center space-y-4">
-                  <div className="w-24 h-24 rounded-[32px] bg-slate-100 flex items-center justify-center text-slate-700 text-3xl font-black">
+                  <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-[32px] bg-slate-100 flex items-center justify-center text-slate-700 text-2xl sm:text-3xl font-black">
                     {selectedAffiliate.fullName?.charAt(0) || 'A'}
                   </div>
                   <div>
@@ -817,7 +1006,7 @@ function AffiliatesManagement() {
                 </div>
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
                   <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                     <div className="flex items-center gap-2 text-purple-600 mb-1">
                       <Briefcase className="w-4 h-4" />
@@ -853,14 +1042,14 @@ function AffiliatesManagement() {
                   <div className="space-y-4">
                     <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Contact Information</h5>
                     <div className="space-y-3">
-                      <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div className="flex items-center gap-3 p-3 sm:p-4 bg-slate-50 rounded-2xl border border-slate-100">
                         <Mail className="w-5 h-5 text-slate-400" />
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email Address</p>
                           <p className="text-sm font-bold text-slate-900">{selectedAffiliate.email}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div className="flex items-center gap-3 p-3 sm:p-4 bg-slate-50 rounded-2xl border border-slate-100">
                         <Phone className="w-5 h-5 text-slate-400" />
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Phone Number</p>
@@ -873,14 +1062,14 @@ function AffiliatesManagement() {
                   <div className="space-y-4">
                     <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Account Details</h5>
                     <div className="space-y-3">
-                      <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div className="flex items-center gap-3 p-3 sm:p-4 bg-slate-50 rounded-2xl border border-slate-100">
                         <Calendar className="w-5 h-5 text-slate-400" />
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Registration Date</p>
                           <p className="text-sm font-bold text-slate-900">{new Date(selectedAffiliate.createdAt).toLocaleDateString()}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div className="flex items-center gap-3 p-3 sm:p-4 bg-slate-50 rounded-2xl border border-slate-100">
                         <Activity className="w-5 h-5 text-slate-400" />
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Last Active</p>
@@ -901,7 +1090,7 @@ function AffiliatesManagement() {
                           <Link
                             key={loc.id}
                             href={`/admin/affiliates/${selectedAffiliate.id}/history?locationId=${loc.id}`}
-                            className="flex items-center gap-3 p-4 bg-blue-50 rounded-2xl border border-blue-100 hover:bg-blue-100 transition-all group"
+                            className="flex items-center gap-3 p-3 sm:p-4 bg-blue-50 rounded-2xl border border-blue-100 hover:bg-blue-100 transition-all group"
                           >
                             <MapPin className="w-5 h-5 text-blue-500" />
                             <div className="flex-1">
@@ -923,21 +1112,21 @@ function AffiliatesManagement() {
                       <ShieldCheck className="w-4 h-4 text-blue-500" /> Role & Assignment
                     </h5>
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                      <div className="flex items-center justify-between p-3 sm:p-4 bg-slate-50 rounded-2xl border border-slate-100">
                         <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Current Role</p>
+                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Current Role</p>
                           <p className="text-sm font-bold text-slate-900 mt-0.5">{selectedAffiliate.role}</p>
                         </div>
                         <button onClick={() => setIsEditModalOpen(true)} className="px-3 py-1.5 bg-blue-600 text-white text-[10px] font-bold rounded-xl hover:bg-blue-700 transition-all">Change</button>
                       </div>
-                      <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                      <div className="flex items-center justify-between p-3 sm:p-4 bg-slate-50 rounded-2xl border border-slate-100">
                         <div>
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Assigned Line Manager</p>
                           <p className="text-sm font-bold text-slate-900 mt-0.5">{selectedAffiliate.supervisor?.fullName || 'Not assigned'}</p>
                         </div>
                         <button onClick={() => setAssignModal({ user: selectedAffiliate, type: 'supervisor' })} className="px-3 py-1.5 bg-violet-600 text-white text-[10px] font-bold rounded-xl hover:bg-violet-700 transition-all">Assign</button>
                       </div>
-                      <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                      <div className="flex items-center justify-between p-3 sm:p-4 bg-slate-50 rounded-2xl border border-slate-100">
                         <div>
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Assigned Manager</p>
                           <p className="text-sm font-bold text-slate-900 mt-0.5">{selectedAffiliate.manager?.fullName || 'Not assigned'}</p>
@@ -961,7 +1150,7 @@ function AffiliatesManagement() {
                     ) : userAgreements?.agreements && userAgreements.agreements.length > 0 ? (
                       <div className="space-y-3">
                         {userAgreements.agreements.map((ag: any) => (
-                          <div key={ag.agreementId} className="p-4 bg-slate-50 rounded-2xl border border-slate-100/80 flex items-center justify-between gap-4">
+                          <div key={ag.agreementId} className="p-3 sm:p-4 bg-slate-50 rounded-2xl border border-slate-100/80 flex items-center justify-between gap-4">
                             <div className="min-w-0 flex-grow">
                               <p className="text-xs font-bold text-slate-800 leading-tight truncate">{ag.title}</p>
                               <p className="text-[9px] text-slate-400 font-semibold mt-1">
@@ -994,11 +1183,11 @@ function AffiliatesManagement() {
                 </div>
 
                 {/* Footer Actions */}
-                <div className="pt-8 flex gap-3">
-                  <Button className="flex-1 rounded-2xl h-12 font-bold" onClick={() => setIsEditModalOpen(true)}>
+                <div className="pt-4 sm:pt-8 flex gap-3">
+                  <Button className="flex-1 rounded-2xl h-10 sm:h-12 font-bold" onClick={() => setIsEditModalOpen(true)}>
                     Edit Profile
                   </Button>
-                  <Button variant="outline" className="flex-1 rounded-2xl h-12 font-bold text-red-600 border-red-100 hover:bg-red-50" onClick={() => handleStatusChange(selectedAffiliate.id, selectedAffiliate.fullName, selectedAffiliate.status)}>
+                  <Button variant="outline" className="flex-1 rounded-2xl h-10 sm:h-12 font-bold text-red-600 border-red-100 hover:bg-red-50" onClick={() => handleStatusChange(selectedAffiliate.id, selectedAffiliate.fullName, selectedAffiliate.status)}>
                     {selectedAffiliate.status === 'ACTIVE' ? 'Suspend Account' : 'Reactivate Account'}
                   </Button>
                 </div>
@@ -1042,8 +1231,9 @@ function EmailUserModal({ user, isSending, onClose, onSubmit }: {
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-3xl shadow-2xl z-[310] p-8 space-y-5"
+        className="fixed inset-x-0 bottom-0 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 w-full max-w-md bg-white rounded-t-[28px] sm:rounded-3xl shadow-2xl z-[310] p-4 sm:p-8 space-y-4 sm:space-y-5 pb-[env(safe-area-inset-bottom)]"
       >
+        <div className="sm:hidden flex justify-center pt-3 pb-1"><div className="w-10 h-1.5 bg-slate-200 rounded-full" /></div>
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-black text-slate-900">Send Email</h3>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
@@ -1123,8 +1313,9 @@ function AssignHierarchyModal({ user, type, isSaving, onClose, onAssign }: {
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-3xl shadow-2xl z-[310] p-8 space-y-5"
+        className="fixed inset-x-0 bottom-0 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 w-full max-w-md bg-white rounded-t-[28px] sm:rounded-3xl shadow-2xl z-[310] p-4 sm:p-8 space-y-4 sm:space-y-5 pb-[env(safe-area-inset-bottom)]"
       >
+        <div className="sm:hidden flex justify-center pt-3 pb-1"><div className="w-10 h-1.5 bg-slate-200 rounded-full" /></div>
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-black text-slate-900">
             Assign {type === 'supervisor' ? 'Line Manager' : 'Manager'}

@@ -308,13 +308,13 @@ export default function SettingsManagement() {
 
   return (
     <AdminLayout>
-      <div className="max-w-4xl mx-auto space-y-8">
+      <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-slate-900 rounded-2xl">
             <Settings className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-slate-900">Platform Settings</h2>
+            <h2 className="text-lg sm:text-2xl font-bold text-slate-900">Platform Settings</h2>
             <div className="flex items-center gap-2">
               <p className="text-sm text-slate-500 font-medium">Configure commission rates, payouts and system rules</p>
               <span>•</span>
@@ -328,14 +328,14 @@ export default function SettingsManagement() {
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm"
+            className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm"
           >
-            <div className="flex items-center gap-3 mb-8">
+            <div className="flex items-center gap-3 mb-6 sm:mb-8">
               <Percent className="w-5 h-5 text-blue-600" />
-              <h3 className="text-lg font-bold text-slate-900">Commission Configuration</h3>
+              <h3 className="text-base sm:text-lg font-bold text-slate-900">Commission Configuration</h3>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
               <NumberField
                 label="Direct Commission Rate (%)"
                 hint="Default 20%"
@@ -382,18 +382,18 @@ export default function SettingsManagement() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm"
+            className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm"
           >
-            <div className="flex items-center gap-3 mb-8">
+            <div className="flex items-center gap-3 mb-6 sm:mb-8">
               <Clock className="w-5 h-5 text-purple-600" />
-              <h3 className="text-lg font-bold text-slate-900">Recurring Subscription Commission</h3>
+              <h3 className="text-base sm:text-lg font-bold text-slate-900">Recurring Subscription Commission</h3>
             </div>
             <div className="bg-purple-50 border border-purple-100 rounded-2xl p-4 mb-6">
               <p className="text-xs text-purple-800 leading-relaxed">
                 <strong>Recurring</strong> means from month 2 onward if the business renews. Default is 12 months (1 month main sub + 11 months recurring). After 12 months, year 2 reduces to the set rate. Same applies to Line Manager indirect earnings.
               </p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
               <NumberField
                 label="Agent Recurring (%)"
                 hint="Default 5%"
@@ -456,11 +456,11 @@ export default function SettingsManagement() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm"
+            className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm"
           >
-            <div className="flex items-center gap-3 mb-8">
+            <div className="flex items-center gap-3 mb-6 sm:mb-8">
               <Wallet className="w-5 h-5 text-green-600" />
-              <h3 className="text-lg font-bold text-slate-900">Withdrawal & Payouts</h3>
+              <h3 className="text-base sm:text-lg font-bold text-slate-900">Withdrawal & Payouts</h3>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -480,11 +480,11 @@ export default function SettingsManagement() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm"
+            className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm"
           >
-            <div className="flex items-center gap-3 mb-8">
+            <div className="flex items-center gap-3 mb-6 sm:mb-8">
               <Shield className="w-5 h-5 text-red-600" />
-              <h3 className="text-lg font-bold text-slate-900">Security & Fraud Thresholds</h3>
+              <h3 className="text-base sm:text-lg font-bold text-slate-900">Security & Fraud Thresholds</h3>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -505,11 +505,11 @@ export default function SettingsManagement() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm"
+            className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm"
           >
-            <div className="flex items-center gap-3 mb-8">
+            <div className="flex items-center gap-3 mb-6 sm:mb-8">
               <Users className="w-5 h-5 text-purple-600" />
-              <h3 className="text-lg font-bold text-slate-900">Line Manager Feature Configuration</h3>
+              <h3 className="text-base sm:text-lg font-bold text-slate-900">Line Manager Feature Configuration</h3>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -531,21 +531,21 @@ export default function SettingsManagement() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35 }}
-            className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm"
+            className="bg-white p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm"
           >
-            <div className="flex items-center gap-3 mb-8">
+            <div className="flex items-center gap-3 mb-6 sm:mb-8">
               <Trophy className="w-5 h-5 text-orange-500" />
-              <h3 className="text-lg font-bold text-slate-900">Career Path & Promotion Targets</h3>
+              <h3 className="text-base sm:text-lg font-bold text-slate-900">Career Path & Promotion Targets</h3>
             </div>
 
-            <div className="space-y-8">
+            <div className="space-y-6 sm:space-y-8">
               {/* Field Agent to Line Manager */}
-              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                <h4 className="text-sm font-black text-slate-900 uppercase tracking-wider mb-6 flex items-center gap-2">
+              <div className="p-4 sm:p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                <h4 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider mb-4 sm:mb-6 flex items-center gap-2">
                   <Briefcase className="w-4 h-4 text-blue-600" />
                   Field Agent Promotion (Agent ➔ Line Manager)
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                   <NumberField
                     compact
                     label="Active Operating Days"
@@ -588,12 +588,12 @@ export default function SettingsManagement() {
               </div>
 
               {/* Freelance Affiliate to Line Manager */}
-              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                <h4 className="text-sm font-black text-slate-900 uppercase tracking-wider mb-6 flex items-center gap-2">
+              <div className="p-4 sm:p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                <h4 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider mb-4 sm:mb-6 flex items-center gap-2">
                   <Users className="w-4 h-4 text-purple-600" />
                   Freelance Affiliate Promotion (Affiliate ➔ Line Manager)
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                   <NumberField
                     compact
                     label="Direct Active Agents"
@@ -616,12 +616,12 @@ export default function SettingsManagement() {
               </div>
 
               {/* Line Manager to Manager */}
-              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                <h4 className="text-sm font-black text-slate-900 uppercase tracking-wider mb-6 flex items-center gap-2">
+              <div className="p-4 sm:p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                <h4 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider mb-4 sm:mb-6 flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-emerald-600" />
                   Line Manager Leadership Promotion (Line Manager ➔ Manager)
                 </h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                   <NumberField
                     compact
                     label="Direct Active Agents"

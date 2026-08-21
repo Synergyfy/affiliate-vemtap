@@ -147,11 +147,11 @@ export default function MarketMappingPage() {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-extrabold text-slate-900">Market Mapping</h1>
-            <p className="text-sm text-slate-500 mt-1">
+            <h1 className="text-lg sm:text-2xl font-extrabold text-slate-900">Market Mapping</h1>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
               {activeTab === 'overview'
                 ? 'Monitor clusters, assign affiliates, and review captured businesses'
                 : 'Configure pipeline statuses, categories, and field defaults'}
@@ -161,13 +161,13 @@ export default function MarketMappingPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-slate-100 p-1 rounded-2xl w-fit">
+        <div className="flex gap-1 bg-slate-100 p-1 rounded-2xl w-fit overflow-x-auto">
           {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all",
+                "flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap",
                 activeTab === tab.id ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
               )}
             >
@@ -178,7 +178,7 @@ export default function MarketMappingPage() {
         </div>
 
         {activeTab === 'overview' && (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             <div>
               <h2 className="text-sm font-bold text-slate-900 mb-3">Key Metrics</h2>
                {statsQuery.isLoading && <p className="text-sm text-slate-500">Loading metrics...</p>}
@@ -186,29 +186,29 @@ export default function MarketMappingPage() {
                {marketStats && <TopStats stats={marketStats} />}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <Link
                 href="/admin/market-mapping/assign"
-                className="flex items-center gap-4 p-5 bg-white border border-slate-200 rounded-2xl hover:border-blue-300 hover:shadow-md transition-all group"
+                className="flex items-center gap-3 sm:gap-4 p-3 sm:p-5 bg-white border border-slate-200 rounded-2xl sm:rounded-3xl hover:border-blue-300 hover:shadow-md transition-all group"
               >
-                <div className="p-3 rounded-2xl bg-blue-50">
-                  <UserPlus className="w-6 h-6 text-blue-600" />
+                <div className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-blue-50">
+                  <UserPlus className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">Assign Affiliates</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">Create locations, assign affiliates, set targets and permissions</p>
+                  <h3 className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors text-sm sm:text-base">Assign Affiliates</h3>
+                  <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 hidden sm:block">Create locations, assign affiliates, set targets and permissions</p>
                 </div>
               </Link>
               <Link
                 href="/admin/market-mapping/businesses"
-                className="flex items-center gap-4 p-5 bg-white border border-slate-200 rounded-2xl hover:border-blue-300 hover:shadow-md transition-all group"
+                className="flex items-center gap-3 sm:gap-4 p-3 sm:p-5 bg-white border border-slate-200 rounded-2xl sm:rounded-3xl hover:border-blue-300 hover:shadow-md transition-all group"
               >
-                <div className="p-3 rounded-2xl bg-emerald-50">
-                  <Building2 className="w-6 h-6 text-emerald-600" />
+                <div className="p-2 sm:p-3 rounded-xl sm:rounded-2xl bg-emerald-50">
+                  <Building2 className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">View Businesses</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">Review all businesses captured by affiliates with full details</p>
+                  <h3 className="font-bold text-slate-900 group-hover:text-emerald-600 transition-colors text-sm sm:text-base">View Businesses</h3>
+                  <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 hidden sm:block">Review all businesses captured by affiliates with full details</p>
                 </div>
               </Link>
             </div>
@@ -274,8 +274,9 @@ export default function MarketMappingPage() {
 
       {/* Add Node Modal */}
       {addNodeModal.isOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-slate-200">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-t-[28px] sm:rounded-3xl p-6 w-full max-w-md shadow-2xl border border-slate-200">
+            <div className="w-10 h-1 rounded-full bg-slate-200 mx-auto mb-4 sm:hidden" />
             <h3 className="text-lg font-bold text-slate-900 mb-4">
               Add New {addNodeModal.type}
             </h3>

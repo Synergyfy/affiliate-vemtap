@@ -39,7 +39,7 @@ export default function CommunicationNav() {
   return (
     <>
       {/* Mobile hamburger bar */}
-      <div className="sm:hidden border-b border-slate-100 bg-white rounded-t-3xl -mt-px">
+      <div className="sm:hidden border-b border-slate-100 bg-white rounded-t-2xl sm:rounded-t-3xl -mt-px">
         <div className="flex items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-2 min-w-0">
             <div className="p-2 rounded-xl bg-blue-50 text-blue-600 shrink-0">
@@ -60,7 +60,7 @@ export default function CommunicationNav() {
       </div>
 
       {/* Desktop tab bar */}
-      <div className="hidden sm:block relative border-b border-slate-100 bg-white rounded-t-3xl -mt-px">
+      <div className="hidden sm:block relative border-b border-slate-100 bg-white rounded-t-2xl sm:rounded-t-3xl -mt-px">
         <div className="flex overflow-x-auto scrollbar-hide snap-x -mb-px">
           {tabs.map((tab) => (
             <Link

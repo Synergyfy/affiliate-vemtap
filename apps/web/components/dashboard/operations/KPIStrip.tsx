@@ -34,28 +34,28 @@ export default function KPIStrip() {
   ];
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+    <div className="grid grid-cols-2 sm:flex sm:gap-4 sm:overflow-x-auto pb-4 scrollbar-hide gap-3">
       {stats.map((kpi, idx) => (
         <motion.div
           key={kpi.label}
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: idx * 0.05 }}
-          className="flex-shrink-0 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm min-w-[180px] hover:shadow-md transition-shadow cursor-default"
+          className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-sm sm:min-w-[180px] hover:shadow-md transition-shadow cursor-default"
         >
-          <div className="flex justify-between items-start mb-3">
-            <div className={cn("p-2 rounded-xl", kpi.bg)}>
-              <kpi.icon className={cn("w-5 h-5", kpi.color)} />
+          <div className="flex justify-between items-start mb-2 sm:mb-3">
+            <div className={cn("p-1.5 sm:p-2 rounded-xl", kpi.bg)}>
+              <kpi.icon className={cn("w-4 h-4 sm:w-5 sm:h-5", kpi.color)} />
             </div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{kpi.trend}</span>
+            <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider">{kpi.trend}</span>
           </div>
           <div>
             {isLoading ? (
-              <div className="h-8 w-12 bg-slate-100 animate-pulse rounded-lg mb-1" />
+              <div className="h-6 sm:h-8 w-12 bg-slate-100 animate-pulse rounded-lg mb-1" />
             ) : (
-              <h4 className="text-2xl font-black text-slate-900">{kpi.value}</h4>
+              <h4 className="text-lg sm:text-2xl font-black text-slate-900">{kpi.value}</h4>
             )}
-            <p className="text-xs font-medium text-slate-500">{kpi.label}</p>
+            <p className="text-[10px] sm:text-xs font-medium text-slate-500">{kpi.label}</p>
           </div>
         </motion.div>
       ))}

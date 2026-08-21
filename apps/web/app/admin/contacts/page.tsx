@@ -423,36 +423,37 @@ export default function HarvestContactsPage() {
 
   return (
     <AdminLayout>
-      <div className="space-y-8 max-w-[1600px] mx-auto">
+      <div className="space-y-4 sm:space-y-8 max-w-[1600px] mx-auto">
         {/* Top Header & Harvesting Action Hub */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-slate-200">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200">
           <div>
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-blue-600 text-white rounded-2xl shadow-md shadow-blue-500/20">
-                <Smartphone className="w-6 h-6" />
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="p-2 sm:p-2.5 bg-blue-600 text-white rounded-xl sm:rounded-2xl shadow-md shadow-blue-500/20">
+                <Smartphone className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <div>
-                <h1 className="text-2xl font-black tracking-tight text-slate-900 flex items-center gap-2.5">
+                <h1 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 flex items-center gap-2 flex-wrap">
                   Business Contacts Harvest
-                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                  <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
                     Admin Directory
                   </span>
                 </h1>
-                <p className="text-sm text-slate-500 font-medium mt-0.5">
+                <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
                   Harvest, detect duplicate leads, and filter records captured across all affiliate tiers.
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <button
               onClick={() => setIsHarvestModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl text-xs font-bold transition-all shadow-md shadow-blue-500/20 active:scale-95"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-bold transition-all shadow-md shadow-blue-500/20 active:scale-95"
             >
-              <Smartphone className="w-4 h-4" />
-              <span>Harvest Phone Numbers</span>
-              <span className="bg-white/20 text-white text-[10px] px-2 py-0.5 rounded-full font-mono font-bold">
+              <Smartphone className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden xs:inline">Harvest Phone Numbers</span>
+              <span className="xs:hidden">Harvest</span>
+              <span className="bg-white/20 text-white text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full font-mono font-bold">
                 {harvestedPhoneNumbers.length}
               </span>
             </button>
@@ -460,34 +461,36 @@ export default function HarvestContactsPage() {
             <button
               onClick={handleExportCsv}
               disabled={isExporting}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 rounded-2xl text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-60"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 rounded-xl sm:rounded-2xl text-[10px] sm:text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-60"
             >
               {isExporting ? (
-                <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin text-blue-600" />
               ) : (
-                <Download className="w-4 h-4 text-slate-600" />
+                <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-600" />
               )}
-              Export CSV
+              <span className="hidden xs:inline">Export CSV</span>
+              <span className="xs:hidden">Export</span>
             </button>
           </div>
         </div>
 
         {/* View Mode Switcher Tabs */}
-        <div className="flex items-center justify-between border-b border-slate-200 pb-1">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between border-b border-slate-200 pb-1 gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto scrollbar-hide -mb-px">
             <button
               onClick={() => setActiveTab('all')}
               className={cn(
-                "flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold transition-all relative border",
+                "flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold transition-all relative border whitespace-nowrap shrink-0",
                 activeTab === 'all'
                   ? "bg-slate-900 text-white border-slate-900 shadow-md shadow-slate-900/10"
                   : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
               )}
             >
-              <Building2 className="w-4 h-4" />
-              <span>All Harvested Contacts</span>
+              <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">All Harvested Contacts</span>
+              <span className="sm:hidden">All Contacts</span>
               <span className={cn(
-                "text-xs px-2 py-0.5 rounded-full font-mono font-bold ml-1",
+                "text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full font-mono font-bold",
                 activeTab === 'all' ? "bg-white/20 text-white" : "bg-slate-100 text-slate-700"
               )}>
                 {stats.totalHarvested.toLocaleString()}
@@ -497,71 +500,72 @@ export default function HarvestContactsPage() {
             <button
               onClick={() => setActiveTab('duplicates')}
               className={cn(
-                "flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold transition-all relative border",
+                "flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold transition-all relative border whitespace-nowrap shrink-0",
                 activeTab === 'duplicates'
                   ? "bg-rose-600 text-white border-rose-600 shadow-md shadow-rose-600/20"
                   : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
               )}
             >
-              <GitCompare className="w-4 h-4" />
-              <span>Duplicate Clusters & Similarity</span>
+              <GitCompare className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Duplicate Clusters & Similarity</span>
+              <span className="sm:hidden">Duplicates</span>
               {duplicateStats.totalClusters > 0 && (
                 <span className={cn(
-                  "text-xs px-2 py-0.5 rounded-full font-mono font-black ml-1 animate-pulse",
+                  "text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full font-mono font-black",
                   activeTab === 'duplicates' ? "bg-white text-rose-700" : "bg-rose-100 text-rose-700"
                 )}>
-                  {duplicateStats.totalClusters} Groups
+                  {duplicateStats.totalClusters}
                 </span>
               )}
             </button>
           </div>
 
           {activeTab === 'duplicates' && (
-            <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-slate-500">
+            <div className="hidden lg:flex items-center gap-2 text-xs font-bold text-slate-500 shrink-0">
               <Sparkles className="w-4 h-4 text-rose-500" />
-              <span>Fuzzy AI Similarity Clustering Engine</span>
+              <span>Fuzzy AI Similarity Engine</span>
             </div>
           )}
         </div>
 
         {/* TAB 1: ALL HARVESTED CONTACTS */}
         {activeTab === 'all' && (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Stats Metrics Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
               <motion.div 
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden group"
+                className="bg-white p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden group"
               >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Harvested</span>
-                  <div className="p-2.5 rounded-2xl bg-blue-50 text-blue-600">
-                    <Building2 className="w-5 h-5" />
+                <div className="flex items-center justify-between mb-2 sm:mb-3">
+                  <span className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Total Harvested</span>
+                  <div className="p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl bg-blue-50 text-blue-600">
+                    <Building2 className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
                 </div>
-                <h3 className="text-3xl font-black text-slate-900 tracking-tight font-mono">
+                <h3 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight font-mono">
                   {stats.totalHarvested.toLocaleString()}
                 </h3>
-                <p className="text-xs text-slate-500 mt-1 font-medium">All business leads captured in system</p>
+                <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1 font-medium hidden sm:block">All business leads captured in system</p>
               </motion.div>
 
               <motion.div 
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.05 }}
-                className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden group"
+                className="bg-white p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden group"
               >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Reachable Phones</span>
-                  <div className="p-2.5 rounded-2xl bg-emerald-50 text-emerald-600">
-                    <Phone className="w-5 h-5" />
+                <div className="flex items-center justify-between mb-2 sm:mb-3">
+                  <span className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Reachable Phones</span>
+                  <div className="p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl bg-emerald-50 text-emerald-600">
+                    <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
                 </div>
-                <h3 className="text-3xl font-black text-emerald-600 tracking-tight font-mono">
+                <h3 className="text-xl sm:text-3xl font-black text-emerald-600 tracking-tight font-mono">
                   {stats.totalWithPhone.toLocaleString()}
                 </h3>
-                <p className="text-xs text-slate-500 mt-1 font-medium">
+                <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1 font-medium hidden sm:block">
                   {stats.totalHarvested > 0 
                     ? `${Math.round((stats.totalWithPhone / stats.totalHarvested) * 100)}% have phone numbers ready for SMS`
                     : 'Ready for bulk SMS broadcast'}
@@ -572,51 +576,51 @@ export default function HarvestContactsPage() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden group"
+                className="bg-white p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden group"
               >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Converted Customers</span>
-                  <div className="p-2.5 rounded-2xl bg-indigo-50 text-indigo-600">
-                    <CheckCircle2 className="w-5 h-5" />
+                <div className="flex items-center justify-between mb-2 sm:mb-3">
+                  <span className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Converted</span>
+                  <div className="p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl bg-indigo-50 text-indigo-600">
+                    <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
                 </div>
-                <h3 className="text-3xl font-black text-indigo-600 tracking-tight font-mono">
+                <h3 className="text-xl sm:text-3xl font-black text-indigo-600 tracking-tight font-mono">
                   {stats.totalConverted.toLocaleString()}
                 </h3>
-                <p className="text-xs text-slate-500 mt-1 font-medium">Active & paid converted subscribers</p>
+                <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1 font-medium hidden sm:block">Active & paid converted subscribers</p>
               </motion.div>
 
               <motion.div 
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
-                className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden group"
+                className="bg-white p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden group"
               >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">In-Pipeline Leads</span>
-                  <div className="p-2.5 rounded-2xl bg-amber-50 text-amber-600">
-                    <Clock className="w-5 h-5" />
+                <div className="flex items-center justify-between mb-2 sm:mb-3">
+                  <span className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">In-Pipeline</span>
+                  <div className="p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl bg-amber-50 text-amber-600">
+                    <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
                 </div>
-                <h3 className="text-3xl font-black text-amber-600 tracking-tight font-mono">
+                <h3 className="text-xl sm:text-3xl font-black text-amber-600 tracking-tight font-mono">
                   {stats.totalPipeline.toLocaleString()}
                 </h3>
-                <p className="text-xs text-slate-500 mt-1 font-medium">Visited, interested, or demos scheduled</p>
+                <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1 font-medium hidden sm:block">Visited, interested, or demos scheduled</p>
               </motion.div>
             </div>
 
             {/* Filter Toolbar */}
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-              <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
+            <div className="bg-white p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm space-y-3 sm:space-y-4">
+              <div className="flex flex-col lg:flex-row gap-2.5 sm:gap-3 items-stretch lg:items-center justify-between">
                 {/* Search Input */}
-                <div className="relative flex-1 min-w-[280px]">
-                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <div className="relative flex-1 min-w-0">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
                     value={searchTerm}
                     onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
-                    placeholder="Search business, contact person, phone, email, or user who added..."
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
+                    placeholder="Search business, contact, phone..."
+                    className="w-full pl-9 pr-4 py-2 sm:py-2.5 bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
                   />
                   {searchTerm && (
                     <button
@@ -630,13 +634,13 @@ export default function HarvestContactsPage() {
 
                 {/* Location Filter */}
                 <div className="relative w-full lg:w-56">
-                  <MapPin className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <MapPin className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
                     value={locationTerm}
                     onChange={(e) => { setLocationTerm(e.target.value); setPage(1); }}
                     placeholder="Filter location / state..."
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
+                    className="w-full pl-9 pr-4 py-2 sm:py-2.5 bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
                   />
                 </div>
 
@@ -645,7 +649,7 @@ export default function HarvestContactsPage() {
                   <select
                     value={selectedStatus}
                     onChange={(e) => { setSelectedStatus(e.target.value); setPage(1); }}
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-800 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
+                    className="w-full px-3 py-2 sm:py-2.5 bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-medium text-slate-800 focus:bg-white focus:outline-none focus:border-blue-500 transition-all"
                   >
                     {statusFilterOptions.map((opt) => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -653,32 +657,34 @@ export default function HarvestContactsPage() {
                   </select>
                 </div>
 
-                {/* Phone Only Switch */}
-                <label className="flex items-center gap-2.5 px-3.5 py-2.5 bg-slate-50 rounded-2xl border border-slate-200 cursor-pointer select-none hover:bg-slate-100 transition-colors shrink-0">
-                  <input
-                    type="checkbox"
-                    checked={phoneOnly}
-                    onChange={(e) => { setPhoneOnly(e.target.checked); setPage(1); }}
-                    className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
-                  />
-                  <span className="text-xs font-bold text-slate-700">Phone Available Only</span>
-                </label>
+                <div className="flex items-center gap-2">
+                  {/* Phone Only Switch */}
+                  <label className="flex items-center gap-2 px-3 py-2 sm:py-2.5 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer select-none hover:bg-slate-100 transition-colors shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={phoneOnly}
+                      onChange={(e) => { setPhoneOnly(e.target.checked); setPage(1); }}
+                      className="rounded text-blue-600 focus:ring-blue-500 w-3.5 h-3.5 sm:w-4 sm:h-4"
+                    />
+                    <span className="text-[10px] sm:text-xs font-bold text-slate-700">Phone Only</span>
+                  </label>
 
-                {/* Sort Toggle */}
-                <button
-                  onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
-                  className="flex items-center gap-1.5 px-3.5 py-2.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-2xl text-xs font-bold text-slate-700 transition-all shrink-0"
-                  title="Toggle sort order"
-                >
-                  <ArrowUpDown className="w-3.5 h-3.5 text-slate-500" />
-                  <span>{sortOrder === 'desc' ? 'Newest First' : 'Oldest First'}</span>
-                </button>
+                  {/* Sort Toggle */}
+                  <button
+                    onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+                    className="flex items-center gap-1 px-2.5 sm:px-3.5 py-2 sm:py-2.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-xl text-[10px] sm:text-xs font-bold text-slate-700 transition-all shrink-0"
+                  >
+                    <ArrowUpDown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-500" />
+                    <span className="hidden sm:inline">{sortOrder === 'desc' ? 'Newest First' : 'Oldest First'}</span>
+                    <span className="sm:hidden">{sortOrder === 'desc' ? 'New' : 'Old'}</span>
+                  </button>
+                </div>
               </div>
 
               {/* Role Filter Pills */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pt-1 pb-0.5 no-scrollbar">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-2 shrink-0">
-                  Added By Role:
+              <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto pt-1 pb-0.5 no-scrollbar">
+                <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mr-1 sm:mr-2 shrink-0">
+                  Role:
                 </span>
                 {roleFilterOptions.map((roleOpt) => {
                   const active = selectedRole === roleOpt.value;
@@ -687,7 +693,7 @@ export default function HarvestContactsPage() {
                       key={roleOpt.value}
                       onClick={() => { setSelectedRole(roleOpt.value); setPage(1); }}
                       className={cn(
-                        "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap border",
+                        "px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap border",
                         active
                           ? "bg-slate-900 text-white border-slate-900 shadow-sm"
                           : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
@@ -701,20 +707,21 @@ export default function HarvestContactsPage() {
             </div>
 
             {/* Contacts Table */}
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden relative min-h-[480px]">
+            <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-hidden relative min-h-[400px]">
               {isLoadingHarvest && (
                 <div className="absolute inset-0 bg-white/70 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center gap-3">
-                  <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Loading harvested contacts...</p>
+                  <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-blue-600" />
+                  <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Loading harvested contacts...</p>
                 </div>
               )}
 
-              <div className="overflow-x-auto">
+              {/* Desktop table view */}
+              <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/80 border-b border-slate-200">
                       <th className="p-4 pl-6 font-bold text-slate-600 text-xs uppercase tracking-wider">Business</th>
-                      <th className="p-4 font-bold text-slate-600 text-xs uppercase tracking-wider hidden sm:table-cell">Contact Person</th>
+                      <th className="p-4 font-bold text-slate-600 text-xs uppercase tracking-wider hidden md:table-cell">Contact Person</th>
                       <th className="p-4 font-bold text-slate-600 text-xs uppercase tracking-wider hidden lg:table-cell">Added By (User)</th>
                       <th className="p-4 font-bold text-slate-600 text-xs uppercase tracking-wider">Status</th>
                       <th className="p-4 font-bold text-slate-600 text-xs uppercase tracking-wider hidden md:table-cell">WhatsApp</th>
@@ -765,7 +772,7 @@ export default function HarvestContactsPage() {
                           </td>
 
                           {/* Contact person */}
-                          <td className="p-4 hidden sm:table-cell">
+                          <td className="p-4 hidden md:table-cell">
                             <div>
                               <div className="flex items-center gap-1.5 font-bold text-slate-800">
                                 <span>{lead.contactName || 'No contact name'}</span>
@@ -953,6 +960,126 @@ export default function HarvestContactsPage() {
                 </table>
               </div>
 
+              {/* Mobile card view */}
+              <div className="sm:hidden divide-y divide-slate-100">
+                {!isLoadingHarvest && leads.length === 0 && (
+                  <div className="p-12 text-center">
+                    <div className="max-w-sm mx-auto flex flex-col items-center gap-3">
+                      <div className="w-14 h-14 bg-slate-100 rounded-3xl flex items-center justify-center text-slate-400">
+                        <Building2 className="w-7 h-7" />
+                      </div>
+                      <h4 className="text-base font-bold text-slate-800">No Business Contacts Found</h4>
+                      <p className="text-xs text-slate-500 leading-relaxed">
+                        No leads match the selected filter criteria. Try clearing search keywords or resetting your role and status filters.
+                      </p>
+                      <button
+                        onClick={() => {
+                          setSearchTerm('');
+                          setSelectedRole('');
+                          setSelectedStatus('');
+                          setLocationTerm('');
+                          setPhoneOnly(false);
+                          setPage(1);
+                        }}
+                        className="mt-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors"
+                      >
+                        Reset All Filters
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {leads.map((lead, idx) => {
+                  const statusClass = statusBadgeColor[lead.status] || 'bg-slate-100 text-slate-700 border-slate-200';
+
+                  return (
+                    <motion.div
+                      key={lead.id}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.02 }}
+                      className="p-4 space-y-3 cursor-pointer hover:bg-slate-50/80 transition-colors"
+                      onClick={() => setSelectedLead(lead)}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-700 font-black text-sm shrink-0 uppercase">
+                            {lead.businessName.charAt(0)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-900 truncate">{lead.businessName}</p>
+                            <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5 truncate">
+                              <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                              {lead.location || lead.businessAddress || 'Location not specified'}
+                            </p>
+                          </div>
+                        </div>
+                        <span className={cn("text-[10px] font-bold px-2.5 py-1 rounded-full border uppercase tracking-wider inline-flex items-center gap-1 shrink-0", statusClass)}>
+                          {lead.status === 'CUSTOMER' ? (
+                            <CheckCircle2 className="w-3 h-3" />
+                          ) : lead.status === 'NOT_INTERESTED' ? (
+                            <XCircle className="w-3 h-3" />
+                          ) : (
+                            <Clock className="w-3 h-3" />
+                          )}
+                          {lead.status}
+                        </span>
+                      </div>
+
+                      {lead.contactName && (
+                        <p className="text-xs text-slate-600">
+                          <span className="font-semibold text-slate-800">{lead.contactName}</span>
+                          {lead.contactRole && <span className="text-slate-400 ml-1">({lead.contactRole})</span>}
+                        </p>
+                      )}
+
+                      {lead.phone && (
+                        <div className="flex items-center gap-2 text-xs">
+                          <Phone className="w-3 h-3 text-emerald-600" />
+                          <span className="font-mono font-medium text-slate-700">{lead.phone}</span>
+                        </div>
+                      )}
+
+                      {lead.phone && formatWhatsAppUrl(lead.phone) && (
+                        <a
+                          href={formatWhatsAppUrl(lead.phone)!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors"
+                        >
+                          <MessageSquare className="w-3 h-3" />
+                          Open WA
+                        </a>
+                      )}
+
+                      <div className="flex items-center gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => setEditingLead(lead)}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-blue-50 hover:bg-blue-100 rounded-xl text-xs font-bold text-blue-600 transition-colors"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => setDeletingLead(lead)}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-rose-50 hover:bg-rose-100 rounded-xl text-xs font-bold text-rose-600 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Delete
+                        </button>
+                        <button
+                          onClick={() => setSelectedLead(lead)}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-600 transition-colors"
+                        >
+                          <ChevronRight className="w-3.5 h-3.5" />
+                          View
+                        </button>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
               {/* Pagination bar */}
               {meta.totalPages > 1 && (
                 <div className="p-4 border-t border-slate-100 flex items-center justify-between gap-4 text-xs font-medium text-slate-500">
@@ -1008,84 +1135,84 @@ export default function HarvestContactsPage() {
         {activeTab === 'duplicates' && (
           <div className="space-y-6">
             {/* Duplicates Metric Overview Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
               <motion.div 
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden group"
+                className="bg-white p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden group"
               >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Duplicate Clusters</span>
-                  <div className="p-2.5 rounded-2xl bg-rose-50 text-rose-600">
-                    <GitCompare className="w-5 h-5" />
+                <div className="flex items-center justify-between mb-2 sm:mb-3">
+                  <span className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Duplicate Clusters</span>
+                  <div className="p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl bg-rose-50 text-rose-600">
+                    <GitCompare className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
                 </div>
-                <h3 className="text-3xl font-black text-rose-600 tracking-tight font-mono">
+                <h3 className="text-xl sm:text-3xl font-black text-rose-600 tracking-tight font-mono">
                   {duplicateStats.totalClusters.toLocaleString()}
                 </h3>
-                <p className="text-xs text-slate-500 mt-1 font-medium">Distinct groups of overlapping leads</p>
+                <p className="text-xs text-slate-500 mt-1 font-medium hidden sm:block">Distinct groups of overlapping leads</p>
               </motion.div>
 
               <motion.div 
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.05 }}
-                className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden group"
+                className="bg-white p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden group"
               >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Duplicated Leads</span>
-                  <div className="p-2.5 rounded-2xl bg-amber-50 text-amber-600">
-                    <Layers className="w-5 h-5" />
+                <div className="flex items-center justify-between mb-2 sm:mb-3">
+                  <span className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Total Duplicated Leads</span>
+                  <div className="p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl bg-amber-50 text-amber-600">
+                    <Layers className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
                 </div>
-                <h3 className="text-3xl font-black text-amber-600 tracking-tight font-mono">
+                <h3 className="text-xl sm:text-3xl font-black text-amber-600 tracking-tight font-mono">
                   {duplicateStats.totalDuplicateLeads.toLocaleString()}
                 </h3>
-                <p className="text-xs text-slate-500 mt-1 font-medium">Individual lead entries across all clusters</p>
+                <p className="text-xs text-slate-500 mt-1 font-medium hidden sm:block">Individual lead entries across all clusters</p>
               </motion.div>
 
               <motion.div 
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden group"
+                className="bg-white p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden group"
               >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">High Confidence (≥90%)</span>
-                  <div className="p-2.5 rounded-2xl bg-red-50 text-red-600">
-                    <AlertTriangle className="w-5 h-5" />
+                <div className="flex items-center justify-between mb-2 sm:mb-3">
+                  <span className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">High Confidence (≥90%)</span>
+                  <div className="p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl bg-red-50 text-red-600">
+                    <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
                 </div>
-                <h3 className="text-3xl font-black text-red-600 tracking-tight font-mono">
+                <h3 className="text-xl sm:text-3xl font-black text-red-600 tracking-tight font-mono">
                   {duplicateStats.highConfidenceClusters.toLocaleString()}
                 </h3>
-                <p className="text-xs text-slate-500 mt-1 font-medium">Identical phones, emails, or exact names</p>
+                <p className="text-xs text-slate-500 mt-1 font-medium hidden sm:block">Identical phones, emails, or exact names</p>
               </motion.div>
 
               <motion.div 
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
-                className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden group"
+                className="bg-white p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden group"
               >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Sensitivity</span>
-                  <div className="p-2.5 rounded-2xl bg-blue-50 text-blue-600">
-                    <SlidersHorizontal className="w-5 h-5" />
+                <div className="flex items-center justify-between mb-2 sm:mb-3">
+                  <span className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Active Sensitivity</span>
+                  <div className="p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl bg-blue-50 text-blue-600">
+                    <SlidersHorizontal className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
                 </div>
-                <h3 className="text-3xl font-black text-slate-900 tracking-tight font-mono">
+                <h3 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight font-mono">
                   ≥ {duplicateThreshold}%
                 </h3>
-                <p className="text-xs text-slate-500 mt-1 font-medium">Fuzzy matching similarity threshold</p>
+                <p className="text-xs text-slate-500 mt-1 font-medium hidden sm:block">Fuzzy matching similarity threshold</p>
               </motion.div>
             </div>
 
             {/* Duplicates Filter & Sensitivity Controls */}
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div className="bg-white p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between">
                 {/* Search in duplicates */}
-                <div className="relative flex-1 min-w-[280px]">
+                <div className="relative flex-1 min-w-0">
                   <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
@@ -1122,7 +1249,7 @@ export default function HarvestContactsPage() {
                         key={preset.value}
                         onClick={() => setDuplicateThreshold(preset.value)}
                         className={cn(
-                          "px-3 py-1.5 rounded-xl text-xs font-bold transition-all border",
+                          "px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[10px] sm:text-xs font-bold transition-all border",
                           active
                             ? "bg-rose-600 text-white border-rose-600 shadow-sm"
                             : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
@@ -1215,8 +1342,8 @@ export default function HarvestContactsPage() {
                     </div>
 
                     {/* Grouped Leads Grid / Comparison Row */}
-                    <div className="p-6 divide-y divide-slate-100 bg-slate-50/50">
-                      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5">
+                    <div className="p-3 sm:p-6 divide-y divide-slate-100 bg-slate-50/50">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-5">
                         {cluster.leads.map((item) => {
                           const role = item.user?.role || 'AFFILIATE';
                           const roleClass = roleBadgeColor[role] || 'bg-slate-100 text-slate-700 border-slate-200';
@@ -1226,7 +1353,7 @@ export default function HarvestContactsPage() {
                             <div
                               key={item.id}
                               className={cn(
-                                "rounded-3xl p-5 border transition-all relative flex flex-col justify-between space-y-4",
+                                "rounded-3xl p-3 sm:p-5 border transition-all relative flex flex-col justify-between space-y-3 sm:space-y-4",
                                 item.isPrimary
                                   ? "bg-white border-emerald-300 shadow-sm ring-1 ring-emerald-500/20"
                                   : "bg-white border-slate-200 hover:border-slate-300 shadow-sm"
@@ -1386,93 +1513,96 @@ export default function HarvestContactsPage() {
               className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50"
             />
             <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
+              initial={typeof window !== 'undefined' && window.innerWidth < 640 ? { y: '100%' } : { x: '100%' }}
+              animate={typeof window !== 'undefined' && window.innerWidth < 640 ? { y: 0 } : { x: 0 }}
+              exit={typeof window !== 'undefined' && window.innerWidth < 640 ? { y: '100%' } : { x: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 240 }}
-              className="fixed top-0 right-0 h-full w-full max-w-2xl bg-white shadow-2xl z-50 overflow-y-auto border-l border-slate-200"
+              className="fixed inset-x-0 bottom-0 sm:inset-auto sm:top-0 sm:right-0 h-[92dvh] sm:h-full w-full sm:max-w-2xl bg-white shadow-2xl z-50 overflow-y-auto border-t sm:border-t-0 sm:border-l border-slate-200 rounded-t-[28px] sm:rounded-none pb-[env(safe-area-inset-bottom)]"
             >
               {/* Drawer Header Banner */}
-              <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-md border-b border-slate-200 p-6 flex items-start justify-between gap-4">
-                <div className="flex items-start gap-4 min-w-0">
-                  <div className="relative shrink-0">
-                    <div className="w-14 h-14 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg shadow-blue-500/20 uppercase">
-                      {selectedLead.businessName.charAt(0)}
-                    </div>
-                    {selectedLead.isAnchor && (
-                      <span 
-                        className="absolute -bottom-1 -right-1 p-1 bg-amber-500 text-white rounded-full shadow-md border-2 border-white"
-                        title="Anchor Account / Milestone Business"
-                      >
-                        <Award className="w-3.5 h-3.5" />
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-xl font-black text-slate-900 truncate">
-                        {selectedLead.businessName}
-                      </h3>
-                      <button
-                        onClick={() => copyToClipboard(selectedLead.businessName, 'Business Name')}
-                        className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-700 transition-colors"
-                        title="Copy business name"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    <div className="flex items-center gap-2 mt-1 flex-wrap text-xs text-slate-500">
-                      {selectedLead.industry && (
-                        <span className="font-semibold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-lg border border-slate-200">
-                          {selectedLead.industry}
-                        </span>
-                      )}
-                      {selectedLead.source && (
-                        <span className="font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-200">
-                          Source: {selectedLead.source}
-                        </span>
-                      )}
-                      <span className="font-mono text-slate-400 text-[11px] flex items-center gap-1">
-                        <Hash className="w-3 h-3" />
-                        {selectedLead.id}
-                        <button
-                          onClick={() => copyToClipboard(selectedLead.id, 'Lead UUID')}
-                          className="hover:text-slate-700 p-0.5"
-                          title="Copy Lead UUID"
+              <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-md border-b border-slate-200 p-4 sm:p-6">
+                <div className="sm:hidden flex justify-center pt-3 pb-1"><div className="w-10 h-1.5 bg-slate-200 rounded-full" /></div>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-4 min-w-0">
+                    <div className="relative shrink-0">
+                      <div className="w-14 h-14 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg shadow-blue-500/20 uppercase">
+                        {selectedLead.businessName.charAt(0)}
+                      </div>
+                      {selectedLead.isAnchor && (
+                        <span 
+                          className="absolute -bottom-1 -right-1 p-1 bg-amber-500 text-white rounded-full shadow-md border-2 border-white"
+                          title="Anchor Account / Milestone Business"
                         >
-                          <Copy className="w-3 h-3" />
+                          <Award className="w-3.5 h-3.5" />
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-xl font-black text-slate-900 truncate">
+                          {selectedLead.businessName}
+                        </h3>
+                        <button
+                          onClick={() => copyToClipboard(selectedLead.businessName, 'Business Name')}
+                          className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-700 transition-colors"
+                          title="Copy business name"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
                         </button>
-                      </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 mt-1 flex-wrap text-xs text-slate-500">
+                        {selectedLead.industry && (
+                          <span className="font-semibold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-lg border border-slate-200">
+                            {selectedLead.industry}
+                          </span>
+                        )}
+                        {selectedLead.source && (
+                          <span className="font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-200">
+                            Source: {selectedLead.source}
+                          </span>
+                        )}
+                        <span className="font-mono text-slate-400 text-[11px] flex items-center gap-1">
+                          <Hash className="w-3 h-3" />
+                          {selectedLead.id}
+                          <button
+                            onClick={() => copyToClipboard(selectedLead.id, 'Lead UUID')}
+                            className="hover:text-slate-700 p-0.5"
+                            title="Copy Lead UUID"
+                          >
+                            <Copy className="w-3 h-3" />
+                          </button>
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => {
-                      const target = selectedLead;
-                      setSelectedLead(null);
-                      setEditingLead(target);
-                    }}
-                    className="p-2.5 hover:bg-blue-50 text-slate-400 hover:text-blue-600 rounded-2xl border border-slate-200 hover:border-blue-200 transition-all shadow-sm"
-                    title="Edit Business Details"
-                  >
-                    <Edit3 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setSelectedLead(null)}
-                    className="p-2.5 hover:bg-slate-100 text-slate-400 hover:text-slate-700 rounded-2xl border border-slate-200 transition-colors shadow-sm"
-                    title="Close Inspector"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => {
+                        const target = selectedLead;
+                        setSelectedLead(null);
+                        setEditingLead(target);
+                      }}
+                      className="p-2.5 hover:bg-blue-50 text-slate-400 hover:text-blue-600 rounded-2xl border border-slate-200 hover:border-blue-200 transition-all shadow-sm"
+                      title="Edit Business Details"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setSelectedLead(null)}
+                      className="p-2.5 hover:bg-slate-100 text-slate-400 hover:text-slate-700 rounded-2xl border border-slate-200 transition-colors shadow-sm"
+                      title="Close Inspector"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
               {/* Drawer Content */}
-              <div className="p-6 sm:p-8 space-y-6">
+              <div className="p-4 sm:p-8 space-y-4 sm:space-y-6">
                 {/* Status, Priority & Quick Tags */}
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <span className={cn("text-xs font-black px-3.5 py-1.5 rounded-full border uppercase tracking-wider inline-flex items-center gap-1.5 shadow-sm", statusBadgeColor[selectedLead.status] || 'bg-slate-100 text-slate-700 border-slate-200')}>
@@ -1526,22 +1656,22 @@ export default function HarvestContactsPage() {
                 </div>
 
                 {/* Quick Action Ribbon */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="grid grid-cols-4 gap-2">
                   {selectedLead.phone ? (
                     <a
                       href={`tel:${selectedLead.phone}`}
-                      className="flex items-center justify-center gap-2 p-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-2xl border border-emerald-200 text-xs font-bold transition-all shadow-sm active:scale-95"
+                      className="flex items-center justify-center gap-2 p-2 sm:p-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-2xl border border-emerald-200 text-xs font-bold transition-all shadow-sm active:scale-95"
                     >
                       <PhoneCall className="w-4 h-4 text-emerald-600" />
-                      <span>Call Direct</span>
+                      <span className="hidden sm:inline">Call Direct</span>
                     </a>
                   ) : (
                     <button
                       disabled
-                      className="flex items-center justify-center gap-2 p-3 bg-slate-50 text-slate-400 rounded-2xl border border-slate-200 text-xs font-bold opacity-60 cursor-not-allowed"
+                      className="flex items-center justify-center gap-2 p-2 sm:p-3 bg-slate-50 text-slate-400 rounded-2xl border border-slate-200 text-xs font-bold opacity-60 cursor-not-allowed"
                     >
                       <Phone className="w-4 h-4" />
-                      <span>No Phone</span>
+                      <span className="hidden sm:inline">No Phone</span>
                     </button>
                   )}
 
@@ -1550,36 +1680,36 @@ export default function HarvestContactsPage() {
                       href={formatWhatsAppUrl(selectedLead.phone) || '#'}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 p-3 bg-green-50 hover:bg-green-100 text-green-700 rounded-2xl border border-green-200 text-xs font-bold transition-all shadow-sm active:scale-95"
+                      className="flex items-center justify-center gap-2 p-2 sm:p-3 bg-green-50 hover:bg-green-100 text-green-700 rounded-2xl border border-green-200 text-xs font-bold transition-all shadow-sm active:scale-95"
                     >
                       <MessageCircle className="w-4 h-4 text-green-600" />
-                      <span>WhatsApp</span>
+                      <span className="hidden sm:inline">WhatsApp</span>
                     </a>
                   ) : (
                     <button
                       disabled
-                      className="flex items-center justify-center gap-2 p-3 bg-slate-50 text-slate-400 rounded-2xl border border-slate-200 text-xs font-bold opacity-60 cursor-not-allowed"
+                      className="flex items-center justify-center gap-2 p-2 sm:p-3 bg-slate-50 text-slate-400 rounded-2xl border border-slate-200 text-xs font-bold opacity-60 cursor-not-allowed"
                     >
                       <MessageCircle className="w-4 h-4" />
-                      <span>WhatsApp</span>
+                      <span className="hidden sm:inline">WhatsApp</span>
                     </button>
                   )}
 
                   {selectedLead.email ? (
                     <a
                       href={`mailto:${selectedLead.email}`}
-                      className="flex items-center justify-center gap-2 p-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-2xl border border-blue-200 text-xs font-bold transition-all shadow-sm active:scale-95"
+                      className="flex items-center justify-center gap-2 p-2 sm:p-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-2xl border border-blue-200 text-xs font-bold transition-all shadow-sm active:scale-95"
                     >
                       <Mail className="w-4 h-4 text-blue-600" />
-                      <span>Send Email</span>
+                      <span className="hidden sm:inline">Send Email</span>
                     </a>
                   ) : (
                     <button
                       disabled
-                      className="flex items-center justify-center gap-2 p-3 bg-slate-50 text-slate-400 rounded-2xl border border-slate-200 text-xs font-bold opacity-60 cursor-not-allowed"
+                      className="flex items-center justify-center gap-2 p-2 sm:p-3 bg-slate-50 text-slate-400 rounded-2xl border border-slate-200 text-xs font-bold opacity-60 cursor-not-allowed"
                     >
                       <Mail className="w-4 h-4" />
-                      <span>No Email</span>
+                      <span className="hidden sm:inline">No Email</span>
                     </button>
                   )}
 
@@ -1587,16 +1717,16 @@ export default function HarvestContactsPage() {
                     href={getGoogleMapsUrl(selectedLead)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 p-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-2xl border border-indigo-200 text-xs font-bold transition-all shadow-sm active:scale-95"
+                    className="flex items-center justify-center gap-2 p-2 sm:p-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-2xl border border-indigo-200 text-xs font-bold transition-all shadow-sm active:scale-95"
                   >
                     <Navigation className="w-4 h-4 text-indigo-600" />
-                    <span>View Map</span>
+                    <span className="hidden sm:inline">View Map</span>
                   </a>
                 </div>
 
                 {/* Key Vitals Summary Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  <div className="bg-slate-50 p-2.5 sm:p-3.5 rounded-2xl border border-slate-200">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Decision Maker</span>
                     <div className="flex items-center gap-1.5">
                       {selectedLead.decisionMakerMet ? (
@@ -1613,7 +1743,7 @@ export default function HarvestContactsPage() {
                     </div>
                   </div>
 
-                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                  <div className="bg-slate-50 p-2.5 sm:p-3.5 rounded-2xl border border-slate-200">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Demo Status</span>
                     <div className="flex items-center gap-1.5">
                       {selectedLead.demoDone ? (
@@ -1630,7 +1760,7 @@ export default function HarvestContactsPage() {
                     </div>
                   </div>
 
-                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                  <div className="bg-slate-50 p-2.5 sm:p-3.5 rounded-2xl border border-slate-200">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Daily Traffic</span>
                     <div className="flex items-center gap-1.5">
                       <Store className="w-4 h-4 text-blue-600 shrink-0" />
@@ -1640,7 +1770,7 @@ export default function HarvestContactsPage() {
                     </div>
                   </div>
 
-                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                  <div className="bg-slate-50 p-2.5 sm:p-3.5 rounded-2xl border border-slate-200">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Business Scale</span>
                     <div className="flex items-center gap-1.5">
                       <Layers className="w-4 h-4 text-purple-600 shrink-0" />
@@ -1652,7 +1782,7 @@ export default function HarvestContactsPage() {
                 </div>
 
                 {/* 1. PRIMARY CONTACT PERSON & STAKEHOLDER */}
-                <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
+                <div className="bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200 shadow-sm space-y-4">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
                       <UserIcon className="w-4 h-4 text-blue-600" />
@@ -1724,7 +1854,7 @@ export default function HarvestContactsPage() {
                 </div>
 
                 {/* 2. PHYSICAL LOCATION & GEOLOCATION */}
-                <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
+                <div className="bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200 shadow-sm space-y-4">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
                       <MapPin className="w-4 h-4 text-rose-600" />
@@ -1795,7 +1925,7 @@ export default function HarvestContactsPage() {
                 </div>
 
                 {/* 3. OPERATING SCHEDULE & BUSINESS PROFILE */}
-                <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
+                <div className="bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200 shadow-sm space-y-4">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
                       <Store className="w-4 h-4 text-amber-600" />
@@ -1875,7 +2005,7 @@ export default function HarvestContactsPage() {
                 </div>
 
                 {/* 4. PIPELINE SCHEDULING & FIELD PROGRESSION */}
-                <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
+                <div className="bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200 shadow-sm space-y-4">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
                       <CalendarClock className="w-4 h-4 text-indigo-600" />
@@ -2006,7 +2136,7 @@ export default function HarvestContactsPage() {
 
                 {/* 6. MARKET MAPPING PLAN (IF ATTACHED) */}
                 {selectedLead.plan && (
-                  <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-3">
+                  <div className="bg-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200 shadow-sm space-y-3">
                     <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
                       <Target className="w-4 h-4 text-blue-600" />
                       Associated Market Mapping Plan
@@ -2088,7 +2218,7 @@ export default function HarvestContactsPage() {
       {/* EDIT LEAD MODAL */}
       <AnimatePresence>
         {editingLead && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -2100,10 +2230,11 @@ export default function HarvestContactsPage() {
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200 max-h-[92vh] flex flex-col"
+              className="relative w-full max-w-3xl bg-white rounded-t-[28px] sm:rounded-3xl shadow-2xl overflow-hidden border border-slate-200 max-h-[92dvh] sm:max-h-[92vh] flex flex-col pb-[env(safe-area-inset-bottom)]"
             >
               {/* Header */}
-              <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+              <div className="p-4 sm:p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                <div className="sm:hidden flex justify-center pt-3 pb-1"><div className="w-10 h-1.5 bg-slate-200 rounded-full" /></div>
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 bg-blue-600 text-white rounded-2xl shadow-md">
                     <Edit3 className="w-5 h-5" />
@@ -2122,7 +2253,7 @@ export default function HarvestContactsPage() {
               </div>
 
               {/* Form Body */}
-              <form onSubmit={handleSaveEdit} className="p-6 sm:p-8 space-y-6 overflow-y-auto">
+              <form onSubmit={handleSaveEdit} className="p-4 sm:p-8 space-y-6 overflow-y-auto">
                 {/* 1. Business Identity */}
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Business Identity</h4>
@@ -2459,7 +2590,7 @@ export default function HarvestContactsPage() {
       {/* DELETE CONFIRMATION MODAL */}
       <AnimatePresence>
         {deletingLead && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -2471,8 +2602,9 @@ export default function HarvestContactsPage() {
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200 p-6 space-y-5"
+              className="relative w-full max-w-md bg-white rounded-t-[28px] sm:rounded-3xl shadow-2xl overflow-hidden border border-slate-200 p-4 sm:p-6 space-y-5 pb-[env(safe-area-inset-bottom)]"
             >
+              <div className="sm:hidden flex justify-center pt-3 pb-1"><div className="w-10 h-1.5 bg-slate-200 rounded-full" /></div>
               <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
                 <Trash2 className="w-6 h-6" />
               </div>
@@ -2526,7 +2658,7 @@ export default function HarvestContactsPage() {
       {/* Harvest Phone Numbers Modal */}
       <AnimatePresence>
         {isHarvestModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -2538,9 +2670,10 @@ export default function HarvestContactsPage() {
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200"
+              className="relative w-full max-w-2xl bg-white rounded-t-[28px] sm:rounded-3xl shadow-2xl overflow-hidden border border-slate-200 pb-[env(safe-area-inset-bottom)]"
             >
-              <div className="p-6 sm:p-8 space-y-6">
+              <div className="sm:hidden flex justify-center pt-3 pb-1"><div className="w-10 h-1.5 bg-slate-200 rounded-full" /></div>
+              <div className="p-4 sm:p-8 space-y-6">
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-3.5">
                     <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">

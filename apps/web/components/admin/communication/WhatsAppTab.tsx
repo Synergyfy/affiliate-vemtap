@@ -14,9 +14,9 @@ import {
   useTemplates,
   useQueueLifecycle,
   useAudienceEstimate,
+  useAudiencePreviewContact,
 } from '@/services/useCommunicationHooks';
 import { AudienceFilter, EMPTY_AUDIENCE } from '@/types/communication';
-import { mockLeadFixtures } from '@/lib/communication-mock';
 import { useDebounce } from '@/hooks/use-debounce';
 import { AlertTriangle, UsersRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -36,8 +36,7 @@ export default function WhatsAppTab() {
   const debouncedFilters = useDebounce(filters, 400);
   const { data: estimate } = useAudienceEstimate(filtersActive() ? debouncedFilters : null);
 
-  // Preview lead for variable substitution (replaced by first audience contact via API later)
-  const previewLead = mockLeadFixtures.find((l) => l.phone) || null;
+  const previewLead = useAudiencePreviewContact(debouncedFilters).data ?? null;
 
   const audienceCount = estimate?.eligibleCount ?? 0;
   const canStart = filtersActive() && message.trim().length > 0 && audienceCount > 0;
@@ -90,18 +89,18 @@ export default function WhatsAppTab() {
   const queueItems = queues || [];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-8">
       {/* Create follow-up */}
-      <section className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
-        <div className="p-5 lg:p-6 border-b border-slate-100">
+      <section className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl shadow-sm overflow-hidden">
+        <div className="p-3 sm:p-5 lg:p-6 border-b border-slate-100">
           <h3 className="text-lg font-bold text-slate-900">Create WhatsApp Follow-up</h3>
           <p className="text-xs text-slate-500 font-medium mt-1">
             Select the audience, prepare one message, then work through the contacts one at a time.
           </p>
         </div>
-        <div className="p-5 lg:p-6 space-y-6">
+        <div className="p-3 sm:p-5 lg:p-6 space-y-4 sm:space-y-6">
           <AudienceBuilder filters={filters} onChange={setFilters} />
-          <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100">
+          <div className="p-3 sm:p-5 bg-slate-50 rounded-2xl sm:rounded-3xl border border-slate-100">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Message</p>
             <MessageComposer
               channel="WHATSAPP"
@@ -162,7 +161,7 @@ export default function WhatsAppTab() {
             <Loader2 className="w-6 h-6 animate-spin text-slate-300" />
           </div>
         ) : queueItems.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center">
+          <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-8 sm:p-12 text-center">
             <PlayCircle className="w-10 h-10 text-slate-200 mx-auto mb-3" />
             <p className="text-sm font-medium text-slate-500">No WhatsApp queues yet. Build your first follow-up above.</p>
           </div>
@@ -174,7 +173,7 @@ export default function WhatsAppTab() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.05 }}
-                className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm"
+                className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-sm"
               >
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div>
