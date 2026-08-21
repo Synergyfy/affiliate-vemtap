@@ -341,7 +341,7 @@ export default function TrainingManagement() {
               exit={{ opacity: 0, height: 0 }}
               className="overflow-hidden"
             >
-              <div className="bg-white p-8 rounded-[32px] border-2 border-blue-100 shadow-xl shadow-blue-600/5 mb-8">
+              <div className="bg-white p-5 sm:p-8 rounded-[32px] border-2 border-blue-100 shadow-xl shadow-blue-600/5 mb-8">
                 <div className="flex justify-between items-center mb-8">
                   <div className="flex items-center gap-3">
                     <div className="p-3 bg-blue-50 rounded-2xl">
@@ -596,8 +596,8 @@ export default function TrainingManagement() {
               <thead>
                 <tr className="bg-slate-50/50 border-b border-slate-200">
                   <th className="p-4 font-bold text-slate-600 text-sm">Module Name</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm">Category</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm">Order</th>
+                  <th className="p-4 font-bold text-slate-600 text-sm hidden md:table-cell">Category</th>
+                  <th className="p-4 font-bold text-slate-600 text-sm hidden lg:table-cell">Order</th>
                   <th className="p-4 font-bold text-slate-600 text-sm">Status</th>
                   <th className="p-4 font-bold text-slate-600 text-sm text-right">Actions</th>
                 </tr>
@@ -624,12 +624,12 @@ export default function TrainingManagement() {
                         </div>
                       </div>
                     </td>
-                    <td className="p-4">
+                    <td className="p-4 hidden md:table-cell">
                       <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg">
                         {module.category}
                       </span>
                     </td>
-                    <td className="p-4">
+                    <td className="p-4 hidden lg:table-cell">
                       <span className="text-sm font-bold text-slate-700">#{module.order}</span>
                     </td>
                     <td className="p-4">
