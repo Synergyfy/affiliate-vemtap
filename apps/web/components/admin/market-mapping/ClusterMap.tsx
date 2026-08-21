@@ -97,7 +97,7 @@ export default function ClusterMap({
   };
 
   return (
-    <div className="bg-slate-900 rounded-3xl border border-slate-800 shadow-xl overflow-hidden relative flex flex-col h-[750px]">
+    <div className="bg-slate-900 rounded-3xl border border-slate-800 shadow-xl overflow-hidden relative flex flex-col h-[400px] sm:h-[600px] lg:h-[750px]">
       {/* Map Header Overlay Bar */}
       <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-none">
         <div className="bg-slate-900/90 backdrop-blur-md px-4 py-2 rounded-2xl border border-slate-800 text-white shadow-lg pointer-events-auto flex items-center gap-3">
