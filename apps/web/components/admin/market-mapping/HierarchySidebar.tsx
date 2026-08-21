@@ -171,7 +171,7 @@ export default function HierarchySidebar({
   };
 
   return (
-    <div className="bg-white rounded-3xl border border-slate-200 shadow-sm flex flex-col h-[750px] overflow-hidden">
+    <div className="bg-white rounded-3xl border border-slate-200 shadow-sm flex flex-col h-[400px] sm:h-[600px] lg:h-[750px] overflow-hidden">
       {/* Header */}
       <div className="p-4 border-b border-slate-100 space-y-3">
         <div className="flex items-center justify-between">

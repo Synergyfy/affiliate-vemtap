@@ -39,7 +39,7 @@ export default function ConfirmationModal({
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden p-8"
+            className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden p-5 sm:p-8"
           >
             <div className="flex flex-col items-center text-center">
               <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 ${

@@ -158,7 +158,7 @@ export default function FraudMonitor() {
                   <th className="p-4 font-bold text-slate-600 text-sm">Affiliate</th>
                   <th className="p-4 font-bold text-slate-600 text-sm">Alert Reason</th>
                   <th className="p-4 font-bold text-slate-600 text-sm">Risk Level</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm">Detected</th>
+                  <th className="p-4 font-bold text-slate-600 text-sm hidden md:table-cell">Detected</th>
                   <th className="p-4 font-bold text-slate-600 text-sm text-right">Actions</th>
                 </tr>
               </thead>
@@ -196,7 +196,7 @@ export default function FraudMonitor() {
                           {alert.severity}
                         </span>
                       </td>
-                      <td className="p-4 text-sm text-slate-500">{new Date(alert.createdAt).toLocaleDateString()}</td>
+                      <td className="p-4 text-sm text-slate-500 hidden md:table-cell">{new Date(alert.createdAt).toLocaleDateString()}</td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-2 transition-opacity">
                           <button 

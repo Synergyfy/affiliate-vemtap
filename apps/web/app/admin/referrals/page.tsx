@@ -86,11 +86,11 @@ export default function ReferralsManagement() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <h2 className="text-2xl font-bold text-slate-900">Referred Businesses</h2>
           <button
             onClick={() => downloadBusinessesExport()}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all shadow-sm"
+            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all shadow-sm self-start"
           >
             <Download className="w-4 h-4" /> Export CSV
           </button>
@@ -124,10 +124,10 @@ export default function ReferralsManagement() {
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="p-4 font-bold text-slate-600 text-sm">Business</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm">Referred By</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm">Plan</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm">Amount</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm">Date</th>
+                  <th className="p-4 font-bold text-slate-600 text-sm hidden sm:table-cell">Referred By</th>
+                  <th className="p-4 font-bold text-slate-600 text-sm hidden md:table-cell">Plan</th>
+                  <th className="p-4 font-bold text-slate-600 text-sm hidden lg:table-cell">Amount</th>
+                  <th className="p-4 font-bold text-slate-600 text-sm hidden md:table-cell">Date</th>
                   <th className="p-4 font-bold text-slate-600 text-sm">Status</th>
                   <th className="p-4 font-bold text-slate-600 text-sm text-right">Actions</th>
                 </tr>
@@ -147,7 +147,7 @@ export default function ReferralsManagement() {
                         <p className="text-xs text-slate-400 font-mono text-xs">{ref.id}</p>
                       </div>
                     </td>
-                    <td className="p-4">
+                    <td className="p-4 hidden sm:table-cell">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center text-[10px] text-blue-600 font-bold uppercase">
                           {ref.affiliate?.fullName?.charAt(0) || 'A'}
@@ -155,9 +155,9 @@ export default function ReferralsManagement() {
                         <span className="text-sm font-medium text-slate-700">{ref.affiliate?.fullName || 'Unknown'}</span>
                       </div>
                     </td>
-                    <td className="p-4 text-sm text-slate-600">{ref.planType || 'N/A'}</td>
-                    <td className="p-4 text-sm text-slate-900 font-bold">₦{Number(ref.subscriptionAmount || 0).toLocaleString()}</td>
-                    <td className="p-4 text-sm text-slate-600">{new Date(ref.createdAt).toLocaleDateString()}</td>
+                    <td className="p-4 text-sm text-slate-600 hidden md:table-cell">{ref.planType || 'N/A'}</td>
+                    <td className="p-4 text-sm text-slate-900 font-bold hidden lg:table-cell">₦{Number(ref.subscriptionAmount || 0).toLocaleString()}</td>
+                    <td className="p-4 text-sm text-slate-600 hidden md:table-cell">{new Date(ref.createdAt).toLocaleDateString()}</td>
                     <td className="p-4">
                       <div className={cn(
                         "flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider w-fit",
@@ -250,7 +250,7 @@ export default function ReferralsManagement() {
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl overflow-hidden"
             >
-              <div className="p-8">
+              <div className="p-5 sm:p-8">
                 <div className="flex justify-between items-start mb-8">
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center">

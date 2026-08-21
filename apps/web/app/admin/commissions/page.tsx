@@ -140,9 +140,9 @@ export default function CommissionsManagement() {
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
                     <th className="p-4 font-bold text-slate-600 text-sm">Affiliate</th>
-                    <th className="p-4 font-bold text-slate-600 text-sm">Business Source</th>
+                    <th className="p-4 font-bold text-slate-600 text-sm hidden md:table-cell">Business Source</th>
                     <th className="p-4 font-bold text-slate-600 text-sm">Amount</th>
-                    <th className="p-4 font-bold text-slate-600 text-sm">Type</th>
+                    <th className="p-4 font-bold text-slate-600 text-sm hidden lg:table-cell">Type</th>
                     <th className="p-4 font-bold text-slate-600 text-sm">Status</th>
                     <th className="p-4 font-bold text-slate-600 text-sm text-right">Actions</th>
                   </tr>
@@ -159,11 +159,11 @@ export default function CommissionsManagement() {
                       <td className="p-4">
                         <span className="font-bold text-slate-900">{comm.user?.fullName || 'Unknown'}</span>
                       </td>
-                      <td className="p-4">
+                      <td className="p-4 hidden md:table-cell">
                         <span className="text-sm text-slate-600">{comm.business?.businessName || 'Vemtap Subscription'}</span>
                       </td>
                       <td className="p-4 text-sm text-slate-900 font-bold">₦{Number(comm.amount).toLocaleString()}</td>
-                      <td className="p-4">
+                      <td className="p-4 hidden lg:table-cell">
                         <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-lg">
                           {comm.type === 'DIRECT' ? 'Direct Referral' : 'Network Bonus'}
                         </span>
@@ -184,7 +184,8 @@ export default function CommissionsManagement() {
                               onClick={() => handleStatusChange(comm.id, 'PAID')}
                               className="px-2 py-1 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg text-xs font-bold"
                             >
-                              Approve & Pay
+                              <span className="hidden sm:inline">Approve & Pay</span>
+                              <span className="sm:hidden">Pay</span>
                             </button>
                           )}
                           <button 

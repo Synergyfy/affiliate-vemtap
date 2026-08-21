@@ -229,9 +229,9 @@ export default function WithdrawalsManagement() {
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="p-4 font-bold text-slate-600 text-sm">Affiliate</th>
                   <th className="p-4 font-bold text-slate-600 text-sm">Amount</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm">Bank Details</th>
+                  <th className="p-4 font-bold text-slate-600 text-sm hidden md:table-cell">Bank Details</th>
                   <th className="p-4 font-bold text-slate-600 text-sm">Status</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm">Requested</th>
+                  <th className="p-4 font-bold text-slate-600 text-sm hidden lg:table-cell">Requested</th>
                   <th className="p-4 font-bold text-slate-600 text-sm text-right">Actions</th>
                 </tr>
               </thead>
@@ -251,7 +251,7 @@ export default function WithdrawalsManagement() {
                       <p className="text-xs text-slate-400 font-mono">{wth.id}</p>
                     </td>
                     <td className="p-4 text-sm text-slate-900 font-bold">₦{Number(wth.amount).toLocaleString()}</td>
-                    <td className="p-4">
+                    <td className="p-4 hidden md:table-cell">
                       <p className="text-sm font-medium text-slate-700">{wth.bankName || 'Bank'}</p>
                       <p className="text-xs text-slate-500">{wth.accountName || ''} · {wth.accountNumber || 'Acc Number'}</p>
                     </td>
@@ -270,7 +270,7 @@ export default function WithdrawalsManagement() {
                         </p>
                       )}
                     </td>
-                    <td className="p-4 text-sm text-slate-600">{new Date(wth.createdAt).toLocaleDateString()}</td>
+                    <td className="p-4 text-sm text-slate-600 hidden lg:table-cell">{new Date(wth.createdAt).toLocaleDateString()}</td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2 transition-opacity relative">
                         {wth.status === 'APPROVED' && (
@@ -690,6 +690,7 @@ function WithdrawalDetailsModal({ withdrawal, onClose }: { withdrawal: Withdrawa
               </div>
             ) : (
               <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden">
+                <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="bg-slate-50/50 border-b border-slate-100">
@@ -714,6 +715,7 @@ function WithdrawalDetailsModal({ withdrawal, onClose }: { withdrawal: Withdrawa
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </div>

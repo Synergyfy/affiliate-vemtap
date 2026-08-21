@@ -130,7 +130,7 @@ export default function NotificationsManagement() {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm"
+          className="bg-white p-5 sm:p-8 rounded-3xl border border-slate-200 shadow-sm"
         >
           <div className="flex items-center gap-3 mb-6">
             <div className="p-3 bg-blue-50 rounded-2xl">
@@ -205,7 +205,7 @@ export default function NotificationsManagement() {
                ></textarea>
              </div>
  
-             <div className="flex justify-end gap-3">
+             <div className="flex flex-col sm:flex-row sm:justify-end gap-3">
                <button 
                  type="button" 
                  disabled={broadcast.isPending || saveDraft.isPending}
@@ -240,7 +240,7 @@ export default function NotificationsManagement() {
           <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="divide-y divide-slate-100">
               {history.map((notif, idx) => (
-                <div key={notif.id} className="p-6 flex items-center justify-between hover:bg-slate-50/50 transition-all group">
+                <div key={notif.id} className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/50 transition-all group">
                   <div className="flex items-center gap-4">
                     <div className={cn(
                       "p-3 rounded-2xl",
@@ -259,7 +259,7 @@ export default function NotificationsManagement() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity self-end sm:self-auto">
                     <button 
                       onClick={() => handleDelete(notif.id, notif.title)}
                       className="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-all"
