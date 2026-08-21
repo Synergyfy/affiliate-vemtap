@@ -714,13 +714,13 @@ export default function HarvestContactsPage() {
                   <thead>
                     <tr className="bg-slate-50/80 border-b border-slate-200">
                       <th className="p-4 pl-6 font-bold text-slate-600 text-xs uppercase tracking-wider">Business</th>
-                      <th className="p-4 font-bold text-slate-600 text-xs uppercase tracking-wider">Contact Person</th>
-                      <th className="p-4 font-bold text-slate-600 text-xs uppercase tracking-wider">Added By (User)</th>
+                      <th className="p-4 font-bold text-slate-600 text-xs uppercase tracking-wider hidden sm:table-cell">Contact Person</th>
+                      <th className="p-4 font-bold text-slate-600 text-xs uppercase tracking-wider hidden lg:table-cell">Added By (User)</th>
                       <th className="p-4 font-bold text-slate-600 text-xs uppercase tracking-wider">Status</th>
-                      <th className="p-4 font-bold text-slate-600 text-xs uppercase tracking-wider">WhatsApp</th>
-                      <th className="p-4 font-bold text-slate-600 text-xs uppercase tracking-wider">SMS</th>
-                      <th className="p-4 font-bold text-slate-600 text-xs uppercase tracking-wider">Last Contact</th>
-                      <th className="p-4 font-bold text-slate-600 text-xs uppercase tracking-wider">Date Added</th>
+                      <th className="p-4 font-bold text-slate-600 text-xs uppercase tracking-wider hidden md:table-cell">WhatsApp</th>
+                      <th className="p-4 font-bold text-slate-600 text-xs uppercase tracking-wider hidden lg:table-cell">SMS</th>
+                      <th className="p-4 font-bold text-slate-600 text-xs uppercase tracking-wider hidden xl:table-cell">Last Contact</th>
+                      <th className="p-4 font-bold text-slate-600 text-xs uppercase tracking-wider hidden lg:table-cell">Date Added</th>
                       <th className="p-4 pr-6 font-bold text-slate-600 text-xs uppercase tracking-wider text-right">Actions</th>
                     </tr>
                   </thead>
@@ -765,7 +765,7 @@ export default function HarvestContactsPage() {
                           </td>
 
                           {/* Contact person */}
-                          <td className="p-4">
+                          <td className="p-4 hidden sm:table-cell">
                             <div>
                               <div className="flex items-center gap-1.5 font-bold text-slate-800">
                                 <span>{lead.contactName || 'No contact name'}</span>
@@ -809,7 +809,7 @@ export default function HarvestContactsPage() {
                           </td>
 
                           {/* Added by User */}
-                          <td className="p-4">
+                          <td className="p-4 hidden lg:table-cell">
                             <div className="flex items-center gap-2.5">
                               <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-700 text-xs shrink-0 border border-slate-200">
                                 {lead.user?.fullName?.charAt(0) || 'U'}
@@ -845,7 +845,7 @@ export default function HarvestContactsPage() {
                           </td>
 
                           {/* WhatsApp */}
-                          <td className="p-4">
+                          <td className="p-4 hidden md:table-cell">
                             {lead.phone && formatWhatsAppUrl(lead.phone) ? (
                               <a
                                 href={formatWhatsAppUrl(lead.phone)!}
@@ -863,7 +863,7 @@ export default function HarvestContactsPage() {
                           </td>
 
                           {/* SMS */}
-                          <td className="p-4">
+                          <td className="p-4 hidden lg:table-cell">
                             {lead.phone ? (
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
                                 <Smartphone className="w-3 h-3" />
@@ -875,7 +875,7 @@ export default function HarvestContactsPage() {
                           </td>
 
                           {/* Last Contact */}
-                          <td className="p-4 text-xs text-slate-500 font-medium whitespace-nowrap">
+                          <td className="p-4 text-xs text-slate-500 font-medium whitespace-nowrap hidden xl:table-cell">
                             {(lead as any).lastContactedAt
                               ? new Date((lead as any).lastContactedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
                               : <span className="text-slate-400 italic">Never</span>
@@ -883,7 +883,7 @@ export default function HarvestContactsPage() {
                           </td>
 
                           {/* Date */}
-                          <td className="p-4 text-xs text-slate-500 font-medium whitespace-nowrap">
+                          <td className="p-4 text-xs text-slate-500 font-medium whitespace-nowrap hidden lg:table-cell">
                             {new Date(lead.createdAt).toLocaleDateString(undefined, {
                               year: 'numeric',
                               month: 'short',
