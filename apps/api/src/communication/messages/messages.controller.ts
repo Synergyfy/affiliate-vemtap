@@ -33,8 +33,8 @@ export class MessagesController {
   @Post()
   @Roles(...ALL_ROLES)
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create/send a message to an audience or explicit contacts (scoped to own leads for sales roles)' })
-  send(@CurrentUser() user: { id: string; role: string }, @Body() dto: SendMessageDto) {
+  @ApiOperation({ summary: 'Create/send messages to an audience or explicit contacts (scoped to own leads for sales roles). Returns the created outbound messages as an array.' })
+  async send(@CurrentUser() user: { id: string; role: string }, @Body() dto: SendMessageDto) {
     // SMS sending is admin-controlled (it costs money); sales roles may start
     // WhatsApp follow-up queues for their own leads.
     const isPrivileged = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
@@ -51,7 +51,7 @@ export class MessagesController {
 
     // createMessages dispatches immediate SMS synchronously; scheduled SMS is
     // queued for the cron; WhatsApp is left PENDING for assisted sending.
-    return this.messagesService.createMessages(
+    const result = await this.messagesService.createMessages(
       {
         channel: dto.channel,
         body: dto.body,
@@ -65,6 +65,8 @@ export class MessagesController {
       },
       user,
     );
+
+    return result.messages;
   }
 
   @Get()

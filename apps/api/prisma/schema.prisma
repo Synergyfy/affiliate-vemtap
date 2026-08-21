@@ -1719,9 +1719,10 @@ model CommunicationTemplate {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  messages  CommunicationMessage[]
-  campaigns CommunicationCampaign[]
-  rules     AutomationRule[]
+  messages      CommunicationMessage[]
+  campaigns     CommunicationCampaign[]
+  rules         AutomationRule[]
+  journeyStages CustomerJourneyStage[]
 
   @@index([channel])
   @@index([status])
@@ -1770,6 +1771,23 @@ model AutomationRule {
   @@index([trigger])
   @@index([isActive])
   @@index([sortOrder])
+}
+
+model CustomerJourneyStage {
+  id         String                 @id @default(uuid())
+  name       String
+  waitDays   Int                    @default(0)
+  channel    CommunicationChannel
+  templateId String?
+  template   CommunicationTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  enabled    Boolean                @default(true)
+  sortOrder  Int                    @default(0)
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+
+  @@index([sortOrder])
+  @@index([enabled])
+  @@index([templateId])
 }
 
 model CommunicationMessage {

@@ -20,6 +20,8 @@ import { SalesViewService } from './sales-view/sales-view.service';
 import { ReportingController } from './reporting/reporting.controller';
 import { ReportingService } from './reporting/reporting.service';
 import { JourneyService } from './engine/journey.service';
+import { JourneyController } from './journey/journey.controller';
+import { JourneyService as JourneyConfigService } from './journey/journey.service';
 import { EngineService } from './engine/engine.service';
 import { EngineProcessor } from './engine/engine.processor';
 import { MessageRendererService } from './common/message-renderer.service';
@@ -37,6 +39,7 @@ import { DisabledSmsProvider } from './sms/providers/disabled-sms.provider';
     CommunicationSettingsController,
     SalesViewController,
     ReportingController,
+    JourneyController,
   ],
   providers: [
     TemplatesService,
@@ -54,12 +57,14 @@ import { DisabledSmsProvider } from './sms/providers/disabled-sms.provider';
     EngineProcessor,
     MessageRendererService,
     DisabledSmsProvider,
+    JourneyConfigService,
   ],
   exports: [
     EngineService,
     MessagesService,
     CommunicationSettingsService,
     JourneyService,
+    JourneyConfigService,
   ],
 })
 export class CommunicationModule {}
