@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EngineService } from './engine.service';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaWorkerService } from '../../prisma/prisma-worker.service';
 import { JourneyService } from './journey.service';
 import { MessagesService } from '../messages/messages.service';
 import { RulesService } from '../rules/rules.service';
@@ -17,6 +17,7 @@ describe('EngineService', () => {
     salesFollowUp: { updateMany: jest.Mock };
     communicationTemplate: { findUnique: jest.Mock };
     $transaction: jest.Mock;
+    $executeRawUnsafe: jest.Mock;
   } = {
     lead: {
       findUnique: jest.fn(),
@@ -36,6 +37,7 @@ describe('EngineService', () => {
       findUnique: jest.fn(),
     },
     $transaction: jest.fn(),
+    $executeRawUnsafe: jest.fn(),
   };
   mockPrisma.$transaction.mockImplementation((cb: (t: typeof mockPrisma) => unknown) => cb(mockPrisma));
 
@@ -63,7 +65,7 @@ describe('EngineService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EngineService,
-        { provide: PrismaService, useValue: mockPrisma },
+        { provide: PrismaWorkerService, useValue: mockPrisma },
         { provide: JourneyService, useValue: mockJourneyService },
         { provide: MessagesService, useValue: mockMessagesService },
         { provide: RulesService, useValue: mockRulesService },
