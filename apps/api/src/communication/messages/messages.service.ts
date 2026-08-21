@@ -178,7 +178,7 @@ export class MessagesService {
     const now = new Date();
     const results: unknown[] = [];
 
-    const createdMessages: string[] = [];
+    const createdMessages: unknown[] = [];
     const dispatched: unknown[] = [];
 
     for (const lead of leads) {
@@ -285,12 +285,15 @@ export class MessagesService {
         },
       });
 
-      createdMessages.push(message.id);
+      createdMessages.push(message);
       results.push({ leadId: lead.id, outcome: 'created', messageId: message.id });
 
       // Dispatch immediate SMS synchronously via the provider.
       if (isImmediateSms) {
         const sent = await this.smsService.sendMessage(message.id);
+        // Reflect the dispatch outcome on the returned record so callers see
+        // the final status (SENT/FAILED) rather than the initial PENDING.
+        message.status = (sent as any)?.status ?? message.status;
         if ((sent as any)?.status === CommunicationMessageStatus.SENT) {
           await this.prisma.lead.update({
             where: { id: lead.id },

@@ -70,6 +70,7 @@ describe("Communication System (e2e)", () => {
   }
 
   afterAll(async () => {
+    await prismaService.customerJourneyStage.deleteMany({});
     await prismaService.communicationMessage.deleteMany({});
     await prismaService.communicationTemplate.deleteMany({});
     await prismaService.lead.deleteMany({});
@@ -150,7 +151,10 @@ describe("Communication System (e2e)", () => {
         templateId: templateRes.body.id,
       });
     expect(sendRes.status).toBe(201);
-    expect(sendRes.body.created).toBeGreaterThanOrEqual(1);
+    expect(Array.isArray(sendRes.body)).toBe(true);
+    expect(sendRes.body.length).toBeGreaterThanOrEqual(1);
+    expect(sendRes.body[0].id).toBeDefined();
+    expect(sendRes.body[0].status).toBe("PENDING");
 
     // The queue should expose the message with a deep link
     const queueRes = await request(app.getHttpServer())
@@ -189,9 +193,10 @@ describe("Communication System (e2e)", () => {
         leadIds: [lead.id],
       });
     expect(res.status).toBe(201);
-    expect(res.body.created).toBe(1);
-    expect(res.body.dispatched).toBeDefined();
-    expect(res.body.dispatched[0].status).toBe("SENT");
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].leadId).toBe(lead.id);
+    expect(res.body[0].status).toBe("SENT");
   });
 
   it("should reject an SMS over 160 characters", async () => {
@@ -274,11 +279,12 @@ describe("Communication System (e2e)", () => {
         leadIds: [lead.id],
       });
     expect(res.status).toBe(201);
-    expect(res.body.created).toBe(1);
-    expect(res.body.dispatched[0].status).toBe("FAILED");
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body).toHaveLength(1);
+    expect(res.body[0].status).toBe("FAILED");
 
     const stored = await prismaService.communicationMessage.findUnique({
-      where: { id: res.body.dispatched[0].messageId },
+      where: { id: res.body[0].id },
     });
     expect(stored!.status).toBe("FAILED");
     expect(stored!.failureReason).toBe("SMS is disabled");
@@ -366,6 +372,66 @@ describe("Communication System (e2e)", () => {
       .set("Cookie", agentCookies);
     expect(templatesRes.status).toBe(200);
     expect(templatesRes.body.smsBlacklistedWords).toEqual(["prohibited", "scam_offer"]);
+  });
+
+  it("should manage the customer journey stages (GET/PUT) with role enforcement", async () => {
+    // PUT (admin) replaces all stages and returns the new ordered array.
+    const putRes = await request(app.getHttpServer())
+      .put("/communication/journey")
+      .set("Cookie", adminCookies)
+      .send({
+        stages: [
+          { name: "Welcome", waitDays: 0, channel: "SMS", enabled: true },
+          { name: "Day 3 Follow-up", waitDays: 3, channel: "WHATSAPP", enabled: true },
+        ],
+      });
+    expect(putRes.status).toBe(200);
+    expect(Array.isArray(putRes.body)).toBe(true);
+    expect(putRes.body).toHaveLength(2);
+    expect(putRes.body[0].name).toBe("Welcome");
+    expect(putRes.body[1].waitDays).toBe(3);
+
+    // GET returns the persisted stages in execution order.
+    const getRes = await request(app.getHttpServer())
+      .get("/communication/journey")
+      .set("Cookie", adminCookies);
+    expect(getRes.status).toBe(200);
+    expect(Array.isArray(getRes.body)).toBe(true);
+    expect(getRes.body.map((s: any) => s.name)).toEqual(["Welcome", "Day 3 Follow-up"]);
+
+    // GET is readable by any authenticated role (e.g. a sales agent).
+    const agent = await createAgent();
+    const agentCookies = await loginAs(agent.email);
+    const agentGetRes = await request(app.getHttpServer())
+      .get("/communication/journey")
+      .set("Cookie", agentCookies);
+    expect(agentGetRes.status).toBe(200);
+
+    // PUT is admin-only — a sales agent is forbidden.
+    const agentPutRes = await request(app.getHttpServer())
+      .put("/communication/journey")
+      .set("Cookie", agentCookies)
+      .send({ stages: [] });
+    expect(agentPutRes.status).toBe(403);
+
+    // A non-existent templateId is rejected with 404 (no FK 500).
+    const badTplRes = await request(app.getHttpServer())
+      .put("/communication/journey")
+      .set("Cookie", adminCookies)
+      .send({
+        stages: [
+          { name: "Broken", waitDays: 0, channel: "SMS", templateId: "00000000-0000-0000-0000-000000000000", enabled: true },
+        ],
+      });
+    expect(badTplRes.status).toBe(404);
+
+    // An empty stage list clears the journey.
+    const clearRes = await request(app.getHttpServer())
+      .put("/communication/journey")
+      .set("Cookie", adminCookies)
+      .send({ stages: [] });
+    expect(clearRes.status).toBe(200);
+    expect(clearRes.body).toEqual([]);
   });
 });
 

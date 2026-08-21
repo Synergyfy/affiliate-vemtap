@@ -30,6 +30,18 @@ function CapturePageContent() {
     if (visitId) {
       const match = visits.find(v => v.id === visitId);
       if (match) return match;
+      // Editing an existing lead whose details haven't loaded into state yet.
+      // Keep the real id so a save routes to UPDATE (PATCH), never a
+      // duplicate CREATE.
+      return {
+        id: visitId,
+        name: 'Business',
+        category: '',
+        status: 'NOT_YET',
+        isPlaceholder: true,
+        address: activePlan?.location || '',
+        horizon: horizonParam,
+      };
     }
     if (isNew || !visitId) {
       const targetIndex = visits.length + 1;

@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { PlannedVisit, BUSINESS_CATEGORIES, DAILY_CUSTOMER_RANGES, OPENING_DAYS, getCompletenessScore } from '@/types/affiliate-market-mapping';
 import { cn } from '@/lib/utils';
-import { useMarketMapping } from './MarketMappingContext';
+import { useMarketMapping, isTempId } from './MarketMappingContext';
 import { useMarketMappingConfig } from '@/hooks/use-market-mapping-config';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -418,8 +418,14 @@ export default function BusinessCaptureForm({
         visitNotes: formData.visitNotes,
       };
 
-      const exists = visits.some(v => v.id === visitToSave.id);
-      if (exists) {
+      // Route based on the record's identity, not on whether it happens to be
+      // in the (possibly stale) visits array. A real id always means "update
+      // the persisted lead"; a temp id means "this is still a new/placeholder
+      // capture". This prevents editing a captured lead from silently creating
+      // a duplicate via POST instead of PATCH.
+      const tempId = isTempId(visitToSave.id);
+      const existsInVisits = visits.some(v => v.id === visitToSave.id);
+      if (!tempId || existsInVisits) {
         saveCapture(visitToSave);
       } else {
         addVisits([visitToSave]);

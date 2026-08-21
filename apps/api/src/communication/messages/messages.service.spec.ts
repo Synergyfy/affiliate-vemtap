@@ -91,6 +91,7 @@ describe('MessagesService', () => {
       });
 
       expect(result.created).toBe(1);
+      expect(result.messages).toEqual([{ id: 'm1', status: 'PENDING' }]);
       expect(mockPrisma.communicationMessage.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
