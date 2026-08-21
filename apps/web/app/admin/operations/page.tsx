@@ -57,7 +57,7 @@ function AdminOperationsPage() {
     <AdminLayout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold text-slate-900">Global Operations Command</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">Global Operations Command</h2>
           <p className="text-slate-500">Full administrative control over leads, businesses, and operational workflows.</p>
         </div>
 
@@ -103,7 +103,7 @@ function AdminOperationsPage() {
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
               className="fixed top-0 right-0 h-full w-full max-w-xl bg-white shadow-2xl z-[260] overflow-y-auto"
             >
-              <div className="p-8 space-y-6">
+              <div className="p-5 sm:p-8 space-y-6">
                 {/* Header */}
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-3">
