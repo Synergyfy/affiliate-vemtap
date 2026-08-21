@@ -3,10 +3,22 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateLeadDto, UpdateLeadDto, LeadFilterDto, HarvestLeadsFilterDto, DuplicateLeadsFilterDto } from './dto/leads.dto';
 import { isVisitedLeadStatus, normalizeLeadStatus } from '../common/lead.constants';
 import { Prisma } from '@prisma/client';
+import { EngineService } from '../communication/engine/engine.service';
 
 @Injectable()
 export class LeadsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly engineService: EngineService,
+  ) {}
+
+  private async notifyEngine(leadId: string) {
+    try {
+      await this.engineService.onLeadStatusChanged(leadId);
+    } catch (error) {
+      // Communication must never break lead management.
+    }
+  }
 
   async findAll(user: any, filters: LeadFilterDto) {
     const isPrivileged = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
@@ -441,6 +453,8 @@ export class LeadsService {
       },
     });
 
+    await this.notifyEngine(lead.id);
+
     return { ...lead, visited: lead.visitedAt != null };
   }
 
@@ -491,6 +505,8 @@ export class LeadsService {
             : lead.followUpDate,
       },
     });
+
+    await this.notifyEngine(id);
 
     return { ...updated, visited: updated.visitedAt != null };
   }

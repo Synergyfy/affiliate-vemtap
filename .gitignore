@@ -25,8 +25,11 @@ Thumbs.db
 # Environment
 .env
 .env.prod
+.env.production
+.env.staging
 .env.local
 .env.*.local
+.env.test.local
 
 # Logs
 *.log

@@ -33,6 +33,10 @@ import { ToastProvider } from "@/hooks/toast";
 import PwaInstallProvider from "@/components/PwaInstallPrompt";
 import NotificationSocketBridge from "@/components/NotificationSocketBridge";
 
+const adminMockEnabled =
+  process.env.NEXT_PUBLIC_ADMIN_MOCK?.trim().toLowerCase() === 'true' ||
+  process.env.NEXT_PUBLIC_ADMIN_MOCK?.trim() === '1';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -40,6 +44,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {adminMockEnabled ? <meta name="admin-mock" content="true" /> : null}
+      </head>
       <body className={inter.className} suppressHydrationWarning>
         <Providers>
           <AuthProvider>

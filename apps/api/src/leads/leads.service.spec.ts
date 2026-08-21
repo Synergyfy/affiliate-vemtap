@@ -2,6 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { NotFoundException, ForbiddenException } from "@nestjs/common";
 import { LeadsService } from "./leads.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { EngineService } from "../communication/engine/engine.service";
 
 describe("LeadsService", () => {
   let service: LeadsService;
@@ -17,12 +18,18 @@ describe("LeadsService", () => {
     },
   };
 
+  const mockEngineService = {
+    onLeadStatusChanged: jest.fn().mockResolvedValue(undefined),
+    onSubscribed: jest.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         LeadsService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: EngineService, useValue: mockEngineService },
       ],
     }).compile();
 

@@ -21,7 +21,8 @@ import {
   Target,
   Activity,
   Globe2,
-  Contact
+  Contact,
+  MessageSquareText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -30,6 +31,7 @@ const adminSidebarItems = [
   { name: 'Operations Command', icon: Target, href: '/admin/operations' },
   { name: 'Market Mapping', icon: Globe2, href: '/admin/market-mapping' },
   { name: 'Harvest Contacts', icon: Contact, href: '/admin/contacts' },
+  { name: 'Communication', icon: MessageSquareText, href: '/admin/communication' },
   { name: 'Affiliates', icon: Users, href: '/admin/affiliates' },
   { name: 'Businesses & Referrals', icon: Briefcase, href: '/admin/referrals' },
   { name: 'Commissions', icon: Percent, href: '/admin/commissions' },
@@ -168,7 +170,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Menu className="w-5 h-5 text-slate-500" />
             </button>
             <h1 className="text-lg lg:text-xl font-bold text-slate-900 truncate max-w-[200px] sm:max-w-none">
-              {adminSidebarItems.find(item => item.href === pathname)?.name || 'Admin Panel'}
+              {adminSidebarItems.find(item => item.href === pathname)?.name ||
+                (pathname.startsWith('/admin/communication') ? 'Communication' : 'Admin Panel')}
             </h1>
           </div>
           <div className="flex items-center gap-4 shrink-0">
