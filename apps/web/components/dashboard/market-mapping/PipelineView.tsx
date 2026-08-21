@@ -23,26 +23,53 @@ const DEFAULT_PIPELINE_STATUSES = [
   { id: 'CUSTOMER', name: 'Customer', color: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-600' },
 ];
 
+const OTHER_STATUS = { id: '__OTHER__', name: 'Other', color: 'bg-slate-400', bg: 'bg-slate-50', text: 'text-slate-600' };
+
 export default function PipelineView({ visits, onSelectVisit }: PipelineViewProps) {
   const { saveCapture } = useMarketMapping();
   const { data: config } = useMarketMappingConfig();
   const { showToast } = useToast();
 
+  // The kanban must always show every canonical pipeline status (NOT_YET,
+  // VISITED, CONTACTED, INTERESTED, NOT_INTERESTED, CUSTOMER). The admin
+  // config only customizes labels/colors; it must never hide a column. Any
+  // status not covered by a rendered column is captured by an "Other" column
+  // so no visit is ever silently hidden.
   const pipelineStatuses = useMemo(() => {
-    const rawStatuses = config?.pipelineStatuses;
-    if (!Array.isArray(rawStatuses) || rawStatuses.length === 0) return DEFAULT_PIPELINE_STATUSES;
-    return rawStatuses.map((st: any) => {
+    const rawStatuses = Array.isArray(config?.pipelineStatuses) ? config.pipelineStatuses : [];
+
+    const configByStatus = new Map<string, Record<string, any>>();
+    rawStatuses.forEach((st: any) => {
       const id = typeof st === 'string' ? st : (st.id || st.value || st.key || '');
-      const name = typeof st === 'string' ? st : (st.name || st.label || id);
-      const defaultMatch = DEFAULT_PIPELINE_STATUSES.find(d => d.id === id);
-      return {
-        id: id || defaultMatch?.id || 'NOT_YET',
-        name: name || defaultMatch?.name || id,
-        color: (typeof st === 'object' && st?.color) || defaultMatch?.color || 'bg-blue-500',
-        bg: (typeof st === 'object' && st?.bg) || defaultMatch?.bg || 'bg-blue-50',
-        text: (typeof st === 'object' && st?.text) || defaultMatch?.text || 'text-blue-600',
-      };
+      if (id) configByStatus.set(id, st);
     });
+
+    const columns = DEFAULT_PIPELINE_STATUSES.map((def) => {
+      const custom = configByStatus.get(def.id);
+      const name = typeof custom === 'object' && custom?.name ? custom.name : def.name;
+      const color = typeof custom === 'object' && custom?.color ? custom.color : def.color;
+      const bg = typeof custom === 'object' && custom?.bg ? custom.bg : def.bg;
+      const text = typeof custom === 'object' && custom?.text ? custom.text : def.text;
+      return { id: def.id, name, color, bg, text };
+    });
+
+    const renderedIds = new Set(columns.map(c => c.id));
+
+    const extra = rawStatuses
+      .map((st: any) => {
+        const id = typeof st === 'string' ? st : (st.id || st.value || st.key || '');
+        if (!id || renderedIds.has(id)) return null;
+        return {
+          id,
+          name: typeof st === 'string' ? st : (st.name || st.label || id),
+          color: (typeof st === 'object' && st?.color) || 'bg-slate-500',
+          bg: (typeof st === 'object' && st?.bg) || 'bg-slate-50',
+          text: (typeof st === 'object' && st?.text) || 'text-slate-600',
+        };
+      })
+      .filter((c: any): c is { id: string; name: string; color: string; bg: string; text: string } => !!c);
+
+    return [...columns, ...extra, OTHER_STATUS];
   }, [config?.pipelineStatuses]);
 
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -83,7 +110,10 @@ export default function PipelineView({ visits, onSelectVisit }: PipelineViewProp
   return (
     <div className="flex gap-4 overflow-x-auto pb-8 scrollbar-hide -mx-4 px-4 min-h-[500px]">
       {pipelineStatuses.map((status) => {
-        const columnVisits = visits.filter(v => v.status === status.id);
+        const renderedIds = pipelineStatuses.filter(s => s.id !== OTHER_STATUS.id).map(s => s.id);
+        const columnVisits = status.id === OTHER_STATUS.id
+          ? visits.filter(v => !renderedIds.includes(v.status))
+          : visits.filter(v => v.status === status.id);
         
         return (
           <div key={status.id} className="flex-shrink-0 w-72 space-y-3">
@@ -176,7 +206,7 @@ export default function PipelineView({ visits, onSelectVisit }: PipelineViewProp
                           onChange={(e) => handleStatusChange(visit, e.target.value as VisitStatus)} 
                           className={cn("w-full px-2 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest outline-none border-transparent cursor-pointer", status.bg, status.text)}
                         >
-                          {pipelineStatuses.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
+                          {pipelineStatuses.filter(opt => opt.id !== OTHER_STATUS.id).map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
                         </select>
                       </div>
                     </div>

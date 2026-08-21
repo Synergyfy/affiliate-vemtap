@@ -35,6 +35,10 @@ test.describe('Field Activity & Sales Pipeline End-to-End Tests', () => {
     // Verify stage summary pills are rendered
     const toVisitPill = page.getByText(/To Visit/i).first();
     await expect(toVisitPill).toBeVisible();
+
+    // The kanban must always show the canonical stages regardless of admin
+    // config, so the Visited column is always present.
+    await expect(page.getByText(/^Visited$/i).first()).toBeVisible();
   });
 
   test('Flow 3: Sales Follow-Ups page renders due, overdue, and upcoming lists', async ({ page }) => {

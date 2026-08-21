@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import api from './api';
 import type {
   AdminAssignment,
@@ -153,6 +153,23 @@ export interface MarketMappingReport {
   visits: Array<{ id: string; businessName: string; category: string; status: string; date: string; notes?: string }>;
 }
 
+/**
+ * Invalidates every query that reflects lead/visit activity so that after a
+ * create/update the pipeline, execute, sales-work, dashboard metrics, and
+ * follow-ups all refresh together.
+ */
+const invalidateMarketMappingQueryKeys = (queryClient: QueryClient) => {
+  queryClient.invalidateQueries({ queryKey: ['market-mapping', 'visits'] });
+  queryClient.invalidateQueries({ queryKey: ['market-mapping', 'territory'] });
+  queryClient.invalidateQueries({ queryKey: ['market-mapping', 'performance'] });
+  queryClient.invalidateQueries({ queryKey: ['market-mapping', 'reports'] });
+  queryClient.invalidateQueries({ queryKey: ['market-mapping', 'history'] });
+  queryClient.invalidateQueries({ queryKey: ['market-mapping', 'plans'] });
+  queryClient.invalidateQueries({ queryKey: ['market-mapping', 'insights'] });
+  queryClient.invalidateQueries({ queryKey: ['field-activity'] });
+  queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+};
+
 export const useMarketMappingConfig = () => {
   return useQuery<MarketMappingConfigResponse>({
     queryKey: ['market-mapping', 'config'],
@@ -275,7 +292,7 @@ export const useCreateMarketMappingVisit = () => {
       const { data } = await api.post('/market-mapping/visits', toLeadPayload(payload));
       return data as PlannedVisit;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['market-mapping', 'visits'] }); },
+    onSuccess: () => { invalidateMarketMappingQueryKeys(queryClient); },
   });
 };
 
@@ -286,11 +303,7 @@ export const useUpdateMarketMappingVisit = () => {
       const { data } = await api.patch(`/market-mapping/visits/${id}`, toLeadPayload(payload));
       return data as PlannedVisit;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['market-mapping', 'visits'] });
-      queryClient.invalidateQueries({ queryKey: ['market-mapping', 'performance'] });
-      queryClient.invalidateQueries({ queryKey: ['market-mapping', 'reports'] });
-    },
+    onSuccess: () => { invalidateMarketMappingQueryKeys(queryClient); },
   });
 };
 

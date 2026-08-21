@@ -44,6 +44,15 @@ const emptyMaturity: ClusterMaturity = { discovery: 0, verification: 0, sales: 0
 
 const MarketMappingContext = createContext<MarketMappingContextType | undefined>(undefined);
 
+/**
+ * A temp id is a client-generated placeholder id (biz-/v-/exec-). Temp ids
+ * mean the record has not been persisted as a real lead yet, so saves route
+ * to CREATE. Real ids (UUIDs/CUIDs from the DB) route to UPDATE.
+ */
+export function isTempId(id?: string): boolean {
+  return Boolean(id && (id.startsWith('biz-') || id.startsWith('v-') || id.startsWith('exec-')));
+}
+
 function planDateKey(date?: string): string {
   if (!date) return '';
   const d = new Date(date);
@@ -269,8 +278,6 @@ export function MarketMappingProvider({ children }: { children: React.ReactNode 
     setMissionHistory(prev => [entry, ...prev]);
     if (entry.id) updatePlanMutation.mutate({ id: entry.id, status: entry.status === 'ACHIEVED' ? 'COMPLETED' : 'ARCHIVED' });
   }, [updatePlanMutation]);
-
-  const isTempId = (id?: string) => Boolean(id && (id.startsWith('biz-') || id.startsWith('v-') || id.startsWith('exec-')));
 
   const addVisits = useCallback((newVisits: PlannedVisit[], onCreated?: (tempId: string, created: PlannedVisit) => void) => {
     setVisits(prev => [...prev, ...newVisits]);
