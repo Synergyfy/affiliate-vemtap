@@ -213,8 +213,8 @@ export function useAutomationRules() {
     queryKey: ['communication', 'rules'],
     queryFn: async () => {
       if (IS_MOCK) return [...mockRulesState];
-      const response = await api.get<AutomationRule[]>('/communication/rules');
-      return response.data;
+      const response = await api.get<{ data: AutomationRule[] }>('/communication/rules');
+      return response.data.data;
     },
   });
 }
@@ -381,7 +381,12 @@ export function useCreateWhatsAppQueue() {
         mockQueuesState.unshift(queue);
         return queue;
       }
-      const response = await api.post<CommunicationQueue>('/communication/queues', data);
+      const response = await api.post<OutboundMessage[]>('/communication/messages', {
+        channel: 'WHATSAPP',
+        body: data.message,
+        templateId: data.templateId,
+        audience: data.filters,
+      });
       return response.data;
     },
     onSuccess: () => {
@@ -394,33 +399,25 @@ export function useQueueItemAction() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({
-      queueId,
+      queueId: _queueId,
       itemId,
-      action,
     }: {
       queueId: string;
       itemId: string;
       action: 'open' | 'sent' | 'skip';
     }) => {
       if (IS_MOCK) {
-        const queue = mockQueuesState.find((q) => q.id === queueId);
+        const queue = mockQueuesState.find((q) => q.id === _queueId);
         const item = queue?.items.find((i) => i.id === itemId);
         if (!queue || !item) throw new Error('Queue item not found');
         const now = new Date().toISOString();
-        if (action === 'open') {
-          item.status = 'SENT';
-          item.sentAt = now;
-        } else if (action === 'sent') {
-          item.status = 'SENT';
-          item.sentAt = now;
-        } else if (action === 'skip') {
-          item.status = 'CANCELLED';
-        }
+        item.status = 'SENT';
+        item.sentAt = now;
         const completed = queue.items.filter((i) => i.status === 'SENT' || i.status === 'CANCELLED').length;
         queue.completedItems = completed;
         queue.updatedAt = now;
         if (completed >= queue.totalItems) queue.status = 'COMPLETED';
-        return { queueId, itemId, action };
+        return { queueId: _queueId, itemId };
       }
       const response = await api.post(
         `/communication/whatsapp/${itemId}/mark-sent`,
@@ -482,8 +479,8 @@ export function useSendSms() {
         mockMessagesState.unshift(...messages);
         return messages;
       }
-      const response = await api.post('/communication/messages', data);
-      return response.data;
+      const response = await api.post<{ messages: OutboundMessage[] }>('/communication/messages', data);
+      return response.data.messages;
     },
     onSuccess: () => {
       invalidateAll(qc);

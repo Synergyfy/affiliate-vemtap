@@ -59,8 +59,8 @@ export default function WhatsAppTab() {
         templateId: selectedTemplateId,
         message: message.trim(),
       });
-      showToast('WhatsApp follow-up queue created.', 'success');
-      router.push(`/admin/communication/whatsapp/queue/${queue.id}`);
+      showToast('WhatsApp follow-up messages created.', 'success');
+      router.push('/admin/communication');
     } catch (error: any) {
       showToast(error?.message || 'Failed to start WhatsApp follow-up.', 'error');
     }
