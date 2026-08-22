@@ -144,7 +144,7 @@ export default function AffiliateDetailPage() {
 
   return (
     <AdminLayout>
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
         {/* Navigation back */}
         <button
           onClick={() => router.push('/admin/affiliates')}
@@ -154,12 +154,12 @@ export default function AffiliateDetailPage() {
         </button>
 
         {/* Top Profile Banner */}
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-700 h-36" />
-          <div className="px-8 pb-8">
+          <div className="px-4 sm:px-8 pb-6 sm:pb-8">
             <div className="flex flex-col sm:flex-row items-start sm:items-end -mt-16 mb-6 gap-4">
-              <div className="w-28 h-28 rounded-[32px] bg-white p-1 shadow-xl shrink-0">
-                <div className="w-full h-full rounded-[28px] bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-4xl font-black">
+              <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-2xl sm:rounded-[32px] bg-white p-1 shadow-xl shrink-0">
+                <div className="w-full h-full rounded-xl sm:rounded-[28px] bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-3xl sm:text-4xl font-black">
                   {user.fullName.charAt(0).toUpperCase()}
                 </div>
               </div>
@@ -241,7 +241,7 @@ export default function AffiliateDetailPage() {
             </div>
 
             {/* Quick Metrics Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
               <Stat
                 icon={<Briefcase className="w-4 h-4 text-blue-600" />}
                 label="Referred Businesses"
@@ -276,7 +276,7 @@ export default function AffiliateDetailPage() {
         </div>
 
         {/* Detailed Profile Info Row */}
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 flex flex-wrap gap-6 items-center">
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm p-4 sm:p-6 flex flex-wrap gap-4 sm:gap-6 items-center">
           <Info
             icon={<Calendar className="w-4 h-4 text-slate-400" />}
             label="Registered On"
@@ -310,7 +310,7 @@ export default function AffiliateDetailPage() {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex overflow-x-auto gap-1.5 bg-white rounded-2xl border border-slate-200 p-1.5 shadow-sm">
+        <div className="flex overflow-x-auto gap-1.5 bg-white rounded-2xl border border-slate-200 p-1 sm:p-1.5 shadow-sm">
           {tabs.map((tab) => (
             <button
               key={tab}
@@ -407,14 +407,14 @@ function Stat({
   value: React.ReactNode;
 }) {
   return (
-    <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-100">
+    <div className="p-3 sm:p-4 bg-slate-50/80 rounded-xl sm:rounded-2xl border border-slate-100">
       <div className="flex items-center gap-2 mb-1">
         {icon}
-        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+        <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-slate-500">
           {label}
         </span>
       </div>
-      <p className="text-2xl font-black text-slate-900">{value}</p>
+      <p className="text-xl sm:text-2xl font-black text-slate-900">{value}</p>
     </div>
   );
 }
@@ -459,9 +459,9 @@ function Overview({
   const effectiveMonthlyTarget = activeAssignment?.monthlyConversionTarget ? activeAssignment.monthlyConversionTarget : user.monthlyConversionTarget;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
       {/* Performance Targets */}
-      <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
+      <section className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm p-4 sm:p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-black text-slate-900 flex items-center gap-2 text-base">
             <Target className="w-5 h-5 text-violet-600" />
@@ -520,7 +520,7 @@ function Overview({
       </section>
 
       {/* Leads Summary Card */}
-      <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
+      <section className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm p-4 sm:p-6">
         <h2 className="font-black text-slate-900 mb-4 flex items-center gap-2 text-base">
           <Briefcase className="w-5 h-5 text-blue-600" />
           Submitted Leads Overview
@@ -568,7 +568,7 @@ function Overview({
       </section>
 
       {/* Recent Activity */}
-      <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 md:col-span-2">
+      <section className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm p-4 sm:p-6 md:col-span-2">
         <h2 className="font-black text-slate-900 mb-4 flex items-center gap-2 text-base">
           <History className="w-5 h-5 text-amber-500" />
           Recent Activity Log
@@ -629,7 +629,7 @@ function LeadsPanel({
   );
 
   return (
-    <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-6">
+    <section className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
@@ -640,7 +640,7 @@ function LeadsPanel({
             Review all sales leads, field captures, and referred paying/trial businesses submitted by this person.
           </p>
         </div>
-        <div className="relative min-w-[240px]">
+        <div className="relative min-w-0 sm:min-w-[240px]">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             value={search}
@@ -893,8 +893,8 @@ function Locations({
   if (!locations.length) return <CardState message="No locations assigned to this affiliate." />;
 
   return (
-    <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-      <h2 className="text-lg font-black text-slate-900 mb-5 flex items-center gap-2">
+    <section className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm p-4 sm:p-6">
+      <h2 className="text-lg sm:text-xl font-black text-slate-900 mb-5 flex items-center gap-2">
         <MapPin className="w-5 h-5 text-blue-500" />
         Assigned Territory Locations ({locations.length})
       </h2>
@@ -949,10 +949,10 @@ function HistoryPanel({
   const hasItems = activities.length > 0 || targetLogs.length > 0 || signatures.length > 0;
 
   return (
-    <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-6">
-      <div className="flex justify-between items-center">
+    <section className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex justify-between items-center gap-3">
         <div>
-          <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
+          <h2 className="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2">
             <History className="w-5 h-5 text-amber-500" />
             Activity &amp; Adjustment History
           </h2>
@@ -1044,8 +1044,8 @@ function Team({
     return <CardState message="No downline team members under this affiliate/manager." />;
 
   return (
-    <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-      <h2 className="text-lg font-black text-slate-900 mb-5 flex items-center gap-2">
+    <section className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm p-4 sm:p-6">
+      <h2 className="text-lg sm:text-xl font-black text-slate-900 mb-5 flex items-center gap-2">
         <Users className="w-5 h-5 text-blue-500" />
         Downline Team Members ({team.length})
       </h2>
@@ -1123,7 +1123,7 @@ function CardState({
   loading?: boolean;
 }) {
   return (
-    <section className="bg-white rounded-3xl border border-slate-200 p-12 text-center">
+    <section className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 p-8 sm:p-12 text-center">
       {loading ? (
         <Loader2 className="w-7 h-7 animate-spin text-blue-600 mx-auto" />
       ) : (

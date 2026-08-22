@@ -123,9 +123,9 @@ export default function TemplatesTab() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Toolbar */}
-      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between bg-white p-4 rounded-3xl border border-slate-200 shadow-sm">
+      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between bg-white p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm">
         <div className="relative w-full lg:max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
@@ -173,7 +173,7 @@ export default function TemplatesTab() {
       </div>
 
       {/* Status tabs */}
-      <div className="flex gap-2 border-b border-slate-100">
+      <div className="flex gap-2 border-b border-slate-100 overflow-x-auto scrollbar-hide -mx-1 px-1">
         {STATUS_FILTERS.map((f) => (
           <button
             key={f.value}
@@ -197,7 +197,7 @@ export default function TemplatesTab() {
           <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center">
+        <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-8 sm:p-12 text-center">
           <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
             {channelFilter === 'ALL' ? <Search className="w-6 h-6 text-slate-300" /> : <Plus className="w-6 h-6 text-slate-300" />}
           </div>
@@ -256,8 +256,9 @@ export default function TemplatesTab() {
               initial={{ opacity: 0, scale: 0.96, y: 12 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 12 }}
-              className="fixed inset-x-0 top-1/2 -translate-y-1/2 mx-auto w-full max-w-sm bg-white rounded-3xl shadow-2xl p-6 z-[210]"
+              className="fixed inset-x-0 bottom-0 sm:inset-x-auto sm:top-1/2 sm:-translate-y-1/2 mx-auto w-full max-w-sm bg-white rounded-t-[28px] sm:rounded-3xl shadow-2xl p-6 z-[210]"
             >
+              <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden" />
               <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center mb-4">
                 <AlertTriangle className="w-6 h-6 text-red-600" />
               </div>

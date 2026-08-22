@@ -106,7 +106,7 @@ export default function AgreementSignatureAudit() {
 
   return (
     <AdminLayout>
-      <div className="max-w-5xl mx-auto space-y-8 pb-12">
+      <div className="max-w-5xl mx-auto space-y-4 sm:space-y-8 pb-12">
         {/* Back Link & Header */}
         <div className="space-y-4">
           <Link 
@@ -118,7 +118,7 @@ export default function AgreementSignatureAudit() {
           
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-bold text-slate-900">{auditData.title}</h2>
+              <h2 className="text-lg sm:text-2xl font-bold text-slate-900">{auditData.title}</h2>
               <p className="text-sm text-slate-500 font-medium mt-1">
                 Deployed Version {auditData.version} • Created on {new Date(auditData.createdAt).toLocaleDateString()}
               </p>
@@ -133,50 +133,50 @@ export default function AgreementSignatureAudit() {
         </div>
 
         {/* Visual Metrics Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
-              <Users className="w-6 h-6" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-6">
+          <div className="bg-white p-3 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <Users className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Total Targeted</p>
-              <h4 className="text-2xl font-black text-slate-900 mt-0.5">{stats.totalTargeted}</h4>
+              <h4 className="text-xl sm:text-2xl font-black text-slate-900 mt-0.5">{stats.totalTargeted}</h4>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <Check className="w-6 h-6" />
+          <div className="bg-white p-3 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <Check className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Total Signed</p>
-              <h4 className="text-2xl font-black text-slate-900 mt-0.5">{stats.totalSigned}</h4>
+              <h4 className="text-xl sm:text-2xl font-black text-slate-900 mt-0.5">{stats.totalSigned}</h4>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
-              <Clock className="w-6 h-6" />
+          <div className="bg-white p-3 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Total Pending</p>
-              <h4 className="text-2xl font-black text-slate-900 mt-0.5">{stats.totalPending}</h4>
+              <h4 className="text-xl sm:text-2xl font-black text-slate-900 mt-0.5">{stats.totalPending}</h4>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center">
-              <Percent className="w-6 h-6" />
+          <div className="bg-white p-3 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm flex items-center gap-3 sm:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center">
+              <Percent className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div className="flex-grow">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Signed Percentage</p>
-              <h4 className="text-2xl font-black text-slate-900 mt-0.5">{stats.signedPercentage}%</h4>
+              <h4 className="text-xl sm:text-2xl font-black text-slate-900 mt-0.5">{stats.signedPercentage}%</h4>
             </div>
           </div>
         </div>
 
         {/* Audit Search, Filter, and Table Panel */}
-        <div className="bg-white border border-slate-200 shadow-sm rounded-[32px] p-6 sm:p-8 space-y-6">
+        <div className="bg-white border border-slate-200 shadow-sm rounded-2xl sm:rounded-3xl p-3 sm:p-8 space-y-4 sm:space-y-6">
           {/* Filters Bar */}
           <div className="flex flex-col sm:flex-row gap-4 justify-between sm:items-center">
             {/* Status tabs */}
@@ -211,7 +211,7 @@ export default function AgreementSignatureAudit() {
           </div>
 
           {/* Audit List Table */}
-          <div className="overflow-x-auto border border-slate-100 rounded-2xl">
+          <div className="hidden sm:block overflow-x-auto border border-slate-100 rounded-2xl">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50/80 text-[10px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-100">
@@ -266,6 +266,44 @@ export default function AgreementSignatureAudit() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card Layout */}
+          <div className="sm:hidden divide-y divide-slate-100">
+            {filteredSignatures.length > 0 ? (
+              filteredSignatures.map((user: any) => (
+                <div key={user.userId} className="p-3 sm:p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs sm:text-sm font-bold text-slate-900">{user.fullName}</p>
+                    {user.isUpToDate ? (
+                      <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100/50 text-[10px]">
+                        <CheckCircle2 className="w-3 h-3" /> Signed
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100/50 text-[10px]">
+                        <Clock className="w-3 h-3" /> Pending
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-500">{user.email}</p>
+                  <div className="flex items-center gap-2 text-[10px] sm:text-xs">
+                    <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold">{user.role}</span>
+                    <span className="text-slate-400">•</span>
+                    <span className="text-slate-500">{user.signedVersion ? `v${user.signedVersion}` : '—'}</span>
+                    <span className="text-slate-400">•</span>
+                    <span className="text-slate-500">
+                      {user.signedAt ? new Date(user.signedAt).toLocaleDateString('en-US', {
+                        month: 'short', day: 'numeric', year: 'numeric',
+                      }) : '—'}
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="p-6 text-center text-slate-400 font-bold text-xs">
+                No matching targeted users found.
+              </div>
+            )}
           </div>
         </div>
       </div>

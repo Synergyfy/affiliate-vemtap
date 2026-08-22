@@ -105,9 +105,9 @@ export default function FraudMonitor() {
 
   return (
     <AdminLayout>
-      <div className="space-y-8">
+      <div className="space-y-4 sm:space-y-8">
         {/* Fraud Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4">
           {fraudStats.map((stat, idx) => (
             <motion.div
               key={stat.label}
@@ -116,15 +116,15 @@ export default function FraudMonitor() {
               transition={{ delay: idx * 0.1 }}
               onClick={stat.onClick}
               className={cn(
-                "bg-white p-6 rounded-3xl border border-slate-200 shadow-sm",
+                "bg-white p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm",
                 stat.onClick && "cursor-pointer hover:border-slate-300 transition-all"
               )}
             >
-              <div className={cn("p-3 rounded-2xl w-fit mb-4", stat.bg)}>
-                <stat.icon className={cn("w-6 h-6", stat.color)} />
+              <div className={cn("p-2 sm:p-3 rounded-xl sm:rounded-2xl w-fit mb-2 sm:mb-4", stat.bg)}>
+                <stat.icon className={cn("w-5 h-5 sm:w-6 sm:h-6", stat.color)} />
               </div>
-              <p className="text-sm font-medium text-slate-500 mb-1">{stat.label}</p>
-              <h3 className="text-2xl font-bold text-slate-900">{stat.value}</h3>
+              <p className="text-xs sm:text-sm font-medium text-slate-500 mb-1 hidden sm:block">{stat.label}</p>
+              <h3 className="text-lg sm:text-2xl font-bold text-slate-900">{stat.value}</h3>
             </motion.div>
           ))}
         </div>
@@ -145,7 +145,52 @@ export default function FraudMonitor() {
           ]}
         />
 
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        {/* Mobile card layout */}
+        <div className="sm:hidden divide-y divide-slate-100 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          {alertsList.map((alert) => (
+            <div key={alert.id} className="p-3 flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-slate-900 text-xs sm:text-sm truncate">{alert.user?.fullName || 'Unknown User'}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-[10px] sm:text-xs text-slate-600 truncate max-w-[140px]">{alert.type?.replace(/_/g, ' ')}</span>
+                  <span className={cn(
+                    "text-[10px] font-bold px-2 py-0.5 rounded-full uppercase",
+                    alert.severity === 'CRITICAL' || alert.severity === 'HIGH' ? "bg-red-100 text-red-600" : 
+                    alert.severity === 'MEDIUM' ? "bg-amber-100 text-amber-600" : "bg-blue-100 text-blue-600"
+                  )}>
+                    {alert.severity}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button 
+                  onClick={() => setSelectedAlert(alert)}
+                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                </button>
+                {alert.status !== 'RESOLVED' && (
+                  <>
+                    <button 
+                      onClick={() => handleStatusChange(alert.id, alert.user?.fullName || 'User', true)}
+                      className="p-1.5 hover:bg-blue-50 rounded-lg text-slate-400"
+                    >
+                      {updateStatus.isPending && updateStatus.variables?.id === alert.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                    </button>
+                    <button 
+                      onClick={() => handleStatusChange(alert.id, alert.user?.fullName || 'User', false)}
+                      className="p-1.5 hover:bg-red-50 rounded-lg text-red-600"
+                    >
+                      {updateStatus.isPending && updateStatus.variables?.id === alert.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserX className="w-3.5 h-3.5" />}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="hidden sm:block bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto relative min-h-[400px]">
             {isFraudLoading && (
               <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
@@ -155,11 +200,11 @@ export default function FraudMonitor() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="p-4 font-bold text-slate-600 text-sm">Affiliate</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm">Alert Reason</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm">Risk Level</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm hidden md:table-cell">Detected</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm text-right">Actions</th>
+                  <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm">Affiliate</th>
+                  <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm">Alert Reason</th>
+                  <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm">Risk Level</th>
+                  <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm hidden md:table-cell">Detected</th>
+                  <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -171,23 +216,23 @@ export default function FraudMonitor() {
                       transition={{ delay: idx * 0.1 }}
                       className="hover:bg-slate-50/50 group transition-all"
                     >
-                      <td className="p-4">
-                        <p className="font-bold text-slate-900">{alert.user?.fullName || 'Unknown User'}</p>
-                        <p className="text-xs text-slate-400 font-mono">{alert.user?.email || alert.userId}</p>
+                      <td className="p-3 sm:p-4">
+                        <p className="font-bold text-slate-900 text-xs sm:text-sm">{alert.user?.fullName || 'Unknown User'}</p>
+                        <p className="text-[10px] sm:text-xs text-slate-400 font-mono">{alert.user?.email || alert.userId}</p>
                       </td>
-                      <td className="p-4">
+                      <td className="p-3 sm:p-4">
                         <div className="flex items-center gap-2">
                           <AlertTriangle className={cn(
-                            "w-4 h-4",
+                            "w-4 h-4 shrink-0",
                             alert.severity === 'CRITICAL' || alert.severity === 'HIGH' ? "text-red-500" : "text-amber-500"
                           )} />
-                          <div>
-                            <p className="text-sm font-bold text-slate-700">{alert.type?.replace(/_/g, ' ')}</p>
-                            <p className="text-xs text-slate-500 max-w-xs truncate">{alert.description}</p>
+                          <div className="min-w-0">
+                            <p className="text-xs sm:text-sm font-bold text-slate-700">{alert.type?.replace(/_/g, ' ')}</p>
+                            <p className="text-[10px] sm:text-xs text-slate-500 max-w-xs truncate">{alert.description}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="p-4">
+                      <td className="p-3 sm:p-4">
                         <span className={cn(
                           "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
                           alert.severity === 'CRITICAL' || alert.severity === 'HIGH' ? "bg-red-100 text-red-600" : 
@@ -196,8 +241,8 @@ export default function FraudMonitor() {
                           {alert.severity}
                         </span>
                       </td>
-                      <td className="p-4 text-sm text-slate-500 hidden md:table-cell">{new Date(alert.createdAt).toLocaleDateString()}</td>
-                      <td className="p-4 text-right">
+                      <td className="p-3 sm:p-4 text-xs sm:text-sm text-slate-500 hidden md:table-cell">{new Date(alert.createdAt).toLocaleDateString()}</td>
+                      <td className="p-3 sm:p-4 text-right">
                         <div className="flex items-center justify-end gap-2 transition-opacity">
                           <button 
                             onClick={() => setSelectedAlert(alert)}
@@ -240,8 +285,9 @@ export default function FraudMonitor() {
 
       {/* Investigation Details Modal */}
       {selectedAlert && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl p-6 max-w-lg w-full space-y-4 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-t-[28px] sm:rounded-3xl p-4 sm:p-6 max-w-lg w-full space-y-4 shadow-xl pb-[env(safe-area-inset-bottom)]">
+            <div className="sm:hidden flex justify-center pt-3 pb-1"><div className="w-10 h-1.5 bg-slate-200 rounded-full" /></div>
             <div className="flex justify-between items-center pb-3 border-b border-slate-100">
               <h3 className="text-lg font-bold text-slate-900">Fraud Alert Investigation</h3>
               <button onClick={() => setSelectedAlert(null)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400">
@@ -279,8 +325,9 @@ export default function FraudMonitor() {
 
       {/* Global Guard Threshold Modal */}
       {isGuardModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-t-[28px] sm:rounded-3xl p-4 sm:p-6 max-w-md w-full space-y-4 shadow-xl pb-[env(safe-area-inset-bottom)]">
+            <div className="sm:hidden flex justify-center pt-3 pb-1"><div className="w-10 h-1.5 bg-slate-200 rounded-full" /></div>
             <div className="flex justify-between items-center pb-3 border-b border-slate-100">
               <h3 className="text-lg font-bold text-slate-900">Global Guard Sensitivity</h3>
               <button onClick={() => setIsGuardModalOpen(false)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400">

@@ -19,10 +19,10 @@ import {
   useRetryFailedSms,
   useCommunicationSettings,
   useAudienceEstimate,
+  useAudiencePreviewContact,
 } from '@/services/useCommunicationHooks';
 import { AudienceFilter, EMPTY_AUDIENCE, OutboundMessage } from '@/types/communication';
 import { countSmsCharacters, estimateSmsCost, formatMessageDateTime, substituteVariables } from '@/lib/communication';
-import { mockLeadFixtures } from '@/lib/communication-mock';
 import { useDebounce } from '@/hooks/use-debounce';
 import { UsersRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -50,7 +50,11 @@ export default function SmsTab() {
   const sent = useMemo(() => messages.filter((m) => m.status === 'SENT'), [messages]);
   const failed = useMemo(() => messages.filter((m) => m.status === 'FAILED'), [messages]);
 
-  const previewLead = mockLeadFixtures.find((l) => l.phone) || null;
+  const debouncedFilters = useDebounce(filters, 400);
+  const { data: estimate } = useAudienceEstimate(filtersActive() ? debouncedFilters : null);
+  const audienceCount = estimate?.eligibleCount ?? 0;
+  const { data: previewLead } = useAudiencePreviewContact(debouncedFilters);
+
   const resolvedMessage = useMemo(() => {
     if (!previewLead || !message) return message;
     return substituteVariables(message, previewLead);
@@ -59,10 +63,6 @@ export default function SmsTab() {
   const charCount = useMemo(() => (message ? countSmsCharacters(resolvedMessage) : null), [resolvedMessage]);
   const smsCost = useMemo(() => estimateSmsCost(resolvedMessage, UNIT_COST), [resolvedMessage]);
   const hasOverLimit = charCount?.over ?? false;
-
-  const debouncedFilters = useDebounce(filters, 400);
-  const { data: estimate } = useAudienceEstimate(filtersActive() ? debouncedFilters : null);
-  const audienceCount = estimate?.eligibleCount ?? 0;
 
   const canSend = filtersActive() && message.trim().length > 0 && !hasOverLimit && audienceCount > 0 && (settings?.smsEnabled ?? true);
 
@@ -77,9 +77,8 @@ export default function SmsTab() {
   const handleSend = async () => {
     if (!canSend) return;
     try {
-      const leadIds = mockLeadFixtures.filter((l) => l.phone).slice(0, audienceCount || 1).map((l) => l.id);
       await sendSms.mutateAsync({
-        leadIds,
+        audience: filters,
         message: message.trim(),
         templateId: selectedTemplateId,
         scheduledAt: scheduledAt || undefined,
@@ -87,7 +86,7 @@ export default function SmsTab() {
       showToast(
         scheduledAt
           ? `SMS scheduled for ${new Date(scheduledAt).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}.`
-          : `SMS sent to ${leadIds.length} contact${leadIds.length > 1 ? 's' : ''}.`,
+          : `SMS sent to ${audienceCount || 1} contact${(audienceCount || 1) > 1 ? 's' : ''}.`,
         'success',
       );
       setMessage('');
@@ -117,8 +116,8 @@ export default function SmsTab() {
 
   if (!settings?.smsEnabled) {
     return (
-      <div className="space-y-8">
-        <div className="flex items-start gap-4 bg-amber-50 border border-amber-200 rounded-3xl p-6">
+      <div className="space-y-4 sm:space-y-8">
+        <div className="flex items-start gap-4 bg-amber-50 border border-amber-200 rounded-2xl sm:rounded-3xl p-4 sm:p-6">
           <AlertTriangle className="w-6 h-6 text-amber-600 mt-0.5 shrink-0" />
           <div>
             <h3 className="text-base font-bold text-amber-800">SMS sending is disabled</h3>
@@ -135,19 +134,19 @@ export default function SmsTab() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-8">
       {/* Compose section */}
-      <section className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
-        <div className="p-5 lg:p-6 border-b border-slate-100">
+      <section className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl shadow-sm overflow-hidden">
+        <div className="p-3 sm:p-5 lg:p-6 border-b border-slate-100">
           <h3 className="text-lg font-bold text-slate-900">Compose SMS</h3>
           <p className="text-xs text-slate-500 font-medium mt-1">
             Select the audience and write your message. SMS costs {UNIT_COST.toFixed(2)} per message.
           </p>
         </div>
-        <div className="p-5 lg:p-6 space-y-6">
+        <div className="p-3 sm:p-5 lg:p-6 space-y-4 sm:space-y-6">
           <AudienceBuilder filters={filters} onChange={setFilters} />
 
-          <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100">
+          <div className="p-3 sm:p-5 bg-slate-50 rounded-2xl sm:rounded-3xl border border-slate-100">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Message</p>
             <MessageComposer
               channel="SMS"
@@ -287,7 +286,7 @@ function MessageListSection({
           <Loader2 className="w-6 h-6 animate-spin text-slate-300" />
         </div>
       ) : messages.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center">
+        <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-8 sm:p-12 text-center">
           <MessageSquare className="w-10 h-10 text-slate-200 mx-auto mb-3" />
           <p className="text-sm font-medium text-slate-500">{emptyText}</p>
         </div>

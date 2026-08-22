@@ -251,10 +251,10 @@ export default function ObservabilityDashboard() {
 
   return (
     <AdminLayout>
-      <div className="space-y-8 font-sans antialiased text-slate-800">
+      <div className="space-y-6 sm:space-y-8 font-sans antialiased text-slate-800">
         
         {/* TOP STATUS AND MODE CONTROLLER BAR */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm">
           <div>
             <div className="flex items-center gap-2">
               <span className="flex h-2.5 w-2.5 relative">
@@ -312,18 +312,18 @@ export default function ObservabilityDashboard() {
         )}
 
         {/* 4 STAGGERED KPI STAT CARDS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           
           {/* Card 1: Traffic */}
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.05 }}
-            className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between"
+            className="bg-white p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between"
           >
             <div className="space-y-1">
-              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block">Total Requests</span>
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+              <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-400 block">Total Requests</span>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                 {stats?.totalRequests?.toLocaleString() ?? '0'}
               </h3>
               <p className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
@@ -341,11 +341,11 @@ export default function ObservabilityDashboard() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.1 }}
-            className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between"
+            className="bg-white p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between"
           >
             <div className="space-y-1">
-              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block">Avg Response Velocity</span>
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+              <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-400 block">Avg Response Velocity</span>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                 {stats.avgResponseTime} <span className="text-xs text-slate-400 font-medium">ms</span>
               </h3>
               <span className={cn(
@@ -366,11 +366,11 @@ export default function ObservabilityDashboard() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.15 }}
-            className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between"
+            className="bg-white p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between"
           >
             <div className="space-y-1">
-              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block">System Reliability</span>
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+              <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-400 block">System Reliability</span>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                 {(100 - stats.errorRate).toFixed(1)}<span className="text-xs text-slate-400 font-medium">%</span>
               </h3>
               <p className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
@@ -395,11 +395,11 @@ export default function ObservabilityDashboard() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.2 }}
-            className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between"
+            className="bg-white p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between"
           >
             <div className="space-y-1">
-              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block">Latency Overages</span>
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+              <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-400 block">Latency Overages</span>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                 {stats.slowCount} <span className="text-xs text-slate-400 font-medium">slow</span>
               </h3>
               <p className="text-[10px] text-slate-400 font-semibold">
@@ -413,7 +413,7 @@ export default function ObservabilityDashboard() {
         </div>
 
         {/* METRICS CHARTS (RECHARTS AREA CHART) */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm">
           <div className="mb-6 flex justify-between items-center">
             <div>
               <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block">Performance Analysis</span>
@@ -446,7 +446,7 @@ export default function ObservabilityDashboard() {
         </div>
 
         {/* LOG FILTER TOOLBAR */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+        <div className="bg-white p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm space-y-4">
           <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between">
             {/* Search Input */}
             <div className="relative flex-grow max-w-lg">
@@ -546,7 +546,7 @@ export default function ObservabilityDashboard() {
         </div>
 
         {/* LIVE LOGS TABLE */}
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto min-h-[300px] relative">
             {isLogsLoading && (
               <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex flex-col items-center justify-center z-10 gap-3">
@@ -555,16 +555,16 @@ export default function ObservabilityDashboard() {
               </div>
             )}
 
-            <table className="w-full border-collapse text-left">
+            <table className="w-full border-collapse text-left hidden sm:table">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Method</th>
-                  <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-500">URI Endpoint</th>
-                  <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Status</th>
-                  <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Response Latency</th>
-                  <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Active User</th>
-                  <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Trace ID</th>
-                  <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-right">Captured</th>
+                  <th className="p-3 sm:p-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Method</th>
+                  <th className="p-3 sm:p-4 text-[10px] font-black uppercase tracking-widest text-slate-500">URI Endpoint</th>
+                  <th className="p-3 sm:p-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Status</th>
+                  <th className="p-3 sm:p-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Response Latency</th>
+                  <th className="p-3 sm:p-4 text-[10px] font-black uppercase tracking-widest text-slate-500 hidden lg:table-cell">Active User</th>
+                  <th className="p-3 sm:p-4 text-[10px] font-black uppercase tracking-widest text-slate-500 hidden xl:table-cell">Trace ID</th>
+                  <th className="p-3 sm:p-4 text-[10px] font-black uppercase tracking-widest text-slate-500 text-right">Captured</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -591,7 +591,7 @@ export default function ObservabilityDashboard() {
                           )}
                         >
                           {/* Method */}
-                          <td className="p-4">
+                          <td className="p-3 sm:p-4">
                             <span className={cn(
                               "text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider block w-fit shadow-xs",
                               getMethodStyles(log.method)
@@ -601,7 +601,7 @@ export default function ObservabilityDashboard() {
                           </td>
 
                           {/* URI URL */}
-                          <td className="p-4 max-w-xs xl:max-w-md">
+                          <td className="p-3 sm:p-4 max-w-xs xl:max-w-md">
                             <div className="flex flex-col">
                               <span className="font-mono text-xs font-bold text-slate-900 select-all truncate block">
                                 {log.url}
@@ -615,7 +615,7 @@ export default function ObservabilityDashboard() {
                           </td>
 
                           {/* Status */}
-                          <td className="p-4 text-center">
+                          <td className="p-3 sm:p-4 text-center">
                             <div className="flex items-center justify-center gap-1.5">
                               <span className={cn("h-2 w-2 rounded-full", getStatusColor(log.statusCode))}></span>
                               <span className="font-mono text-xs font-bold text-slate-800">{log.statusCode}</span>
@@ -623,7 +623,7 @@ export default function ObservabilityDashboard() {
                           </td>
 
                           {/* Latency */}
-                          <td className="p-4">
+                          <td className="p-3 sm:p-4">
                             <div className="flex items-center gap-2">
                               <span className="font-mono text-xs font-black text-slate-900">{log.responseTime}ms</span>
                               <span className={cn(
@@ -636,21 +636,21 @@ export default function ObservabilityDashboard() {
                           </td>
 
                           {/* User */}
-                          <td className="p-4">
+                          <td className="p-3 sm:p-4 hidden lg:table-cell">
                             <span className="text-xs font-bold text-slate-700 block truncate max-w-[120px]">
                               {log.user ? log.user.email : <span className="text-slate-400 italic">anonymous</span>}
                             </span>
                           </td>
 
                           {/* Trace ID */}
-                          <td className="p-4">
+                          <td className="p-3 sm:p-4 hidden xl:table-cell">
                             <span className="font-mono text-[10px] font-medium text-slate-400">
                               {log.traceId ? log.traceId.slice(0, 10) + '...' : 'none'}
                             </span>
                           </td>
 
                           {/* Captured */}
-                          <td className="p-4 text-right">
+                          <td className="p-3 sm:p-4 text-right">
                             <span className="text-xs text-slate-400 font-semibold block">
                               {new Date(log.timestamp).toLocaleTimeString()}
                             </span>
@@ -670,10 +670,63 @@ export default function ObservabilityDashboard() {
                 </AnimatePresence>
               </tbody>
             </table>
+
+            {/* Mobile card layout */}
+            <div className="sm:hidden divide-y divide-slate-100">
+              {logs.length > 0 ? (
+                logs.map((log) => {
+                  const speed = getSpeedLabel(log.responseTime);
+                  return (
+                    <div
+                      key={log.id}
+                      onClick={() => { setSelectedLog(log); setActiveTab('overview'); }}
+                      className={cn(
+                        "p-3 space-y-2 cursor-pointer",
+                        selectedLog?.id === log.id ? "bg-blue-50/50" : "",
+                        log.statusCode >= 500 ? "bg-rose-50/20" : ""
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className={cn(
+                            "text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider",
+                            getMethodStyles(log.method)
+                          )}>
+                            {log.method}
+                          </span>
+                          <span className={cn("h-2 w-2 rounded-full", getStatusColor(log.statusCode))}></span>
+                          <span className="font-mono text-xs font-bold text-slate-800">{log.statusCode}</span>
+                        </div>
+                        <span className="font-mono text-[10px] text-slate-400">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                      </div>
+                      <div className="font-mono text-xs font-bold text-slate-900 truncate">{log.url}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[11px] font-black text-slate-900">{log.responseTime}ms</span>
+                        <span className={cn(
+                          "text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider",
+                          speed.color
+                        )}>
+                          {speed.text}
+                        </span>
+                        {log.user && (
+                          <span className="text-[10px] text-slate-400 truncate ml-auto">{log.user.email}</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-16 text-slate-400">
+                  <Activity className="w-12 h-12 text-slate-200 mx-auto mb-3 animate-pulse" />
+                  <h4 className="font-black uppercase tracking-wider text-xs text-slate-400">No Observability Logs Found</h4>
+                  <p className="text-[10px] text-slate-400 mt-1 max-w-sm mx-auto">No traffic captured within these parameters.</p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Pagination Controls */}
-          <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+          <div className="p-3 sm:p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
             <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">
               Page {page} of {totalPagesCount || 1}
             </span>
@@ -715,10 +768,14 @@ export default function ObservabilityDashboard() {
                 animate={{ x: 0 }}
                 exit={{ x: '100%' }}
                 transition={{ type: 'spring', damping: 26, stiffness: 220 }}
-                className="fixed top-0 right-0 h-full w-full max-w-2xl bg-white shadow-2xl z-[260] overflow-y-auto border-l border-slate-200 flex flex-col"
+                className="fixed bottom-0 left-0 right-0 h-[85vh] sm:bottom-0 sm:left-auto sm:right-0 sm:h-full sm:top-0 sm:w-full sm:max-w-2xl bg-white shadow-2xl z-[260] overflow-y-auto border-t sm:border-t-0 sm:border-l border-slate-200 flex flex-col rounded-t-[28px] sm:rounded-none"
               >
+                {/* Drag handle for mobile */}
+                <div className="flex justify-center pt-3 sm:hidden">
+                  <div className="w-10 h-1 rounded-full bg-slate-300"></div>
+                </div>
                 {/* Header */}
-                <div className="p-6 border-b border-slate-200 flex justify-between items-start bg-slate-50">
+                <div className="p-4 sm:p-6 border-b border-slate-200 flex justify-between items-start bg-slate-50">
                   <div className="space-y-1.5 flex-grow pr-4">
                     <div className="flex items-center gap-2">
                       <span className={cn(
@@ -774,7 +831,7 @@ export default function ObservabilityDashboard() {
                 </div>
 
                 {/* Tab content area */}
-                <div className="flex-grow p-6 overflow-y-auto">
+                <div className="flex-grow p-4 sm:p-6 overflow-y-auto">
                   <AnimatePresence mode="wait">
                     
                     {/* OVERVIEW TAB */}
