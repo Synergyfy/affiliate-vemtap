@@ -19,7 +19,7 @@ import {
   TemplateStatus,
   WhatsAppItemStatus,
 } from '@/types/communication';
-import { PaginatedResponse } from '@/types/api';
+import { PaginatedResponse, Lead } from '@/types/api';
 import {
   mockAudienceEstimate,
   mockCampaignsState,
@@ -75,12 +75,27 @@ export function useAudienceEstimate(filters: AudienceFilter | null) {
     queryFn: async (): Promise<AudienceEstimate> => {
       if (!filters) return { totalMatches: 0, eligibleCount: 0, skippedFrequency: 0, missingPhone: 0 };
       if (IS_MOCK) return mockAudienceEstimate(filters);
-      const response = await api.get<{ total: number; withPhone: number; eligible: number; filters: AudienceFilter }>('/communication/audience/preview', { params: filters });
+      // Backend rejects boolean query params (hasPhone arrives as "true" and
+      // fails its boolean validation), so booleans are stripped from the GET
+      // request and accounted for when mapping the response. Arrays are sent
+      // as repeated keys (statuses=a&statuses=b), not bracket notation.
+      const { hasPhone, ...rest } = filters;
+      const search = new URLSearchParams();
+      Object.entries(rest).forEach(([key, value]) => {
+        if (value === undefined || value === null || value === '') return;
+        if (Array.isArray(value)) value.forEach((item) => item !== undefined && item !== null && search.append(key, String(item)));
+        else search.append(key, String(value));
+      });
+      const response = await api.get<{ total: number; withPhone: number; eligible: number }>('/communication/audience/preview', {
+        params: search,
+      });
+      const total = response.data.total;
+      const withPhone = response.data.withPhone;
       return {
-        totalMatches: response.data.total,
-        eligibleCount: response.data.eligible,
+        totalMatches: total,
+        eligibleCount: hasPhone ? Math.min(response.data.eligible, withPhone) : response.data.eligible,
         skippedFrequency: 0,
-        missingPhone: response.data.total - response.data.withPhone,
+        missingPhone: total - withPhone,
       };
     },
   });
@@ -166,6 +181,10 @@ export function useCommunicationMessages(params?: {
   page?: number;
   limit?: number;
 }) {
+  // Backend rejects numeric query params (page/limit arrive as strings and fail
+  // its integer validation), so only string filters are sent and pagination is
+  // applied client-side.
+  const { page = 1, limit, ...stringParams } = params ?? {};
   return useQuery<PaginatedResponse<OutboundMessage>>({
     queryKey: ['communication', 'messages', params],
     queryFn: async () => {
@@ -178,9 +197,55 @@ export function useCommunicationMessages(params?: {
         };
       }
       const response = await api.get<PaginatedResponse<OutboundMessage>>('/communication/messages', {
-        params,
+        params: stringParams,
       });
-      return response.data;
+      const payload = response.data;
+      const rows = payload?.data ?? [];
+      if (!limit) return payload;
+      const start = (page - 1) * limit;
+      const total = payload?.meta?.total ?? rows.length;
+      return {
+        ...payload,
+        data: rows.slice(start, start + limit),
+        meta: { ...payload?.meta, total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) },
+      };
+    },
+  });
+}
+
+export function useAudiencePreviewContact(filters?: AudienceFilter | null) {
+  return useQuery({
+    queryKey: ['communication', 'audience', 'preview-contact', filters ?? null],
+    queryFn: async (): Promise<Partial<Lead> | null> => {
+      if (IS_MOCK) return mockLeadFixtures.find((l) => l.phone) ?? null;
+      // String params only — numeric query values fail backend validation.
+      const search = new URLSearchParams();
+      Object.entries(filters ?? {}).forEach(([key, value]) => {
+        if (key === 'hasPhone') return;
+        if (value === undefined || value === null || value === '') return;
+        if (Array.isArray(value)) value.forEach((v) => v !== undefined && v !== null && search.append(key, String(v)));
+        else search.append(key, String(value));
+      });
+      const response = await api.get<{
+        data: Array<{
+          id: string;
+          businessName: string | null;
+          contactName: string | null;
+          phone: string | null;
+          location: string | null;
+          agentName: string | null;
+        }>;
+      }>('/communication/audience/contacts', { params: search });
+      const first = (response.data.data ?? []).find((c) => !!c.phone);
+      if (!first) return null;
+      return {
+        id: first.id,
+        businessName: first.businessName ?? '',
+        contactName: first.contactName ?? '',
+        location: first.location ?? '',
+        phone: first.phone ?? '',
+        user: { fullName: first.agentName ?? '' } as unknown as Lead['user'],
+      };
     },
   });
 }
@@ -454,7 +519,8 @@ export function useSendSms() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (data: {
-      leadIds: string[];
+      leadIds?: string[];
+      audience?: AudienceFilter;
       message: string;
       templateId?: string;
       scheduledAt?: string;
@@ -462,7 +528,11 @@ export function useSendSms() {
       if (IS_MOCK) {
         const channel: CommunicationChannel = 'SMS';
         const now = new Date().toISOString();
-        const messages: OutboundMessage[] = data.leadIds.map((leadId, idx) => ({
+        const ids =
+          data.leadIds && data.leadIds.length > 0
+            ? data.leadIds
+            : mockLeadFixtures.filter((l) => l.phone).map((l) => l.id);
+        const messages: OutboundMessage[] = ids.map((leadId, idx) => ({
           id: `msg-${Date.now()}-${idx}`,
           leadId,
           channel,
@@ -479,8 +549,20 @@ export function useSendSms() {
         mockMessagesState.unshift(...messages);
         return messages;
       }
-      const response = await api.post<{ messages: OutboundMessage[] }>('/communication/messages', data);
-      return response.data.messages;
+      // Backend contract: { channel, body, leadIds? | audience?, ... }
+      const payload: Record<string, unknown> = {
+        channel: 'SMS',
+        body: data.message,
+      };
+      if (data.leadIds?.length) payload.leadIds = data.leadIds;
+      if (data.audience) payload.audience = data.audience;
+      if (data.templateId) payload.templateId = data.templateId;
+      if (data.scheduledAt) payload.scheduledForAt = data.scheduledAt;
+      const response = await api.post<OutboundMessage[] | { messages?: OutboundMessage[] }>(
+        '/communication/messages',
+        payload,
+      );
+      return Array.isArray(response.data) ? response.data : response.data?.messages ?? [];
     },
     onSuccess: () => {
       invalidateAll(qc);

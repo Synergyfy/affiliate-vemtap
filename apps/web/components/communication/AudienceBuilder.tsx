@@ -1,10 +1,13 @@
 'use client';
 
-import { memo, useEffect, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { Loader2, Users, ChevronDown, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAudienceEstimate } from '@/services/useCommunicationHooks';
+import { useUsers } from '@/services/useAdminHooks';
+import { useAdminLocations } from '@/services/useMarketMappingHooks';
 import { AudienceFilter, EMPTY_AUDIENCE } from '@/types/communication';
+import type { Role } from '@/types/api';
 import OverMessagingNotice from './OverMessagingNotice';
 import { useDebounce } from '@/hooks/use-debounce';
 import { EnhancedMultiSelect, SelectOption } from '@/components/ui/EnhancedSelect';
@@ -19,21 +22,6 @@ export const STATUS_OPTIONS: SelectOption[] = [
   { value: 'SUBSCRIBED', label: 'Subscribed' },
   { value: 'EXPIRED', label: 'Expired' },
   { value: 'LOST_CLOSED', label: 'Lost / Closed' },
-];
-
-export const LOCATION_OPTIONS: SelectOption[] = [
-  { value: 'Apo', label: 'Apo' },
-  { value: 'Garki', label: 'Garki' },
-  { value: 'Guzape', label: 'Guzape' },
-  { value: 'Wuse', label: 'Wuse' },
-  { value: 'Wuse 2', label: 'Wuse 2' },
-  { value: 'Maitama', label: 'Maitama' },
-];
-
-export const SALESPERSON_OPTIONS: SelectOption[] = [
-  { value: 'Agent A', label: 'Agent A' },
-  { value: 'Agent B', label: 'Agent B' },
-  { value: 'Agent C', label: 'Agent C' },
 ];
 
 interface AudienceBuilderProps {
@@ -85,6 +73,31 @@ function AudienceBuilder({ filters, onChange, compact }: AudienceBuilderProps) {
   }, [debouncedFilters]);
 
   const { data: estimate, isLoading } = useAudienceEstimate(estimateFilters);
+
+  // Real salespeople (agents) and locations from the backend
+  const { data: agentsData, isLoading: agentsLoading } = useUsers({ role: 'AGENT' as Role, limit: 100 });
+  const { data: locations } = useAdminLocations();
+
+  const salespersonOptions = useMemo<SelectOption[]>(
+    () =>
+      (agentsData?.data ?? []).map((u) => ({
+        value: u.id,
+        label: u.fullName,
+      })),
+    [agentsData],
+  );
+
+  const locationOptions = useMemo<SelectOption[]>(
+    () =>
+      Array.from(
+        new Map(
+          (locations ?? [])
+            .map((l) => ({ value: l.name, label: l.name }))
+            .map((o) => [o.value, o]),
+        ).values(),
+      ),
+    [locations],
+  );
 
   const toggleStatus = (value: string) => {
     const current = filters.statuses || [];
@@ -141,8 +154,8 @@ function AudienceBuilder({ filters, onChange, compact }: AudienceBuilderProps) {
             />
             <EnhancedMultiSelect
               label="By Salesperson"
-              placeholder="All salespeople"
-              options={SALESPERSON_OPTIONS}
+              placeholder={agentsLoading ? 'Loading salespeople…' : 'All salespeople'}
+              options={salespersonOptions}
               selected={filters.salespersonIds || []}
               onToggle={(value) => {
                 const current = filters.salespersonIds || [];
@@ -150,13 +163,13 @@ function AudienceBuilder({ filters, onChange, compact }: AudienceBuilderProps) {
                 onChange({ ...filters, salespersonIds: next });
               }}
               onClear={() => onChange({ ...filters, salespersonIds: [] })}
-              onSelectAll={() => onChange({ ...filters, salespersonIds: SALESPERSON_OPTIONS.map((o) => o.value) })}
+              onSelectAll={() => onChange({ ...filters, salespersonIds: salespersonOptions.map((o) => o.value) })}
               selectAllLabel="All salespeople"
             />
             <EnhancedMultiSelect
               label="By Location / Area"
               placeholder="All areas"
-              options={LOCATION_OPTIONS}
+              options={locationOptions}
               selected={filters.location ? [filters.location] : []}
               onToggle={(value) => {
                 onChange({ ...filters, location: filters.location === value ? undefined : value });

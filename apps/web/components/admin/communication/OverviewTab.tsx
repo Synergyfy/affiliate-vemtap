@@ -47,12 +47,12 @@ export default function OverviewTab() {
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-8">
       {/* Quick SMS action */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <button
           onClick={() => setQuickSmsOpen(true)}
-          className="group flex items-center justify-between w-full p-5 bg-white border border-slate-200 rounded-3xl shadow-sm hover:shadow-md hover:border-amber-200 transition-all text-left"
+          className="group flex items-center justify-between w-full p-3 sm:p-5 bg-white border border-slate-200 rounded-2xl sm:rounded-3xl shadow-sm hover:shadow-md hover:border-amber-200 transition-all text-left"
         >
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-2xl bg-amber-600 text-white shadow-lg">
@@ -70,7 +70,7 @@ export default function OverviewTab() {
           <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4">
           {stats.map((stat, idx) => (
             <StatCard key={stat.label} index={idx} {...stat} />
           ))}
@@ -79,7 +79,7 @@ export default function OverviewTab() {
 
       {/* Active queues + recent messages */}
       <div className="grid lg:grid-cols-2 gap-6 sm:gap-8">
-        <section className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        <section className="bg-white p-3 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between gap-2 mb-5">
             <h3 className="text-base sm:text-lg font-bold text-slate-900 truncate min-w-0">Active WhatsApp Queues</h3>
             <Link href="/admin/communication/whatsapp" className="text-[11px] sm:text-xs font-black text-blue-600 hover:underline uppercase tracking-widest shrink-0">
@@ -124,7 +124,7 @@ export default function OverviewTab() {
           )}
         </section>
 
-        <section className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        <section className="bg-white p-3 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between gap-2 mb-5">
             <h3 className="text-base sm:text-lg font-bold text-slate-900 truncate min-w-0">Recent Messages</h3>
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest shrink-0">All channels</span>

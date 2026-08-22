@@ -43,7 +43,7 @@ export default function FilterBar({
   }, []);
 
   return (
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-3xl border border-slate-200 shadow-sm">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm">
       <div className="relative flex-grow max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <input 
@@ -51,7 +51,7 @@ export default function FilterBar({
           placeholder={searchPlaceholder}
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+          className="w-full pl-9 pr-4 py-2 sm:py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
         />
         {searchQuery && (
           <button 
@@ -63,17 +63,17 @@ export default function FilterBar({
         )}
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         {filterOptions && onFilterChange && (
           <div className="relative" ref={filterRef}>
             <button 
               onClick={() => setIsFilterOpen(!isFilterOpen)}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 bg-white border rounded-xl text-slate-600 font-medium transition-all hover:bg-slate-50",
+                "flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-white border rounded-xl text-xs sm:text-sm text-slate-600 font-medium transition-all hover:bg-slate-50",
                 activeFilter && activeFilter !== 'All' ? "border-blue-600 text-blue-600 bg-blue-50/50" : "border-slate-200"
               )}
             >
-              <Filter className="w-4 h-4" />
+              <Filter className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               {activeFilter === 'All' || !activeFilter ? filterLabel : activeFilter}
             </button>
 

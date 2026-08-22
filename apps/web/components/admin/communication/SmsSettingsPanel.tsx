@@ -60,9 +60,9 @@ export default function SmsSettingsPanel() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Master switches */}
-      <section className="bg-white border border-slate-200 rounded-3xl p-6 space-y-6">
+      <section className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-4 sm:p-6 space-y-5 sm:space-y-6">
         <h3 className="text-lg font-bold text-slate-900">Global controls</h3>
 
         <ToggleRow
@@ -92,7 +92,7 @@ export default function SmsSettingsPanel() {
       </section>
 
       {/* Frequency limits */}
-      <section className="bg-white border border-slate-200 rounded-3xl p-6 space-y-5">
+      <section className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-4 sm:p-6 space-y-4 sm:space-y-5">
         <div>
           <h3 className="text-lg font-bold text-slate-900">Frequency limits</h3>
           <p className="text-xs text-slate-500 mt-1">Prevent over-messaging by capping how often each contact hears from you.</p>
@@ -153,7 +153,7 @@ export default function SmsSettingsPanel() {
       </section>
 
       {/* Not-interested policy */}
-      <section className="bg-white border border-slate-200 rounded-3xl p-6 space-y-4">
+      <section className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-4 sm:p-6 space-y-4">
         <div>
           <h3 className="text-lg font-bold text-slate-900">Not-interested policy</h3>
           <p className="text-xs text-slate-500 mt-1">Control what happens to contacts marked as not interested.</p>

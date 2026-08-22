@@ -106,31 +106,31 @@ export default function AdminOverview() {
     <AdminLayout>
       <div className="space-y-8">
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6">
           {adminStats.map((stat, idx) => (
             <motion.div
               key={stat.name}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.1 }}
-              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-slate-300 transition-all cursor-default"
+              className="bg-white p-3 sm:p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-slate-300 transition-all cursor-default"
             >
-              <div className="flex justify-between items-start mb-4">
-                <div className={cn("p-3 rounded-xl", stat.bg)}>
-                  <stat.icon className={cn("w-6 h-6", stat.color)} />
+              <div className="flex justify-between items-start mb-1 sm:mb-4">
+                <div className={cn("p-1 sm:p-3 rounded-xl", stat.bg)}>
+                  <stat.icon className={cn("w-4 h-4 sm:w-6 sm:h-6", stat.color)} />
                 </div>
                 {stat.growth !== undefined && (
                   <div className={cn(
-                    "flex items-center text-xs font-bold px-2 py-1 rounded-full",
+                    "flex items-center text-[10px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full",
                     stat.growth >= 0 ? "text-green-600 bg-green-50" : "text-red-600 bg-red-50"
                   )}>
-                    {stat.growth >= 0 ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <TrendingUp className="w-3 h-3 mr-1 rotate-180" />}
+                    {stat.growth >= 0 ? <ArrowUpRight className="w-3 h-3 mr-0.5 sm:mr-1" /> : <TrendingUp className="w-3 h-3 mr-0.5 sm:mr-1 rotate-180" />}
                     {Math.abs(stat.growth)}%
                   </div>
                 )}
               </div>
-              <p className="text-sm font-medium text-slate-500 mb-1">{stat.name}</p>
-              <h3 className="text-2xl font-bold text-slate-900">{stat.value}</h3>
+              <p className="text-xs sm:text-sm font-medium text-slate-500">{stat.name}</p>
+              <h3 className="text-base sm:text-2xl font-bold text-slate-900">{stat.value}</h3>
             </motion.div>
           ))}
         </div>

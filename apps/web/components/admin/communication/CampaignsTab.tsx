@@ -55,7 +55,7 @@ export default function CampaignsTab() {
   const ended = campaigns?.filter((c) => c.status === 'COMPLETED' || c.status === 'PAUSED' || c.status === 'CANCELLED') || [];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-8">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
           <h3 className="text-lg font-bold text-slate-900">Campaigns</h3>
@@ -74,7 +74,7 @@ export default function CampaignsTab() {
           <Loader2 className="w-6 h-6 animate-spin text-slate-300" />
         </div>
       ) : campaigns && campaigns.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center">
+        <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-8 sm:p-12 text-center">
           <Megaphone className="w-10 h-10 text-slate-200 mx-auto mb-3" />
           <p className="text-sm font-medium text-slate-500">No campaigns yet. Create your first promotion above.</p>
         </div>
