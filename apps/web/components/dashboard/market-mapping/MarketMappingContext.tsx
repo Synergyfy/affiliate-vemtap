@@ -29,8 +29,8 @@ interface MarketMappingContextType {
   notes: BusinessNote[];
   selectedVisit: PlannedVisit | null;
   setSelectedVisit: (v: PlannedVisit | null) => void;
-  addVisits: (newVisits: PlannedVisit[], onCreated?: (tempId: string, created: PlannedVisit) => void) => void;
-  saveCapture: (updatedVisit: PlannedVisit) => void;
+  addVisits: (newVisits: PlannedVisit[], onCreated?: (tempId: string, created: PlannedVisit) => void) => Promise<void>;
+  saveCapture: (updatedVisit: PlannedVisit) => Promise<PlannedVisit | void>;
   missionPlans: MissionPlan[];
   addMissionPlan: (plan: MissionPlan) => void;
   missionHistory: MissionHistoryEntry[];
@@ -44,13 +44,25 @@ const emptyMaturity: ClusterMaturity = { discovery: 0, verification: 0, sales: 0
 
 const MarketMappingContext = createContext<MarketMappingContextType | undefined>(undefined);
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const CUID_REGEX = /^c[0-9a-z]{24,}$/i;
+
 /**
- * A temp id is a client-generated placeholder id (biz-/v-/exec-). Temp ids
- * mean the record has not been persisted as a real lead yet, so saves route
- * to CREATE. Real ids (UUIDs/CUIDs from the DB) route to UPDATE.
+ * A temp id is a client-generated placeholder or mock id.
+ * Temp ids mean the record has not been persisted as a real database lead yet,
+ * so saves must route to CREATE (POST). Real ids (valid UUIDs/CUIDs from DB)
+ * route to UPDATE (PATCH).
  */
 export function isTempId(id?: string): boolean {
-  return Boolean(id && (id.startsWith('biz-') || id.startsWith('v-') || id.startsWith('exec-')));
+  if (!id) return true;
+  const s = id.trim();
+  if (s.startsWith('biz-') || s.startsWith('v-') || s.startsWith('exec-') || s.startsWith('temp-') || s.startsWith('mock-')) {
+    return true;
+  }
+  if (/^b\d+$/i.test(s) || /^lead-\d+$/i.test(s) || /^item-\d+$/i.test(s)) {
+    return true;
+  }
+  return !UUID_REGEX.test(s) && !CUID_REGEX.test(s);
 }
 
 function planDateKey(date?: string): string {
@@ -75,12 +87,13 @@ export function useMarketMapping() {
       notes: [] as BusinessNote[],
       selectedVisit: null,
       setSelectedVisit: () => {},
-      addVisits: () => {},
-      saveCapture: () => {},
+      addVisits: async () => {},
+      saveCapture: async () => {},
       missionPlans: [] as MissionPlan[],
       addMissionPlan: () => {},
       missionHistory: [] as MissionHistoryEntry[],
       archiveMissionPlan: () => {},
+      addNote: () => {},
     };
   }
   return ctx;
@@ -279,24 +292,29 @@ export function MarketMappingProvider({ children }: { children: React.ReactNode 
     if (entry.id) updatePlanMutation.mutate({ id: entry.id, status: entry.status === 'ACHIEVED' ? 'COMPLETED' : 'ARCHIVED' });
   }, [updatePlanMutation]);
 
-  const addVisits = useCallback((newVisits: PlannedVisit[], onCreated?: (tempId: string, created: PlannedVisit) => void) => {
+  const addVisits = useCallback(async (newVisits: PlannedVisit[], onCreated?: (tempId: string, created: PlannedVisit) => void) => {
     setVisits(prev => [...prev, ...newVisits]);
     setStats(prev => ({
       ...prev,
       plannedToday: prev.plannedToday + newVisits.length,
     }));
-    newVisits.forEach(({ id: tempId, ...visit }) => createVisitMutation.mutate(visit, {
-      onSuccess: (created) => {
+    for (const { id: tempId, ...visit } of newVisits) {
+      try {
+        const created = await createVisitMutation.mutateAsync(visit);
         setVisits((current) => current.map((item) => item.id === tempId ? created : item));
         setSelectedVisit((current) => (current?.id === tempId ? created : current));
         onCreated?.(tempId, created);
-      },
-    }));
+      } catch (err) {
+        // Rollback optimistic visit if creation failed
+        setVisits((current) => current.filter((item) => item.id !== tempId));
+        throw err;
+      }
+    }
   }, [createVisitMutation]);
 
-  const saveCapture = useCallback((updatedVisit: PlannedVisit) => {
-    setVisits(prev => prev.map(v => v.id === updatedVisit.id ? updatedVisit : v));
+  const saveCapture = useCallback(async (updatedVisit: PlannedVisit) => {
     const wasPlaceholder = visits.find(v => v.id === updatedVisit.id)?.isPlaceholder;
+    setVisits(prev => prev.map(v => v.id === updatedVisit.id ? updatedVisit : v));
     if (wasPlaceholder && !updatedVisit.isPlaceholder) {
       setStats(prev => ({ ...prev, visitedToday: prev.visitedToday + 1 }));
       setPerformance(prev => ({
@@ -310,14 +328,15 @@ export function MarketMappingProvider({ children }: { children: React.ReactNode 
     if (updatedVisit.id) {
       if (isTempId(updatedVisit.id)) {
         const { id: tempId, ...visitPayload } = updatedVisit;
-        createVisitMutation.mutate(visitPayload, {
-          onSuccess: (created) => {
-            setVisits((current) => current.map((item) => (item.id === tempId || item.id === updatedVisit.id ? created : item)));
-            setSelectedVisit((current) => (current?.id === tempId || current?.id === updatedVisit.id ? created : current));
-          },
-        });
+        const created = await createVisitMutation.mutateAsync(visitPayload);
+        setVisits((current) => current.map((item) => (item.id === tempId || item.id === updatedVisit.id ? created : item)));
+        setSelectedVisit((current) => (current?.id === tempId || current?.id === updatedVisit.id ? created : current));
+        return created;
       } else {
-        updateVisitMutation.mutate(updatedVisit);
+        const updated = await updateVisitMutation.mutateAsync(updatedVisit);
+        setVisits((current) => current.map((item) => item.id === updatedVisit.id ? updated : item));
+        setSelectedVisit((current) => (current?.id === updatedVisit.id ? updated : current));
+        return updated;
       }
     }
   }, [visits, updateVisitMutation, createVisitMutation]);

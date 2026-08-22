@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaWorkerService } from '../../prisma/prisma-worker.service';
 import {
   CreateAutomationRuleDto,
   ReorderRulesDto,
@@ -9,7 +9,7 @@ import { AutomationTrigger } from '@prisma/client';
 
 @Injectable()
 export class RulesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaWorkerService) {}
 
   async findAll() {
     const rules = await this.prisma.automationRule.findMany({

@@ -14,7 +14,6 @@ coverage/
 
 # IDE
 .idea/
-.vscode/
 *.swp
 *.swo
 
@@ -23,11 +22,7 @@ coverage/
 Thumbs.db
 
 # Environment
-.env
 .env.prod
-.env.production
-.env.staging
-.env.local
 .env.*.local
 .env.test.local
 
@@ -54,3 +49,4 @@ yarn-error.log*
 
 # Local TODO notes
 /TODO/
+config.bat

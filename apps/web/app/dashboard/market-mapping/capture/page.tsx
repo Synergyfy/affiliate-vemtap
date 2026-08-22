@@ -5,12 +5,14 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { useMarketMapping } from '@/components/dashboard/market-mapping/MarketMappingContext';
 import BusinessCaptureForm from '@/components/dashboard/market-mapping/BusinessCaptureForm';
+import { useActiveMission } from '@/services/useFieldActivity';
 import { PlannedVisit } from '@/types/affiliate-market-mapping';
 
 function CapturePageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { visits, missionPlans } = useMarketMapping();
+  const { data: mission } = useActiveMission();
 
   const visitId = searchParams.get('id');
   const fromParam = searchParams.get('from');
@@ -30,9 +32,27 @@ function CapturePageContent() {
     if (visitId) {
       const match = visits.find(v => v.id === visitId);
       if (match) return match;
+
+      const missionMatch = mission?.businesses?.find(b => b.id === visitId);
+      if (missionMatch) {
+        return {
+          id: missionMatch.id,
+          name: missionMatch.name,
+          category: missionMatch.category || '',
+          status: 'NOT_YET',
+          isPlaceholder: missionMatch.isPlaceholder ?? false,
+          address: missionMatch.address || activePlan?.location || '',
+          phone: missionMatch.phone,
+          ownerName: missionMatch.ownerName,
+          dailyCustomers: missionMatch.dailyCustomers,
+          businessSize: missionMatch.businessSize,
+          visitNotes: missionMatch.visitNotes,
+          isAnchor: missionMatch.isAnchor,
+          horizon: horizonParam,
+        };
+      }
+
       // Editing an existing lead whose details haven't loaded into state yet.
-      // Keep the real id so a save routes to UPDATE (PATCH), never a
-      // duplicate CREATE.
       return {
         id: visitId,
         name: 'Business',
@@ -56,7 +76,7 @@ function CapturePageContent() {
       };
     }
     return null;
-  }, [visitId, isNew, visits, activePlan, horizonParam]);
+  }, [visitId, isNew, visits, mission, activePlan, horizonParam]);
 
   return (
     <DashboardLayout>

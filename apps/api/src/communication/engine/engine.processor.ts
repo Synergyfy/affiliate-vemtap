@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaWorkerService } from '../../prisma/prisma-worker.service';
 import { RedisService } from '../../redis/redis.service';
 import { EngineService } from './engine.service';
 import { MessagesService } from '../messages/messages.service';
@@ -15,21 +15,71 @@ import { AutomationTrigger, CommunicationMessageStatus } from '@prisma/client';
  *  - Reconcile subscription override as a safety net for status changes made
  *    through any code path (integration, admin, etc.).
  *
- * Each job is guarded by a short Redis lock so that multiple API replicas do not
- * double-dispatch SMS or double-send the welcome message.
+ * Concurrency guards:
+ *  - `runExclusive` serializes ALL engine passes in-process (single-flight).
+ *    This prevents the every-minute/5-min/hourly jobs from overlapping each
+ *    other, which previously saturated the database connection pool (Prisma
+ *    P2024) and took down user-facing requests until a restart.
+ *  - `withLock` (Redis) prevents duplicate work across API replicas.
+ *  - `withRetry` retries transient pool/deadlock failures (P2024/P2034).
+ *
+ * All DB access in this processor and the services it drives uses the
+ * dedicated PrismaWorkerService pool, so background automation can never starve
+ * the main PrismaService pool used by HTTP requests.
  */
 @Injectable()
 export class EngineProcessor {
   private readonly logger = new Logger(EngineProcessor.name);
+  private running = false;
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly prisma: PrismaWorkerService,
     private readonly engineService: EngineService,
     private readonly messagesService: MessagesService,
     private readonly rulesService: RulesService,
     private readonly smsService: SmsService,
     private readonly redisService: RedisService,
   ) {}
+
+  /** Run an engine pass only if no other pass is currently running. Overlapping
+   *  cron ticks are skipped (logged) rather than queued, so a slow pass can
+   *  never pile up work that exhausts the database pool. */
+  private async runExclusive(fn: () => Promise<void>): Promise<void> {
+    if (this.running) {
+      this.logger.debug('Engine pass skipped: previous pass still running.');
+      return;
+    }
+    this.running = true;
+    try {
+      await fn();
+    } catch (error) {
+      this.logger.error('Engine pass failed', error instanceof Error ? error.stack : error);
+    } finally {
+      this.running = false;
+    }
+  }
+
+  /** Retry transient Prisma failures (pool exhaustion / write conflicts). */
+  private isTransient(error: unknown): boolean {
+    const code = (error as { code?: string })?.code;
+    return code === 'P2024' || code === 'P2034';
+  }
+
+  private async withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+    let lastError: unknown;
+    for (let i = 0; i < attempts; i++) {
+      try {
+        return await fn();
+      } catch (error) {
+        lastError = error;
+        if (!this.isTransient(error)) throw error;
+        if (i < attempts - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 500 * (i + 1)));
+        }
+      }
+    }
+    throw lastError;
+  }
 
   /** Run a job only if we acquire a distributed Redis lock (non-blocking). */
   private async withLock<T>(name: string, ttlSeconds: number, fn: () => Promise<T>): Promise<void> {
@@ -50,34 +100,36 @@ export class EngineProcessor {
 
   @Cron(CronExpression.EVERY_MINUTE)
   async dispatchDueSms() {
-    await this.withLock('dispatch-due-sms', 55, async () => {
-      if (await this.smsService.isDailyCapReached()) {
-        this.logger.log('Skipping scheduled SMS dispatch: daily cap reached.');
-        return;
-      }
-
-      const now = new Date();
-      const due = await this.prisma.communicationMessage.findMany({
-        where: {
-          channel: 'SMS',
-          status: CommunicationMessageStatus.SCHEDULED,
-          scheduledForAt: { lte: now },
-        },
-        take: 100,
-      });
-
-      for (const message of due) {
-        try {
-          await this.messagesService.sendSms(message.id);
-        } catch (error) {
-          this.logger.error(`Failed to dispatch scheduled SMS ${message.id}`, error);
+    await this.runExclusive(() =>
+      this.withLock('dispatch-due-sms', 55, async () => {
+        if (await this.smsService.isDailyCapReached()) {
+          this.logger.log('Skipping scheduled SMS dispatch: daily cap reached.');
+          return;
         }
-      }
 
-      if (due.length > 0) {
-        this.logger.log(`Dispatched ${due.length} scheduled SMS messages.`);
-      }
-    });
+        const now = new Date();
+        const due = await this.prisma.communicationMessage.findMany({
+          where: {
+            channel: 'SMS',
+            status: CommunicationMessageStatus.SCHEDULED,
+            scheduledForAt: { lte: now },
+          },
+          take: 100,
+        });
+
+        for (const message of due) {
+          try {
+            await this.withRetry(() => this.messagesService.sendSms(message.id));
+          } catch (error) {
+            this.logger.error(`Failed to dispatch scheduled SMS ${message.id}`, error);
+          }
+        }
+
+        if (due.length > 0) {
+          this.logger.log(`Dispatched ${due.length} scheduled SMS messages.`);
+        }
+      }),
+    );
   }
 
   /**
@@ -86,165 +138,170 @@ export class EngineProcessor {
    */
   @Cron(CronExpression.EVERY_MINUTE)
   async activateDueWhatsApp() {
-    await this.withLock('activate-due-whatsapp', 55, async () => {
-      const now = new Date();
-      const result = await this.prisma.communicationMessage.updateMany({
-        where: {
-          channel: 'WHATSAPP',
-          status: CommunicationMessageStatus.SCHEDULED,
-          scheduledForAt: { lte: now },
-        },
-        data: { status: CommunicationMessageStatus.PENDING },
-      });
-      if (result.count > 0) {
-        this.logger.log(`Activated ${result.count} scheduled WhatsApp messages.`);
-      }
-    });
+    await this.runExclusive(() =>
+      this.withLock('activate-due-whatsapp', 55, async () => {
+        const now = new Date();
+        const result = await this.prisma.communicationMessage.updateMany({
+          where: {
+            channel: 'WHATSAPP',
+            status: CommunicationMessageStatus.SCHEDULED,
+            scheduledForAt: { lte: now },
+          },
+          data: { status: CommunicationMessageStatus.PENDING },
+        });
+        if (result.count > 0) {
+          this.logger.log(`Activated ${result.count} scheduled WhatsApp messages.`);
+        }
+      }),
+    );
   }
 
   /** Backfill Lead.businessId links for leads whose phone matches a Business. */
   @Cron(CronExpression.EVERY_DAY_AT_3AM)
   async backfillBusinessLinks() {
-    await this.withLock('backfill-business-links', 3500, async () => {
-      const leads = await this.prisma.lead.findMany({
-        where: {
-          businessId: null,
-          phone: { not: null },
-          NOT: { phone: '' },
-          deletedAt: null,
-          isPlaceholder: false,
-        },
-        select: { id: true },
-        take: 500,
-      });
+    await this.runExclusive(() =>
+      this.withLock('backfill-business-links', 3500, async () => {
+        const leads = await this.prisma.lead.findMany({
+          where: {
+            businessId: null,
+            phone: { not: null },
+            NOT: { phone: '' },
+            deletedAt: null,
+            isPlaceholder: false,
+          },
+          select: { id: true },
+          take: 500,
+        });
 
-      for (const lead of leads) {
-        try {
-          await this.engineService.reconcileJourneyState(lead.id);
-        } catch (error) {
-          this.logger.error(`Business-link backfill failed for lead ${lead.id}`, error);
+        for (const lead of leads) {
+          try {
+            await this.withRetry(() => this.engineService.reconcileJourneyState(lead.id));
+          } catch (error) {
+            this.logger.error(`Business-link backfill failed for lead ${lead.id}`, error);
+          }
         }
-      }
 
-      if (leads.length > 0) {
-        this.logger.log(`Reconciled business links for ${leads.length} leads.`);
-      }
-    });
+        if (leads.length > 0) {
+          this.logger.log(`Reconciled business links for ${leads.length} leads.`);
+        }
+      }),
+    );
   }
 
   /** Reconcile subscription override for leads that became customers via any path. */
   @Cron(CronExpression.EVERY_5_MINUTES)
   async reconcileSubscriptions() {
-    await this.withLock('reconcile-subscriptions', 240, async () => {
-      // Leads marked CUSTOMER but whose journeyState is not yet SUBSCRIBED.
-      const leads = await this.prisma.lead.findMany({
-        where: {
-          status: 'CUSTOMER',
-          journeyState: { not: 'SUBSCRIBED' },
-          deletedAt: null,
-          isPlaceholder: false,
-        },
-        select: { id: true },
-        take: 200,
-      });
+    await this.runExclusive(() =>
+      this.withLock('reconcile-subscriptions', 240, async () => {
+        // Leads marked CUSTOMER but whose journeyState is not yet SUBSCRIBED.
+        const leads = await this.prisma.lead.findMany({
+          where: {
+            status: 'CUSTOMER',
+            journeyState: { not: 'SUBSCRIBED' },
+            deletedAt: null,
+            isPlaceholder: false,
+          },
+          select: { id: true },
+          take: 200,
+        });
 
-      for (const lead of leads) {
-        try {
-          await this.engineService.onSubscribed(lead.id);
-        } catch (error) {
-          this.logger.error(`Subscription reconcile failed for lead ${lead.id}`, error);
+        for (const lead of leads) {
+          try {
+            await this.withRetry(() => this.engineService.onSubscribed(lead.id));
+          } catch (error) {
+            this.logger.error(`Subscription reconcile failed for lead ${lead.id}`, error);
+          }
         }
-      }
 
-      if (leads.length > 0) {
-        this.logger.log(`Reconciled ${leads.length} newly-subscribed leads.`);
-      }
-    });
+        if (leads.length > 0) {
+          this.logger.log(`Reconciled ${leads.length} newly-subscribed leads.`);
+        }
+      }),
+    );
   }
 
   /** Evaluate "still interested, not subscribed, after N days" rules. */
   @Cron(CronExpression.EVERY_HOUR)
   async evaluateStillInterested() {
-    await this.withLock('evaluate-still-interested', 3500, async () => {
-      const rules = await this.rulesService.findActiveByTrigger(
-        AutomationTrigger.STILL_INTERESTED_NOT_SUBSCRIBED,
-      );
-      if (rules.length === 0) return;
+    await this.runExclusive(() =>
+      this.withLock('evaluate-still-interested', 3500, async () => {
+        const rules = await this.rulesService.findActiveByTrigger(
+          AutomationTrigger.STILL_INTERESTED_NOT_SUBSCRIBED,
+        );
+        if (rules.length === 0) return;
 
-      for (const rule of rules) {
-        if (rule.waitDays <= 0) continue;
-        const cutoff = new Date(Date.now() - rule.waitDays * 24 * 3600 * 1000);
+        for (const rule of rules) {
+          if (rule.waitDays <= 0) continue;
+          const cutoff = new Date(Date.now() - rule.waitDays * 24 * 3600 * 1000);
 
-        const leads = await this.prisma.lead.findMany({
-          where: {
-            journeyState: 'INTERESTED',
-            journeyStateUpdatedAt: { lte: cutoff },
-            deletedAt: null,
-            isPlaceholder: false,
-          },
-          select: { id: true },
-          take: 500,
-        });
-
-        for (const lead of leads) {
-          // Dedup: only act if this rule has not already produced a message for this lead.
-          const existing = await this.prisma.communicationMessage.findFirst({
-            where: { ruleId: rule.id, leadId: lead.id },
+          const leads = await this.prisma.lead.findMany({
+            where: {
+              journeyState: 'INTERESTED',
+              journeyStateUpdatedAt: { lte: cutoff },
+              deletedAt: null,
+              isPlaceholder: false,
+            },
             select: { id: true },
+            take: 500,
           });
-          if (existing) continue;
 
-          try {
-            await this.engineService.evaluateRule(
-              AutomationTrigger.STILL_INTERESTED_NOT_SUBSCRIBED,
-              rule,
-              lead.id,
-            );
-          } catch (error) {
-            this.logger.error(`Still-interested rule ${rule.id} failed for lead ${lead.id}`, error);
+          const alreadyMessaged = await this.alreadyMessagedByRule(rule.id, leads.map((l) => l.id));
+
+          for (const lead of leads) {
+            if (alreadyMessaged.has(lead.id)) continue;
+            try {
+              await this.withRetry(() =>
+                this.engineService.evaluateRule(
+                  AutomationTrigger.STILL_INTERESTED_NOT_SUBSCRIBED,
+                  rule,
+                  lead.id,
+                ),
+              );
+            } catch (error) {
+              this.logger.error(`Still-interested rule ${rule.id} failed for lead ${lead.id}`, error);
+            }
           }
         }
-      }
-    });
+      }),
+    );
   }
 
   /** Evaluate delayed LEAD_CREATED rules ("still new/contacted/visited after N days"). */
   @Cron(CronExpression.EVERY_HOUR)
   async evaluateLeadCreated() {
-    await this.withLock('evaluate-lead-created', 3500, async () => {
-      const rules = await this.rulesService.findActiveByTrigger(AutomationTrigger.LEAD_CREATED);
-      if (rules.length === 0) return;
+    await this.runExclusive(() =>
+      this.withLock('evaluate-lead-created', 3500, async () => {
+        const rules = await this.rulesService.findActiveByTrigger(AutomationTrigger.LEAD_CREATED);
+        if (rules.length === 0) return;
 
-      for (const rule of rules) {
-        if (rule.waitDays <= 0) continue;
-        const cutoff = new Date(Date.now() - rule.waitDays * 24 * 3600 * 1000);
+        for (const rule of rules) {
+          if (rule.waitDays <= 0) continue;
+          const cutoff = new Date(Date.now() - rule.waitDays * 24 * 3600 * 1000);
 
-        const leads = await this.prisma.lead.findMany({
-          where: {
-            journeyState: { in: ['NEW', 'CONTACTED', 'VISITED'] },
-            journeyStateUpdatedAt: { lte: cutoff },
-            deletedAt: null,
-            isPlaceholder: false,
-          },
-          select: { id: true },
-          take: 500,
-        });
-
-        for (const lead of leads) {
-          const existing = await this.prisma.communicationMessage.findFirst({
-            where: { ruleId: rule.id, leadId: lead.id },
+          const leads = await this.prisma.lead.findMany({
+            where: {
+              journeyState: { in: ['NEW', 'CONTACTED', 'VISITED'] },
+              journeyStateUpdatedAt: { lte: cutoff },
+              deletedAt: null,
+              isPlaceholder: false,
+            },
             select: { id: true },
+            take: 500,
           });
-          if (existing) continue;
 
-          try {
-            await this.engineService.evaluateRule(AutomationTrigger.LEAD_CREATED, rule, lead.id);
-          } catch (error) {
-            this.logger.error(`LEAD_CREATED rule ${rule.id} failed for lead ${lead.id}`, error);
+          const alreadyMessaged = await this.alreadyMessagedByRule(rule.id, leads.map((l) => l.id));
+
+          for (const lead of leads) {
+            if (alreadyMessaged.has(lead.id)) continue;
+            try {
+              await this.withRetry(() => this.engineService.evaluateRule(AutomationTrigger.LEAD_CREATED, rule, lead.id));
+            } catch (error) {
+              this.logger.error(`LEAD_CREATED rule ${rule.id} failed for lead ${lead.id}`, error);
+            }
           }
         }
-      }
-    });
+      }),
+    );
   }
 
   /**
@@ -254,55 +311,71 @@ export class EngineProcessor {
    */
   @Cron(CronExpression.EVERY_HOUR)
   async evaluateNotInterestedReEngagement() {
-    await this.withLock('evaluate-not-interested-reengagement', 3500, async () => {
-      const rules = await this.rulesService.findActiveByTrigger(
-        AutomationTrigger.BECAME_NOT_INTERESTED,
-      );
-      if (rules.length === 0) return;
+    await this.runExclusive(() =>
+      this.withLock('evaluate-not-interested-reengagement', 3500, async () => {
+        const rules = await this.rulesService.findActiveByTrigger(
+          AutomationTrigger.BECAME_NOT_INTERESTED,
+        );
+        if (rules.length === 0) return;
 
-      for (const rule of rules) {
-        if (rule.waitDays <= 0) continue;
-        const cutoff = new Date(Date.now() - rule.waitDays * 24 * 3600 * 1000);
+        for (const rule of rules) {
+          if (rule.waitDays <= 0) continue;
+          const cutoff = new Date(Date.now() - rule.waitDays * 24 * 3600 * 1000);
 
-        const leads = await this.prisma.lead.findMany({
-          where: {
-            journeyState: 'NOT_INTERESTED',
-            journeyStateUpdatedAt: { lte: cutoff },
-            deletedAt: null,
-            isPlaceholder: false,
-          },
-          select: { id: true },
-          take: 500,
-        });
-
-        for (const lead of leads) {
-          const existing = await this.prisma.communicationMessage.findFirst({
-            where: { ruleId: rule.id, leadId: lead.id },
+          const leads = await this.prisma.lead.findMany({
+            where: {
+              journeyState: 'NOT_INTERESTED',
+              journeyStateUpdatedAt: { lte: cutoff },
+              deletedAt: null,
+              isPlaceholder: false,
+            },
             select: { id: true },
+            take: 500,
           });
-          if (existing) continue;
 
-          try {
-            await this.engineService.evaluateRule(
-              AutomationTrigger.BECAME_NOT_INTERESTED,
-              rule,
-              lead.id,
-            );
-          } catch (error) {
-            this.logger.error(`Re-engagement rule ${rule.id} failed for lead ${lead.id}`, error);
+          const alreadyMessaged = await this.alreadyMessagedByRule(rule.id, leads.map((l) => l.id));
+
+          for (const lead of leads) {
+            if (alreadyMessaged.has(lead.id)) continue;
+            try {
+              await this.withRetry(() =>
+                this.engineService.evaluateRule(
+                  AutomationTrigger.BECAME_NOT_INTERESTED,
+                  rule,
+                  lead.id,
+                ),
+              );
+            } catch (error) {
+              this.logger.error(`Re-engagement rule ${rule.id} failed for lead ${lead.id}`, error);
+            }
           }
         }
-      }
-    });
+      }),
+    );
   }
 
   /** Evaluate before-expiry / after-expiry customer-journey rules daily. */
   @Cron(CronExpression.EVERY_DAY_AT_6AM)
   async evaluateExpiry() {
-    await this.withLock('evaluate-expiry', 3500, async () => {
-      await this.evaluateExpiryTrigger(AutomationTrigger.BEFORE_EXPIRY);
-      await this.evaluateExpiryTrigger(AutomationTrigger.AFTER_EXPIRY);
+    await this.runExclusive(() =>
+      this.withLock('evaluate-expiry', 3500, async () => {
+        await this.evaluateExpiryTrigger(AutomationTrigger.BEFORE_EXPIRY);
+        await this.evaluateExpiryTrigger(AutomationTrigger.AFTER_EXPIRY);
+      }),
+    );
+  }
+
+  /** Batch lookup of lead ids already messaged by a rule (dedup). */
+  private async alreadyMessagedByRule(
+    ruleId: string,
+    leadIds: string[],
+  ): Promise<Set<string>> {
+    if (leadIds.length === 0) return new Set();
+    const existing = await this.prisma.communicationMessage.findMany({
+      where: { ruleId, leadId: { in: leadIds } },
+      select: { leadId: true },
     });
+    return new Set(existing.map((m) => m.leadId));
   }
 
   private async evaluateExpiryTrigger(trigger: AutomationTrigger) {
@@ -335,6 +408,9 @@ export class EngineProcessor {
         take: 200,
       });
 
+      // Resolve the matching lead for each business once, de-duplicated.
+      const leadIds: string[] = [];
+      const seen = new Set<string>();
       for (const business of businesses) {
         const clean = business.phone?.replace(/[^0-9]/g, '');
         const lead = await this.prisma.lead.findFirst({
@@ -349,18 +425,20 @@ export class EngineProcessor {
           },
           select: { id: true },
         });
-        if (!lead) continue;
+        if (lead && !seen.has(lead.id)) {
+          seen.add(lead.id);
+          leadIds.push(lead.id);
+        }
+      }
 
-        const existing = await this.prisma.communicationMessage.findFirst({
-          where: { ruleId: rule.id, leadId: lead.id },
-          select: { id: true },
-        });
-        if (existing) continue;
+      const alreadyMessaged = await this.alreadyMessagedByRule(rule.id, leadIds);
 
+      for (const leadId of leadIds) {
+        if (alreadyMessaged.has(leadId)) continue;
         try {
-          await this.engineService.evaluateRule(trigger, rule, lead.id);
+          await this.withRetry(() => this.engineService.evaluateRule(trigger, rule, leadId));
         } catch (error) {
-          this.logger.error(`Expiry rule ${rule.id} failed for lead ${lead.id}`, error);
+          this.logger.error(`Expiry rule ${rule.id} failed for lead ${leadId}`, error);
         }
       }
     }

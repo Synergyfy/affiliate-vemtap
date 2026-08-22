@@ -290,7 +290,7 @@ export const useCreateMarketMappingVisit = () => {
   return useMutation({
     mutationFn: async (payload: Omit<PlannedVisit, 'id'>) => {
       const { data } = await api.post('/market-mapping/visits', toLeadPayload(payload));
-      return data as PlannedVisit;
+      return mapLeadToPlannedVisit(data);
     },
     onSuccess: () => { invalidateMarketMappingQueryKeys(queryClient); },
   });
@@ -301,7 +301,7 @@ export const useUpdateMarketMappingVisit = () => {
   return useMutation({
     mutationFn: async ({ id, ...payload }: PlannedVisit) => {
       const { data } = await api.patch(`/market-mapping/visits/${id}`, toLeadPayload(payload));
-      return data as PlannedVisit;
+      return mapLeadToPlannedVisit(data);
     },
     onSuccess: () => { invalidateMarketMappingQueryKeys(queryClient); },
   });
@@ -346,31 +346,34 @@ export const useUpdateMissionPlan = () => {
 };
 
 export const useMarketMappingAnchors = () => {
-  return useQuery<any[]>({
+  return useQuery<PlannedVisit[]>({
     queryKey: ['market-mapping', 'anchors'],
     queryFn: async () => {
       const { data } = await api.get('/market-mapping/anchors');
-      return data;
+      const rows = Array.isArray(data) ? data : data?.data ?? [];
+      return rows.map(mapLeadToPlannedVisit);
     },
   });
 };
 
 export const usePriorityVisits = () => {
-  return useQuery<any[]>({
+  return useQuery<PlannedVisit[]>({
     queryKey: ['market-mapping', 'priority-visits'],
     queryFn: async () => {
       const { data } = await api.get('/market-mapping/priority-visits');
-      return data;
+      const rows = Array.isArray(data) ? data : data?.data ?? [];
+      return rows.map(mapLeadToPlannedVisit);
     },
   });
 };
 
 export const usePartnerships = () => {
-  return useQuery<any[]>({
+  return useQuery<PlannedVisit[]>({
     queryKey: ['market-mapping', 'partnerships'],
     queryFn: async () => {
       const { data } = await api.get('/market-mapping/partnerships');
-      return data;
+      const rows = Array.isArray(data) ? data : data?.data ?? [];
+      return rows.map(mapLeadToPlannedVisit);
     },
   });
 };
