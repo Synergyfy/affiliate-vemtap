@@ -10,7 +10,7 @@ export default function WhatsAppQueuePage() {
 
   return (
     <AdminLayout>
-      <div className="max-w-[1200px] mx-auto">
+      <div className="space-y-4 sm:space-y-6 max-w-[1200px] mx-auto px-3 sm:px-0">
         <QueueRunner queueId={queueId} />
       </div>
     </AdminLayout>

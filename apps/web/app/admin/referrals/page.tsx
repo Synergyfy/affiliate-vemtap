@@ -87,7 +87,7 @@ export default function ReferralsManagement() {
     <AdminLayout>
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-          <h2 className="text-2xl font-bold text-slate-900">Referred Businesses</h2>
+          <h2 className="text-lg sm:text-2xl font-bold text-slate-900">Referred Businesses</h2>
           <button
             onClick={() => downloadBusinessesExport()}
             className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all shadow-sm self-start"
@@ -112,8 +112,37 @@ export default function ReferralsManagement() {
           ]}
         />
 
+        {/* Mobile card layout */}
+        <div className="sm:hidden divide-y divide-slate-100 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          {businessesResponse?.data.map((ref) => (
+            <div key={ref.id} className="p-3 flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-slate-900 text-xs sm:text-sm truncate">{ref.businessName || 'User Account'}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-xs text-slate-600">{ref.planType || 'N/A'}</span>
+                  <span className="text-xs text-slate-400">•</span>
+                  <span className="text-xs text-slate-900 font-bold">₦{Number(ref.subscriptionAmount || 0).toLocaleString()}</span>
+                </div>
+                <div className={cn(
+                  "inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase mt-1",
+                  ref.status === 'ACTIVE' ? "bg-green-100 text-green-600" : 
+                  ref.status === 'TRIAL' ? "bg-blue-100 text-blue-600" : "bg-red-100 text-red-600"
+                )}>
+                  {ref.status}
+                </div>
+              </div>
+              <button 
+                onClick={() => openReferral(ref)}
+                className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 shrink-0"
+              >
+                <ArrowUpRight className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+
         {/* Referrals Table */}
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden relative min-h-[400px]">
+        <div className="hidden sm:block bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-hidden relative min-h-[400px]">
           {isLoading && (
             <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
               <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
@@ -123,13 +152,13 @@ export default function ReferralsManagement() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="p-4 font-bold text-slate-600 text-sm">Business</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm hidden sm:table-cell">Referred By</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm hidden md:table-cell">Plan</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm hidden lg:table-cell">Amount</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm hidden md:table-cell">Date</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm">Status</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm text-right">Actions</th>
+                  <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm">Business</th>
+                  <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm hidden sm:table-cell">Referred By</th>
+                  <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm hidden md:table-cell">Plan</th>
+                  <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm hidden lg:table-cell">Amount</th>
+                  <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm hidden md:table-cell">Date</th>
+                  <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm">Status</th>
+                  <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -141,24 +170,24 @@ export default function ReferralsManagement() {
                     transition={{ delay: idx * 0.05 }}
                     className="hover:bg-slate-50/50 transition-all group"
                   >
-                    <td className="p-4">
+                    <td className="p-3 sm:p-4">
                       <div>
-                        <p className="font-bold text-slate-900">{ref.businessName || 'User Account'}</p>
-                        <p className="text-xs text-slate-400 font-mono text-xs">{ref.id}</p>
+                        <p className="font-bold text-slate-900 text-xs sm:text-sm">{ref.businessName || 'User Account'}</p>
+                        <p className="text-[10px] sm:text-xs text-slate-400 font-mono">{ref.id}</p>
                       </div>
                     </td>
-                    <td className="p-4 hidden sm:table-cell">
+                    <td className="p-3 sm:p-4 hidden sm:table-cell">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center text-[10px] text-blue-600 font-bold uppercase">
                           {ref.affiliate?.fullName?.charAt(0) || 'A'}
                         </div>
-                        <span className="text-sm font-medium text-slate-700">{ref.affiliate?.fullName || 'Unknown'}</span>
+                        <span className="text-xs sm:text-sm font-medium text-slate-700">{ref.affiliate?.fullName || 'Unknown'}</span>
                       </div>
                     </td>
-                    <td className="p-4 text-sm text-slate-600 hidden md:table-cell">{ref.planType || 'N/A'}</td>
-                    <td className="p-4 text-sm text-slate-900 font-bold hidden lg:table-cell">₦{Number(ref.subscriptionAmount || 0).toLocaleString()}</td>
-                    <td className="p-4 text-sm text-slate-600 hidden md:table-cell">{new Date(ref.createdAt).toLocaleDateString()}</td>
-                    <td className="p-4">
+                    <td className="p-3 sm:p-4 text-xs sm:text-sm text-slate-600 hidden md:table-cell">{ref.planType || 'N/A'}</td>
+                    <td className="p-3 sm:p-4 text-xs sm:text-sm text-slate-900 font-bold hidden lg:table-cell">₦{Number(ref.subscriptionAmount || 0).toLocaleString()}</td>
+                    <td className="p-3 sm:p-4 text-xs sm:text-sm text-slate-600 hidden md:table-cell">{new Date(ref.createdAt).toLocaleDateString()}</td>
+                    <td className="p-3 sm:p-4">
                       <div className={cn(
                         "flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider w-fit",
                         ref.status === 'ACTIVE' ? "bg-green-100 text-green-600" : 
@@ -170,7 +199,7 @@ export default function ReferralsManagement() {
                         {ref.status}
                       </div>
                     </td>
-                      <td className="p-4 text-right">
+                      <td className="p-3 sm:p-4 text-right">
                         <div className="flex items-center justify-end gap-2 transition-opacity relative">
                           <button 
                             onClick={() => openReferral(ref)}
@@ -236,7 +265,7 @@ export default function ReferralsManagement() {
       {/* Detail Modal */}
       <AnimatePresence>
         {isModalOpen && selectedReferral && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -248,9 +277,10 @@ export default function ReferralsManagement() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl overflow-hidden"
+              className="relative w-full max-w-lg bg-white rounded-t-[28px] sm:rounded-[2.5rem] shadow-2xl overflow-hidden pb-[env(safe-area-inset-bottom)]"
             >
-              <div className="p-5 sm:p-8">
+              <div className="sm:hidden flex justify-center pt-3 pb-1"><div className="w-10 h-1.5 bg-slate-200 rounded-full" /></div>
+              <div className="p-4 sm:p-8">
                 <div className="flex justify-between items-start mb-8">
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center">
@@ -269,7 +299,7 @@ export default function ReferralsManagement() {
                   </button>
                 </div>
 
-                <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
                   {/* Status & Plan Row */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">

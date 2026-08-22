@@ -134,14 +134,14 @@ export default function AgreementsWorkspace() {
 
   return (
     <AdminLayout>
-      <div className="max-w-7xl mx-auto space-y-6 pb-12">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 pb-12">
         {/* Breadcrumbs & Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <Link href="/admin/settings" className="text-xs font-bold text-slate-500 flex items-center gap-1 hover:text-blue-600 transition-colors uppercase tracking-wider mb-2">
               <ChevronLeft className="w-3.5 h-3.5" /> Back to Settings
             </Link>
-            <h2 className="text-2xl font-black text-slate-900 flex items-center gap-3">
+            <h2 className="text-lg sm:text-2xl font-black text-slate-900 flex items-center gap-3">
               <div className="p-2.5 bg-slate-900 rounded-2xl text-white">
                 <FileText className="w-5.5 h-5.5" />
               </div>
@@ -183,10 +183,10 @@ export default function AgreementsWorkspace() {
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-4 gap-8 items-start">
+        <div className="grid lg:grid-cols-4 gap-4 sm:gap-8 items-start">
           {/* Left Panel: Agreement Directory */}
           <div className="lg:col-span-1 space-y-6">
-            <div className="bg-white p-6 rounded-[28px] border border-slate-200 shadow-sm space-y-4">
+            <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-[28px] border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Agreements</span>
                 <button
@@ -257,7 +257,7 @@ export default function AgreementsWorkspace() {
           {/* Main Area: Rich Text Workspace */}
           <div className="lg:col-span-3 space-y-6">
             {/* Agreement Configuration Header details */}
-            <div className="bg-white p-6 sm:p-8 rounded-[32px] border border-slate-200 shadow-sm space-y-5">
+            <div className="bg-white p-4 sm:p-6 sm:p-8 rounded-2xl sm:rounded-[32px] border border-slate-200 shadow-sm space-y-5">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-blue-500" />
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Agreement Specifications</span>
@@ -350,9 +350,9 @@ export default function AgreementsWorkspace() {
             {/* Visual Editor Workspace */}
             <motion.div 
               layout
-              className="bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden min-h-[500px] flex flex-col"
+              className="bg-white rounded-2xl sm:rounded-[32px] border border-slate-200 shadow-sm overflow-hidden min-h-[400px] sm:min-h-[500px] flex flex-col"
             >
-              <div className="flex items-center justify-between px-8 py-4 bg-slate-50/50 border-b border-slate-100 shrink-0">
+              <div className="flex items-center justify-between px-4 sm:px-8 py-4 bg-slate-50/50 border-b border-slate-100 shrink-0">
                 <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
                   {isPreview ? "Final Document Preview" : "Agreement Document Body (HTML allowed)"}
                 </span>
@@ -370,7 +370,7 @@ export default function AgreementsWorkspace() {
                   <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
                 </div>
               ) : isPreview ? (
-                <div className="flex-grow p-10 prose prose-slate max-w-none prose-h4:text-slate-900 prose-h4:font-black prose-p:text-slate-600 prose-strong:text-slate-900 overflow-y-auto max-h-[500px] scrollbar-thin">
+                <div className="flex-grow p-4 sm:p-10 prose prose-slate max-w-none prose-h4:text-slate-900 prose-h4:font-black prose-p:text-slate-600 prose-strong:text-slate-900 overflow-y-auto max-h-[400px] sm:max-h-[500px] scrollbar-thin">
                   <div className="mb-6 pb-6 border-b border-slate-100">
                     <p className="text-sm font-bold text-slate-900 mb-1">{title || 'Agreement Document'}</p>
                     <p className="text-xs text-slate-400">Between: Vemtap Team and Targeted Roles ({selectedRoles.join(', ') || 'None'})</p>

@@ -58,42 +58,42 @@ export default function BusinessesPage() {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <Link href="/admin/market-mapping" className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors">
+          <Link href="/admin/market-mapping" className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors shrink-0">
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-emerald-600" />
+          <div className="min-w-0">
+            <h1 className="text-base sm:text-xl font-bold text-slate-900 flex items-center gap-2">
+              <Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 shrink-0" />
               Captured Businesses
             </h1>
-            <p className="text-xs text-slate-500 font-medium">
+            <p className="text-[10px] sm:text-xs text-slate-500 font-medium">
               {businessesQuery.data?.meta.total ?? 0} businesses captured by affiliates — click a business to see full details
             </p>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-3">
-          <div className="relative flex-1 min-w-[200px] max-w-xs">
+        <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
+          <div className="relative flex-1 min-w-0 sm:min-w-[200px] sm:max-w-xs">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search by business or owner..."
-              className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 transition-all"
+              className="w-full pl-9 pr-3 py-2 sm:py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-blue-400 transition-all"
             />
           </div>
-          <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
+          <div className="flex gap-1 bg-slate-100 p-1 rounded-xl overflow-x-auto">
             {statuses.map(s => (
               <button
                 key={s}
                 onClick={() => setStatusFilter(s)}
                 className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                  "px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap",
                   statusFilter === s ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
                 )}
               >
@@ -106,33 +106,33 @@ export default function BusinessesPage() {
         {businessesQuery.isLoading && <p className="text-sm text-slate-500">Loading businesses...</p>}
         {businessesQuery.isError && <div className="text-sm text-red-600">Unable to load businesses. <button onClick={() => businessesQuery.refetch()} className="font-bold underline">Retry</button></div>}
         {/* Business List */}
-        <div className="space-y-3">
+        <div className="space-y-2.5 sm:space-y-3">
           {filtered.map(biz => (
             <button
               key={biz.id}
               onClick={() => setSelectedBusiness(biz)}
-              className="w-full bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between text-left hover:border-blue-300 hover:shadow-md transition-all group"
+              className="w-full bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 flex items-center justify-between text-left hover:border-blue-300 hover:shadow-md transition-all group"
             >
-              <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
                 <div className={cn(
-                  "w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0",
+                  "w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-xs sm:text-sm font-bold shrink-0",
                   biz.isAnchor ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"
                 )}>
                   {biz.name.charAt(0)}
                 </div>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-bold text-slate-900 truncate">{biz.name}</p>
-                    {biz.isAnchor && <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <p className="font-bold text-slate-900 text-sm sm:text-base truncate">{biz.name}</p>
+                    {biz.isAnchor && <Crown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-500 shrink-0" />}
                   </div>
-                  <p className="text-xs text-slate-500 truncate">{biz.category} • {biz.clusterName}</p>
+                  <p className="text-[10px] sm:text-xs text-slate-500 truncate">{biz.category} • {biz.clusterName}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 shrink-0">
-                <span className={cn("px-2.5 py-1 rounded-full text-[10px] font-bold border", statusColor[biz.status] || '')}>
+              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                <span className={cn("px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-bold border", statusColor[biz.status] || '')}>
                   {biz.status}
                 </span>
-                {biz.lastVisit && <span className="text-[10px] text-slate-400 hidden sm:inline">Last: {biz.lastVisit}</span>}
+                {biz.lastVisit && <span className="text-[9px] sm:text-[10px] text-slate-400 hidden sm:inline">Last: {biz.lastVisit}</span>}
                 <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition-colors" />
               </div>
             </button>
@@ -160,28 +160,29 @@ export default function BusinessesPage() {
               className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[250]"
             />
             <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 h-full w-full max-w-xl bg-white shadow-2xl z-[260] overflow-y-auto"
+              className="fixed bottom-0 left-0 right-0 sm:top-0 sm:right-0 sm:left-auto h-[90vh] sm:h-full w-full sm:max-w-xl bg-white shadow-2xl z-[260] overflow-y-auto rounded-t-[28px] sm:rounded-none"
             >
-              <div className="p-8 space-y-6">
+              <div className="w-10 h-1 rounded-full bg-slate-200 mx-auto mt-3 sm:hidden" />
+              <div className="p-5 sm:p-8 space-y-4 sm:space-y-6">
                 {/* Header */}
                 <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                     <div className={cn(
-                      "w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold",
+                      "w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center text-base sm:text-lg font-bold shrink-0",
                       selectedBusiness.isAnchor ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"
                     )}>
                       {selectedBusiness.name.charAt(0)}
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-xl font-bold text-slate-900">{selectedBusiness.name}</h3>
-                        {selectedBusiness.isAnchor && <Crown className="w-4 h-4 text-amber-500" />}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
+                        <h3 className="text-base sm:text-xl font-bold text-slate-900 truncate">{selectedBusiness.name}</h3>
+                        {selectedBusiness.isAnchor && <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 shrink-0" />}
                       </div>
-                      <p className="text-xs text-slate-500">{selectedBusiness.category} • {selectedBusiness.industry}</p>
+                      <p className="text-[10px] sm:text-xs text-slate-500 truncate">{selectedBusiness.category} • {selectedBusiness.industry}</p>
                     </div>
                   </div>
                   <button
@@ -212,22 +213,22 @@ export default function BusinessesPage() {
                 </div>
 
                 {/* Quick Info Row */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Anchor Score</p>
-                    <p className="text-xl font-black text-slate-900">{selectedBusiness.anchorScore}/100</p>
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  <div className="p-3 sm:p-4 bg-slate-50 rounded-xl sm:rounded-2xl border border-slate-100">
+                    <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Anchor Score</p>
+                    <p className="text-lg sm:text-xl font-black text-slate-900">{selectedBusiness.anchorScore}/100</p>
                   </div>
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Influence Score</p>
-                    <p className="text-xl font-black text-slate-900">{selectedBusiness.influenceScore}/100</p>
+                  <div className="p-3 sm:p-4 bg-slate-50 rounded-xl sm:rounded-2xl border border-slate-100">
+                    <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Influence Score</p>
+                    <p className="text-lg sm:text-xl font-black text-slate-900">{selectedBusiness.influenceScore}/100</p>
                   </div>
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Daily Customers</p>
-                    <p className="text-xl font-black text-slate-900">{selectedBusiness.dailyCustomers?.toLocaleString()}</p>
+                  <div className="p-3 sm:p-4 bg-slate-50 rounded-xl sm:rounded-2xl border border-slate-100">
+                    <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Daily Customers</p>
+                    <p className="text-lg sm:text-xl font-black text-slate-900">{selectedBusiness.dailyCustomers?.toLocaleString()}</p>
                   </div>
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Size</p>
-                    <p className="text-xl font-black text-slate-900">{sizeLabel[selectedBusiness.size]}</p>
+                  <div className="p-3 sm:p-4 bg-slate-50 rounded-xl sm:rounded-2xl border border-slate-100">
+                    <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Size</p>
+                    <p className="text-lg sm:text-xl font-black text-slate-900">{sizeLabel[selectedBusiness.size]}</p>
                   </div>
                 </div>
 
@@ -288,36 +289,36 @@ export default function BusinessesPage() {
                 </div>
 
                 {/* Assignment & Visit */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   {selectedBusiness.assignedAffiliateName && (
-                    <div className="p-4 bg-purple-50 rounded-2xl border border-purple-100">
-                      <p className="text-[10px] font-bold text-purple-400 uppercase tracking-wider mb-1">Assigned Affiliate</p>
-                      <p className="text-sm font-bold text-purple-900 flex items-center gap-1.5">
-                        <Users className="w-4 h-4" /> {selectedBusiness.assignedAffiliateName}
+                    <div className="p-3 sm:p-4 bg-purple-50 rounded-xl sm:rounded-2xl border border-purple-100">
+                      <p className="text-[9px] sm:text-[10px] font-bold text-purple-400 uppercase tracking-wider mb-1">Assigned Affiliate</p>
+                      <p className="text-xs sm:text-sm font-bold text-purple-900 flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" /> <span className="truncate">{selectedBusiness.assignedAffiliateName}</span>
                       </p>
                     </div>
                   )}
                   {selectedBusiness.lastVisit && (
-                    <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
-                      <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1">Last Visit</p>
-                      <p className="text-sm font-bold text-blue-900 flex items-center gap-1.5">
-                        <Clock className="w-4 h-4" /> {selectedBusiness.lastVisit}
+                    <div className="p-3 sm:p-4 bg-blue-50 rounded-xl sm:rounded-2xl border border-blue-100">
+                      <p className="text-[9px] sm:text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1">Last Visit</p>
+                      <p className="text-xs sm:text-sm font-bold text-blue-900 flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" /> {selectedBusiness.lastVisit}
                       </p>
                     </div>
                   )}
                   {selectedBusiness.clusterName && (
-                    <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
-                      <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-1">Cluster</p>
-                      <p className="text-sm font-bold text-emerald-900 flex items-center gap-1.5">
-                        <MapPin className="w-4 h-4" /> {selectedBusiness.clusterName}
+                    <div className="p-3 sm:p-4 bg-emerald-50 rounded-xl sm:rounded-2xl border border-emerald-100">
+                      <p className="text-[9px] sm:text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-1">Cluster</p>
+                      <p className="text-xs sm:text-sm font-bold text-emerald-900 flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" /> <span className="truncate">{selectedBusiness.clusterName}</span>
                       </p>
                     </div>
                   )}
                   {selectedBusiness.nextVisit && (
-                    <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
-                      <p className="text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-1">Next Visit</p>
-                      <p className="text-sm font-bold text-amber-900 flex items-center gap-1.5">
-                        <Calendar className="w-4 h-4" /> {selectedBusiness.nextVisit}
+                    <div className="p-3 sm:p-4 bg-amber-50 rounded-xl sm:rounded-2xl border border-amber-100">
+                      <p className="text-[9px] sm:text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-1">Next Visit</p>
+                      <p className="text-xs sm:text-sm font-bold text-amber-900 flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" /> {selectedBusiness.nextVisit}
                       </p>
                     </div>
                   )}
@@ -350,10 +351,10 @@ export default function BusinessesPage() {
                 )}
 
                 {/* Action: See in Operation Command */}
-                <div className="pt-4 border-t border-slate-100">
+                <div className="pt-3 sm:pt-4 border-t border-slate-100">
                   <button
                     onClick={() => openInOps(selectedBusiness)}
-                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all"
+                    className="w-full flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-blue-600 text-white rounded-xl font-bold text-xs sm:text-sm hover:bg-blue-700 transition-all"
                   >
                     <ExternalLink className="w-4 h-4" />
                     See in Operation Command

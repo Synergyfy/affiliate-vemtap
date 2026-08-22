@@ -137,7 +137,7 @@ export default function AdminAgreementsDashboard() {
 
   return (
     <AdminLayout>
-      <div className="max-w-5xl mx-auto space-y-8 pb-12">
+      <div className="max-w-5xl mx-auto space-y-4 sm:space-y-8 pb-12">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -145,7 +145,7 @@ export default function AdminAgreementsDashboard() {
               <FileText className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-slate-900">Targeted Agreements</h2>
+              <h2 className="text-lg sm:text-2xl font-bold text-slate-900">Targeted Agreements</h2>
               <p className="text-sm text-slate-500 font-medium">
                 Configure customized agreements targeted at specific roles and trace signature logs.
               </p>
@@ -256,7 +256,7 @@ export default function AdminAgreementsDashboard() {
         {/* Wizard Form Modal */}
         <AnimatePresence>
           {isModalOpen && (
-            <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 overflow-y-auto">
+            <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center p-4 overflow-y-auto">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -268,9 +268,12 @@ export default function AdminAgreementsDashboard() {
                 initial={{ opacity: 0, scale: 0.96 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.96 }}
-                className="relative w-full max-w-2xl bg-white rounded-[32px] border border-slate-100 shadow-2xl p-6 sm:p-8 space-y-6 my-auto max-h-[90vh] flex flex-col"
+                className="relative w-full max-w-2xl bg-white rounded-t-[28px] sm:rounded-3xl border border-slate-100 shadow-2xl p-6 sm:p-8 space-y-6 my-auto max-h-[90vh] flex flex-col"
               >
-                {/* Header */}
+                {/* Drag Handle for mobile bottom sheet */}
+                <div className="sm:hidden shrink-0 flex justify-center pt-2 pb-1">
+                  <div className="w-10 h-1 rounded-full bg-slate-200" />
+                </div>
                 <div className="shrink-0 flex items-center justify-between pb-2 border-b border-slate-100">
                   <h3 className="text-lg font-black text-slate-900">
                     {editingAgreement ? 'Update Agreement Terms' : 'Deploy New Role-Targeted Agreement'}

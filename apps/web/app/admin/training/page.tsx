@@ -318,10 +318,10 @@ export default function TrainingManagement() {
 
   return (
     <AdminLayout>
-      <div className="space-y-8 max-w-6xl mx-auto">
+      <div className="space-y-4 sm:space-y-8 max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900">Training Academy Management</h2>
+            <h2 className="text-lg sm:text-2xl font-bold text-slate-900">Training Academy Management</h2>
             <p className="text-sm text-slate-500 font-medium">Create and manage learning resources for your affiliates</p>
           </div>
           <button 
@@ -341,7 +341,7 @@ export default function TrainingManagement() {
               exit={{ opacity: 0, height: 0 }}
               className="overflow-hidden"
             >
-              <div className="bg-white p-5 sm:p-8 rounded-[32px] border-2 border-blue-100 shadow-xl shadow-blue-600/5 mb-8">
+              <div className="bg-white p-3 sm:p-5 lg:p-8 rounded-2xl sm:rounded-[32px] border-2 border-blue-100 shadow-xl shadow-blue-600/5 mb-8">
                 <div className="flex justify-between items-center mb-8">
                   <div className="flex items-center gap-3">
                     <div className="p-3 bg-blue-50 rounded-2xl">
@@ -586,33 +586,82 @@ export default function TrainingManagement() {
           )}
         </AnimatePresence>
 
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-            <h3 className="font-bold text-slate-900">Existing Modules</h3>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{modulesList.length} Total</span>
+        <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+            <h3 className="font-bold text-slate-900 text-sm sm:text-base">Existing Modules</h3>
+            <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">{modulesList.length} Total</span>
           </div>
-          <div className="overflow-x-auto">
+
+          {/* Mobile card layout */}
+          <div className="sm:hidden divide-y divide-slate-100">
+            {modulesList.length > 0 ? modulesList.sort((a, b) => a.order - b.order).map((module) => (
+              <div key={module.id} className="p-3 flex items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                      {module.videoUrl ? <Video className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                    </div>
+                    <p className="font-bold text-slate-900 text-xs sm:text-sm truncate">{module.title}</p>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1 ml-10">
+                    <span className={cn(
+                      "text-[10px] font-bold px-2 py-0.5 rounded-full uppercase",
+                      module.isPublished ? "bg-green-100 text-green-600" : "bg-slate-100 text-slate-400"
+                    )}>
+                      {module.isPublished ? 'Published' : 'Draft'}
+                    </span>
+                    <span className="text-[10px] text-slate-400">#{module.order}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button 
+                    onClick={() => setPreviewId(module.id)}
+                    className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                  </button>
+                  <button 
+                    onClick={() => handleEditCourse(module)}
+                    className="p-1.5 hover:bg-blue-50 rounded-lg text-slate-400"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(module.id)}
+                    className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )) : (
+              <div className="p-8 text-center text-slate-400 text-sm">No training modules found.</div>
+            )}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50/50 border-b border-slate-200">
-                  <th className="p-4 font-bold text-slate-600 text-sm">Module Name</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm hidden md:table-cell">Category</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm hidden lg:table-cell">Order</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm">Status</th>
-                  <th className="p-4 font-bold text-slate-600 text-sm text-right">Actions</th>
+                  <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm">Module Name</th>
+                  <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm hidden md:table-cell">Category</th>
+                  <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm hidden lg:table-cell">Order</th>
+                  <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm">Status</th>
+                  <th className="p-3 sm:p-4 font-bold text-slate-600 text-xs sm:text-sm text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {modulesList.length > 0 ? modulesList.sort((a, b) => a.order - b.order).map((module) => (
                   <tr key={module.id} className="hover:bg-slate-50/50 group transition-all">
-                    <td className="p-4">
+                    <td className="p-3 sm:p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
                           {module.videoUrl ? <Video className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
                         </div>
                         <div>
-                          <p className="font-bold text-slate-900">{module.title}</p>
-                          <p className="text-xs text-slate-400 line-clamp-1">{module.description}</p>
+                          <p className="font-bold text-slate-900 text-xs sm:text-sm">{module.title}</p>
+                          <p className="text-[10px] sm:text-xs text-slate-400 line-clamp-1">{module.description}</p>
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full flex items-center gap-1">
                               <MessageSquare className="w-3 h-3" /> {module.scenarios?.length || 0}
@@ -624,15 +673,15 @@ export default function TrainingManagement() {
                         </div>
                       </div>
                     </td>
-                    <td className="p-4 hidden md:table-cell">
+                    <td className="p-3 sm:p-4 hidden md:table-cell">
                       <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg">
                         {module.category}
                       </span>
                     </td>
-                    <td className="p-4 hidden lg:table-cell">
-                      <span className="text-sm font-bold text-slate-700">#{module.order}</span>
+                    <td className="p-3 sm:p-4 hidden lg:table-cell">
+                      <span className="text-xs sm:text-sm font-bold text-slate-700">#{module.order}</span>
                     </td>
-                    <td className="p-4">
+                    <td className="p-3 sm:p-4">
                       <span className={cn(
                         "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
                         module.isPublished ? "bg-green-100 text-green-600" : "bg-slate-100 text-slate-400"
@@ -640,7 +689,7 @@ export default function TrainingManagement() {
                         {module.isPublished ? 'Published' : 'Draft'}
                       </span>
                     </td>
-                        <td className="p-4 text-right">
+                        <td className="p-3 sm:p-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button 
                           onClick={() => setPreviewId(module.id)}
@@ -682,8 +731,9 @@ export default function TrainingManagement() {
 
       {/* Module Preview Modal */}
       {previewId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto space-y-4 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-t-[28px] sm:rounded-3xl p-4 sm:p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto space-y-4 shadow-xl pb-[env(safe-area-inset-bottom)]">
+            <div className="sm:hidden flex justify-center pt-3 pb-1"><div className="w-10 h-1.5 bg-slate-200 rounded-full" /></div>
             <div className="flex justify-between items-center pb-3 border-b border-slate-100">
               <h3 className="text-lg font-bold text-slate-900">Module Preview</h3>
               <button onClick={() => setPreviewId(null)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400">

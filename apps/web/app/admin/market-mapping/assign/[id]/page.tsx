@@ -366,20 +366,20 @@ export default function LocationDetailPage() {
 
   return (
     <AdminLayout>
-      <div className="max-w-4xl mx-auto space-y-6">
-        {mutationError && <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 text-sm text-red-700 font-medium flex items-center gap-2"><AlertCircle className="w-4 h-4 shrink-0" />{mutationError}</div>}
+      <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
+        {mutationError && <div className="bg-red-50 border border-red-200 rounded-xl p-3 sm:p-3.5 text-xs sm:text-sm text-red-700 font-medium flex items-center gap-2"><AlertCircle className="w-4 h-4 shrink-0" />{mutationError}</div>}
 
         {/* Header */}
         <div className="flex items-center gap-3">
-          <Link href="/admin/market-mapping/assign" className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors">
+          <Link href="/admin/market-mapping/assign" className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors shrink-0">
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-blue-600" />
-              {locationRecord.name}
+          <div className="min-w-0">
+            <h1 className="text-base sm:text-xl font-bold text-slate-900 flex items-center gap-2">
+              <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 shrink-0" />
+              <span className="truncate">{locationRecord.name}</span>
             </h1>
-            <p className="text-xs text-slate-500 font-medium">{locationRecord.area}, {locationRecord.city} — {locationRecord.businesses} businesses, {locationRecord.penetration}% penetration</p>
+            <p className="text-[10px] sm:text-xs text-slate-500 font-medium truncate">{locationRecord.area}, {locationRecord.city} — {locationRecord.businesses} businesses, {locationRecord.penetration}% penetration</p>
           </div>
         </div>
 
@@ -399,49 +399,49 @@ export default function LocationDetailPage() {
 
         {/* Assigned Affiliates Section */}
         <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-blue-600" />
-              <h2 className="font-bold text-slate-900">Assigned Affiliates & Team Members ({assignedAffiliates.length})</h2>
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              <Users className="w-4 h-4 text-blue-600 shrink-0" />
+              <h2 className="font-bold text-slate-900 text-sm sm:text-base truncate">Assigned Affiliates & Team Members ({assignedAffiliates.length})</h2>
             </div>
             <button
               onClick={() => setShowAddForm(!showAddForm)}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition-all shadow-sm"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-blue-600 text-white text-[10px] sm:text-xs font-bold rounded-xl hover:bg-blue-700 transition-all shadow-sm shrink-0"
             >
-              <Plus className="w-3.5 h-3.5" /> Add / Assign Team
+              <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Add / Assign Team</span><span className="sm:hidden">Add</span>
             </button>
           </div>
 
           {assignedAffiliates.length > 0 ? (
-            <div className="p-6 space-y-3">
+            <div className="p-3 sm:p-6 space-y-2 sm:space-y-3">
               {assignedAffiliates.map(aff => {
                 const badge = formatDurationBadge(aff.duration, aff.expiresAt);
                 return (
                   <div
                     key={aff.id}
                     onClick={() => openAffiliateDetail(aff)}
-                    className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-blue-300 hover:bg-blue-50/40 cursor-pointer transition-all group"
+                    className="flex items-center justify-between p-3 sm:p-4 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-blue-300 hover:bg-blue-50/40 cursor-pointer transition-all group"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-sm">
+                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-xs sm:text-sm shrink-0">
                         {aff.name.charAt(0)}
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-bold text-slate-900">{aff.name}</p>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-200/60 text-slate-600 uppercase tracking-wider">{aff.role}</span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                          <p className="font-bold text-slate-900 text-sm sm:text-base truncate">{aff.name}</p>
+                          <span className="text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-md bg-slate-200/60 text-slate-600 uppercase tracking-wider shrink-0">{aff.role}</span>
                         </div>
-                        <p className="text-xs text-slate-500">{aff.email} {aff.phone && `· ${aff.phone}`}</p>
+                        <p className="text-[10px] sm:text-xs text-slate-500 truncate">{aff.email} {aff.phone && `· ${aff.phone}`}</p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                       <div className="text-right">
-                        <span className={cn("inline-block text-[11px] font-bold px-2.5 py-1 rounded-lg", badge.color)}>
+                        <span className={cn("inline-block text-[10px] sm:text-[11px] font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg", badge.color)}>
                           {badge.label}
                         </span>
                         {aff.expiresAt && !aff.isExpired && (
-                          <p className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1 justify-end">
+                          <p className="text-[9px] sm:text-[10px] text-slate-400 mt-0.5 flex items-center gap-1 justify-end">
                             <Clock className="w-3 h-3 text-slate-400" />
                             {new Date(aff.expiresAt).toLocaleDateString()}
                           </p>
@@ -463,52 +463,52 @@ export default function LocationDetailPage() {
 
           {/* Add / Assign Form */}
           {showAddForm && (
-            <div className="border-t border-slate-200 p-6 space-y-6 bg-slate-50/50">
+            <div className="border-t border-slate-200 p-3 sm:p-6 space-y-4 sm:space-y-6 bg-slate-50/50">
 
               {/* Mode Switcher */}
-              <div className="flex bg-slate-200/80 p-1 rounded-xl w-fit">
+              <div className="flex bg-slate-200/80 p-1 rounded-xl w-fit overflow-x-auto">
                 <button
                   type="button"
                   onClick={() => setAssignMode('INDIVIDUAL')}
                   className={cn(
-                    "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all",
+                    "flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap",
                     assignMode === 'INDIVIDUAL' ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
                   )}
                 >
-                  <UserPlus className="w-3.5 h-3.5" /> Assign Affiliates/Agents
+                  <UserPlus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Assign Affiliates/Agents</span><span className="sm:hidden">Affiliates</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setAssignMode('LINE_MANAGER')}
                   className={cn(
-                    "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all",
+                    "flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap",
                     assignMode === 'LINE_MANAGER' ? "bg-white text-blue-700 shadow-sm" : "text-slate-600 hover:text-slate-900"
                   )}
                 >
-                  <UserCheck className="w-3.5 h-3.5 text-blue-600" /> Assign Line Manager & Team
+                  <UserCheck className="w-3.5 h-3.5 text-blue-600" /> <span className="hidden sm:inline">Assign Line Manager & Team</span><span className="sm:hidden">Line Manager</span>
                 </button>
               </div>
 
               {/* Duration Selector Section */}
-              <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
-                <label className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <div className="bg-white border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
+                <label className="text-[10px] sm:text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                   <Clock className="w-4 h-4 text-blue-600" /> Assignment Duration
                 </label>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
                   {durationOptions.map(opt => (
                     <button
                       key={opt.id}
                       type="button"
                       onClick={() => setSelectedDuration(opt.id)}
                       className={cn(
-                        "p-3 rounded-xl border text-left transition-all",
+                        "p-2 sm:p-3 rounded-xl border text-left transition-all",
                         selectedDuration === opt.id
                           ? "border-blue-600 bg-blue-50/60 ring-2 ring-blue-500/20"
                           : "border-slate-200 hover:border-slate-300 bg-white"
                       )}
                     >
-                      <p className={cn("text-xs font-bold", selectedDuration === opt.id ? "text-blue-900" : "text-slate-800")}>{opt.label}</p>
-                      <p className="text-[10px] text-slate-500 mt-0.5">{opt.description}</p>
+                      <p className={cn("text-[10px] sm:text-xs font-bold", selectedDuration === opt.id ? "text-blue-900" : "text-slate-800")}>{opt.label}</p>
+                      <p className="text-[9px] sm:text-[10px] text-slate-500 mt-0.5 hidden sm:block">{opt.description}</p>
                     </button>
                   ))}
                 </div>
@@ -693,35 +693,35 @@ export default function LocationDetailPage() {
         </div>
 
         {/* Targets & Permissions Section */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-5">
+        <div className="bg-white border border-slate-200 rounded-2xl p-3 sm:p-6 space-y-4 sm:space-y-5">
           <div className="flex items-center gap-2">
             <Target className="w-4 h-4 text-blue-600" />
-            <h2 className="font-bold text-slate-900">Targets & Permissions</h2>
+            <h2 className="font-bold text-slate-900 text-sm sm:text-base">Targets & Permissions</h2>
           </div>
-          <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-100 rounded-xl">
+          <div className="flex items-start gap-3 p-2.5 sm:p-3 bg-blue-50 border border-blue-100 rounded-xl">
             <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
-            <p className="text-xs text-blue-800">These targets appear on each affiliate&apos;s dashboard as their daily, weekly, and monthly goals.</p>
+            <p className="text-[10px] sm:text-xs text-blue-800">These targets appear on each affiliate&apos;s dashboard as their daily, weekly, and monthly goals.</p>
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
             <div>
-              <label className="text-xs font-bold text-slate-600 block mb-1">Daily Target</label>
-              <input type="number" value={dailyTarget} onChange={e => setDailyTarget(Number(e.target.value))} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+              <label className="text-[10px] sm:text-xs font-bold text-slate-600 block mb-1">Daily</label>
+              <input type="number" value={dailyTarget} onChange={e => setDailyTarget(Number(e.target.value))} className="w-full px-2 sm:px-3 py-2 sm:py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
             </div>
             <div>
-              <label className="text-xs font-bold text-slate-600 block mb-1">Weekly Target</label>
-              <input type="number" value={weeklyTarget} onChange={e => setWeeklyTarget(Number(e.target.value))} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+              <label className="text-[10px] sm:text-xs font-bold text-slate-600 block mb-1">Weekly</label>
+              <input type="number" value={weeklyTarget} onChange={e => setWeeklyTarget(Number(e.target.value))} className="w-full px-2 sm:px-3 py-2 sm:py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
             </div>
             <div>
-              <label className="text-xs font-bold text-slate-600 block mb-1">Monthly Target</label>
-              <input type="number" value={monthlyTarget} onChange={e => setMonthlyTarget(Number(e.target.value))} className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+              <label className="text-[10px] sm:text-xs font-bold text-slate-600 block mb-1">Monthly</label>
+              <input type="number" value={monthlyTarget} onChange={e => setMonthlyTarget(Number(e.target.value))} className="w-full px-2 sm:px-3 py-2 sm:py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
             </div>
           </div>
-          <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl">
-            <div className="flex items-start gap-3">
-              <ToggleLeft className="w-5 h-5 text-blue-600 mt-0.5" />
+          <div className="flex items-center justify-between p-3 sm:p-4 bg-slate-50 border border-slate-200 rounded-xl">
+            <div className="flex items-start gap-2.5 sm:gap-3">
+              <ToggleLeft className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-bold text-slate-900">Allow affiliates to edit targets</p>
-                <p className="text-xs text-slate-500">When enabled, affiliates can adjust their own daily/weekly/monthly targets within their dashboard.</p>
+                <p className="text-xs sm:text-sm font-bold text-slate-900">Allow affiliates to edit targets</p>
+                <p className="text-[10px] sm:text-xs text-slate-500">When enabled, affiliates can adjust their own daily/weekly/monthly targets within their dashboard.</p>
               </div>
             </div>
             <button onClick={() => setAllowUserEdit(!allowUserEdit)} className={cn("relative w-12 h-6 rounded-full transition-all", allowUserEdit ? "bg-blue-600" : "bg-slate-300")}>
@@ -729,7 +729,7 @@ export default function LocationDetailPage() {
             </button>
           </div>
           <div className="flex justify-end">
-            <button onClick={handleSaveTargets} disabled={submitting} className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 disabled:opacity-40 transition-all">
+            <button onClick={handleSaveTargets} disabled={submitting} className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-slate-900 text-white rounded-xl font-bold text-xs sm:text-sm hover:bg-slate-800 disabled:opacity-40 transition-all">
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
               Save Targets
             </button>
@@ -739,16 +739,17 @@ export default function LocationDetailPage() {
 
       {/* Affiliate Detail & Reassignment Modal */}
       {selectedAffiliate && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-10 pb-10">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-start sm:justify-center sm:pt-10 sm:pb-10">
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setSelectedAffiliate(null)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto z-10">
+          <div className="relative bg-white rounded-t-[28px] sm:rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto z-10">
+            <div className="w-10 h-1 rounded-full bg-slate-200 mx-auto mt-3 sm:hidden" />
             {/* Modal header */}
-            <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-base">{selectedAffiliate.name.charAt(0)}</div>
-                <div>
-                  <h3 className="font-bold text-slate-900">{selectedAffiliate.name}</h3>
-                  <p className="text-xs text-slate-500">{selectedAffiliate.email} {selectedAffiliate.phone && `· ${selectedAffiliate.phone}`}</p>
+            <div className="sticky top-0 bg-white border-b border-slate-100 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between z-10">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-sm sm:text-base shrink-0">{selectedAffiliate.name.charAt(0)}</div>
+                <div className="min-w-0">
+                  <h3 className="font-bold text-slate-900 text-sm sm:text-base truncate">{selectedAffiliate.name}</h3>
+                  <p className="text-[10px] sm:text-xs text-slate-500 truncate">{selectedAffiliate.email} {selectedAffiliate.phone && `· ${selectedAffiliate.phone}`}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -759,29 +760,29 @@ export default function LocationDetailPage() {
             </div>
 
             {/* Modal tabs */}
-            <div className="flex border-b border-slate-100 px-6 bg-slate-50">
+            <div className="flex border-b border-slate-100 px-4 sm:px-6 bg-slate-50 overflow-x-auto">
               <button
                 onClick={() => setAffiliateTab('history')}
-                className={cn("px-4 py-3 text-xs font-bold border-b-2 transition-all", affiliateTab === 'history' ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500")}
+                className={cn("px-3 sm:px-4 py-2.5 sm:py-3 text-[10px] sm:text-xs font-bold border-b-2 transition-all whitespace-nowrap", affiliateTab === 'history' ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500")}
               >
                 Submission History
               </button>
               <button
                 onClick={() => setAffiliateTab('target')}
-                className={cn("px-4 py-3 text-xs font-bold border-b-2 transition-all", affiliateTab === 'target' ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500")}
+                className={cn("px-3 sm:px-4 py-2.5 sm:py-3 text-[10px] sm:text-xs font-bold border-b-2 transition-all whitespace-nowrap", affiliateTab === 'target' ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500")}
               >
                 Edit Duration & Targets
               </button>
               <button
                 onClick={() => setAffiliateTab('reassign')}
-                className={cn("px-4 py-3 text-xs font-bold border-b-2 transition-all", affiliateTab === 'reassign' ? "border-purple-600 text-purple-600" : "border-transparent text-slate-500")}
+                className={cn("px-3 sm:px-4 py-2.5 sm:py-3 text-[10px] sm:text-xs font-bold border-b-2 transition-all whitespace-nowrap", affiliateTab === 'reassign' ? "border-purple-600 text-purple-600" : "border-transparent text-slate-500")}
               >
                 Reassign Location
               </button>
             </div>
 
             {/* Tab content */}
-            <div className="p-6 space-y-4">
+            <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
               {affiliateTab === 'history' && (
                 <div className="space-y-3">
                   <p className="text-xs font-bold text-slate-700">Submissions in this location</p>

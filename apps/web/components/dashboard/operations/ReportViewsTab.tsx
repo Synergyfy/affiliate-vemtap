@@ -62,33 +62,33 @@ function rateOf(leads: number, conversions: number) {
 
 function StatCard({ label, value, icon: Icon, trend }: { label: string; value: string; icon: any; trend?: string }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between mb-3">
-        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-          <Icon className="w-5 h-5 text-blue-600" />
+    <div className="bg-white rounded-2xl border border-slate-100 p-3 sm:p-5 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between mb-2 sm:mb-3">
+        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+          <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
         </div>
         {trend && (
-          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg flex items-center gap-1">
-            <TrendingUp className="w-3 h-3" /> {trend}
+          <span className="text-[9px] sm:text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg flex items-center gap-0.5 sm:gap-1">
+            <TrendingUp className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> {trend}
           </span>
         )}
       </div>
-      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{label}</p>
-      <p className="text-xl font-black text-slate-900">{value}</p>
+      <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 sm:mb-1">{label}</p>
+      <p className="text-lg sm:text-xl font-black text-slate-900">{value}</p>
     </div>
   );
 }
 
 function SummaryPanel({ title, lines }: { title: string; lines: string[] }) {
   return (
-    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 p-6">
-      <div className="flex items-center gap-2 mb-3">
-        <Sparkles className="w-4 h-4 text-blue-600" />
-        <p className="text-xs font-black text-blue-700 uppercase tracking-widest">{title}</p>
+    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 p-4 sm:p-6">
+      <div className="flex items-center gap-2 mb-2 sm:mb-3">
+        <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600" />
+        <p className="text-[10px] sm:text-xs font-black text-blue-700 uppercase tracking-widest">{title}</p>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-1.5 sm:space-y-2">
         {lines.map((line, i) => (
-          <p key={i} className="text-sm text-slate-700 leading-relaxed">{line}</p>
+          <p key={i} className="text-xs sm:text-sm text-slate-700 leading-relaxed">{line}</p>
         ))}
       </div>
     </div>
@@ -102,9 +102,14 @@ function BreakdownTable({ data, columns, renderDetail }: {
 }) {
   const [expanded, setExpanded] = useState<number | null>(null);
   const toggle = (idx: number) => setExpanded(expanded === idx ? null : idx);
+
+  const primaryCol = columns[0];
+  const statCols = columns.slice(1);
+
   return (
     <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
-      <div className="overflow-x-auto">
+      {/* Desktop: table */}
+      <div className="hidden sm:block overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
             <tr className="bg-slate-50/50 border-b border-slate-100">
@@ -160,6 +165,55 @@ function BreakdownTable({ data, columns, renderDetail }: {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile: cards */}
+      <div className="sm:hidden divide-y divide-slate-100">
+        {data.map((row, idx) => (
+          <div key={idx}>
+            <button
+              onClick={() => toggle(idx)}
+              className={cn(
+                'w-full text-left p-4 transition-colors',
+                expanded === idx ? 'bg-blue-50/40' : 'active:bg-slate-50'
+              )}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-bold text-slate-900 truncate flex-1 mr-2">
+                  {primaryCol.format ? primaryCol.format(row[primaryCol.key]) : row[primaryCol.key]}
+                </p>
+                {expanded === idx
+                  ? <ChevronDown className="w-4 h-4 text-blue-600 shrink-0" />
+                  : <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />}
+              </div>
+              <div className="flex gap-3 flex-wrap">
+                {statCols.map((col) => (
+                  <span key={col.key} className="text-[10px] text-slate-500">
+                    <span className="font-medium">{col.label}: </span>
+                    <span className="font-bold text-slate-700">
+                      {col.format ? col.format(row[col.key]) : row[col.key]}
+                    </span>
+                  </span>
+                ))}
+              </div>
+            </button>
+            <AnimatePresence>
+              {expanded === idx && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="px-4 pb-4 pt-1 bg-blue-50/30">
+                    {renderDetail(row)}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -276,38 +330,38 @@ export default function ReportViewsTab() {
   const renderDetailBlock = (row: any) => {
     const r = rateOf(row.leads, row.conversions);
     return (
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="space-y-3 sm:space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-4">
           <div>
-            <h4 className="text-sm font-black text-slate-900">{row.name}</h4>
-            <p className="text-xs text-slate-500 font-medium">{row.region ? `${row.region} · ` : ''}{row.level || 'Team'}</p>
+            <h4 className="text-xs sm:text-sm font-black text-slate-900">{row.name}</h4>
+            <p className="text-[10px] sm:text-xs text-slate-500 font-medium">{row.region ? `${row.region} · ` : ''}{row.level || 'Team'}</p>
           </div>
           <button
             onClick={() => router.push(`/admin/operations/reports?name=${encodeURIComponent(row.name)}&subjectId=${encodeURIComponent(row.id)}&type=${sectionReportType[activeSection]}&period=${period}`)}
-            className="px-4 py-2 text-xs font-bold text-blue-600 border border-blue-200 bg-white hover:bg-blue-50 rounded-xl transition-all"
+            className="px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold text-blue-600 border border-blue-200 bg-white hover:bg-blue-50 rounded-lg sm:rounded-xl transition-all"
           >
             Open Full Report
           </button>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="bg-white rounded-xl border border-slate-100 p-4">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Leads</p>
-            <p className="text-lg font-black text-slate-900">{row.leads.toLocaleString()}</p>
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+          <div className="bg-white rounded-xl border border-slate-100 p-3 sm:p-4">
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 sm:mb-1">Leads</p>
+            <p className="text-base sm:text-lg font-black text-slate-900">{row.leads.toLocaleString()}</p>
           </div>
-          <div className="bg-white rounded-xl border border-slate-100 p-4">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Conversions</p>
-            <p className="text-lg font-black text-emerald-600">{row.conversions.toLocaleString()}</p>
+          <div className="bg-white rounded-xl border border-slate-100 p-3 sm:p-4">
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 sm:mb-1">Conversions</p>
+            <p className="text-base sm:text-lg font-black text-emerald-600">{row.conversions.toLocaleString()}</p>
           </div>
-          <div className="bg-white rounded-xl border border-slate-100 p-4">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Conversion Rate</p>
-            <p className="text-lg font-black text-slate-900">{r}%</p>
+          <div className="bg-white rounded-xl border border-slate-100 p-3 sm:p-4">
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 sm:mb-1">Conversion Rate</p>
+            <p className="text-base sm:text-lg font-black text-slate-900">{r}%</p>
           </div>
-          <div className="bg-white rounded-xl border border-slate-100 p-4">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Earnings</p>
-            <p className="text-lg font-black text-blue-600">{formatCurrency(row.earnings)}</p>
+          <div className="bg-white rounded-xl border border-slate-100 p-3 sm:p-4">
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 sm:mb-1">Earnings</p>
+            <p className="text-base sm:text-lg font-black text-blue-600">{formatCurrency(row.earnings)}</p>
           </div>
         </div>
-        <p className="text-sm text-slate-600 leading-relaxed">
+        <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
           {row.name} generated <b>{row.leads.toLocaleString()}</b> leads and converted <b>{row.conversions.toLocaleString()}</b> of them,
           achieving a <b>{r}%</b> conversion rate and contributing <b>{formatCurrency(row.earnings)}</b> in earnings {periodLabel}.
         </p>
@@ -320,7 +374,7 @@ export default function ReportViewsTab() {
     const rows = data.teamsRows;
     const top = [...rows].sort((a, b) => b.conversions - a.conversions)[0];
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <SummaryPanel
           title="English Summary"
           lines={[
@@ -329,7 +383,7 @@ export default function ReportViewsTab() {
             `Overall conversion is ${rateOf(d.leads, d.conversions) >= 35 ? 'healthy and on track' : 'below the 35% target — focus on the teams with the lowest rates below'}.`,
           ]}
         />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
           <StatCard label="Total Leads" value={d.leads.toString()} icon={BarChart3} />
           <StatCard label="Conversions" value={d.conversions.toString()} icon={TrendingUp} />
           <StatCard label="Conversion Rate" value={`${rateOf(d.leads, d.conversions)}%`} icon={Users} />
@@ -355,7 +409,7 @@ export default function ReportViewsTab() {
     const rows = data.agentsRows;
     const top = [...rows].sort((a, b) => b.conversions - a.conversions)[0];
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <SummaryPanel
           title="English Summary"
           lines={[
@@ -364,7 +418,7 @@ export default function ReportViewsTab() {
             `${d.active} of ${d.total} agents (${Math.round((d.active / d.total) * 100)}%) are actively producing — review the full breakdown below to spot underperformers.`,
           ]}
         />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
           <StatCard label="Total Agents" value={d.total.toString()} icon={Users} />
           <StatCard label="Active Agents" value={d.active.toString()} icon={UserCheck} trend={`${Math.round((d.active / d.total) * 100)}% active`} />
            <StatCard label="Total Leads" value={d.leads.toString()} icon={BarChart3} />
@@ -390,7 +444,7 @@ export default function ReportViewsTab() {
     const rows = data.affiliatesRows;
     const top = [...rows].sort((a, b) => b.conversions - a.conversions)[0];
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <SummaryPanel
           title="English Summary"
           lines={[
@@ -399,7 +453,7 @@ export default function ReportViewsTab() {
             `Affiliate conversion averaged ${rateOf(d.leads, d.conversions)}% — expand any row below to see the individual performance story.`,
           ]}
         />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
           <StatCard label="Total Affiliates" value={d.total.toString()} icon={Network} />
           <StatCard label="Active Affiliates" value={d.active.toString()} icon={Users} trend={`${Math.round((d.active / d.total) * 100)}% active`} />
            <StatCard label="Total Leads" value={d.leads.toString()} icon={BarChart3} />
@@ -425,7 +479,7 @@ export default function ReportViewsTab() {
     const rows = data.managersRows;
     const top = [...rows].sort((a, b) => b.conversions - a.conversions)[0];
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <SummaryPanel
           title="English Summary"
           lines={[
@@ -434,7 +488,7 @@ export default function ReportViewsTab() {
             `The overall management conversion rate is ${rateOf(d.leads, d.conversions)}% — well aligned with the company target.`,
           ]}
         />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
           <StatCard label="Total Managers" value={d.total.toString()} icon={Users} />
            <StatCard label="Total Leads" value={d.leads.toString()} icon={BarChart3} />
           <StatCard label="Conversion Rate" value={`${rateOf(d.leads, d.conversions)}%`} icon={TrendingUp} />
@@ -463,7 +517,7 @@ export default function ReportViewsTab() {
       .filter(Boolean)
       .join(' → ');
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <SummaryPanel
           title="English Summary"
           lines={[
@@ -475,43 +529,43 @@ export default function ReportViewsTab() {
           ]}
         />
 
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-          <div className="flex items-center gap-2 mb-5">
-            <Filter className="w-4 h-4 text-blue-600" />
-            <h4 className="text-sm font-black text-slate-900">Cascading Location Filter</h4>
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-6">
+          <div className="flex items-center gap-2 mb-3 sm:mb-5">
+            <Filter className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600" />
+            <h4 className="text-xs sm:text-sm font-black text-slate-900">Cascading Location Filter</h4>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1"><Globe className="w-3 h-3" /> Country</label>
-              <select value={country} onChange={(e) => handleCountryChange(e.target.value)} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-4">
+            <div className="space-y-1 sm:space-y-1.5">
+              <label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1"><Globe className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> Country</label>
+              <select value={country} onChange={(e) => handleCountryChange(e.target.value)} className="w-full px-2.5 sm:px-3 py-2 sm:py-2.5 bg-slate-50 border border-slate-200 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
                 <option value="all">All Countries</option>
                 {countryOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
-            <div className="space-y-1.5">
-             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1"><MapIcon className="w-3 h-3" /> State</label>
-              <select value={state} onChange={(e) => handleStateChange(e.target.value)} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+            <div className="space-y-1 sm:space-y-1.5">
+             <label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1"><MapIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> State</label>
+              <select value={state} onChange={(e) => handleStateChange(e.target.value)} className="w-full px-2.5 sm:px-3 py-2 sm:py-2.5 bg-slate-50 border border-slate-200 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
                 <option value="all">All States</option>
                 {stateOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1"><Building2 className="w-3 h-3" /> City</label>
-              <select value={city} onChange={(e) => handleCityChange(e.target.value)} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+            <div className="space-y-1 sm:space-y-1.5">
+              <label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1"><Building2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> City</label>
+              <select value={city} onChange={(e) => handleCityChange(e.target.value)} className="w-full px-2.5 sm:px-3 py-2 sm:py-2.5 bg-slate-50 border border-slate-200 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
                 <option value="all">All Cities</option>
                 {cityOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1"><Layers className="w-3 h-3" /> Area</label>
-              <select value={area} onChange={(e) => handleAreaChange(e.target.value)} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+            <div className="space-y-1 sm:space-y-1.5">
+              <label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1"><Layers className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> Area</label>
+              <select value={area} onChange={(e) => handleAreaChange(e.target.value)} className="w-full px-2.5 sm:px-3 py-2 sm:py-2.5 bg-slate-50 border border-slate-200 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
                 <option value="all">All Areas</option>
                 {areaOptions.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
             </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1"><MapPin className="w-3 h-3" /> Cluster</label>
-              <select value={cluster} onChange={(e) => setCluster(e.target.value)} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+            <div className="space-y-1 sm:space-y-1.5">
+              <label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1"><MapPin className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> Cluster</label>
+              <select value={cluster} onChange={(e) => setCluster(e.target.value)} className="w-full px-2.5 sm:px-3 py-2 sm:py-2.5 bg-slate-50 border border-slate-200 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
                 <option value="all">All Clusters</option>
                 {clusterOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
@@ -519,7 +573,7 @@ export default function ReportViewsTab() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
            <StatCard label="Matched Leads" value={locationTotal.leads.toString()} icon={BarChart3} />
            <StatCard label="Matched Conversions" value={locationTotal.conversions.toString()} icon={TrendingUp} />
           <StatCard label="Overall Rate" value={`${rateOf(locationTotal.leads, locationTotal.conversions)}%`} icon={Globe} />
@@ -554,21 +608,21 @@ export default function ReportViewsTab() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-6 sm:p-8 pb-0">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="bg-white rounded-[24px] sm:rounded-[32px] border border-slate-200 shadow-sm overflow-hidden">
+        <div className="p-4 sm:p-8 pb-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
             <div>
-              <h2 className="text-xl font-black text-slate-900">Admin Reports Overview</h2>
-              <p className="text-sm text-slate-500 mt-1">Comprehensive performance reports across all operational units</p>
+              <h2 className="text-lg sm:text-xl font-black text-slate-900">Admin Reports Overview</h2>
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1">Comprehensive performance reports across all operational units</p>
             </div>
-            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl">
+            <div className="flex items-center gap-0.5 bg-slate-100 p-0.5 rounded-xl sm:rounded-2xl">
               {periods.map((p) => (
                 <button
                   key={p}
                   onClick={() => setPeriod(p)}
                   className={cn(
-                    'px-4 py-2 text-xs font-black uppercase tracking-wider rounded-xl transition-all',
+                    'px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-lg sm:rounded-xl transition-all',
                     period === p ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
                   )}
                 >
@@ -578,26 +632,26 @@ export default function ReportViewsTab() {
             </div>
           </div>
 
-          <div className="flex overflow-x-auto scrollbar-hide -mb-px gap-1">
+          <div className="flex overflow-x-auto scrollbar-hide -mb-px gap-0.5">
             {(Object.entries(sectionMeta) as [Section, { label: string; icon: any }][]).map(([key, meta]) => (
               <button
                 key={key}
                 onClick={() => setActiveSection(key)}
                 className={cn(
-                  'flex items-center gap-2 px-5 py-4 text-sm font-bold whitespace-nowrap transition-all border-b-2',
+                  'flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm font-bold whitespace-nowrap transition-all border-b-2',
                   activeSection === key
                     ? 'text-blue-600 border-blue-600'
                     : 'text-slate-500 border-transparent hover:text-slate-700 hover:border-slate-300'
                 )}
               >
-                <meta.icon className={cn('w-4 h-4', activeSection === key ? 'text-blue-600' : 'text-slate-400')} />
+                <meta.icon className={cn('w-3.5 h-3.5 sm:w-4 sm:h-4', activeSection === key ? 'text-blue-600' : 'text-slate-400')} />
                 {meta.label}
               </button>
             ))}
           </div>
         </div>
 
-        <div className="p-6 sm:p-8 min-h-[400px]">
+        <div className="p-4 sm:p-8 min-h-[400px]">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeSection}
