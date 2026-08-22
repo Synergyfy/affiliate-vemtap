@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaWorkerService } from '../../prisma/prisma-worker.service';
 import { JourneyService, JourneyLead } from './journey.service';
 import { MessagesService } from '../messages/messages.service';
 import { RulesService } from '../rules/rules.service';
@@ -45,7 +45,7 @@ export class EngineService {
   private readonly logger = new Logger(EngineService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly prisma: PrismaWorkerService,
     private readonly journeyService: JourneyService,
     private readonly messagesService: MessagesService,
     private readonly rulesService: RulesService,
@@ -106,6 +106,13 @@ export class EngineService {
     if (state !== 'SUBSCRIBED') return;
 
     await this.prisma.$transaction(async (tx) => {
+      // Guard: never let this transaction hang on a row lock forever (which
+      // would pin a pooled connection). Aborts after the wait instead; the
+      // cron/engine retry wrapper recovers transient conflicts.
+      await tx.$executeRawUnsafe(
+        `SET LOCAL lock_timeout = 15000; SET LOCAL statement_timeout = 30000`,
+      );
+
       // 1. Cancel pending lead messages, preserving customer-journey types.
       await tx.communicationMessage.updateMany({
         where: {

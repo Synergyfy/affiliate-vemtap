@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
 import { SmsService } from './sms.service';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaWorkerService } from '../../prisma/prisma-worker.service';
 import { CommunicationSettingsService } from '../settings/communication-settings.service';
 import { MessageRendererService } from '../common/message-renderer.service';
 import { DisabledSmsProvider } from './providers/disabled-sms.provider';
@@ -28,7 +28,7 @@ describe('SmsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SmsService,
-        { provide: PrismaService, useValue: mockPrisma },
+        { provide: PrismaWorkerService, useValue: mockPrisma },
         { provide: CommunicationSettingsService, useValue: mockSettings },
         MessageRendererService,
         { provide: DisabledSmsProvider, useValue: disabledProvider },

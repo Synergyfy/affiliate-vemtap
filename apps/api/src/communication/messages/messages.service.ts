@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaWorkerService } from '../../prisma/prisma-worker.service';
 import { AudienceService } from '../audience/audience.service';
 import { MessageRendererService } from '../common/message-renderer.service';
 import { CommunicationSettingsService } from '../settings/communication-settings.service';
@@ -33,7 +33,7 @@ export class MessagesService {
   private readonly logger = new Logger(MessagesService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly prisma: PrismaWorkerService,
     private readonly audienceService: AudienceService,
     private readonly renderer: MessageRendererService,
     private readonly settingsService: CommunicationSettingsService,

@@ -418,27 +418,28 @@ export default function BusinessCaptureForm({
         visitNotes: formData.visitNotes,
       };
 
-      // Route based on the record's identity, not on whether it happens to be
-      // in the (possibly stale) visits array. A real id always means "update
-      // the persisted lead"; a temp id means "this is still a new/placeholder
-      // capture". This prevents editing a captured lead from silently creating
-      // a duplicate via POST instead of PATCH.
       const tempId = isTempId(visitToSave.id);
-      const existsInVisits = visits.some(v => v.id === visitToSave.id);
+      const existsInVisits = visits.some(v => v.id === visitToSave.id && !isTempId(v.id));
+      let savedResult: PlannedVisit | void = undefined;
+
       if (!tempId || existsInVisits) {
-        saveCapture(visitToSave);
+        savedResult = await saveCapture(visitToSave);
       } else {
-        addVisits([visitToSave]);
+        await addVisits([visitToSave]);
       }
 
       showToast('✓ Business profile saved successfully!', 'success');
-      if (onSaved) onSaved(visitToSave);
+      if (onSaved) onSaved(savedResult || visitToSave);
 
       if (!stayOnPage) {
         router.push(returnUrl);
       }
     } catch (err: any) {
-      showToast('Failed to save business: ' + (err.message || 'Unknown error'), 'error');
+      const errorMsg =
+        err?.response?.data?.message ||
+        err?.message ||
+        'An error occurred while saving the business profile.';
+      showToast(Array.isArray(errorMsg) ? errorMsg.join(', ') : errorMsg, 'error');
     } finally {
       setIsSaving(false);
     }

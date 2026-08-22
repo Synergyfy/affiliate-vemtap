@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaWorkerService } from '../../prisma/prisma-worker.service';
 import { CommunicationSettingsService } from '../settings/communication-settings.service';
 import { MessageRendererService } from '../common/message-renderer.service';
 import { SMS_MAX_LENGTH } from '../common/communication.constants';
@@ -13,7 +13,7 @@ export class SmsService {
   private readonly providers: Map<string, SmsProvider> = new Map();
 
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly prisma: PrismaWorkerService,
     private readonly settingsService: CommunicationSettingsService,
     private readonly renderer: MessageRendererService,
     private readonly disabledProvider: DisabledSmsProvider,
