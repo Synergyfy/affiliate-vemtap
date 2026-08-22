@@ -125,19 +125,19 @@ export default function NotificationsManagement() {
 
   return (
     <AdminLayout>
-      <div className="max-w-4xl mx-auto space-y-8">
+      <div className="max-w-4xl mx-auto space-y-4 sm:space-y-8">
         {/* Create Notification Card */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white p-5 sm:p-8 rounded-3xl border border-slate-200 shadow-sm"
+          className="bg-white p-3 sm:p-5 lg:p-8 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm"
         >
           <div className="flex items-center gap-3 mb-6">
             <div className="p-3 bg-blue-50 rounded-2xl">
               <Bell className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-900">Send Notification</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900">Send Notification</h2>
               <p className="text-sm text-slate-500 font-medium">Create and broadcast messages to your affiliates</p>
             </div>
           </div>
@@ -237,7 +237,7 @@ export default function NotificationsManagement() {
             <h3 className="text-lg font-bold text-slate-900">Recently Sent</h3>
           </div>
 
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="divide-y divide-slate-100">
               {history.map((notif, idx) => (
                 <div key={notif.id} className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/50 transition-all group">
@@ -284,8 +284,9 @@ export default function NotificationsManagement() {
 
       {/* Notification Detail Modal */}
       {selectedDetailId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-t-[28px] sm:rounded-3xl p-4 sm:p-6 max-w-md w-full space-y-4 shadow-xl pb-[env(safe-area-inset-bottom)]">
+            <div className="sm:hidden flex justify-center pt-3 pb-1"><div className="w-10 h-1.5 bg-slate-200 rounded-full" /></div>
             <div className="flex justify-between items-center pb-3 border-b border-slate-100">
               <h3 className="text-lg font-bold text-slate-900">Notification Detail</h3>
               <button onClick={() => setSelectedDetailId(null)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400">

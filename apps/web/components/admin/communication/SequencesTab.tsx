@@ -79,7 +79,7 @@ export default function SequencesTab() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-8">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
           <h3 className="text-lg font-bold text-slate-900">Automation Sequences</h3>
@@ -98,7 +98,7 @@ export default function SequencesTab() {
           <Loader2 className="w-6 h-6 animate-spin text-slate-300" />
         </div>
       ) : rules && rules.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center">
+        <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-8 sm:p-12 text-center">
           <Zap className="w-10 h-10 text-slate-200 mx-auto mb-3" />
           <p className="text-sm font-medium text-slate-500">No automation rules yet. Create your first rule above.</p>
         </div>
@@ -151,7 +151,7 @@ export default function SequencesTab() {
                 </button>
               )}
             </div>
-            <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm">
+            <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-sm">
               <CustomerJourneyEditor
                 stages={localJourney}
                 onChange={(stages) => { setLocalJourney(stages); setJourneyDirty(true); }}

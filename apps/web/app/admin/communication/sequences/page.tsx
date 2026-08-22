@@ -7,7 +7,7 @@ import SequencesTab from '@/components/admin/communication/SequencesTab';
 export default function CommunicationSequencesPage() {
   return (
     <AdminLayout>
-      <div className="space-y-6 max-w-[1600px] mx-auto">
+      <div className="space-y-4 sm:space-y-6 max-w-[1600px] mx-auto">
         <CommunicationNav />
         <SequencesTab />
       </div>
