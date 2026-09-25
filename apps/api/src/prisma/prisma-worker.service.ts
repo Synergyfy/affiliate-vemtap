@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
-import { buildTunedDatabaseUrl } from './prisma-url';
+import { buildTunedDatabaseUrl, getWorkerPoolConfig } from './prisma-url';
 
 /**
  * Dedicated Prisma client for the communication engine / cron path.
@@ -14,7 +14,8 @@ export class PrismaWorkerService
   implements OnModuleInit, OnModuleDestroy
 {
   constructor() {
-    const workerUrl = buildTunedDatabaseUrl(5, 20);
+    const { connectionLimit, poolTimeout } = getWorkerPoolConfig();
+    const workerUrl = buildTunedDatabaseUrl(connectionLimit, poolTimeout);
     if (workerUrl) {
       super({
         datasources: {

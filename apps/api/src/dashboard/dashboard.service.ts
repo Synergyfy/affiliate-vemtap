@@ -13,6 +13,7 @@ import {
 @Injectable()
 export class DashboardService {
   private readonly logger = new Logger(DashboardService.name);
+  private adminStatsInFlight: Promise<AdminStatsResponseDto> | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -25,61 +26,74 @@ export class DashboardService {
     const cachedData =
       await this.cacheManager.get<AdminStatsResponseDto>(cacheKey);
     if (cachedData) return cachedData;
+    // Single-flight: concurrent cache misses share one computation instead
+    // of each firing a 15-query burst against the pool.
+    if (this.adminStatsInFlight) return this.adminStatsInFlight;
+    this.adminStatsInFlight = this.computeAdminStats(cacheKey).finally(() => {
+      this.adminStatsInFlight = null;
+    });
+    return this.adminStatsInFlight;
+  }
+
+  private async computeAdminStats(
+    cacheKey: string,
+  ): Promise<AdminStatsResponseDto> {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const sixtyDaysAgo = new Date();
     sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
+    // Sequential batches of ~5 to cap simultaneous pool checkouts.
+    // Previously a single 15-way Promise.all could exhaust Supabase
+    // session pool_size 15 (EMAXCONNSESSION, failing at index 14).
+    const [totalAffiliates, activeAffiliates, totalRevenue, commissionsPaid, pendingPayouts] =
+      await Promise.all([
+        this.prisma.user.count({ where: { role: "AFFILIATE" } }),
+        this.prisma.user.count({
+          where: { role: "AFFILIATE", status: "ACTIVE" },
+        }),
+        this.prisma.business.aggregate({
+          where: { status: "ACTIVE" },
+          _sum: { subscriptionAmount: true },
+        }),
+        this.prisma.commission.aggregate({
+          where: { status: "PAID" },
+          _sum: { amount: true },
+        }),
+        this.prisma.withdrawal.aggregate({
+          where: { status: "PENDING" },
+          _sum: { amount: true },
+        }),
+      ]);
+
+    const [approvedPayouts, processingPayouts, completedPayouts, fraudAlerts, currentCommissions] =
+      await Promise.all([
+        this.prisma.withdrawal.aggregate({
+          where: { status: "APPROVED" },
+          _sum: { amount: true },
+        }),
+        this.prisma.withdrawal.aggregate({
+          where: { status: "PROCESSING" },
+          _sum: { amount: true },
+        }),
+        this.prisma.withdrawal.aggregate({
+          where: { status: "PAID" },
+          _sum: { amount: true },
+        }),
+        this.prisma.fraudAlert.count({ where: { status: "OPEN" } }),
+        this.prisma.commission.aggregate({
+          where: { status: "PAID", createdAt: { gte: thirtyDaysAgo } },
+          _sum: { amount: true },
+        }),
+      ]);
+
     const [
-      totalAffiliates,
-      activeAffiliates,
-      totalRevenue,
-      commissionsPaid,
-      pendingPayouts,
-      approvedPayouts,
-      processingPayouts,
-      completedPayouts,
-      fraudAlerts,
-      currentCommissions,
       previousCommissions,
       currentMonthRevenue,
       previousMonthRevenue,
       currentMonthAffiliates,
       previousMonthAffiliates,
     ] = await Promise.all([
-      this.prisma.user.count({ where: { role: "AFFILIATE" } }),
-      this.prisma.user.count({
-        where: { role: "AFFILIATE", status: "ACTIVE" },
-      }),
-      this.prisma.business.aggregate({
-        where: { status: "ACTIVE" },
-        _sum: { subscriptionAmount: true },
-      }),
-      this.prisma.commission.aggregate({
-        where: { status: "PAID" },
-        _sum: { amount: true },
-      }),
-      this.prisma.withdrawal.aggregate({
-        where: { status: "PENDING" },
-        _sum: { amount: true },
-      }),
-      this.prisma.withdrawal.aggregate({
-        where: { status: "APPROVED" },
-        _sum: { amount: true },
-      }),
-      this.prisma.withdrawal.aggregate({
-        where: { status: "PROCESSING" },
-        _sum: { amount: true },
-      }),
-      this.prisma.withdrawal.aggregate({
-        where: { status: "PAID" },
-        _sum: { amount: true },
-      }),
-      this.prisma.fraudAlert.count({ where: { status: "OPEN" } }),
-      this.prisma.commission.aggregate({
-        where: { status: "PAID", createdAt: { gte: thirtyDaysAgo } },
-        _sum: { amount: true },
-      }),
       this.prisma.commission.aggregate({
         where: {
           status: "PAID",
@@ -140,7 +154,11 @@ export class DashboardService {
       totalAffiliatesGrowth: affiliatesTrend,
     };
 
-    await this.cacheManager.set(cacheKey, stats, 300 * 1000); // 5 minutes in ms
+    try {
+      await this.cacheManager.set(cacheKey, stats, 600 * 1000); // 10 minutes in ms
+    } catch (err) {
+      this.logger.warn(`Failed to cache ${cacheKey}: ${(err as Error)?.message}`);
+    }
     return stats;
   }
 
